@@ -4,7 +4,7 @@
 	import Avatar from '../Avatar.svelte';
 	import Popover from '../Popover.svelte';
 	import Kbd from '../Kbd.svelte';
-	import { currentUser } from '$lib/data';
+	import { page } from '$app/state';
 	import type { Snippet } from 'svelte';
 
 	interface Crumb {
@@ -16,7 +16,22 @@
 		actions?: Snippet;
 	}
 	let { crumbs, actions }: Props = $props();
-	const me = currentUser();
+
+	const me = $derived.by(() => {
+		const u = page.data?.user as { id: string; name: string | null; email: string } | undefined;
+		if (!u) return undefined;
+		const name = u.name ?? u.email;
+		const initials = name
+			.split(/\s+/)
+			.map((p) => p[0])
+			.filter(Boolean)
+			.slice(0, 2)
+			.join('')
+			.toUpperCase();
+		let h = 0;
+		for (const c of u.id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+		return { name, email: u.email, initials, color: `hsl(${h % 360} 55% 60%)` };
+	});
 
 	let acctOpen = $state(false);
 </script>
@@ -51,14 +66,16 @@
 				<Avatar user={me} size={28} />
 			</button>
 			<Popover open={acctOpen} onclose={() => (acctOpen = false)} align="right" minWidth={240}>
-				<div class="flex items-center gap-2.5 px-2 pt-2 pb-3">
-					<Avatar user={me} size={32} />
-					<div class="flex flex-col min-w-0">
-						<span class="text-[13px] font-medium truncate">{me.name}</span>
-						<span class="text-[11.5px] text-text-3 truncate">{me.email}</span>
+				{#if me}
+					<div class="flex items-center gap-2.5 px-2 pt-2 pb-3">
+						<Avatar user={me} size={32} />
+						<div class="flex flex-col min-w-0">
+							<span class="text-[13px] font-medium truncate">{me.name}</span>
+							<span class="text-[11.5px] text-text-3 truncate">{me.email}</span>
+						</div>
 					</div>
-				</div>
-				<div class="h-px bg-border -mx-0.5 mb-1"></div>
+					<div class="h-px bg-border -mx-0.5 mb-1"></div>
+				{/if}
 				<button class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none">
 					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="user" size={14} /></span>
 					<span>Profile</span>
@@ -82,10 +99,15 @@
 					<span>Send feedback</span>
 				</button>
 				<div class="h-px bg-border -mx-0.5 my-1"></div>
-				<button class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-accent text-left text-[13px] leading-none">
-					<span class="grid place-items-center w-4 h-4 shrink-0"><Icon name="logout" size={14} /></span>
-					<span>Sign out</span>
-				</button>
+				<form method="post" action="/logout" class="contents">
+					<button
+						type="submit"
+						class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-accent text-left text-[13px] leading-none"
+					>
+						<span class="grid place-items-center w-4 h-4 shrink-0"><Icon name="logout" size={14} /></span>
+						<span>Sign out</span>
+					</button>
+				</form>
 			</Popover>
 		</div>
 	</div>

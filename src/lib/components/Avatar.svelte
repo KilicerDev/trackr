@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { User } from '$lib/types';
+	type AvatarUser = { name: string; initials: string; color: string };
 	interface Props {
-		user: User | undefined;
+		user: AvatarUser | undefined;
 		size?: number;
 		ring?: boolean;
 		class?: string;

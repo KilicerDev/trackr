@@ -1,13 +1,9 @@
 <script lang="ts">
     import { page } from "$app/state";
     import Icon from "../Icon.svelte";
-    import Avatar from "../Avatar.svelte";
     import Kbd from "../Kbd.svelte";
-    import IconButton from "../IconButton.svelte";
-    import { TRACKR_PROJECTS, TRACKR_TASKS, currentUser } from "$lib/data";
+    import { TRACKR_PROJECTS, TRACKR_TASKS } from "$lib/data";
     import type { ProjectId } from "$lib/types";
-
-    const me = currentUser();
 
     const workspaceItems = [
         { key: "week", label: "My Week", icon: "calendar", href: "/week" },
@@ -193,20 +189,4 @@
         </div>
     </div>
 
-    <div
-        class="flex items-center gap-2.5 mt-auto px-3 py-2.5 border-t border-border"
-    >
-        <Avatar user={me} size={26} />
-        <div class="flex flex-col min-w-0">
-            <span class="text-[13px] font-medium truncate">{me.name}</span>
-            <span class="text-[11.5px] text-text-3 truncate"
-                >Trackr Workspace</span
-            >
-        </div>
-        <div class="ml-auto">
-            <IconButton size={28} ariaLabel="Account settings">
-                <Icon name="settings" size={14} />
-            </IconButton>
-        </div>
-    </div>
 </aside>
