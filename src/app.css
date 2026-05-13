@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+@theme {
+    --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-mono: "Geist Mono", ui-monospace, "SF Mono", monospace;
+
+    --color-bg: var(--bg);
+    --color-bg-elev: var(--bg-elev);
+    --color-surface: var(--surface);
+    --color-surface-2: var(--surface-2);
+    --color-border: var(--border);
+    --color-border-strong: var(--border-strong);
+    --color-text: var(--text);
+    --color-text-2: var(--text-2);
+    --color-text-3: var(--text-3);
+    --color-text-4: var(--text-4);
+    --color-accent: var(--accent);
+    --color-accent-strong: var(--accent-strong);
+
+    --color-prio-low: #7a9cf0;
+    --color-prio-medium: #f0a85c;
+    --color-prio-high: #ef7a6d;
+    --color-prio-urgent: #ef4f5e;
+
+    --color-status-backlog: #7c7c84;
+    --color-status-todo: #9aa4b2;
+    --color-status-in_progress: #f0a85c;
+    --color-status-paused: #e9c46a;
+    --color-status-in_review: #b591e3;
+    --color-status-done: #7fc8a9;
+}
+
+/* ===== Theme tokens ===== */
+:root,
+:root[data-theme="dark"] {
+    --bg: oklch(0.16 0.005 270);
+    --bg-elev: oklch(0.195 0.006 270);
+    --surface: oklch(0.215 0.007 270);
+    --surface-2: oklch(0.245 0.008 270);
+    --border: oklch(0.285 0.008 270);
+    --border-strong: oklch(0.34 0.01 270);
+    --text: oklch(0.97 0.005 270);
+    --text-2: oklch(0.74 0.008 270);
+    --text-3: oklch(0.54 0.008 270);
+    --text-4: oklch(0.42 0.008 270);
+    --accent: #ef7a6d;
+    --accent-soft: rgba(239, 122, 109, 0.14);
+    --accent-strong: #f08e7f;
+    --row-hover: rgba(255, 255, 255, 0.035);
+    --row-active: rgba(239, 122, 109, 0.07);
+    --focus-ring: 0 0 0 2px rgba(239, 122, 109, 0.45);
+    --shadow-lg:
+        0 12px 32px -8px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme="light"] {
+    --bg: oklch(0.985 0.003 80);
+    --bg-elev: oklch(0.97 0.003 80);
+    --surface: oklch(0.955 0.003 80);
+    --surface-2: oklch(0.93 0.003 80);
+    --border: oklch(0.89 0.004 80);
+    --border-strong: oklch(0.82 0.005 80);
+    --text: oklch(0.22 0.008 270);
+    --text-2: oklch(0.43 0.008 270);
+    --text-3: oklch(0.58 0.008 270);
+    --text-4: oklch(0.66 0.008 270);
+    --row-hover: rgba(0, 0, 0, 0.025);
+    --row-active: rgba(239, 122, 109, 0.08);
+    --shadow-lg:
+        0 12px 32px -10px rgba(40, 30, 30, 0.18),
+        0 2px 6px rgba(40, 30, 30, 0.06);
+}
+
+:root[data-density="compact"] {
+    --row-h: 36px;
+    --row-px: 16px;
+}
+:root[data-density="comfortable"] {
+    --row-h: 44px;
+    --row-px: 20px;
+}
+:root {
+    --sidebar-w: 260px;
+}
+
+/* ===== Base ===== */
+* {
+    box-sizing: border-box;
+    outline: none;
+}
+html,
+body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+body {
+    font-family: var(--font-sans);
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "ss01", "cv11";
+    font-size: 14px;
+    line-height: 1.45;
+    letter-spacing: -0.005em;
+}
+button {
+    font-family: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+input,
+textarea {
+    font-family: inherit;
+    color: inherit;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 10px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.font-mono {
+    font-family: var(--font-mono);
+}

@@ -1,0 +1,24 @@
+<script lang="ts">
+	import { clickOutside } from '$lib/actions/clickOutside';
+	import type { Snippet } from 'svelte';
+	interface Props {
+		open: boolean;
+		onclose: () => void;
+		align?: 'left' | 'right';
+		minWidth?: number;
+		children: Snippet;
+	}
+	let { open, onclose, align = 'left', minWidth = 200, children }: Props = $props();
+</script>
+
+{#if open}
+	<div
+		use:clickOutside={onclose}
+		class="absolute z-50 top-full mt-1.5 bg-bg-elev border border-border rounded-[10px] p-1.5 text-[13px]
+		{align === 'right' ? 'right-0' : 'left-0'}"
+		style:min-width="{minWidth}px"
+		style:box-shadow="var(--shadow-lg)"
+	>
+		{@render children()}
+	</div>
+{/if}

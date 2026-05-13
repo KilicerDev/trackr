@@ -1,0 +1,30 @@
+<script lang="ts">
+	import type { Snippet } from 'svelte';
+	import { fly, fade } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
+	interface Props {
+		open: boolean;
+		onclose: () => void;
+		width?: number;
+		children: Snippet;
+	}
+	let { open, onclose, width = 460, children }: Props = $props();
+</script>
+
+{#if open}
+	<button
+		type="button"
+		aria-label="Close drawer"
+		onclick={onclose}
+		transition:fade={{ duration: 180 }}
+		class="fixed inset-0 z-40 bg-black/40"
+	></button>
+	<aside
+		transition:fly={{ x: width + 20, duration: 280, easing: cubicOut, opacity: 1 }}
+		class="fixed right-0 top-0 bottom-0 z-50 bg-bg-elev border-l border-border flex flex-col overflow-hidden"
+		style:width="{width}px"
+		style:box-shadow="var(--shadow-lg)"
+	>
+		{@render children()}
+	</aside>
+{/if}
