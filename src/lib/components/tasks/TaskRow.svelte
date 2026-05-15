@@ -5,7 +5,8 @@
 	import LabelChip from '../LabelChip.svelte';
 	import Avatar from '../Avatar.svelte';
 	import Icon from '../Icon.svelte';
-	import { TRACKR_PRIORITIES, formatDateShort, userById } from '$lib/data';
+	import { TRACKR_PRIORITIES, formatDateShort } from '$lib/data';
+	import { resolveUser } from '$lib/lookup.svelte';
 
 	interface Props {
 		task: Task;
@@ -15,7 +16,7 @@
 	let { task, selected = false, onclick }: Props = $props();
 
 	let prio = $derived(TRACKR_PRIORITIES.find((p) => p.id === task.priority)!);
-	let assignee = $derived(userById(task.assignee));
+	let assignee = $derived(resolveUser(task.assignee));
 </script>
 
 <button

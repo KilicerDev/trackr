@@ -1,23 +1,40 @@
 <script lang="ts">
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { autoPlace } from '$lib/actions/autoPlace';
+	import { fly } from 'svelte/transition';
+	import { POPOVER_IN } from '$lib/motion';
 	import Icon from '../Icon.svelte';
-	import { TODAY } from '$lib/data';
 
 	interface Props {
 		value: string | null;
 		onchange: (v: string | null) => void;
 		onclose: () => void;
+		/** When set, an extra footer button appears with this label.
+		 *  Pressing it invokes `onundated()` and closes the popover. */
+		undatedLabel?: string;
+		onundated?: () => void;
+		undatedActive?: boolean;
 	}
-	let { value, onchange, onclose }: Props = $props();
+	let {
+		value,
+		onchange,
+		onclose,
+		undatedLabel,
+		onundated,
+		undatedActive = false
+	}: Props = $props();
+
+	function todayLocal(): Date {
+		const now = new Date();
+		return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	}
 
 	function parseISO(iso: string | null): Date {
 		if (iso) {
 			const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
 			if (m) return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
 		}
-		const t = TODAY.match(/^(\d{4})-(\d{2})-(\d{2})/)!;
-		return new Date(parseInt(t[1]), parseInt(t[2]) - 1, parseInt(t[3]));
+		return todayLocal();
 	}
 
 	function fmtISO(d: Date): string {
@@ -29,7 +46,7 @@
 
 	const initialValue = value;
 	let cursor = $state(parseISO(initialValue));
-	const today = parseISO(TODAY);
+	const today = todayLocal();
 	const valueDate = $derived(value ? parseISO(value) : null);
 
 	let title = $derived.by(() => {
@@ -84,6 +101,7 @@
 <div
 	use:clickOutside={onclose}
 	use:autoPlace
+	in:fly={POPOVER_IN}
 	class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-2.5 w-[268px]"
 	style:box-shadow="var(--shadow-lg)"
 >
@@ -124,4 +142,14 @@
 		<button type="button" onclick={() => quick(7)} class="flex-1 text-[11.5px] px-2 py-1 rounded-md text-text-2 hover:bg-surface hover:text-text">+1w</button>
 		<button type="button" onclick={() => { onchange(null); onclose(); }} class="text-[11.5px] px-2 py-1 rounded-md text-text-3 hover:bg-surface hover:text-text">Clear</button>
 	</div>
+	{#if undatedLabel && onundated}
+		<button
+			type="button"
+			onclick={() => { onundated(); onclose(); }}
+			class="mt-1.5 w-full text-[11.5px] px-2 py-1.5 rounded-md transition-colors {undatedActive ? 'bg-accent-soft text-accent' : 'text-text-2 hover:bg-surface hover:text-text'}"
+			style:background={undatedActive ? 'rgba(239,122,109,0.14)' : ''}
+		>
+			{undatedLabel}
+		</button>
+	{/if}
 </div>

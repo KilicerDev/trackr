@@ -2,7 +2,14 @@
 	import Icon from '../Icon.svelte';
 	import Button from '../Button.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
-	import { TODAY, formatEstimate } from '$lib/data';
+	import { formatEstimate } from '$lib/data';
+
+	function todayIso(): string {
+		const d = new Date();
+		const m = String(d.getMonth() + 1).padStart(2, '0');
+		const dd = String(d.getDate()).padStart(2, '0');
+		return `${d.getFullYear()}-${m}-${dd}`;
+	}
 	import type { Task } from '$lib/types';
 
 	interface Props {
@@ -14,7 +21,7 @@
 	let open = $state(false);
 	let h = $state(0);
 	let m = $state(0);
-	let date = $state(TODAY);
+	let date = $state(todayIso());
 	let note = $state('');
 
 	let totalLogged = $derived(

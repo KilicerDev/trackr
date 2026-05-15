@@ -1,10 +1,57 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import AppShell from '$lib/components/shell/AppShell.svelte';
 	import ImpersonationBanner from '$lib/components/shell/ImpersonationBanner.svelte';
+	import CommandPalette from '$lib/components/CommandPalette.svelte';
+	import CreateTaskModal from '$lib/components/tasks/CreateTaskModal.svelte';
+	import CreateProjectModal from '$lib/components/projects/CreateProjectModal.svelte';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
+
+	let paletteOpen = $state(false);
+	let createTaskOpen = $state(false);
+	let createProjectOpen = $state(false);
+	let logoutForm = $state<HTMLFormElement | null>(null);
+
+	function onKeydown(e: KeyboardEvent) {
+		if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+			e.preventDefault();
+			paletteOpen = !paletteOpen;
+		}
+	}
+
+	function handleAction(id: string) {
+		switch (id) {
+			case 'nav.week':
+				void goto('/week');
+				return;
+			case 'nav.tasks':
+				void goto('/tasks');
+				return;
+			case 'nav.projects':
+				void goto('/projects');
+				return;
+			case 'nav.tickets':
+				void goto('/tickets');
+				return;
+			case 'nav.wiki':
+				void goto('/wiki');
+				return;
+			case 'create.task':
+				createTaskOpen = true;
+				return;
+			case 'create.project':
+				createProjectOpen = true;
+				return;
+			case 'me.signout':
+				logoutForm?.submit();
+				return;
+		}
+	}
 </script>
+
+<svelte:window onkeydown={onKeydown} />
 
 <div class="flex flex-col h-screen overflow-hidden">
 	{#if data.impersonator}
@@ -21,3 +68,25 @@
 		</AppShell>
 	</div>
 </div>
+
+<CommandPalette
+	open={paletteOpen}
+	onclose={() => (paletteOpen = false)}
+	onaction={handleAction}
+/>
+
+<CreateTaskModal
+	open={createTaskOpen}
+	onclose={() => (createTaskOpen = false)}
+	users={data.users}
+	projects={data.projects}
+	currentUserId={data.currentUserId}
+/>
+
+<CreateProjectModal
+	open={createProjectOpen}
+	onclose={() => (createProjectOpen = false)}
+	orgs={data.orgs}
+/>
+
+<form bind:this={logoutForm} method="post" action="/logout" class="hidden"></form>

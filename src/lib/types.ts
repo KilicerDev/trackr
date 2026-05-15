@@ -61,8 +61,16 @@ export interface Task {
 	createdAt?: string;
 	description?: string;
 	attachments?: { name: string; size: string }[];
-	comments?: { user: string; date: string; text: string }[];
-	timeLogs?: { user: string; date: string; minutes: number; note: string }[];
+	comments?: { user: string; date: string; text: string; createdAt?: string }[];
+	timeLogs?: {
+		user: string;
+		date: string;
+		minutes: number;
+		note: string;
+		createdAt?: string;
+	}[];
+	plannedFor?: string | null;
+	inMyPlan?: boolean;
 }
 
 export interface WikiPage {

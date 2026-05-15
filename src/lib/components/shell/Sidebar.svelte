@@ -2,10 +2,21 @@
     import { page } from "$app/state";
     import Icon from "../Icon.svelte";
     import Kbd from "../Kbd.svelte";
-    import { TRACKR_PROJECTS, TRACKR_TASKS } from "$lib/data";
-    import type { ProjectId } from "$lib/types";
 
-    const workspaceItems = [
+    type LayoutShape = {
+        taskCount?: number;
+        projects?: { id: string; key: string; name: string; color: string }[];
+        favoriteProjectIds?: string[];
+    };
+
+    const taskCount = $derived((page.data as LayoutShape).taskCount ?? 0);
+    const projectList = $derived((page.data as LayoutShape).projects ?? []);
+    const favoriteIds = $derived(
+        new Set((page.data as LayoutShape).favoriteProjectIds ?? [])
+    );
+    const favorites = $derived(projectList.filter((p) => favoriteIds.has(p.id)));
+
+    const workspaceItems = $derived([
         { key: "week", label: "My Week", icon: "calendar", href: "/week" },
         {
             key: "tickets",
@@ -19,16 +30,17 @@
             label: "Projects",
             icon: "folder",
             href: "/projects",
+            count: projectList.length,
         },
         {
             key: "tasks",
             label: "Tasks",
             icon: "check-square",
             href: "/tasks",
-            count: TRACKR_TASKS.length,
+            count: taskCount,
         },
         { key: "wiki", label: "Wiki", icon: "book", href: "/wiki" },
-    ];
+    ]);
 
     const adminItems = [
         {
@@ -52,8 +64,6 @@
         },
         { key: "logs", label: "Logs", icon: "logs", href: "/admin/logs" },
     ];
-
-    const favIds: ProjectId[] = ["SIWEB", "TRACKR", "MAJA"];
 
     function isActive(href: string): boolean {
         if (href === "/") return page.url.pathname === "/";
@@ -146,18 +156,23 @@
             >
                 Favorites
             </div>
-            {#each favIds as id (id)}
+            {#each favorites as p (p.id)}
                 <a
-                    href="/projects/{id}"
+                    href="/projects/{p.id}"
                     class="flex items-center gap-2.5 px-3 py-[7px] rounded-[7px] mx-1 my-[1px] text-text-2 hover:bg-[var(--row-hover)] hover:text-text transition-colors text-[14px]"
                 >
                     <span
                         class="w-2 h-2 rounded-[2.5px] shrink-0"
-                        style:background={TRACKR_PROJECTS[id].color}
+                        style:background={p.color}
                     ></span>
-                    {TRACKR_PROJECTS[id].name}
+                    <span class="truncate">{p.name}</span>
                 </a>
             {/each}
+            {#if favorites.length === 0}
+                <div class="px-3 py-1.5 text-[12px] text-text-4 leading-snug">
+                    Star a project to pin it here.
+                </div>
+            {/if}
         </div>
 
         <div class="py-1.5">

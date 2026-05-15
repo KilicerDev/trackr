@@ -5,9 +5,11 @@
 	import BoardView from '$lib/components/tasks/BoardView.svelte';
 	import Inspector from '$lib/components/tasks/Inspector.svelte';
 	import CreateTaskModal from '$lib/components/tasks/CreateTaskModal.svelte';
-	import { TRACKR_TASKS } from '$lib/data';
 	import type { ProjectId, StatusId, Task } from '$lib/types';
+	import type { PageData } from './$types';
 	import { page } from '$app/state';
+
+	let { data }: { data: PageData } = $props();
 
 	let view = $state<'list' | 'board'>(
 		page.url.searchParams.get('view') === 'board' ? 'board' : 'list'
@@ -24,12 +26,11 @@
 		else boardGroup = g;
 	}
 	let sub = $state<'none' | 'status' | 'priority' | 'assignee'>('status');
-	let urlSelected = $derived.by(() => {
-		const id = page.url.searchParams.get('task');
-		return id ? TRACKR_TASKS.find((t) => t.id === id) ?? null : null;
+	let manualSelectedId = $state<string | null>(null);
+	let selected = $derived.by(() => {
+		const id = manualSelectedId ?? page.url.searchParams.get('task');
+		return id ? data.tasks.find((t) => t.id === id) ?? null : null;
 	});
-	let manualSelected = $state<Task | null>(null);
-	let selected = $derived(manualSelected ?? urlSelected);
 	let creating = $state(false);
 	let createPrefill = $state<{ project?: ProjectId; status?: StatusId } | undefined>(undefined);
 
@@ -57,7 +58,7 @@
 		return true;
 	}
 
-	let tasks = $derived(TRACKR_TASKS.filter(matches));
+	let tasks = $derived(data.tasks.filter(matches));
 </script>
 
 <svelte:head><title>Trackr · Tasks</title></svelte:head>
@@ -78,17 +79,24 @@
 />
 
 {#if view === 'list'}
-	<ListView {tasks} {group} onSelect={(t) => (manualSelected = t)} selectedId={selected?.id} />
+	<ListView {tasks} {group} onSelect={(t) => (manualSelectedId = t.id)} selectedId={selected?.id} />
 {:else}
 	<BoardView
 		{tasks}
 		group={boardGroup}
 		{sub}
-		onSelect={(t) => (manualSelected = t)}
+		onSelect={(t) => (manualSelectedId = t.id)}
 		onAddInProject={(pid, statusId) => openCreate({ project: pid, status: statusId })}
 	/>
 {/if}
 
-<Inspector task={selected} onclose={() => (manualSelected = null)} />
+<Inspector task={selected} onclose={() => (manualSelectedId = null)} users={data.users} />
 
-<CreateTaskModal open={creating} prefill={createPrefill} onclose={() => (creating = false)} />
+<CreateTaskModal
+	open={creating}
+	prefill={createPrefill}
+	onclose={() => (creating = false)}
+	users={data.users}
+	projects={data.projects}
+	currentUserId={data.currentUserId}
+/>

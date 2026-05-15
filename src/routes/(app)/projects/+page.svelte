@@ -3,11 +3,24 @@
 	import Button from '$lib/components/Button.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import ProjectCard from '$lib/components/projects/ProjectCard.svelte';
-	import { TRACKR_PROJECTS } from '$lib/data';
-	import type { ProjectId } from '$lib/types';
+	import CreateProjectModal from '$lib/components/projects/CreateProjectModal.svelte';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	let view = $state<'grid' | 'list'>('grid');
-	const projectIds = Object.keys(TRACKR_PROJECTS) as ProjectId[];
+	let tab = $state<'active' | 'archived'>('active');
+	let createOpen = $state(false);
+
+	const visibleProjects = $derived(tab === 'active' ? data.projects : data.archivedProjects);
+
+	let toast = $state<{ kind: 'ok' | 'err'; msg: string } | null>(null);
+	function showToast(kind: 'ok' | 'err', msg: string) {
+		toast = { kind, msg };
+		setTimeout(() => {
+			if (toast?.msg === msg) toast = null;
+		}, 3500);
+	}
 </script>
 
 <svelte:head><title>Trackr · Projects</title></svelte:head>
@@ -19,9 +32,31 @@
 		<div class="flex items-end gap-4 mb-6">
 			<div>
 				<h1 class="text-[26px] font-semibold tracking-[-0.014em] text-text">Projects</h1>
-				<p class="text-[13px] text-text-3 mt-1">{projectIds.length} active workspaces</p>
+				<p class="text-[13px] text-text-3 mt-1">
+					{data.projects.length} active · {data.archivedProjects.length} archived
+				</p>
 			</div>
 			<div class="ml-auto flex items-center gap-2">
+				<div class="inline-flex items-center h-8 bg-surface border border-border rounded-lg p-0.5">
+					<button
+						type="button"
+						onclick={() => (tab = 'active')}
+						class="inline-flex items-center gap-1.5 px-2.5 h-full rounded-md text-[12.5px] transition-colors {tab === 'active' ? 'bg-bg-elev text-text' : 'text-text-3 hover:text-text'}"
+					>
+						Active
+						<span class="font-mono text-[10.5px] text-text-3">{data.projects.length}</span>
+					</button>
+					<button
+						type="button"
+						onclick={() => (tab = 'archived')}
+						class="inline-flex items-center gap-1.5 px-2.5 h-full rounded-md text-[12.5px] transition-colors {tab === 'archived' ? 'bg-bg-elev text-text' : 'text-text-3 hover:text-text'}"
+					>
+						Archived
+						<span class="font-mono text-[10.5px] text-text-3"
+							>{data.archivedProjects.length}</span
+						>
+					</button>
+				</div>
 				<div class="inline-flex items-center h-8 bg-surface border border-border rounded-lg p-0.5">
 					<button
 						type="button"
@@ -38,27 +73,59 @@
 						<Icon name="list" size={13} /> List
 					</button>
 				</div>
-				<Button variant="primary" size="sm">
+				<Button variant="primary" size="sm" onclick={() => (createOpen = true)}>
 					<Icon name="plus" size={13} /> New project
 				</Button>
 			</div>
 		</div>
 
-		{#if view === 'grid'}
-			<div class="grid gap-4" style:grid-template-columns="repeat(auto-fill, minmax(340px, 1fr))">
-				{#each projectIds as id (id)}
-					<ProjectCard {id} />
-				{/each}
-				<button
-					type="button"
-					class="border border-dashed border-border rounded-2xl flex flex-col items-center justify-center gap-2 py-12 text-text-3 hover:text-text hover:border-border-strong transition-colors"
-				>
-					<div class="w-10 h-10 grid place-items-center rounded-xl bg-surface border border-border">
-						<Icon name="plus" size={16} />
+		{#if visibleProjects.length === 0}
+			{#if tab === 'active'}
+				<div class="border border-dashed border-border rounded-2xl flex flex-col items-center justify-center gap-3 py-20">
+					<div class="w-12 h-12 grid place-items-center rounded-xl bg-surface border border-border text-text-3">
+						<Icon name="folder" size={20} />
 					</div>
-					<div class="text-[13.5px] font-medium">New project</div>
-					<div class="text-[11.5px] text-text-4">Start a workspace from scratch</div>
-				</button>
+					<div class="text-[15px] font-semibold text-text">No projects yet</div>
+					<div class="text-[12.5px] text-text-3 max-w-[320px] text-center">
+						Projects group related tasks and tickets. Create your first one to get started.
+					</div>
+					<Button variant="primary" size="sm" onclick={() => (createOpen = true)}>
+						<Icon name="plus" size={13} /> Create a project
+					</Button>
+				</div>
+			{:else}
+				<div
+					class="border border-dashed border-border rounded-2xl flex flex-col items-center justify-center gap-2 py-16 text-text-3"
+				>
+					<div
+						class="w-10 h-10 grid place-items-center rounded-xl bg-surface border border-border"
+					>
+						<Icon name="folder" size={16} />
+					</div>
+					<div class="text-[13.5px] font-medium text-text">Nothing archived</div>
+					<div class="text-[11.5px] text-text-4">Archived projects show up here.</div>
+				</div>
+			{/if}
+		{:else if view === 'grid'}
+			<div class="grid gap-4" style:grid-template-columns="repeat(auto-fill, minmax(340px, 1fr))">
+				{#each visibleProjects as p (p.id)}
+					<ProjectCard project={p} />
+				{/each}
+				{#if tab === 'active'}
+					<button
+						type="button"
+						onclick={() => (createOpen = true)}
+						class="border border-dashed border-border rounded-2xl flex flex-col items-center justify-center gap-2 py-12 text-text-3 hover:text-text hover:border-border-strong transition-colors"
+					>
+						<div
+							class="w-10 h-10 grid place-items-center rounded-xl bg-surface border border-border"
+						>
+							<Icon name="plus" size={16} />
+						</div>
+						<div class="text-[13.5px] font-medium">New project</div>
+						<div class="text-[11.5px] text-text-4">Start a workspace from scratch</div>
+					</button>
+				{/if}
 			</div>
 		{:else}
 			<div class="bg-bg-elev border border-border rounded-2xl overflow-hidden">
@@ -69,29 +136,50 @@
 					<span>Project</span>
 					<span>Lead</span>
 					<span>Status</span>
-					<span>Progress</span>
+					<span>Key</span>
 					<span>Members</span>
 					<span>Updated</span>
 				</div>
-				{#each projectIds as id (id)}
-					{@const p = TRACKR_PROJECTS[id]}
+				{#each visibleProjects as p (p.id)}
 					<a
-						href="/projects/{id}"
+						href="/projects/{p.id}"
 						class="grid items-center gap-3 px-5 py-3 border-b border-border last:border-b-0 hover:bg-[var(--row-hover)] transition-colors text-[13px]"
 						style:grid-template-columns="1.5fr 1fr 1fr 1fr 1fr 1fr"
 					>
 						<span class="flex items-center gap-2.5 min-w-0">
-							<span class="w-7 h-7 rounded-md grid place-items-center text-white font-semibold text-[12px] shrink-0" style:background={p.color}>{p.icon}</span>
+							<span
+								class="w-7 h-7 rounded-md grid place-items-center text-white font-semibold text-[12px] shrink-0"
+								style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%, #000) 85%)"
+							>{p.icon}</span>
 							<span class="truncate font-medium">{p.name}</span>
 						</span>
-						<span class="text-text-2">{p.lead}</span>
+						<span class="text-text-2 truncate">{p.lead?.name ?? '—'}</span>
 						<span class="text-text-2 capitalize">{p.status.replace('_', ' ')}</span>
-						<span class="text-text-3 font-mono">—</span>
+						<span class="font-mono text-text-3">{p.key}</span>
 						<span class="text-text-3 font-mono">{p.members.length}</span>
-						<span class="text-text-3">{p.updated}</span>
+						<span class="text-text-3">{p.updatedAt.toISOString().slice(0, 10)}</span>
 					</a>
 				{/each}
 			</div>
 		{/if}
 	</div>
 </div>
+
+{#if toast}
+	<div
+		class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-3.5 py-2 rounded-lg border text-[13px] backdrop-blur-md shadow-lg"
+		style:background={toast.kind === 'ok' ? 'rgba(127,200,169,0.12)' : 'rgba(239,79,94,0.12)'}
+		style:border-color={toast.kind === 'ok' ? 'rgba(127,200,169,0.35)' : 'rgba(239,79,94,0.35)'}
+		style:color={toast.kind === 'ok' ? '#7fc8a9' : '#ef7a6d'}
+	>
+		{toast.msg}
+	</div>
+{/if}
+
+<CreateProjectModal
+	open={createOpen}
+	onclose={() => (createOpen = false)}
+	orgs={data.orgs}
+	oncreated={(name) => showToast('ok', `Created ${name}.`)}
+	onerror={(msg) => showToast('err', msg)}
+/>

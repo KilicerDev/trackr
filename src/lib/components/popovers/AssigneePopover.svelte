@@ -1,21 +1,34 @@
 <script lang="ts">
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { autoPlace } from '$lib/actions/autoPlace';
+	import { fly } from 'svelte/transition';
+	import { POPOVER_IN } from '$lib/motion';
 	import Avatar from '../Avatar.svelte';
 	import Icon from '../Icon.svelte';
 	import { TRACKR_USERS } from '$lib/data';
+
+	type AssignableUser = {
+		id: string;
+		name: string;
+		email: string;
+		initials: string;
+		color: string;
+		status: 'active' | 'invited' | 'disabled';
+	};
 
 	interface Props {
 		value: string[];
 		onchange: (v: string[]) => void;
 		onclose: () => void;
+		users?: AssignableUser[];
 	}
-	let { value, onchange, onclose }: Props = $props();
+	let { value, onchange, onclose, users: providedUsers }: Props = $props();
 
 	let q = $state('');
 
 	let users = $derived.by(() => {
-		const list = TRACKR_USERS.filter((u) => u.status !== 'disabled');
+		const source: AssignableUser[] = providedUsers ?? TRACKR_USERS;
+		const list = source.filter((u) => u.status !== 'disabled');
 		if (!q) return list;
 		const needle = q.toLowerCase();
 		return list.filter(
@@ -32,6 +45,7 @@
 <div
 	use:clickOutside={onclose}
 	use:autoPlace
+	in:fly={POPOVER_IN}
 	class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[260px]"
 	style:box-shadow="var(--shadow-lg)"
 >

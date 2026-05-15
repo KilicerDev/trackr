@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { autoPlace } from '$lib/actions/autoPlace';
+	import { fly } from 'svelte/transition';
+	import { POPOVER_IN } from '$lib/motion';
 
 	interface Props {
 		value: number | undefined;
@@ -38,6 +40,7 @@
 <div
 	use:clickOutside={commit}
 	use:autoPlace
+	in:fly={POPOVER_IN}
 	class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-2.5 w-[260px]"
 	style:box-shadow="var(--shadow-lg)"
 >

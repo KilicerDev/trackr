@@ -1,0 +1,1 @@
+ALTER TABLE "task_planning" ALTER COLUMN "planned_for" DROP NOT NULL;

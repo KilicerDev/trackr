@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { autoPlace } from '$lib/actions/autoPlace';
+	import { fly } from 'svelte/transition';
+	import { POPOVER_IN } from '$lib/motion';
 	import PriorityBars from '../PriorityBars.svelte';
 	import Icon from '../Icon.svelte';
 	import { TRACKR_PRIORITIES } from '$lib/data';
@@ -17,6 +19,7 @@
 <div
 	use:clickOutside={onclose}
 	use:autoPlace
+	in:fly={POPOVER_IN}
 	class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[170px]"
 	style:box-shadow="var(--shadow-lg)"
 >

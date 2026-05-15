@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
+	import { alert as uiAlert } from '$lib/components/confirm.svelte';
 
 	type Props = {
 		targetName: string | null;
@@ -18,14 +19,22 @@
 			const res = await fetch('/admin/stop-impersonating', { method: 'POST' });
 			if (!res.ok) {
 				const data = (await res.json().catch(() => ({}))) as { message?: string };
-				alert(data.message ?? 'Failed to stop impersonation.');
+				await uiAlert({
+					title: 'Could not stop impersonation',
+					message: data.message ?? 'Please try again in a moment.',
+					tone: 'danger'
+				});
 				stopping = false;
 				return;
 			}
 			await invalidateAll();
 			await goto('/admin/users', { invalidateAll: true });
 		} catch {
-			alert('Failed to stop impersonation.');
+			await uiAlert({
+				title: 'Could not stop impersonation',
+				message: 'Please try again in a moment.',
+				tone: 'danger'
+			});
 			stopping = false;
 		}
 	}

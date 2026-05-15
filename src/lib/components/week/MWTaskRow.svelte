@@ -3,15 +3,16 @@
 	import StatusDot from '../StatusDot.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
 	import Avatar from '../Avatar.svelte';
-	import { TRACKR_PROJECTS, formatEstimate, userById } from '$lib/data';
+	import { formatEstimate } from '$lib/data';
+	import { resolveProject, resolveUser } from '$lib/lookup.svelte';
 
 	interface Props {
 		task: Task;
 		onclick?: () => void;
 	}
 	let { task, onclick }: Props = $props();
-	let assignee = $derived(userById(task.assignee));
-	let project = $derived(TRACKR_PROJECTS[task.project]);
+	let assignee = $derived(resolveUser(task.assignee));
+	let project = $derived(resolveProject(task.project));
 </script>
 
 <button
@@ -28,6 +29,10 @@
 	{#if task.estimate}
 		<span class="font-mono text-[11px] text-text-3 w-10 text-right">{formatEstimate(task.estimate)}</span>
 	{/if}
-	<span class="w-2 h-2 rounded-full" style:background={project.color} title={project.name}></span>
+	<span
+		class="w-2 h-2 rounded-full"
+		style:background={project?.color ?? '#7c7c84'}
+		title={project?.name ?? ''}
+	></span>
 	<Avatar user={assignee} size={20} />
 </button>

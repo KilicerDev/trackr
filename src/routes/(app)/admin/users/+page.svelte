@@ -9,6 +9,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Drawer from '$lib/components/Drawer.svelte';
 	import Modal from '$lib/components/Modal.svelte';
+	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
 	import { ROLE_META, type Role } from '$lib/admin-meta';
 	import type { PageData } from './$types';
 
@@ -139,7 +140,14 @@
 	}
 
 	async function handleDelete(u: UserRow) {
-		if (!confirm(`Delete ${u.email}? This cannot be undone.`)) return;
+		const ok = await uiConfirm({
+			title: 'Delete user',
+			message: `${u.email} will be permanently removed. This cannot be undone.`,
+			confirmLabel: 'Delete user',
+			cancelLabel: 'Keep',
+			tone: 'danger'
+		});
+		if (!ok) return;
 		const key = `del:${u.id}`;
 		if (pendingAction === key) return;
 		pendingAction = key;
@@ -169,7 +177,14 @@
 	}
 
 	async function handleRevoke(inv: InvitationRow) {
-		if (!confirm(`Revoke invitation for ${inv.email}?`)) return;
+		const ok = await uiConfirm({
+			title: 'Revoke invitation',
+			message: `The invitation link for ${inv.email} will stop working.`,
+			confirmLabel: 'Revoke',
+			cancelLabel: 'Keep',
+			tone: 'warn'
+		});
+		if (!ok) return;
 		const key = `revoke:${inv.id}`;
 		if (pendingAction === key) return;
 		pendingAction = key;

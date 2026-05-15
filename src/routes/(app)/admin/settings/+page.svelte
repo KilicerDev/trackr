@@ -2,9 +2,14 @@
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Button from '$lib/components/Button.svelte';
-	import { TRACKR_USERS, currentUser } from '$lib/data';
+	import { page } from '$app/state';
 
-	const me = currentUser();
+	type LayoutData = {
+		user?: { id: string; name: string; email: string };
+		users?: { id: string; status: string }[];
+	};
+	const me = $derived((page.data as LayoutData).user);
+	const memberCount = $derived(((page.data as LayoutData).users ?? []).length);
 	let workspaceName = $state('Trackr');
 	let theme = $state<'dark' | 'light'>('dark');
 	let density = $state<'comfortable' | 'compact'>('comfortable');
@@ -43,9 +48,9 @@
 					class="bg-surface border border-border rounded-lg px-3 py-2 outline-none focus:border-border-strong"
 				/>
 				<div class="text-text-3">Owner</div>
-				<div>{me.name} <span class="text-text-3 font-mono">· {me.email}</span></div>
+				<div>{me?.name ?? '—'} <span class="text-text-3 font-mono">· {me?.email ?? ''}</span></div>
 				<div class="text-text-3">Members</div>
-				<div>{TRACKR_USERS.length} <span class="text-text-3">— manage in <a href="/admin/users" class="text-accent hover:underline">User Management</a></span></div>
+				<div>{memberCount} <span class="text-text-3">— manage in <a href="/admin/users" class="text-accent hover:underline">User Management</a></span></div>
 			</div>
 		</section>
 

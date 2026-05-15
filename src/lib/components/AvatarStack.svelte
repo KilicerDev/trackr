@@ -1,14 +1,14 @@
 <script lang="ts">
-	import type { User } from '$lib/types';
 	import Avatar from './Avatar.svelte';
+	type StackUser = { id: string; name: string; initials: string; color: string };
 	interface Props {
-		users: (User | undefined)[];
+		users: (StackUser | undefined)[];
 		max?: number;
 		size?: number;
 		overlap?: number;
 	}
 	let { users, max = 4, size = 22, overlap = 6 }: Props = $props();
-	let shown = $derived(users.filter(Boolean).slice(0, max) as User[]);
+	let shown = $derived(users.filter(Boolean).slice(0, max) as StackUser[]);
 	let extra = $derived(Math.max(0, users.filter(Boolean).length - max));
 </script>
 

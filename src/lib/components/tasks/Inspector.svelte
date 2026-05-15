@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { invalidateAll } from '$app/navigation';
+	import { deserialize } from '$app/forms';
+	import type { ActionResult } from '@sveltejs/kit';
 	import type { PriorityId, StatusId, Task } from '$lib/types';
 	import Drawer from '../Drawer.svelte';
 	import StatusDot from '../StatusDot.svelte';
@@ -18,25 +21,135 @@
 	import {
 		TRACKR_PRIORITIES,
 		TRACKR_STATUSES,
-		TRACKR_PROJECTS,
-		userById,
+		userById as mockUserById,
 		formatDateLong,
 		formatEstimate
 	} from '$lib/data';
+	import { resolveProject } from '$lib/lookup.svelte';
+
+	type AssignableUser = {
+		id: string;
+		name: string;
+		email: string;
+		initials: string;
+		color: string;
+		status: 'active' | 'invited' | 'disabled';
+	};
 
 	interface Props {
 		task: Task | null;
 		onclose: () => void;
+		users?: AssignableUser[];
 	}
-	let { task, onclose }: Props = $props();
+	let { task, onclose, users: providedUsers }: Props = $props();
+
+	function resolveUser(id: string) {
+		const real = providedUsers?.find((u) => u.id === id);
+		if (real) return real;
+		return mockUserById(id);
+	}
+
+	let savingField = $state<string | null>(null);
+	let saveError = $state<string | null>(null);
+
+	async function postAction(
+		action: 'update' | 'commentAdd' | 'timeLogAdd' | 'planSet',
+		field: string,
+		body: Record<string, string | string[]>
+	): Promise<boolean> {
+		if (!draft) return false;
+		savingField = field;
+		saveError = null;
+		const fd = new FormData();
+		fd.append('id', draft.id);
+		for (const [k, v] of Object.entries(body)) {
+			if (Array.isArray(v)) {
+				if (v.length === 0) fd.append(k, '__clear__');
+				else for (const item of v) fd.append(k, item);
+			} else {
+				fd.append(k, v);
+			}
+		}
+		try {
+			const res = await fetch(`/tasks?/${action}`, {
+				method: 'POST',
+				body: fd,
+				headers: { 'x-sveltekit-action': 'true' }
+			});
+			const result: ActionResult = deserialize(await res.text());
+			if (result.type === 'failure') {
+				saveError =
+					(result.data as { message?: string } | undefined)?.message ?? 'Save failed.';
+				return false;
+			}
+			if (result.type === 'error') {
+				saveError = result.error?.message ?? 'Save failed.';
+				return false;
+			}
+			if (result.type === 'success') {
+				await invalidateAll();
+				return true;
+			}
+			return false;
+		} catch {
+			saveError = 'Network error while saving.';
+			return false;
+		} finally {
+			savingField = null;
+		}
+	}
+
+	function patch(field: string, body: Record<string, string | string[]>) {
+		return postAction('update', field, body);
+	}
+
+	let commentBody = $state('');
+	let commentSending = $state(false);
+
+	async function sendComment() {
+		const text = commentBody.trim();
+		if (!text || !draft || commentSending) return;
+		commentSending = true;
+		const ok = await postAction('commentAdd', 'comment', { body: text });
+		commentSending = false;
+		if (ok) commentBody = '';
+	}
+
+	async function logTime(entry: { h: number; m: number; date: string; note: string }) {
+		await postAction('timeLogAdd', 'timelog', {
+			hours: String(entry.h),
+			minutes: String(entry.m),
+			date: entry.date,
+			note: entry.note
+		});
+	}
+
+	function setPlan(plannedFor: string | null) {
+		if (draft) {
+			draft.plannedFor = plannedFor;
+			draft.inMyPlan = plannedFor !== null ? true : false;
+		}
+		void postAction('planSet', 'plan', { plannedFor: plannedFor ?? '' });
+	}
+
+	function setPlanUndated() {
+		if (draft) {
+			draft.plannedFor = null;
+			draft.inMyPlan = true;
+		}
+		void postAction('planSet', 'plan', { mode: 'undated' });
+	}
 
 	// Local editable state — fresh copy whenever a new task opens
 	let draft = $state<Task | null>(null);
 	$effect(() => {
 		draft = task ? { ...task, assignees: task.assignees ?? [task.assignee] } : null;
+		// Reset the compose box and any in-flight error when the task changes.
+		commentBody = '';
+		saveError = null;
 	});
 
-	type PopId = 'status' | 'priority' | 'assignees' | 'due' | 'estimate' | null;
+	type PopId = 'status' | 'priority' | 'assignees' | 'due' | 'estimate' | 'plan' | null;
 	let openPop = $state<PopId>(null);
 
 	let status = $derived.by(() => {
@@ -51,29 +164,74 @@
 		const d = draft;
 		return d ? (d.assignees ?? [d.assignee]) : [];
 	});
-	let assignees = $derived(assigneeIds.map((id) => userById(id)));
+	let assignees = $derived(assigneeIds.map((id) => resolveUser(id)));
 	let project = $derived.by(() => {
 		const d = draft;
-		return d ? TRACKR_PROJECTS[d.project] : null;
+		return d ? resolveProject(d.project) : null;
 	});
 
 	let events = $derived.by(() => {
 		if (!draft) return [];
-		const list: { kind: string; user: string; date: string; data?: any }[] = [];
-		(draft.comments ?? []).forEach((c) =>
-			list.push({ kind: 'comment', user: c.user, date: c.date, data: c.text })
+		const list: {
+			id: string;
+			kind: string;
+			user: string;
+			date: string;
+			sortKey: string;
+			data?: any;
+		}[] = [];
+		(draft.comments ?? []).forEach((c, i) =>
+			list.push({
+				id: `c:${i}`,
+				kind: 'comment',
+				user: c.user,
+				date: c.date,
+				sortKey: c.createdAt ?? c.date,
+				data: c.text
+			})
 		);
-		(draft.timeLogs ?? []).forEach((t) =>
-			list.push({ kind: 'time', user: t.user, date: t.date, data: t })
+		(draft.timeLogs ?? []).forEach((t, i) =>
+			list.push({
+				id: `t:${i}`,
+				kind: 'time',
+				user: t.user,
+				date: t.date,
+				sortKey: t.createdAt ?? t.date,
+				data: t
+			})
 		);
 		if (draft.createdBy && draft.createdAt) {
-			list.push({ kind: 'created', user: draft.createdBy, date: draft.createdAt });
+			list.push({
+				id: 'created',
+				kind: 'created',
+				user: draft.createdBy,
+				date: draft.createdAt,
+				sortKey: draft.createdAt
+			});
 		}
-		return list.sort((a, b) => (a.date < b.date ? 1 : -1));
+		// Newest first. Both ISO timestamps ("2026-05-14T20:01:23.456Z") and
+		// plain dates ("2026-05-14") are lex-comparable: the plain date sorts
+		// to the start of its day, which is the right place for the "created"
+		// event when its full timestamp isn't available.
+		return list.sort((a, b) => (a.sortKey < b.sortKey ? 1 : -1));
 	});
 
 	function toggle(id: PopId) {
 		openPop = openPop === id ? null : id;
+	}
+
+	function autosize(el: HTMLTextAreaElement, value: string) {
+		const resize = () => {
+			el.style.height = 'auto';
+			el.style.height = el.scrollHeight + 'px';
+		};
+		resize();
+		return {
+			update(v: string) {
+				if (el.value !== v) el.value = v;
+				resize();
+			}
+		};
 	}
 </script>
 
@@ -84,15 +242,58 @@
 			<span class="font-mono text-[11px] text-text-3 px-1.5 py-0.5 rounded bg-surface">
 				{project.name}
 			</span>
+			{#if savingField}
+				<span class="text-[11px] text-text-3 inline-flex items-center gap-1.5">
+					<span class="w-2.5 h-2.5 rounded-full border border-text-3 border-t-transparent animate-spin"></span>
+					Saving…
+				</span>
+			{/if}
 			<div class="ml-auto flex items-center gap-1">
 				<IconButton size={28} ariaLabel="Copy link"><Icon name="link" size={14} /></IconButton>
 				<IconButton size={28} ariaLabel="More"><Icon name="settings" size={14} /></IconButton>
 				<IconButton size={28} ariaLabel="Close" onclick={onclose}><Icon name="x" size={14} /></IconButton>
 			</div>
 		</div>
+		{#if saveError}
+			<div
+				class="px-5 py-2 text-[12px] border-b border-border"
+				style:background="rgba(239,79,94,0.10)"
+				style:color="#ef7a6d"
+			>
+				{saveError}
+			</div>
+		{/if}
 
 		<div class="flex-1 min-h-0 overflow-y-auto px-5 pt-4 pb-24">
-			<h2 class="text-[20px] font-semibold tracking-[-0.012em] leading-tight mb-4 text-text">{draft.title}</h2>
+			<textarea
+				use:autosize={draft.title}
+				value={draft.title}
+				rows="1"
+				placeholder="Untitled"
+				oninput={(e) => {
+					const el = e.currentTarget;
+					if (draft) draft.title = el.value;
+					el.style.height = 'auto';
+					el.style.height = el.scrollHeight + 'px';
+				}}
+				onkeydown={(e) => {
+					if (e.key === 'Enter' && !e.shiftKey) {
+						e.preventDefault();
+						(e.currentTarget as HTMLTextAreaElement).blur();
+					}
+				}}
+				onblur={(e) => {
+					const next = e.currentTarget.value.trim();
+					if (!draft || next === (task?.title ?? '')) return;
+					if (!next) {
+						if (draft) draft.title = task?.title ?? '';
+						e.currentTarget.value = task?.title ?? '';
+						return;
+					}
+					void patch('title', { title: next });
+				}}
+				class="w-full resize-none bg-transparent border-0 outline-none text-[20px] font-semibold tracking-[-0.012em] leading-tight mb-4 text-text placeholder:text-text-4"
+			></textarea>
 
 			<!-- properties rail -->
 			<div class="flex flex-wrap gap-2 mb-5">
@@ -109,7 +310,10 @@
 					{#if openPop === 'status'}
 						<StatusPopover
 							value={draft.status}
-							onchange={(v: StatusId) => (draft!.status = v)}
+							onchange={(v: StatusId) => {
+								if (draft) draft.status = v;
+								void patch('status', { status: v });
+							}}
 							onclose={() => (openPop = null)}
 						/>
 					{/if}
@@ -130,7 +334,10 @@
 					{#if openPop === 'priority'}
 						<PriorityPopover
 							value={draft.priority}
-							onchange={(v: PriorityId) => (draft!.priority = v)}
+							onchange={(v: PriorityId) => {
+								if (draft) draft.priority = v;
+								void patch('priority', { priority: v });
+							}}
 							onclose={() => (openPop = null)}
 						/>
 					{/if}
@@ -160,9 +367,12 @@
 								if (draft) {
 									draft.assignees = v;
 									if (v.length > 0) draft.assignee = v[0];
+									else draft.assignee = '';
 								}
+								void patch('assignees', { assignees: v });
 							}}
 							onclose={() => (openPop = null)}
+							users={providedUsers}
 						/>
 					{/if}
 				</div>
@@ -184,8 +394,40 @@
 					{#if openPop === 'due'}
 						<DatePopover
 							value={draft.due}
-							onchange={(v) => (draft!.due = v)}
+							onchange={(v) => {
+								if (draft) draft.due = v;
+								void patch('due', { due: v ?? '' });
+							}}
 							onclose={() => (openPop = null)}
+						/>
+					{/if}
+				</div>
+
+				<!-- PLAN FOR (My Week) -->
+				<div class="relative">
+					<button
+						type="button"
+						onclick={() => toggle('plan')}
+						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] transition-colors {draft.inMyPlan ? 'bg-accent-soft border border-transparent text-accent' : 'border border-dashed border-border text-text-3 hover:text-text hover:border-border-strong'} {openPop === 'plan' ? 'ring-2 ring-accent/40' : ''}"
+						style:background={draft.inMyPlan ? 'rgba(239,122,109,0.14)' : ''}
+					>
+						<Icon name="bookmark" size={13} />
+						{#if draft.plannedFor}
+							<span class="font-mono">{formatDateLong(draft.plannedFor)}</span>
+						{:else if draft.inMyPlan}
+							<span>In my week</span>
+						{:else}
+							<span>Plan for…</span>
+						{/if}
+					</button>
+					{#if openPop === 'plan'}
+						<DatePopover
+							value={draft.plannedFor ?? null}
+							onchange={(v) => setPlan(v)}
+							onclose={() => (openPop = null)}
+							undatedLabel="Add to my week without a date"
+							onundated={setPlanUndated}
+							undatedActive={!!draft.inMyPlan && !draft.plannedFor}
 						/>
 					{/if}
 				</div>
@@ -207,16 +449,35 @@
 					{#if openPop === 'estimate'}
 						<EstimatePopover
 							value={draft.estimate}
-							onchange={(v) => (draft!.estimate = v)}
+							onchange={(v) => {
+								if (draft) draft.estimate = v;
+								void patch('estimate', { estimate: v != null ? String(v) : '' });
+							}}
 							onclose={() => (openPop = null)}
 						/>
 					{/if}
 				</div>
 			</div>
 
-			<div class="text-[13.5px] leading-relaxed text-text-2 whitespace-pre-wrap mb-5">
-				{draft.description ?? 'Add a description…'}
-			</div>
+			<textarea
+				use:autosize={draft.description ?? ''}
+				value={draft.description ?? ''}
+				rows="3"
+				placeholder="Add a description…"
+				oninput={(e) => {
+					const el = e.currentTarget;
+					if (draft) draft.description = el.value || null;
+					el.style.height = 'auto';
+					el.style.height = el.scrollHeight + 'px';
+				}}
+				onblur={(e) => {
+					const next = e.currentTarget.value;
+					const current = task?.description ?? '';
+					if (next === current) return;
+					void patch('description', { description: next });
+				}}
+				class="w-full resize-none bg-transparent border-0 outline-none text-[13.5px] leading-relaxed text-text-2 mb-5 placeholder:text-text-4 min-h-[60px]"
+			></textarea>
 
 			{#if draft.parent || (draft.labels && draft.labels.length > 0)}
 				<div class="flex flex-wrap gap-2 mb-6">
@@ -247,12 +508,12 @@
 			<div class="mt-4">
 				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-3">Activity</div>
 				<div class="mb-4">
-					<TimeLogger task={draft} />
+					<TimeLogger task={draft} onlog={logTime} />
 				</div>
 				<div class="relative space-y-4 pl-7">
 					<span class="absolute left-[10px] top-2 bottom-2 w-px bg-border"></span>
-					{#each events as e (e.date + e.kind)}
-						{@const u = userById(e.user)}
+					{#each events as e (e.id)}
+						{@const u = resolveUser(e.user)}
 						<div class="relative">
 							<span class="absolute -left-7 top-0.5 w-5 h-5 rounded-full grid place-items-center bg-bg-elev border border-border">
 								{#if e.kind === 'comment'}
@@ -284,7 +545,7 @@
 			</div>
 
 			<div class="mt-8 text-[11px] text-text-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-4">
-				{#if draft.createdBy}<span>Created by <span class="text-text-2">{userById(draft.createdBy)?.name}</span></span>{/if}
+				{#if draft.createdBy}<span>Created by <span class="text-text-2">{resolveUser(draft.createdBy)?.name ?? '—'}</span></span>{/if}
 				{#if draft.createdAt}<span>Created <span class="font-mono text-text-3">{draft.createdAt}</span></span>{/if}
 				<span>Updated <span class="font-mono text-text-3">{draft.updated}</span></span>
 			</div>
@@ -293,9 +554,17 @@
 		<div class="border-t border-border bg-bg-elev p-3">
 			<div class="flex items-end gap-2">
 				<textarea
-					placeholder="Write a comment…"
+					bind:value={commentBody}
+					onkeydown={(e) => {
+						if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+							e.preventDefault();
+							void sendComment();
+						}
+					}}
+					placeholder="Write a comment…  (⌘↵ to send)"
 					rows="3"
-					class="flex-1 resize-none bg-surface border border-border rounded-lg px-3 py-2 text-[13px] outline-none focus:border-border-strong min-h-[72px]"
+					class="flex-1 resize-none bg-surface border border-border rounded-lg px-3 py-2 text-[13px] outline-none focus:border-border-strong min-h-[72px] disabled:opacity-60"
+					disabled={commentSending}
 				></textarea>
 				<div class="flex flex-col gap-2">
 					<button
@@ -308,9 +577,15 @@
 					<button
 						type="button"
 						aria-label="Send"
-						class="w-8 h-8 grid place-items-center rounded-lg bg-accent hover:bg-accent-strong text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)] transition-colors"
+						onclick={sendComment}
+						disabled={commentSending || !commentBody.trim()}
+						class="w-8 h-8 grid place-items-center rounded-lg bg-accent hover:bg-accent-strong text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 					>
-						<Icon name="send" size={13} />
+						{#if commentSending}
+							<span class="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin"></span>
+						{:else}
+							<Icon name="send" size={13} />
+						{/if}
 					</button>
 				</div>
 			</div>

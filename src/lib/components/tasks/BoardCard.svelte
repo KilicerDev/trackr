@@ -6,7 +6,8 @@
 	import AvatarStack from '../AvatarStack.svelte';
 	import TypeBadge from '../TypeBadge.svelte';
 	import Icon from '../Icon.svelte';
-	import { formatDateLong, formatEstimate, userById } from '$lib/data';
+	import { formatDateLong, formatEstimate } from '$lib/data';
+	import { resolveUser } from '$lib/lookup.svelte';
 
 	interface Props {
 		task: Task;
@@ -14,7 +15,7 @@
 	}
 	let { task, onclick }: Props = $props();
 
-	let assignees = $derived((task.assignees ?? [task.assignee]).map((id) => userById(id)));
+	let assignees = $derived((task.assignees ?? [task.assignee]).map((id) => resolveUser(id)));
 </script>
 
 <button

@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { clickOutside } from '$lib/actions/clickOutside';
+	import { fly } from 'svelte/transition';
+	import { POPOVER_IN } from '$lib/motion';
 	import type { Snippet } from 'svelte';
 	interface Props {
 		open: boolean;
@@ -14,6 +16,7 @@
 {#if open}
 	<div
 		use:clickOutside={onclose}
+		in:fly={POPOVER_IN}
 		class="absolute z-50 top-full mt-1.5 bg-bg-elev border border-border rounded-[10px] p-1.5 text-[13px]
 		{align === 'right' ? 'right-0' : 'left-0'}"
 		style:min-width="{minWidth}px"

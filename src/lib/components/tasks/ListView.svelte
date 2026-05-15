@@ -1,12 +1,8 @@
 <script lang="ts">
 	import type { Task } from '$lib/types';
-	import {
-		TRACKR_PRIORITIES,
-		TRACKR_PROJECTS,
-		TRACKR_STATUSES,
-		TRACKR_USERS,
-		userById
-	} from '$lib/data';
+	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/data';
+	import { resolveProject, resolveUser } from '$lib/lookup.svelte';
+	import { page } from '$app/state';
 	import TaskRow from './TaskRow.svelte';
 	import Icon from '../Icon.svelte';
 
@@ -52,20 +48,26 @@
 				.filter((g) => g.tasks.length > 0);
 		}
 		if (group === 'project') {
-			return (Object.keys(TRACKR_PROJECTS) as (keyof typeof TRACKR_PROJECTS)[])
-				.map((pid) => ({
-					id: pid,
-					label: TRACKR_PROJECTS[pid].name,
-					dot: TRACKR_PROJECTS[pid].color,
-					tasks: tasks.filter((t) => t.project === pid)
-				}))
+			// Derive group order from projects that actually appear in the
+			// loaded task list, resolving each via real DB data when possible.
+			const keys = Array.from(new Set(tasks.map((t) => t.project)));
+			return keys
+				.map((key) => {
+					const p = resolveProject(key);
+					return {
+						id: key,
+						label: p?.name ?? key,
+						dot: p?.color ?? '#7c7c84',
+						tasks: tasks.filter((t) => t.project === key)
+					};
+				})
 				.filter((g) => g.tasks.length > 0);
 		}
 		// assignee
 		const ids = Array.from(new Set(tasks.flatMap((t) => t.assignees ?? [t.assignee])));
 		return ids
 			.map((uid) => {
-				const u = userById(uid);
+				const u = resolveUser(uid);
 				return {
 					id: uid,
 					label: u?.name ?? uid,
@@ -74,6 +76,13 @@
 				};
 			})
 			.filter((g) => g.tasks.length > 0);
+	});
+
+	// Touch `page.data` so the lookup helpers stay reactive when the layout
+	// data refreshes. Without this, switching projects mid-session can leave
+	// stale labels in already-derived group headers.
+	$effect(() => {
+		void page.data;
 	});
 </script>
 
@@ -87,7 +96,7 @@
 				<button
 					type="button"
 					onclick={() => toggle(g.id)}
-					class="group sticky top-0 z-[5] flex items-center gap-2.5 w-full px-5 h-10 bg-bg border-b border-border text-left"
+					class="group sticky top-0 z-[5] flex items-center gap-2.5 w-full px-5 h-10 bg-surface border-y border-border text-left"
 				>
 					<span class="transition-transform text-text-3 {isCollapsed ? '-rotate-90' : ''}">
 						<Icon name="chevron" size={12} />

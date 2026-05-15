@@ -6,14 +6,19 @@
 	import PriorityBars from '../PriorityBars.svelte';
 	import Avatar from '../Avatar.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
+	import { fly } from 'svelte/transition';
+	import { POPOVER_IN } from '$lib/motion';
 	import {
 		TRACKR_PRIORITIES,
-		TRACKR_PROJECTS,
 		TRACKR_STATUSES,
-		TRACKR_USERS,
 		TRACKR_LABELS
 	} from '$lib/data';
-	import type { ProjectId } from '$lib/types';
+	import { page } from '$app/state';
+
+	type LayoutData = {
+		users?: { id: string; name: string; initials: string; color: string; status: string }[];
+		projects?: { key: string; name: string; color: string }[];
+	};
 
 	type GroupBy = 'status' | 'priority' | 'assignee' | 'project' | 'none';
 	type SubBy = 'none' | 'status' | 'priority' | 'assignee';
@@ -128,7 +133,8 @@
 			</button>
 		{/each}
 	{:else if field === 'assignee'}
-		{#each TRACKR_USERS.filter((u) => u.status === 'active') as u (u.id)}
+		{@const dbUsers = ((page.data as LayoutData).users ?? []).filter((u) => u.status !== 'disabled')}
+		{#each dbUsers as u (u.id)}
 			<button
 				type="button"
 				onclick={() => toggleValue('assignee', u.id)}
@@ -142,15 +148,16 @@
 			</button>
 		{/each}
 	{:else if field === 'project'}
-		{#each Object.keys(TRACKR_PROJECTS) as pid (pid)}
+		{@const dbProjects = (page.data as LayoutData).projects ?? []}
+		{#each dbProjects as p (p.key)}
 			<button
 				type="button"
-				onclick={() => toggleValue('project', pid)}
+				onclick={() => toggleValue('project', p.key)}
 				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 			>
-				<span class="w-2 h-2 rounded-full" style:background={TRACKR_PROJECTS[pid as ProjectId].color}></span>
-				<span class="text-[13px]">{TRACKR_PROJECTS[pid as ProjectId].name}</span>
-				<span class="ml-auto text-accent {values.includes(pid) ? 'opacity-100' : 'opacity-0'}">
+				<span class="w-2 h-2 rounded-full" style:background={p.color}></span>
+				<span class="text-[13px]">{p.name}</span>
+				<span class="ml-auto text-accent {values.includes(p.key) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
 				</span>
 			</button>
@@ -177,14 +184,14 @@
 		<button
 			type="button"
 			onclick={() => setView('list')}
-			class="inline-flex items-center gap-1.5 px-2 h-full rounded-md transition-colors {view === 'list' ? 'bg-bg-elev text-text shadow-sm' : 'text-text-3 hover:text-text'}"
+			class="inline-flex items-center gap-1.5 px-2 h-full rounded-md transition-colors {view === 'list' ? 'bg-bg-elev text-text' : 'text-text-3 hover:text-text'}"
 		>
 			<Icon name="list" size={13} /> List
 		</button>
 		<button
 			type="button"
 			onclick={() => setView('board')}
-			class="inline-flex items-center gap-1.5 px-2 h-full rounded-md transition-colors {view === 'board' ? 'bg-bg-elev text-text shadow-sm' : 'text-text-3 hover:text-text'}"
+			class="inline-flex items-center gap-1.5 px-2 h-full rounded-md transition-colors {view === 'board' ? 'bg-bg-elev text-text' : 'text-text-3 hover:text-text'}"
 		>
 			<Icon name="board" size={13} /> Board
 		</button>
@@ -206,6 +213,7 @@
 		{#if pop === 'group'}
 			<div
 				use:clickOutside={() => (pop = null)}
+				in:fly={POPOVER_IN}
 				class="absolute top-full left-0 mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[170px]"
 				style:box-shadow="var(--shadow-lg)"
 			>
@@ -269,6 +277,7 @@
 		{#if pop === 'add:fields'}
 			<div
 				use:clickOutside={() => (pop = null)}
+				in:fly={POPOVER_IN}
 				class="absolute top-full left-0 mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[200px]"
 				style:box-shadow="var(--shadow-lg)"
 			>
@@ -288,6 +297,7 @@
 			{@const field = pop.slice(4)}
 			<div
 				use:clickOutside={() => (pop = null)}
+				in:fly={POPOVER_IN}
 				class="absolute top-full left-0 mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[240px]"
 				style:box-shadow="var(--shadow-lg)"
 			>
@@ -327,6 +337,7 @@
 			{#if pop === `chip:${field}`}
 				<div
 					use:clickOutside={() => (pop = null)}
+					in:fly={POPOVER_IN}
 					class="absolute top-full left-0 mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[220px]"
 					style:box-shadow="var(--shadow-lg)"
 				>

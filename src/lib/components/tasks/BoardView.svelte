@@ -1,12 +1,8 @@
 <script lang="ts">
 	import type { Task, ProjectId, StatusId, PriorityId } from '$lib/types';
-	import {
-		TRACKR_PRIORITIES,
-		TRACKR_PROJECTS,
-		TRACKR_STATUSES,
-		TRACKR_USERS,
-		userById
-	} from '$lib/data';
+	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/data';
+	import { resolveProject, resolveUser } from '$lib/lookup.svelte';
+	import { page } from '$app/state';
 	import BoardCard from './BoardCard.svelte';
 	import StatusDot from '../StatusDot.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
@@ -41,13 +37,25 @@
 
 	let columns = $derived.by<ColumnDef[]>(() => {
 		if (group === 'project') {
-			return (Object.keys(TRACKR_PROJECTS) as ProjectId[]).map((pid) => ({
-				key: pid,
-				label: TRACKR_PROJECTS[pid].name,
-				color: TRACKR_PROJECTS[pid].color,
-				project: pid,
-				tasks: tasks.filter((t) => t.project === pid)
-			}));
+			// Use the projects exposed by the layout load — falls back to
+			// keys that only appear on tasks (defensive in case of drift).
+			type ProjectMeta = { key: string; name: string; color: string };
+			const dbProjects = (page.data as { projects?: ProjectMeta[] }).projects ?? [];
+			const fromTasks = Array.from(new Set(tasks.map((t) => t.project)));
+			const orderedKeys = [
+				...dbProjects.map((p) => p.key),
+				...fromTasks.filter((k) => !dbProjects.some((p) => p.key === k))
+			];
+			return orderedKeys.map((key) => {
+				const p = resolveProject(key);
+				return {
+					key,
+					label: p?.name ?? key,
+					color: p?.color ?? '#7c7c84',
+					project: key as ProjectId,
+					tasks: tasks.filter((t) => t.project === key)
+				};
+			});
 		}
 		if (group === 'status') {
 			return TRACKR_STATUSES.map((s) => ({
@@ -70,7 +78,7 @@
 		if (group === 'assignee') {
 			const ids = Array.from(new Set(tasks.flatMap((t) => t.assignees ?? [t.assignee])));
 			return ids.map((uid) => {
-				const u = userById(uid);
+				const u = resolveUser(uid);
 				return {
 					key: uid,
 					label: u?.name ?? uid,
@@ -138,7 +146,7 @@
 		const ids = Array.from(new Set(items.flatMap((t) => t.assignees ?? [t.assignee])));
 		return ids
 			.map((uid) => {
-				const u = userById(uid);
+				const u = resolveUser(uid);
 				return {
 					key: `${col.key}:${uid}`,
 					label: u?.name ?? uid,
@@ -160,7 +168,7 @@
 					{#if col.statusId}
 						<StatusDot status={col.statusId} size={11} />
 					{:else if col.userId}
-						{@const u = userById(col.userId)}
+						{@const u = resolveUser(col.userId)}
 						<Avatar user={u} size={16} />
 					{:else if col.priorityId && col.priorityId !== 'none'}
 						<PriorityBars priority={col.priorityId} />
@@ -197,7 +205,7 @@
 									{:else if g.priorityId && g.priorityId !== 'none'}
 										<PriorityBars priority={g.priorityId} />
 									{:else if g.userId}
-										{@const u = userById(g.userId)}
+										{@const u = resolveUser(g.userId)}
 										<Avatar user={u} size={14} />
 									{:else if g.color}
 										<span class="w-2 h-2 rounded-full" style:background={g.color}></span>
