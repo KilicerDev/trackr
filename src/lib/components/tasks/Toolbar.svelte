@@ -35,6 +35,7 @@
 		sub?: SubBy;
 		setSub?: (s: SubBy) => void;
 		onNewTask?: () => void;
+		canCreate?: boolean;
 	}
 	let {
 		view,
@@ -47,7 +48,8 @@
 		setGroup,
 		sub = 'status',
 		setSub,
-		onNewTask
+		onNewTask,
+		canCreate = true
 	}: Props = $props();
 
 	const GROUP_OPTIONS: { id: GroupBy; label: string }[] = [
@@ -364,8 +366,10 @@
 				class="h-7 pl-7 pr-2.5 rounded-lg bg-surface border border-border text-[12.5px] text-text placeholder:text-text-3 outline-none focus:border-border-strong w-44"
 			/>
 		</div>
-		<Button variant="primary" size="sm" onclick={onNewTask}>
-			<Icon name="plus" size={13} /> New task
-		</Button>
+		{#if canCreate}
+			<Button variant="primary" size="sm" onclick={onNewTask}>
+				<Icon name="plus" size={13} /> New task
+			</Button>
+		{/if}
 	</div>
 </div>

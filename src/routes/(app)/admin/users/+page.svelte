@@ -314,7 +314,7 @@
 					<button
 						type="button"
 						onclick={() => (filter = t.id)}
-						class="inline-flex items-center gap-1.5 px-2.5 h-full rounded-md text-[12.5px] transition-colors {filter === t.id ? 'bg-bg-elev text-text shadow-sm' : 'text-text-3 hover:text-text'}"
+						class="inline-flex items-center gap-1.5 px-2.5 h-full rounded-md text-[12.5px] transition-colors {filter === t.id ? 'bg-bg-elev text-text' : 'text-text-3 hover:text-text'}"
 					>
 						{t.label}
 						<span class="font-mono text-[10.5px] text-text-3">

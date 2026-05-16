@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
+	import { showToast } from '$lib/toast.svelte';
 	import type { ActionResult } from '@sveltejs/kit';
 	import Modal from '../Modal.svelte';
 	import Icon from '../Icon.svelte';
@@ -97,7 +98,6 @@
 
 	let pop = $state<string | null>(null);
 	let submitting = $state(false);
-	let serverError = $state<string | null>(null);
 	let formEl = $state<HTMLFormElement>();
 
 	$effect(() => {
@@ -114,7 +114,6 @@
 			tags = [];
 			pop = null;
 			submitting = false;
-			serverError = null;
 		}
 	});
 
@@ -144,7 +143,6 @@
 		action="/tasks?/create"
 		use:enhance={() => {
 			submitting = true;
-			serverError = null;
 			return async ({ result }: { result: ActionResult }) => {
 				submitting = false;
 				if (result.type === 'success') {
@@ -155,11 +153,11 @@
 				} else if (result.type === 'failure') {
 					const msg =
 						(result.data as { message?: string } | undefined)?.message ?? 'Failed to create task.';
-					serverError = msg;
+					showToast('err', msg);
 					onerror?.(msg);
 				} else if (result.type === 'error') {
 					const msg = result.error?.message ?? 'Failed to create task.';
-					serverError = msg;
+					showToast('err', msg);
 					onerror?.(msg);
 				}
 			};
@@ -332,16 +330,6 @@
 				<input type="hidden" name="tags" value={t} />
 			{/each}
 
-			{#if serverError}
-				<div
-					class="rounded-lg border px-3 py-2 text-[12.5px] mt-4"
-					style:border-color="rgba(239,79,94,0.35)"
-					style:background="rgba(239,79,94,0.08)"
-					style:color="#ef7a6d"
-				>
-					{serverError}
-				</div>
-			{/if}
 		</div>
 
 		<!-- Foot -->

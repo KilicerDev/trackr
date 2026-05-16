@@ -1,5 +1,6 @@
 import { redirect, type ServerLoad } from '@sveltejs/kit';
 import { loadTasks } from '$lib/server/tasks';
+import { accessibleProjectIds } from '$lib/server/permissions';
 
 function isoDate(d: Date): string {
 	return d.toISOString().slice(0, 10);
@@ -17,7 +18,11 @@ function startOfWeek(d: Date): Date {
 export const load: ServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
 
-	const tasks = await loadTasks({ plannerUserId: locals.user.id });
+	const access = accessibleProjectIds(locals);
+	const tasks = await loadTasks({
+		plannerUserId: locals.user.id,
+		projectIds: access.all ? undefined : [...access.ids]
+	});
 
 	const todayIso = isoDate(new Date());
 	const weekStart = startOfWeek(new Date());

@@ -22,8 +22,26 @@ function fmtDate(d: Date | null): string {
  */
 export async function loadTasks(opts?: {
 	projectId?: string;
+	projectIds?: string[];
 	plannerUserId?: string;
 }): Promise<Task[]> {
+	// If an explicit list is passed and it's empty, short-circuit — the
+	// caller is signalling "this user can see zero projects".
+	if (opts?.projectIds && opts.projectIds.length === 0) return [];
+
+	const conditions = [isNull(task.archivedAt)];
+	if (opts?.projectId) {
+		// Detail page can still see tasks of an archived project so the user
+		// can review history before unarchiving / deleting.
+		conditions.push(eq(task.projectId, opts.projectId));
+	} else {
+		// Global view excludes tasks whose parent project is archived.
+		conditions.push(isNull(project.archivedAt));
+	}
+	if (opts?.projectIds) {
+		conditions.push(inArray(task.projectId, opts.projectIds));
+	}
+
 	const baseQuery = db
 		.select({
 			id: task.id,
@@ -47,14 +65,7 @@ export async function loadTasks(opts?: {
 		})
 		.from(task)
 		.innerJoin(project, eq(project.id, task.projectId))
-		.where(
-			opts?.projectId
-				? // Detail page can still see tasks of an archived project so
-					// the user can review history before unarchiving / deleting.
-					and(isNull(task.archivedAt), eq(task.projectId, opts.projectId))
-				: // Global view excludes tasks whose parent project is archived.
-					and(isNull(task.archivedAt), isNull(project.archivedAt))
-		);
+		.where(and(...conditions));
 
 	const taskRows = await baseQuery.orderBy(desc(task.updatedAt));
 	const taskIds = taskRows.map((t) => t.id);

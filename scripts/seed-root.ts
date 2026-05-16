@@ -13,7 +13,7 @@
 
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { hashPassword } from 'better-auth/crypto';
 import * as schema from '../src/lib/server/db/schema';
 import { resolveDatabaseUrl } from '../src/lib/server/db/resolve-url';
@@ -37,6 +37,54 @@ try {
 const client = postgres(databaseUrl, { max: 1 });
 const db = drizzle(client, { schema });
 
+// Ensure the root user is also a superadmin member of the internal Trackr
+// org. Both checks are needed: better-auth uses user.role for impersonation,
+// while the app's permission engine uses the Trackr-org membership.
+async function ensureTrackrOrgMembership(userId: string) {
+	const [internal] = await db
+		.select({ id: schema.organization.id })
+		.from(schema.organization)
+		.where(eq(schema.organization.isInternal, true))
+		.limit(1);
+	if (!internal) {
+		console.warn(
+			'\x1b[33m!\x1b[0m No internal Trackr organization found. Run the latest migrations first.'
+		);
+		return;
+	}
+	const [existing] = await db
+		.select()
+		.from(schema.organizationMember)
+		.where(
+			and(
+				eq(schema.organizationMember.orgId, internal.id),
+				eq(schema.organizationMember.userId, userId)
+			)
+		)
+		.limit(1);
+	if (existing) {
+		if (existing.role !== 'org.superadmin') {
+			await db
+				.update(schema.organizationMember)
+				.set({ role: 'org.superadmin' })
+				.where(
+					and(
+						eq(schema.organizationMember.orgId, internal.id),
+						eq(schema.organizationMember.userId, userId)
+					)
+				);
+			console.log(`\x1b[32m✓\x1b[0m Promoted Trackr-org membership to org.superadmin.`);
+		}
+		return;
+	}
+	await db.insert(schema.organizationMember).values({
+		orgId: internal.id,
+		userId,
+		role: 'org.superadmin'
+	});
+	console.log(`\x1b[32m✓\x1b[0m Added Trackr-org membership as org.superadmin.`);
+}
+
 try {
 	const [existing] = await db
 		.select()
@@ -54,17 +102,18 @@ try {
 	}
 
 	if (existing) {
-		if (existing.role === 'superadmin') {
-			console.log(`\x1b[32m✓\x1b[0m ${email} already exists with role=superadmin. Nothing to do.`);
-			process.exit(0);
+		if (existing.role !== 'superadmin') {
+			await db
+				.update(schema.user)
+				.set({ role: 'superadmin', updatedAt: new Date() })
+				.where(eq(schema.user.id, existing.id));
+			console.log(
+				`\x1b[32m✓\x1b[0m Promoted ${email} from role=${existing.role ?? 'user'} to role=superadmin.`
+			);
+		} else {
+			console.log(`\x1b[32m✓\x1b[0m ${email} already has role=superadmin.`);
 		}
-		await db
-			.update(schema.user)
-			.set({ role: 'superadmin', updatedAt: new Date() })
-			.where(eq(schema.user.id, existing.id));
-		console.log(
-			`\x1b[32m✓\x1b[0m Promoted ${email} from role=${existing.role ?? 'user'} to role=superadmin.`
-		);
+		await ensureTrackrOrgMembership(existing.id);
 		process.exit(0);
 	}
 
@@ -93,6 +142,7 @@ try {
 		});
 	});
 
+	await ensureTrackrOrgMembership(userId);
 	console.log(`\x1b[32m✓\x1b[0m Seeded root superadmin: ${email}`);
 } catch (err) {
 	const msg = err instanceof Error ? err.message : String(err);

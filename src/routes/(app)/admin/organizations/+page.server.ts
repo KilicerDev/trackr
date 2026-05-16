@@ -1,13 +1,8 @@
-import { error, fail, redirect, type Actions } from '@sveltejs/kit';
+import { fail, type Actions } from '@sveltejs/kit';
 import { count, eq, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { organization, organizationMember, project } from '$lib/server/db/app.schema';
-import { isAdminLike } from '$lib/roles';
+import { organization, project } from '$lib/server/db/app.schema';
 import type { PageServerLoad } from './$types';
-
-function roleOf(u: unknown): string | null | undefined {
-	return (u as { role?: string | null } | undefined)?.role;
-}
 
 function slugify(input: string): string {
 	return input
@@ -31,10 +26,7 @@ export interface OrgRow {
 	projectCount: number;
 }
 
-export const load: PageServerLoad = async ({ locals }) => {
-	if (!locals.user) redirect(303, '/sign-in');
-	if (!isAdminLike(roleOf(locals.user))) redirect(303, '/');
-
+export const load: PageServerLoad = async () => {
 	const rows = await db
 		.select({
 			id: organization.id,
@@ -66,8 +58,10 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!isAdminLike(roleOf(locals.user))) throw error(403, 'Admins only');
+		// /admin/+layout.server.ts already enforced admin.access. New orgs
+		// start empty — Trackr-team users have access via their internal-org
+		// role, so we no longer auto-add the creator as a member.
+		if (!locals.user) return fail(401, { message: 'Not authenticated' });
 
 		const form = await request.formData();
 		const name = String(form.get('name') ?? '').trim();
@@ -87,21 +81,13 @@ export const actions: Actions = {
 		if (existing) return fail(409, { message: `Slug "${slug}" is already in use.` });
 
 		const id = crypto.randomUUID();
-		const me = locals.user;
-		await db.transaction(async (tx) => {
-			await tx.insert(organization).values({
-				id,
-				slug,
-				name,
-				description,
-				color,
-				createdBy: me.id
-			});
-			await tx.insert(organizationMember).values({
-				orgId: id,
-				userId: me.id,
-				role: 'owner'
-			});
+		await db.insert(organization).values({
+			id,
+			slug,
+			name,
+			description,
+			color,
+			createdBy: locals.user.id
 		});
 
 		return { success: true, id, slug };

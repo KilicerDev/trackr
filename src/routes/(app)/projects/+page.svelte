@@ -13,14 +13,11 @@
 	let createOpen = $state(false);
 
 	const visibleProjects = $derived(tab === 'active' ? data.projects : data.archivedProjects);
+	const canCreate = $derived(
+		(data.effectivePermissions ?? []).includes('project.create')
+	);
 
-	let toast = $state<{ kind: 'ok' | 'err'; msg: string } | null>(null);
-	function showToast(kind: 'ok' | 'err', msg: string) {
-		toast = { kind, msg };
-		setTimeout(() => {
-			if (toast?.msg === msg) toast = null;
-		}, 3500);
-	}
+	import { showToast } from '$lib/toast.svelte';
 </script>
 
 <svelte:head><title>Trackr · Projects</title></svelte:head>
@@ -73,9 +70,11 @@
 						<Icon name="list" size={13} /> List
 					</button>
 				</div>
-				<Button variant="primary" size="sm" onclick={() => (createOpen = true)}>
-					<Icon name="plus" size={13} /> New project
-				</Button>
+				{#if canCreate}
+					<Button variant="primary" size="sm" onclick={() => (createOpen = true)}>
+						<Icon name="plus" size={13} /> New project
+					</Button>
+				{/if}
 			</div>
 		</div>
 
@@ -89,9 +88,11 @@
 					<div class="text-[12.5px] text-text-3 max-w-[320px] text-center">
 						Projects group related tasks and tickets. Create your first one to get started.
 					</div>
-					<Button variant="primary" size="sm" onclick={() => (createOpen = true)}>
-						<Icon name="plus" size={13} /> Create a project
-					</Button>
+					{#if canCreate}
+						<Button variant="primary" size="sm" onclick={() => (createOpen = true)}>
+							<Icon name="plus" size={13} /> Create a project
+						</Button>
+					{/if}
 				</div>
 			{:else}
 				<div
@@ -111,7 +112,7 @@
 				{#each visibleProjects as p (p.id)}
 					<ProjectCard project={p} />
 				{/each}
-				{#if tab === 'active'}
+				{#if tab === 'active' && canCreate}
 					<button
 						type="button"
 						onclick={() => (createOpen = true)}
@@ -164,17 +165,6 @@
 		{/if}
 	</div>
 </div>
-
-{#if toast}
-	<div
-		class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-3.5 py-2 rounded-lg border text-[13px] backdrop-blur-md shadow-lg"
-		style:background={toast.kind === 'ok' ? 'rgba(127,200,169,0.12)' : 'rgba(239,79,94,0.12)'}
-		style:border-color={toast.kind === 'ok' ? 'rgba(127,200,169,0.35)' : 'rgba(239,79,94,0.35)'}
-		style:color={toast.kind === 'ok' ? '#7fc8a9' : '#ef7a6d'}
-	>
-		{toast.msg}
-	</div>
-{/if}
 
 <CreateProjectModal
 	open={createOpen}

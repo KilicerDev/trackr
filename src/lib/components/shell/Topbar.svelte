@@ -4,6 +4,7 @@
 	import Avatar from '../Avatar.svelte';
 	import Popover from '../Popover.svelte';
 	import Kbd from '../Kbd.svelte';
+	import FeedbackModal from '../FeedbackModal.svelte';
 	import { page } from '$app/state';
 	import type { Snippet } from 'svelte';
 
@@ -34,6 +35,7 @@
 	});
 
 	let acctOpen = $state(false);
+	let feedbackOpen = $state(false);
 </script>
 
 <header class="flex items-center gap-3.5 px-[22px] py-3 border-b border-border bg-bg shrink-0">
@@ -76,33 +78,53 @@
 					</div>
 					<div class="h-px bg-border -mx-0.5 mb-1"></div>
 				{/if}
-				<button class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none">
+				<a
+					href="/me/profile"
+					onclick={() => (acctOpen = false)}
+					class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
+				>
 					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="user" size={14} /></span>
 					<span>Profile</span>
-				</button>
-				<button class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none">
+				</a>
+				<a
+					href="/me/settings"
+					onclick={() => (acctOpen = false)}
+					class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
+				>
 					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="settings" size={14} /></span>
 					<span>Account settings</span>
-				</button>
-				<button class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none">
+				</a>
+				<a
+					href="/me/notifications"
+					onclick={() => (acctOpen = false)}
+					class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
+				>
 					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="bell" size={14} /></span>
 					<span>Notifications</span>
-				</button>
+				</a>
 				<div class="h-px bg-border -mx-0.5 my-1"></div>
 				<button class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none">
 					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="home" size={14} /></span>
 					<span>Switch workspace</span>
 					<span class="ml-auto"><Kbd>⌘O</Kbd></span>
 				</button>
-				<button class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none">
-					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="refresh" size={14} /></span>
+				<button
+					type="button"
+					onclick={() => {
+						acctOpen = false;
+						feedbackOpen = true;
+					}}
+					class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
+				>
+					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="send" size={14} /></span>
 					<span>Send feedback</span>
 				</button>
 				<div class="h-px bg-border -mx-0.5 my-1"></div>
 				<form method="post" action="/logout" class="contents">
 					<button
 						type="submit"
-						class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-accent text-left text-[13px] leading-none"
+						class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-[13px] leading-none hover:bg-[#ef4f5e]/10"
+						style:color="#ef4f5e"
 					>
 						<span class="grid place-items-center w-4 h-4 shrink-0"><Icon name="logout" size={14} /></span>
 						<span>Sign out</span>
@@ -112,3 +134,5 @@
 		</div>
 	</div>
 </header>
+
+<FeedbackModal open={feedbackOpen} onclose={() => (feedbackOpen = false)} />

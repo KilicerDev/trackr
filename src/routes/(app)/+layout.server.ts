@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { and, count, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, count, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import {
@@ -8,6 +8,12 @@ import {
 	projectFavorite as projectFavoriteTable,
 	task as taskTable
 } from '$lib/server/db/app.schema';
+import {
+	accessibleProjectIds,
+	effectivePermissions,
+	isTrackrTeam
+} from '$lib/server/permissions';
+import { getPreferences } from '$lib/server/preferences';
 import type { LayoutServerLoad } from './$types';
 
 function initials(name: string): string {
@@ -64,6 +70,16 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		status: (u.banned ? 'disabled' : 'active') as 'active' | 'invited' | 'disabled'
 	}));
 
+	// Project visibility — Trackr internal team members see everything;
+	// everyone else sees only projects they're explicitly a member of.
+	const access = accessibleProjectIds(locals);
+	const projectAccessFilter = access.all
+		? undefined
+		: access.ids.size > 0
+			? inArray(projectTable.id, [...access.ids])
+			: // Empty access set — short-circuit by matching no rows.
+				eq(projectTable.id, '__none__');
+
 	const projects = await db
 		.select({
 			id: projectTable.id,
@@ -73,7 +89,11 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			icon: projectTable.icon
 		})
 		.from(projectTable)
-		.where(isNull(projectTable.archivedAt));
+		.where(
+			projectAccessFilter
+				? and(isNull(projectTable.archivedAt), projectAccessFilter)
+				: isNull(projectTable.archivedAt)
+		);
 
 	// Archived projects exposed separately so historical tasks still resolve
 	// their icon/color without polluting the "active" list.
@@ -86,14 +106,26 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			icon: projectTable.icon
 		})
 		.from(projectTable)
-		.where(isNotNull(projectTable.archivedAt));
+		.where(
+			projectAccessFilter
+				? and(isNotNull(projectTable.archivedAt), projectAccessFilter)
+				: isNotNull(projectTable.archivedAt)
+		);
 
-	// Count only tasks whose parent project is active.
+	// Count tasks whose parent project is active AND the user can see it.
 	const [activeTasks] = await db
 		.select({ total: count() })
 		.from(taskTable)
 		.innerJoin(projectTable, eq(projectTable.id, taskTable.projectId))
-		.where(and(isNull(taskTable.archivedAt), isNull(projectTable.archivedAt)));
+		.where(
+			projectAccessFilter
+				? and(
+						isNull(taskTable.archivedAt),
+						isNull(projectTable.archivedAt),
+						projectAccessFilter
+					)
+				: and(isNull(taskTable.archivedAt), isNull(projectTable.archivedAt))
+		);
 	const taskCount = Number(activeTasks?.total ?? 0);
 
 	// The current user's starred projects — drives the sidebar's Projects list.
@@ -116,6 +148,17 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		.where(isNull(organization.archivedAt))
 		.orderBy(organization.name);
 
+	const memberRoles = {
+		orgs: Object.fromEntries(
+			(locals.memberships?.orgs ?? []).map((m) => [m.orgId, m.role])
+		),
+		projects: Object.fromEntries(
+			(locals.memberships?.projects ?? []).map((m) => [m.projectId, m.role])
+		)
+	};
+
+	const preferences = await getPreferences(locals.user.id);
+
 	return {
 		user: locals.user,
 		impersonator,
@@ -125,6 +168,11 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		favoriteProjectIds,
 		taskCount,
 		currentUserId: locals.user.id,
-		orgs
+		orgs,
+		isAdmin: !!locals.isAdmin,
+		isTrackrTeam: isTrackrTeam(locals),
+		memberRoles,
+		effectivePermissions: await effectivePermissions(locals),
+		preferences
 	};
 };

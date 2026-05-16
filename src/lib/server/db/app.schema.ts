@@ -1,10 +1,12 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
 	pgTable,
 	text,
 	integer,
 	timestamp,
 	date,
+	boolean,
+	jsonb,
 	index,
 	uniqueIndex,
 	primaryKey,
@@ -53,6 +55,10 @@ export const organization = pgTable(
 		name: text('name').notNull(),
 		description: text('description'),
 		color: text('color').notNull().default('#7a9cf0'),
+		// Exactly one org has this flag set — the internal "Trackr" org whose
+		// admin/superadmin members are the only users with /admin access.
+		// Enforced by a partial unique index `organization_internal_unique`.
+		isInternal: boolean('is_internal').notNull().default(false),
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
 		archivedAt: timestamp('archived_at'),
 		createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -61,7 +67,12 @@ export const organization = pgTable(
 			.$onUpdate(() => /* @__PURE__ */ new Date())
 			.notNull()
 	},
-	(t) => [uniqueIndex('organization_slug_idx').on(t.slug)]
+	(t) => [
+		uniqueIndex('organization_slug_idx').on(t.slug),
+		uniqueIndex('organization_internal_unique')
+			.on(t.isInternal)
+			.where(sql`${t.isInternal} = true`)
+	]
 );
 
 export type Organization = typeof organization.$inferSelect;
@@ -425,6 +436,178 @@ export const taskPlanningRelations = relations(taskPlanning, ({ one }) => ({
 	}),
 	user: one(user, {
 		fields: [taskPlanning.userId],
+		references: [user.id]
+	})
+}));
+
+// ─── Roles & permissions ───────────────────────────────────────────────────
+// Built-in roles are seeded by migration and treated as read-only by the
+// app for now. `organization_member.role` and `project_member.role` hold
+// strings that match `role.id` — kept as plain text (no FK) until the
+// editable / custom-role feature lands.
+
+export const role = pgTable(
+	'role',
+	{
+		id: text('id').primaryKey(),
+		scope: text('scope').notNull(), // 'org' | 'project'
+		label: text('label').notNull(),
+		description: text('description'),
+		color: text('color'),
+		// True for seeded built-ins. UI hides edit/delete for builtin rows.
+		builtin: boolean('builtin').notNull().default(false),
+		// True for roles only assignable on the internal Trackr org
+		// (superadmin/admin/staff).
+		internalOnly: boolean('internal_only').notNull().default(false),
+		sortOrder: integer('sort_order').notNull().default(0),
+		createdAt: timestamp('created_at').defaultNow().notNull()
+	},
+	(t) => [index('role_scope_idx').on(t.scope, t.sortOrder)]
+);
+
+export type Role = typeof role.$inferSelect;
+
+export const rolePermission = pgTable(
+	'role_permission',
+	{
+		roleId: text('role_id')
+			.notNull()
+			.references(() => role.id, { onDelete: 'cascade' }),
+		permission: text('permission').notNull()
+	},
+	(t) => [primaryKey({ columns: [t.roleId, t.permission] })]
+);
+
+export type RolePermission = typeof rolePermission.$inferSelect;
+
+export const rolePermissionRelations = relations(rolePermission, ({ one }) => ({
+	role: one(role, {
+		fields: [rolePermission.roleId],
+		references: [role.id]
+	})
+}));
+
+export const roleRelations = relations(role, ({ many }) => ({
+	permissions: many(rolePermission)
+}));
+
+// ─── User preferences ──────────────────────────────────────────────────────
+// One row per user. Scalar columns for things we want to query/index; jsonb
+// for shapes that grow (notification categories, per-view saved state) so
+// adding a category doesn't require a migration.
+
+export type NotificationChannelPrefs = { email: boolean; inApp: boolean };
+export type NotificationPrefs = Partial<{
+	taskAssigned: NotificationChannelPrefs;
+	taskMentioned: NotificationChannelPrefs;
+	taskCommented: NotificationChannelPrefs;
+	taskStatusChanged: NotificationChannelPrefs;
+	taskDueSoon: NotificationChannelPrefs;
+	ticketAssigned: NotificationChannelPrefs;
+	ticketMessage: NotificationChannelPrefs;
+	wikiUpdated: NotificationChannelPrefs;
+}>;
+
+export const userPreferences = pgTable('user_preferences', {
+	userId: text('user_id')
+		.primaryKey()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	theme: text('theme').notNull().default('dark'),
+	accent: text('accent').notNull().default('#ef7a6d'),
+	density: text('density').notNull().default('comfortable'),
+	defaultLanding: text('default_landing').notNull().default('/week'),
+	weekStartsOn: integer('week_starts_on').notNull().default(1),
+	notifications: jsonb('notifications').$type<NotificationPrefs>().notNull().default({}),
+	viewState: jsonb('view_state').$type<Record<string, unknown>>().notNull().default({}),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at')
+		.defaultNow()
+		.$onUpdate(() => /* @__PURE__ */ new Date())
+		.notNull()
+});
+
+export type UserPreferences = typeof userPreferences.$inferSelect;
+
+export const userPreferencesRelations = relations(userPreferences, ({ one }) => ({
+	user: one(user, {
+		fields: [userPreferences.userId],
+		references: [user.id]
+	})
+}));
+
+// ─── Wiki ──────────────────────────────────────────────────────────────────
+// One row per page or folder. Folders are pages with `is_folder = true` and
+// (typically) empty body; they exist to group children in the sidebar.
+// `parent_id` self-references for the tree; null = root. Body is markdown
+// text; rendering happens client-side via $lib/markdown.
+
+export const wikiPage = pgTable(
+	'wiki_page',
+	{
+		id: text('id').primaryKey(),
+		parentId: text('parent_id').references((): AnyPgColumn => wikiPage.id, {
+			onDelete: 'cascade'
+		}),
+		title: text('title').notNull(),
+		icon: text('icon').notNull().default('book'),
+		isFolder: boolean('is_folder').notNull().default(false),
+		body: text('body').notNull().default(''),
+		authorId: text('author_id').references(() => user.id, { onDelete: 'set null' }),
+		updatedById: text('updated_by_id').references(() => user.id, { onDelete: 'set null' }),
+		sortOrder: integer('sort_order').notNull().default(0),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at')
+			.defaultNow()
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull()
+	},
+	(t) => [index('wiki_page_parent_idx').on(t.parentId, t.sortOrder)]
+);
+
+export type WikiPage = typeof wikiPage.$inferSelect;
+
+export const wikiPageRelations = relations(wikiPage, ({ one }) => ({
+	parent: one(wikiPage, {
+		fields: [wikiPage.parentId],
+		references: [wikiPage.id],
+		relationName: 'wiki_parent'
+	}),
+	author: one(user, {
+		fields: [wikiPage.authorId],
+		references: [user.id],
+		relationName: 'wiki_author'
+	}),
+	updatedBy: one(user, {
+		fields: [wikiPage.updatedById],
+		references: [user.id],
+		relationName: 'wiki_updated_by'
+	})
+}));
+
+// ─── Feedback ──────────────────────────────────────────────────────────────
+// User-submitted feedback from the "Send feedback" modal in the account
+// dropdown. `url` and `userAgent` capture the page and browser context at
+// submission time so bug reports are actionable without follow-up.
+
+export const feedback = pgTable(
+	'feedback',
+	{
+		id: text('id').primaryKey(),
+		userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
+		kind: text('kind').notNull().default('general'), // 'bug' | 'idea' | 'general'
+		message: text('message').notNull(),
+		url: text('url'),
+		userAgent: text('user_agent'),
+		createdAt: timestamp('created_at').defaultNow().notNull()
+	},
+	(t) => [index('feedback_created_idx').on(t.createdAt)]
+);
+
+export type Feedback = typeof feedback.$inferSelect;
+
+export const feedbackRelations = relations(feedback, ({ one }) => ({
+	user: one(user, {
+		fields: [feedback.userId],
 		references: [user.id]
 	})
 }));

@@ -8,6 +8,7 @@ import {
 	type Project
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
+import { accessibleProjectIds, assertCan } from '$lib/server/permissions';
 
 interface MemberSummary {
 	id: string;
@@ -61,6 +62,14 @@ function normalizeKey(raw: string): string {
 export const load: ServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
 
+	// Trackr internal team sees every project; everyone else only sees rows
+	// they're a project_member of.
+	const access = accessibleProjectIds(locals);
+	if (!access.all && access.ids.size === 0) {
+		return { projects: [], archivedProjects: [], orgs: [] };
+	}
+	const accessFilter = access.all ? undefined : inArray(project.id, [...access.ids]);
+
 	// Load both active and archived; partition below so the page can render
 	// either set under tabs without re-querying.
 	const rows = await db
@@ -78,6 +87,7 @@ export const load: ServerLoad = async ({ locals }) => {
 			archivedAt: project.archivedAt
 		})
 		.from(project)
+		.where(accessFilter)
 		.orderBy(desc(project.updatedAt));
 
 	const projectIds = rows.map((r) => r.id);
@@ -155,6 +165,7 @@ export const load: ServerLoad = async ({ locals }) => {
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
 		if (!locals.user) throw error(401, 'Not authenticated');
+		await assertCan(locals, 'project.create');
 		const me = locals.user;
 
 		const form = await request.formData();
@@ -207,7 +218,7 @@ export const actions: Actions = {
 				[...memberSet].map((userId) => ({
 					projectId: id,
 					userId,
-					role: userId === leadId ? 'owner' : 'member'
+					role: userId === leadId ? 'project.manager' : 'project.member'
 				}))
 			);
 		});

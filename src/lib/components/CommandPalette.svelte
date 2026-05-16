@@ -8,8 +8,9 @@
 		open: boolean;
 		onclose: () => void;
 		onaction?: (id: string) => void;
+		hiddenIds?: Set<string>;
 	}
-	let { open, onclose, onaction }: Props = $props();
+	let { open, onclose, onaction, hiddenIds }: Props = $props();
 
 	function run(id: string) {
 		onaction?.(id);
@@ -44,10 +45,13 @@
 	let inputEl = $state<HTMLInputElement | null>(null);
 	let listEl = $state<HTMLDivElement | null>(null);
 
+	const visible = $derived(
+		hiddenIds && hiddenIds.size > 0 ? ITEMS.filter((i) => !hiddenIds.has(i.id)) : ITEMS
+	);
 	const filtered = $derived.by(() => {
 		const q = query.trim().toLowerCase();
-		if (!q) return ITEMS;
-		return ITEMS.filter(
+		if (!q) return visible;
+		return visible.filter(
 			(i) =>
 				i.label.toLowerCase().includes(q) ||
 				(i.hint ?? '').toLowerCase().includes(q) ||

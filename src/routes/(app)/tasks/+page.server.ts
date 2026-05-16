@@ -11,10 +11,15 @@ import {
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
 import { loadTasks } from '$lib/server/tasks';
+import { accessibleProjectIds, assertCan, can } from '$lib/server/permissions';
 
 export const load: ServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
-	const tasks = await loadTasks({ plannerUserId: locals.user.id });
+	const access = accessibleProjectIds(locals);
+	const tasks = await loadTasks({
+		plannerUserId: locals.user.id,
+		projectIds: access.all ? undefined : [...access.ids]
+	});
 	return { tasks };
 };
 
@@ -26,7 +31,7 @@ async function resolveTaskByDisplayId(displayId: string) {
 	if (!Number.isFinite(number)) return null;
 
 	const [row] = await db
-		.select({ id: task.id, projectId: project.id })
+		.select({ id: task.id, projectId: project.id, createdBy: task.createdBy })
 		.from(task)
 		.innerJoin(project, eq(project.id, task.projectId))
 		.where(and(eq(project.key, key), eq(task.number, number)))
@@ -62,6 +67,8 @@ export const actions: Actions = {
 			.where(eq(project.key, projectKey))
 			.limit(1);
 		if (!p) return fail(400, { message: `Project "${projectKey}" was not found.` });
+
+		await assertCan(locals, 'project.tasks.create', { projectId: p.id });
 
 		const dueDate = due ? new Date(due) : null;
 		const estimate = estimateRaw ? Number(estimateRaw) : null;
@@ -126,6 +133,15 @@ export const actions: Actions = {
 
 		const target = await resolveTaskByDisplayId(displayId);
 		if (!target) return fail(404, { message: 'Task not found.' });
+
+		// Editing is allowed if the user has project.tasks.edit.any on the
+		// task's project, OR they're the creator and have edit.own.
+		const projectId = target.projectId;
+		const isCreator = target.createdBy === locals.user.id;
+		const allowed =
+			(await can(locals, 'project.tasks.edit.any', { projectId })) ||
+			(isCreator && (await can(locals, 'project.tasks.edit.own', { projectId })));
+		if (!allowed) error(403, 'You cannot edit this task.');
 
 		const patch: Record<string, unknown> = {};
 
@@ -210,6 +226,8 @@ export const actions: Actions = {
 		const target = await resolveTaskByDisplayId(displayId);
 		if (!target) return fail(404, { message: 'Task not found.' });
 
+		await assertCan(locals, 'project.tasks.comment', { projectId: target.projectId });
+
 		try {
 			await db.insert(taskComment).values({
 				id: crypto.randomUUID(),
@@ -239,6 +257,8 @@ export const actions: Actions = {
 
 		const target = await resolveTaskByDisplayId(displayId);
 		if (!target) return fail(404, { message: 'Task not found.' });
+
+		await assertCan(locals, 'project.tasks.read', { projectId: target.projectId });
 
 		try {
 			if (mode === 'undated') {
@@ -296,6 +316,8 @@ export const actions: Actions = {
 
 		const target = await resolveTaskByDisplayId(displayId);
 		if (!target) return fail(404, { message: 'Task not found.' });
+
+		await assertCan(locals, 'project.tasks.read', { projectId: target.projectId });
 
 		try {
 			await db.insert(taskTimeLog).values({

@@ -14,22 +14,32 @@
 	import { autoPlace } from '$lib/actions/autoPlace';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/motion';
+	import { showToast } from '$lib/toast.svelte';
 	import type { PageData } from './$types';
 
 	type LayoutShape = {
 		users?: { id: string; name: string; email: string; initials: string; color: string }[];
 	};
 
-	const ROLES = ['owner', 'admin', 'member'] as const;
-	type OrgRole = (typeof ROLES)[number];
+	let { data }: { data: PageData } = $props();
 
-	const ROLE_META: Record<OrgRole, { label: string; color: string }> = {
-		owner: { label: 'Owner', color: '#ef7a6d' },
-		admin: { label: 'Admin', color: '#f0a85c' },
-		member: { label: 'Member', color: '#7a9cf0' }
+	// Role options depend on whether the org is the internal Trackr org.
+	// Server enforces the same — these are just for the picker UI.
+	type OrgRole = string;
+
+	const ROLE_META: Record<string, { label: string; color: string }> = {
+		'org.superadmin': { label: 'Superadmin', color: '#ef7a6d' },
+		'org.admin': { label: 'Admin', color: '#c08bd6' },
+		'org.staff': { label: 'Staff', color: '#7a9cf0' },
+		'org.client': { label: 'Client', color: '#7fc8a9' },
+		'org.member': { label: 'Member', color: '#8fb6c4' }
 	};
 
-	let { data }: { data: PageData } = $props();
+	const ROLES = $derived(data.allowedRoles as OrgRole[]);
+	// Default role for newly-added members: lowest available for the org type.
+	const DEFAULT_ROLE = $derived(
+		data.org.isInternal ? 'org.staff' : 'org.member'
+	);
 	const PALETTE = [
 		'#ef7a6d',
 		'#e07a5f',
@@ -74,7 +84,6 @@
 	let addingMember = $state(false);
 	let memberSearch = $state('');
 	let busyMember = $state<string | null>(null);
-	let memberError = $state<string | null>(null);
 	let openRoleMenu = $state<string | null>(null);
 
 	const layoutUsers = $derived((data as unknown as LayoutShape).users ?? []);
@@ -94,7 +103,6 @@
 		extra?: Record<string, string>
 	): Promise<boolean> {
 		busyMember = `${action}:${userId}`;
-		memberError = null;
 		const fd = new FormData();
 		fd.append('userId', userId);
 		for (const [k, v] of Object.entries(extra ?? {})) fd.append(k, v);
@@ -109,14 +117,15 @@
 				await invalidateAll();
 				return true;
 			}
-			memberError =
+			const msg =
 				result.type === 'failure'
 					? (result.data as { message?: string } | undefined)?.message ?? 'Action failed.'
 					: result.type === 'error'
 						? result.error?.message ?? 'Action failed.'
-						: null;
+						: 'Action failed.';
+			showToast('err', msg);
 		} catch {
-			memberError = 'Network error.';
+			showToast('err', 'Network error.');
 		} finally {
 			busyMember = null;
 		}
@@ -124,7 +133,7 @@
 	}
 
 	async function addMember(userId: string) {
-		const ok = await postMember('memberAdd', userId, { role: 'member' });
+		const ok = await postMember('memberAdd', userId, { role: DEFAULT_ROLE });
 		if (ok) {
 			memberSearch = '';
 			addingMember = false;
@@ -360,7 +369,6 @@
 						onclick={() => {
 							addingMember = !addingMember;
 							memberSearch = '';
-							memberError = null;
 						}}
 					>
 						<Icon name="plus" size={13} /> Add member
@@ -408,24 +416,14 @@
 				</div>
 			</div>
 
-			{#if memberError}
-				<div
-					class="px-5 py-2 text-[12.5px] border-b border-border"
-					style:background="rgba(239,79,94,0.10)"
-					style:color="#ef7a6d"
-				>
-					{memberError}
-				</div>
-			{/if}
-
 			{#if data.members.length === 0}
 				<div class="px-5 py-8 text-center text-[12.5px] text-text-3">
 					No members yet — add someone above.
 				</div>
 			{:else}
 				{#each data.members as m (m.id)}
-					{@const role = (ROLES.includes(m.role as OrgRole) ? m.role : 'member') as OrgRole}
-					{@const meta = ROLE_META[role]}
+					{@const role = (ROLES.includes(m.role as OrgRole) ? m.role : DEFAULT_ROLE) as OrgRole}
+					{@const meta = ROLE_META[role] ?? { label: role, color: '#7c7c84' }}
 					<div
 						class="flex items-center gap-3 px-5 py-2.5 border-b border-border/40 last:border-b-0 text-[13px]"
 					>

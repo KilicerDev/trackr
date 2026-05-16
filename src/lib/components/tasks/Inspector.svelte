@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
+	import { page } from '$app/state';
+	import { showToast } from '$lib/toast.svelte';
 	import type { ActionResult } from '@sveltejs/kit';
 	import type { PriorityId, StatusId, Task } from '$lib/types';
 	import Drawer from '../Drawer.svelte';
@@ -49,8 +51,32 @@
 		return mockUserById(id);
 	}
 
+	// Whether the current user can edit fields on the currently-open task.
+	// Mirrors the server gate: edit.any (Trackr team / project.manager) or
+	// edit.own (creator). Reassigning is allowed for the same set today.
+	type LayoutShape = {
+		currentUserId?: string;
+		isTrackrTeam?: boolean;
+		projects?: { id: string; key: string }[];
+		memberRoles?: { projects?: Record<string, string> };
+	};
+
+	const canEdit = $derived.by(() => {
+		const t = task;
+		if (!t) return false;
+		const pd = page.data as LayoutShape;
+		if (pd.isTrackrTeam) return true;
+		if (t.createdBy && t.createdBy === pd.currentUserId) return true;
+		// Project manager on this specific project.
+		const projectId = pd.projects?.find((p) => p.key === t.project)?.id;
+		if (projectId) {
+			const role = pd.memberRoles?.projects?.[projectId];
+			if (role === 'project.manager') return true;
+		}
+		return false;
+	});
+
 	let savingField = $state<string | null>(null);
-	let saveError = $state<string | null>(null);
 
 	async function postAction(
 		action: 'update' | 'commentAdd' | 'timeLogAdd' | 'planSet',
@@ -59,7 +85,6 @@
 	): Promise<boolean> {
 		if (!draft) return false;
 		savingField = field;
-		saveError = null;
 		const fd = new FormData();
 		fd.append('id', draft.id);
 		for (const [k, v] of Object.entries(body)) {
@@ -78,12 +103,17 @@
 			});
 			const result: ActionResult = deserialize(await res.text());
 			if (result.type === 'failure') {
-				saveError =
-					(result.data as { message?: string } | undefined)?.message ?? 'Save failed.';
+				showToast(
+					'err',
+					(result.data as { message?: string } | undefined)?.message ?? 'Save failed.'
+				);
+				// Revert optimistic local mutations by re-fetching server state.
+				await invalidateAll();
 				return false;
 			}
 			if (result.type === 'error') {
-				saveError = result.error?.message ?? 'Save failed.';
+				showToast('err', result.error?.message ?? 'Save failed.');
+				await invalidateAll();
 				return false;
 			}
 			if (result.type === 'success') {
@@ -92,7 +122,8 @@
 			}
 			return false;
 		} catch {
-			saveError = 'Network error while saving.';
+			showToast('err', 'Network error while saving.');
+			await invalidateAll();
 			return false;
 		} finally {
 			savingField = null;
@@ -144,9 +175,8 @@
 	let draft = $state<Task | null>(null);
 	$effect(() => {
 		draft = task ? { ...task, assignees: task.assignees ?? [task.assignee] } : null;
-		// Reset the compose box and any in-flight error when the task changes.
+		// Reset the compose box when the task changes.
 		commentBody = '';
-		saveError = null;
 	});
 
 	type PopId = 'status' | 'priority' | 'assignees' | 'due' | 'estimate' | 'plan' | null;
@@ -254,22 +284,13 @@
 				<IconButton size={28} ariaLabel="Close" onclick={onclose}><Icon name="x" size={14} /></IconButton>
 			</div>
 		</div>
-		{#if saveError}
-			<div
-				class="px-5 py-2 text-[12px] border-b border-border"
-				style:background="rgba(239,79,94,0.10)"
-				style:color="#ef7a6d"
-			>
-				{saveError}
-			</div>
-		{/if}
-
 		<div class="flex-1 min-h-0 overflow-y-auto px-5 pt-4 pb-24">
 			<textarea
 				use:autosize={draft.title}
 				value={draft.title}
 				rows="1"
 				placeholder="Untitled"
+				readonly={!canEdit}
 				oninput={(e) => {
 					const el = e.currentTarget;
 					if (draft) draft.title = el.value;
@@ -302,7 +323,8 @@
 					<button
 						type="button"
 						onclick={() => toggle('status')}
-						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors {openPop === 'status' ? 'ring-2 ring-accent/40' : ''}"
+						disabled={!canEdit}
+						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border text-[12.5px] transition-colors disabled:opacity-60 disabled:cursor-not-allowed {canEdit ? 'hover:border-border-strong' : ''} {openPop === 'status' ? 'ring-2 ring-accent/40' : ''}"
 					>
 						<StatusDot status={draft.status} />
 						<span>{status.label}</span>
@@ -324,7 +346,8 @@
 					<button
 						type="button"
 						onclick={() => toggle('priority')}
-						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors {openPop === 'priority' ? 'ring-2 ring-accent/40' : ''}"
+						disabled={!canEdit}
+						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border text-[12.5px] transition-colors disabled:opacity-60 disabled:cursor-not-allowed {canEdit ? 'hover:border-border-strong' : ''} {openPop === 'priority' ? 'ring-2 ring-accent/40' : ''}"
 					>
 						{#if prio.bars > 0}
 							<PriorityBars priority={draft.priority} />
@@ -348,7 +371,8 @@
 					<button
 						type="button"
 						onclick={() => toggle('assignees')}
-						class="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors {openPop === 'assignees' ? 'ring-2 ring-accent/40' : ''}"
+						disabled={!canEdit}
+						class="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-surface border border-border text-[12.5px] transition-colors disabled:opacity-60 disabled:cursor-not-allowed {canEdit ? 'hover:border-border-strong' : ''} {openPop === 'assignees' ? 'ring-2 ring-accent/40' : ''}"
 					>
 						{#if assignees.length === 1}
 							<Avatar user={assignees[0]} size={18} />
@@ -382,7 +406,8 @@
 					<button
 						type="button"
 						onclick={() => toggle('due')}
-						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] transition-colors {draft.due ? 'bg-surface border border-border hover:border-border-strong' : 'border border-dashed border-border text-text-3 hover:text-text hover:border-border-strong'} {openPop === 'due' ? 'ring-2 ring-accent/40' : ''}"
+						disabled={!canEdit}
+						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] transition-colors disabled:opacity-60 disabled:cursor-not-allowed {draft.due ? 'bg-surface border border-border' : 'border border-dashed border-border text-text-3'} {canEdit ? (draft.due ? 'hover:border-border-strong' : 'hover:text-text hover:border-border-strong') : ''} {openPop === 'due' ? 'ring-2 ring-accent/40' : ''}"
 					>
 						<Icon name="calendar" size={13} />
 						{#if draft.due}
@@ -437,7 +462,8 @@
 					<button
 						type="button"
 						onclick={() => toggle('estimate')}
-						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] transition-colors {draft.estimate ? 'bg-surface border border-border hover:border-border-strong' : 'border border-dashed border-border text-text-3 hover:text-text hover:border-border-strong'} {openPop === 'estimate' ? 'ring-2 ring-accent/40' : ''}"
+						disabled={!canEdit}
+						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] transition-colors disabled:opacity-60 disabled:cursor-not-allowed {draft.estimate ? 'bg-surface border border-border' : 'border border-dashed border-border text-text-3'} {canEdit ? (draft.estimate ? 'hover:border-border-strong' : 'hover:text-text hover:border-border-strong') : ''} {openPop === 'estimate' ? 'ring-2 ring-accent/40' : ''}"
 					>
 						{#if draft.estimate}
 							<span class="text-text-3">Est</span>
@@ -464,9 +490,10 @@
 				value={draft.description ?? ''}
 				rows="3"
 				placeholder="Add a description…"
+				readonly={!canEdit}
 				oninput={(e) => {
 					const el = e.currentTarget;
-					if (draft) draft.description = el.value || null;
+					if (draft) draft.description = el.value || undefined;
 					el.style.height = 'auto';
 					el.style.height = el.scrollHeight + 'px';
 				}}

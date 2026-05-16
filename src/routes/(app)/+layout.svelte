@@ -5,14 +5,33 @@
 	import CommandPalette from '$lib/components/CommandPalette.svelte';
 	import CreateTaskModal from '$lib/components/tasks/CreateTaskModal.svelte';
 	import CreateProjectModal from '$lib/components/projects/CreateProjectModal.svelte';
+	import Toast from '$lib/components/Toast.svelte';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
+
+	$effect(() => {
+		const p = data.preferences;
+		if (!p || typeof document === 'undefined') return;
+		const root = document.documentElement;
+		root.dataset.theme = p.theme === 'system' ? 'dark' : p.theme;
+		root.dataset.density = p.density;
+		root.style.setProperty('--accent', p.accent);
+	});
 
 	let paletteOpen = $state(false);
 	let createTaskOpen = $state(false);
 	let createProjectOpen = $state(false);
 	let logoutForm = $state<HTMLFormElement | null>(null);
+
+	const perms = $derived(new Set(data.effectivePermissions ?? []));
+
+	const hiddenPaletteIds = $derived(
+		new Set<string>([
+			...(perms.has('project.tasks.create') ? [] : ['create.task']),
+			...(perms.has('project.create') ? [] : ['create.project'])
+		])
+	);
 
 	function onKeydown(e: KeyboardEvent) {
 		if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -39,10 +58,10 @@
 				void goto('/wiki');
 				return;
 			case 'create.task':
-				createTaskOpen = true;
+				if (perms.has('project.tasks.create')) createTaskOpen = true;
 				return;
 			case 'create.project':
-				createProjectOpen = true;
+				if (perms.has('project.create')) createProjectOpen = true;
 				return;
 			case 'me.signout':
 				logoutForm?.submit();
@@ -73,6 +92,7 @@
 	open={paletteOpen}
 	onclose={() => (paletteOpen = false)}
 	onaction={handleAction}
+	hiddenIds={hiddenPaletteIds}
 />
 
 <CreateTaskModal
@@ -90,3 +110,5 @@
 />
 
 <form bind:this={logoutForm} method="post" action="/logout" class="hidden"></form>
+
+<Toast />

@@ -18,6 +18,7 @@
 	import { POPOVER_IN } from '$lib/motion';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
+	import { showToast } from '$lib/toast.svelte';
 	import type { ActionResult } from '@sveltejs/kit';
 	import type { ProjectId, Task } from '$lib/types';
 	import type { PageData } from './$types';
@@ -70,7 +71,6 @@
 
 	let addingMember = $state(false);
 	let memberSearch = $state('');
-	let memberError = $state<string | null>(null);
 	let busy = $state<string | null>(null);
 	let openMemberMenu = $state<string | null>(null);
 
@@ -151,14 +151,15 @@
 	});
 
 	async function postMember(
-		action: 'memberAdd' | 'memberRemove' | 'leadSet',
-		userId: string
+		action: 'memberAdd' | 'memberRemove' | 'leadSet' | 'memberSetRole',
+		userId: string,
+		extra?: Record<string, string>
 	): Promise<boolean> {
 		busy = `${action}:${userId}`;
-		memberError = null;
 		const fd = new FormData();
 		fd.append('userId', userId);
-		if (action === 'memberAdd') fd.append('role', 'member');
+		if (action === 'memberAdd') fd.append('role', 'project.member');
+		for (const [k, v] of Object.entries(extra ?? {})) fd.append(k, v);
 		try {
 			const res = await fetch(`?/${action}`, {
 				method: 'POST',
@@ -170,14 +171,15 @@
 				await invalidateAll();
 				return true;
 			}
-			memberError =
+			const msg =
 				result.type === 'failure'
 					? (result.data as { message?: string } | undefined)?.message ?? 'Action failed.'
 					: result.type === 'error'
 						? result.error?.message ?? 'Action failed.'
-						: null;
+						: 'Action failed.';
+			showToast('err', msg);
 		} catch {
-			memberError = 'Network error.';
+			showToast('err', 'Network error.');
 		} finally {
 			busy = null;
 		}
@@ -200,6 +202,17 @@
 	async function clearLead() {
 		openMemberMenu = null;
 		await postMember('leadSet', '');
+	}
+
+	const PROJECT_ROLES = [
+		{ id: 'project.manager', label: 'Manager', color: '#ef7a6d' },
+		{ id: 'project.member', label: 'Member', color: '#7a9cf0' },
+		{ id: 'project.viewer', label: 'Viewer', color: '#9aa4b2' }
+	] as const;
+
+	async function setRole(userId: string, role: string) {
+		openMemberMenu = null;
+		await postMember('memberSetRole', userId, { role });
 	}
 
 	async function removeMember(userId: string, name: string) {
@@ -387,9 +400,28 @@
 									use:clickOutside={() => (openMemberMenu = null)}
 									use:autoPlace
 									in:fly={POPOVER_IN}
-									class="absolute top-full mt-1.5 z-40 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[180px]"
+									class="absolute top-full mt-1.5 z-40 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[200px]"
 									style:box-shadow="var(--shadow-lg)"
 								>
+									<div class="px-2 pt-1 pb-1 text-[10.5px] uppercase tracking-[0.08em] text-text-4">
+										Role
+									</div>
+									{#each PROJECT_ROLES as r (r.id)}
+										{@const active = m.role === r.id}
+										<button
+											type="button"
+											onclick={() => setRole(m.id, r.id)}
+											disabled={busy === `memberSetRole:${m.id}` || active}
+											class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text disabled:opacity-100 disabled:cursor-default"
+										>
+											<span class="w-1.5 h-1.5 rounded-full" style:background={r.color}></span>
+											<span class={active ? 'text-text font-medium' : ''}>{r.label}</span>
+											{#if active}
+												<span class="ml-auto text-text-3"><Icon name="check" size={12} /></span>
+											{/if}
+										</button>
+									{/each}
+									<div class="my-1 border-t border-border/60"></div>
 									{#if m.id === p.leadId}
 										<button
 											type="button"
@@ -429,7 +461,6 @@
 							onclick={() => {
 								addingMember = !addingMember;
 								memberSearch = '';
-								memberError = null;
 							}}
 							class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-dashed border-border text-[12px] text-text-3 hover:text-text hover:border-border-strong transition-colors"
 						>
@@ -480,16 +511,6 @@
 					</div>
 				</div>
 
-				{#if memberError}
-					<div
-						class="mt-3 rounded-lg border px-3 py-2 text-[12px]"
-						style:border-color="rgba(239,79,94,0.35)"
-						style:background="rgba(239,79,94,0.08)"
-						style:color="#ef7a6d"
-					>
-						{memberError}
-					</div>
-				{/if}
 			</div>
 		</div>
 

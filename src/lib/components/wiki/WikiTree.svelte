@@ -1,14 +1,30 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import Icon from '../Icon.svelte';
-	import { WIKI_PAGES } from '$lib/data';
-	import type { WikiPage } from '$lib/types';
+	import Popover from '../Popover.svelte';
 
-	function children(parent: string | null): WikiPage[] {
-		return WIKI_PAGES.filter((p) => p.parent === parent);
+	type Node = {
+		id: string;
+		parentId: string | null;
+		title: string;
+		icon: string;
+		isFolder: boolean;
+		sortOrder: number;
+	};
+
+	interface Props {
+		oncreate: (parentId: string | null, isFolder: boolean) => void;
 	}
+	let { oncreate }: Props = $props();
 
-	let expanded = $state(new Set<string>(['w-eng', 'w-design', 'w-people']));
+	const tree = $derived(((page.data as { tree?: Node[] }).tree ?? []) as Node[]);
+	const childrenOf = $derived((parent: string | null): Node[] =>
+		tree.filter((p) => p.parentId === parent)
+	);
+
+	let expanded = $state(new Set<string>());
+	let search = $state('');
+	let createOpen = $state(false);
 
 	function toggle(id: string) {
 		const n = new Set(expanded);
@@ -16,63 +32,147 @@
 		expanded = n;
 	}
 
-	let activeId = $derived(page.url.pathname.split('/').pop());
+	const activeId = $derived(page.url.pathname.split('/').pop());
 
-	let topLevel = $derived(children(null));
+	const topLevel = $derived(childrenOf(null));
+
+	const filtered = $derived.by(() => {
+		const q = search.trim().toLowerCase();
+		if (!q) return null;
+		return new Set(
+			tree.filter((n) => n.title.toLowerCase().includes(q)).map((n) => n.id)
+		);
+	});
+
+	function visible(node: Node, matched: Set<string> | null): boolean {
+		if (!matched) return true;
+		if (matched.has(node.id)) return true;
+		// keep ancestors of matched nodes
+		const stack = [node.id];
+		while (stack.length) {
+			const cur = stack.pop()!;
+			for (const n of tree) if (n.parentId === cur) stack.push(n.id);
+			if (matched.has(cur)) return true;
+		}
+		return false;
+	}
 </script>
 
-{#snippet row(p: WikiPage, depth: number)}
-	{@const hasKids = children(p.id).length > 0}
-	{@const isExpanded = expanded.has(p.id)}
-	{@const active = activeId === p.id}
-	<div>
-		<a
-			href="/wiki/{p.id}"
-			class="flex items-center gap-1.5 py-1 rounded-md hover:bg-[var(--row-hover)] transition-colors text-[13px] {active ? 'bg-[var(--row-active)] text-text' : 'text-text-2'}"
-			style:padding-left="{10 + depth * 14}px"
-			style:padding-right="8px"
-			onclick={hasKids ? (e) => { e.preventDefault(); toggle(p.id); } : undefined}
-		>
-			{#if hasKids}
-				<button
-					type="button"
-					onclick={(e) => { e.preventDefault(); e.stopPropagation(); toggle(p.id); }}
-					class="w-3.5 h-3.5 grid place-items-center text-text-3 hover:text-text transition-transform {isExpanded ? '' : '-rotate-90'}"
-				>
-					<Icon name="chevron" size={10} />
-				</button>
-			{:else}
-				<span class="w-3.5"></span>
+{#snippet row(p: Node, depth: number, matched: Set<string> | null)}
+	{#if visible(p, matched)}
+		{@const kids = childrenOf(p.id)}
+		{@const hasKids = kids.length > 0}
+		{@const isExpanded = expanded.has(p.id) || (matched !== null && hasKids)}
+		{@const active = activeId === p.id}
+		<div>
+			<a
+				href="/wiki/{p.id}"
+				class="group flex items-center gap-1.5 py-1 rounded-md hover:bg-surface transition-colors text-[13px] {active
+					? 'bg-surface-2 text-text font-medium'
+					: 'text-text-2'}"
+				style:padding-left="{10 + depth * 14}px"
+				style:padding-right="6px"
+			>
+				{#if hasKids}
+					<button
+						type="button"
+						onclick={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							toggle(p.id);
+						}}
+						class="w-3.5 h-3.5 grid place-items-center text-text-3 hover:text-text transition-transform {isExpanded
+							? ''
+							: '-rotate-90'}"
+						aria-label="Toggle"
+					>
+						<Icon name="chevron" size={10} />
+					</button>
+				{:else}
+					<span class="w-3.5"></span>
+				{/if}
+				<span class="text-text-3 {active ? 'text-accent' : ''}">
+					<Icon name={p.icon} size={13} />
+				</span>
+				<span class="truncate flex-1">{p.title}</span>
+				{#if p.isFolder}
+					<button
+						type="button"
+						onclick={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							expanded = new Set(expanded).add(p.id);
+							oncreate(p.id, false);
+						}}
+						class="opacity-0 group-hover:opacity-100 w-4 h-4 grid place-items-center rounded text-text-3 hover:text-text hover:bg-bg-elev transition"
+						aria-label="Add page here"
+					>
+						<Icon name="plus" size={11} />
+					</button>
+				{/if}
+			</a>
+			{#if hasKids && isExpanded}
+				{#each kids as kid (kid.id)}
+					{@render row(kid, depth + 1, matched)}
+				{/each}
 			{/if}
-			<span class="text-text-3 {active ? 'text-accent' : ''}">
-				<Icon name={p.icon} size={13} />
-			</span>
-			<span class="truncate">{p.title}</span>
-		</a>
-		{#if hasKids && isExpanded}
-			{#each children(p.id) as kid (kid.id)}
-				{@render row(kid, depth + 1)}
-			{/each}
-		{/if}
-	</div>
+		</div>
+	{/if}
 {/snippet}
 
 <aside class="border-r border-border bg-bg-elev flex flex-col min-h-0" style:width="260px">
-	<div class="flex items-center px-4 pt-4 pb-2">
+	<div class="flex items-center px-4 pt-4 pb-2 relative">
 		<span class="text-[12.5px] font-semibold uppercase tracking-[0.08em] text-text-4">Wiki</span>
-		<button class="ml-auto w-6 h-6 grid place-items-center rounded-md text-text-3 hover:text-text hover:bg-surface transition-colors" aria-label="New page">
+		<button
+			onclick={() => (createOpen = !createOpen)}
+			class="ml-auto w-6 h-6 grid place-items-center rounded-md text-text-3 hover:text-text hover:bg-surface transition-colors"
+			aria-label="New"
+		>
 			<Icon name="plus" size={12} />
 		</button>
+		<Popover open={createOpen} onclose={() => (createOpen = false)} align="right" minWidth={180}>
+			<button
+				type="button"
+				onclick={() => {
+					createOpen = false;
+					oncreate(null, false);
+				}}
+				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
+			>
+				<span class="grid place-items-center w-4 h-4 text-text-3"><Icon name="book" size={13} /></span>
+				<span>New page</span>
+			</button>
+			<button
+				type="button"
+				onclick={() => {
+					createOpen = false;
+					oncreate(null, true);
+				}}
+				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
+			>
+				<span class="grid place-items-center w-4 h-4 text-text-3"><Icon name="folder" size={13} /></span>
+				<span>New folder</span>
+			</button>
+		</Popover>
 	</div>
 	<div class="px-3 pb-3">
 		<div class="flex items-center gap-2 bg-surface border border-border rounded-lg px-2.5 py-1.5 text-[12.5px]">
 			<span class="text-text-3"><Icon name="search" size={12} /></span>
-			<input type="text" placeholder="Search pages…" class="bg-transparent border-0 outline-none flex-1 placeholder:text-text-3" />
+			<input
+				type="text"
+				bind:value={search}
+				placeholder="Search pages…"
+				class="bg-transparent border-0 outline-none flex-1 placeholder:text-text-3"
+			/>
 		</div>
 	</div>
 	<div class="flex-1 overflow-y-auto px-1.5 pb-3">
-		{#each topLevel as p (p.id)}
-			{@render row(p, 0)}
-		{/each}
+		{#if topLevel.length === 0}
+			<div class="px-3 py-4 text-[12px] text-text-4">No pages yet.</div>
+		{:else}
+			{#each topLevel as p (p.id)}
+				{@render row(p, 0, filtered)}
+			{/each}
+		{/if}
 	</div>
 </aside>

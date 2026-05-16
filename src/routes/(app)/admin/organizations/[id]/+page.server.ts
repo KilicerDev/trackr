@@ -3,10 +3,23 @@ import { and, count, desc, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { organization, organizationMember, project } from '$lib/server/db/app.schema';
 import { user as userTable } from '$lib/server/db/auth.schema';
-import { isAdminLike } from '$lib/roles';
 import type { PageServerLoad } from './$types';
 
-const ALLOWED_ROLES = new Set(['owner', 'admin', 'member']);
+// Role IDs assignable on each org type. Internal-only roles (superadmin /
+// admin / staff) belong exclusively to the Trackr internal org; client orgs
+// get the two client-side roles. The /admin/+layout.server.ts guard already
+// ensured the caller has admin.access.
+const INTERNAL_ROLES = new Set(['org.superadmin', 'org.admin', 'org.staff']);
+const CLIENT_ROLES = new Set(['org.client', 'org.member']);
+
+function allowedRoles(isInternal: boolean): Set<string> {
+	return isInternal ? INTERNAL_ROLES : CLIENT_ROLES;
+}
+
+// Highest role on each org type — used for the "last admin" check that
+// prevents leaving an org without anyone holding the top role.
+const TOP_ROLE_FOR_INTERNAL = ['org.superadmin', 'org.admin'];
+const TOP_ROLE_FOR_CLIENT = ['org.client'];
 
 function initials(name: string): string {
 	return (
@@ -25,14 +38,7 @@ function userColor(id: string): string {
 	return `hsl(${h % 360} 55% 60%)`;
 }
 
-function roleOf(u: unknown): string | null | undefined {
-	return (u as { role?: string | null } | undefined)?.role;
-}
-
-export const load: PageServerLoad = async ({ params, locals }) => {
-	if (!locals.user) redirect(303, '/sign-in');
-	if (!isAdminLike(roleOf(locals.user))) redirect(303, '/');
-
+export const load: PageServerLoad = async ({ params }) => {
 	const id = params.id;
 	if (!id) throw error(404, 'Organization not found');
 
@@ -83,27 +89,42 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			name: org.name,
 			description: org.description,
 			color: org.color,
+			isInternal: org.isInternal,
 			archivedAt: org.archivedAt,
 			createdAt: org.createdAt,
 			updatedAt: org.updatedAt
 		},
 		projects,
-		members
+		members,
+		allowedRoles: Array.from(allowedRoles(org.isInternal))
 	};
 };
 
-async function countOwners(orgId: string): Promise<number> {
+async function loadOrgOrFail(orgId: string) {
 	const [row] = await db
-		.select({ total: count() })
-		.from(organizationMember)
-		.where(and(eq(organizationMember.orgId, orgId), eq(organizationMember.role, 'owner')));
-	return Number(row?.total ?? 0);
+		.select({ id: organization.id, isInternal: organization.isInternal })
+		.from(organization)
+		.where(eq(organization.id, orgId))
+		.limit(1);
+	if (!row) throw error(404, 'Organization not found');
+	return row;
+}
+
+async function countTopRoleHolders(orgId: string, isInternal: boolean): Promise<number> {
+	const tops = isInternal ? TOP_ROLE_FOR_INTERNAL : TOP_ROLE_FOR_CLIENT;
+	let total = 0;
+	for (const r of tops) {
+		const [row] = await db
+			.select({ total: count() })
+			.from(organizationMember)
+			.where(and(eq(organizationMember.orgId, orgId), eq(organizationMember.role, r)));
+		total += Number(row?.total ?? 0);
+	}
+	return total;
 }
 
 export const actions: Actions = {
-	update: async ({ request, params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!isAdminLike(roleOf(locals.user))) throw error(403, 'Admins only');
+	update: async ({ request, params }) => {
 		if (!params.id) return fail(400, { message: 'Missing org id.' });
 
 		const form = await request.formData();
@@ -123,7 +144,6 @@ export const actions: Actions = {
 		if (form.has('slug')) {
 			const v = String(form.get('slug')).trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
 			if (!v) return fail(400, { message: 'Slug cannot be empty.' });
-			// Ensure slug uniqueness aside from the current row.
 			const [clash] = await db
 				.select({ id: organization.id })
 				.from(organization)
@@ -143,11 +163,8 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	archive: async ({ params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!isAdminLike(roleOf(locals.user))) throw error(403, 'Admins only');
+	archive: async ({ params }) => {
 		if (!params.id) return fail(400, { message: 'Missing org id.' });
-
 		await db
 			.update(organization)
 			.set({ archivedAt: new Date() })
@@ -155,11 +172,8 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	unarchive: async ({ params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!isAdminLike(roleOf(locals.user))) throw error(403, 'Admins only');
+	unarchive: async ({ params }) => {
 		if (!params.id) return fail(400, { message: 'Missing org id.' });
-
 		await db
 			.update(organization)
 			.set({ archivedAt: null })
@@ -167,16 +181,24 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	memberAdd: async ({ request, params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!isAdminLike(roleOf(locals.user))) throw error(403, 'Admins only');
+	memberAdd: async ({ request, params }) => {
 		if (!params.id) return fail(400, { message: 'Missing org id.' });
+
+		const org = await loadOrgOrFail(params.id);
+		const allowed = allowedRoles(org.isInternal);
 
 		const form = await request.formData();
 		const userId = String(form.get('userId') ?? '').trim();
-		const role = String(form.get('role') ?? 'member');
+		// Default to the lowest meaningful role for the org type.
+		const requestedRole = String(
+			form.get('role') ?? (org.isInternal ? 'org.staff' : 'org.member')
+		);
 		if (!userId) return fail(400, { message: 'Missing user.' });
-		if (!ALLOWED_ROLES.has(role)) return fail(400, { message: 'Invalid role.' });
+		if (!allowed.has(requestedRole)) {
+			return fail(400, {
+				message: `Role "${requestedRole}" is not valid on this organization.`
+			});
+		}
 
 		const [u] = await db
 			.select({ id: userTable.id })
@@ -188,10 +210,10 @@ export const actions: Actions = {
 		try {
 			await db
 				.insert(organizationMember)
-				.values({ orgId: params.id, userId, role })
+				.values({ orgId: params.id, userId, role: requestedRole })
 				.onConflictDoUpdate({
 					target: [organizationMember.orgId, organizationMember.userId],
-					set: { role }
+					set: { role: requestedRole }
 				});
 		} catch (err) {
 			console.error('memberAdd failed', err);
@@ -200,19 +222,26 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	memberSetRole: async ({ request, params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!isAdminLike(roleOf(locals.user))) throw error(403, 'Admins only');
+	memberSetRole: async ({ request, params }) => {
 		if (!params.id) return fail(400, { message: 'Missing org id.' });
+
+		const org = await loadOrgOrFail(params.id);
+		const allowed = allowedRoles(org.isInternal);
 
 		const form = await request.formData();
 		const userId = String(form.get('userId') ?? '').trim();
 		const role = String(form.get('role') ?? '');
 		if (!userId) return fail(400, { message: 'Missing user.' });
-		if (!ALLOWED_ROLES.has(role)) return fail(400, { message: 'Invalid role.' });
+		if (!allowed.has(role)) {
+			return fail(400, {
+				message: `Role "${role}" is not valid on this organization.`
+			});
+		}
 
-		// If we're demoting an owner, make sure at least one owner remains.
-		if (role !== 'owner') {
+		// Last-admin protection: if we'd be demoting the only top-role holder,
+		// refuse. UI should promote someone else first.
+		const tops = org.isInternal ? TOP_ROLE_FOR_INTERNAL : TOP_ROLE_FOR_CLIENT;
+		if (!tops.includes(role)) {
 			const [current] = await db
 				.select({ role: organizationMember.role })
 				.from(organizationMember)
@@ -223,11 +252,11 @@ export const actions: Actions = {
 					)
 				)
 				.limit(1);
-			if (current?.role === 'owner') {
-				const owners = await countOwners(params.id);
-				if (owners <= 1) {
+			if (current && tops.includes(current.role)) {
+				const remaining = await countTopRoleHolders(params.id, org.isInternal);
+				if (remaining <= 1) {
 					return fail(409, {
-						message: 'This is the last owner — promote someone else first.'
+						message: 'This is the last top-role holder — promote someone else first.'
 					});
 				}
 			}
@@ -242,10 +271,11 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	memberRemove: async ({ request, params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!isAdminLike(roleOf(locals.user))) throw error(403, 'Admins only');
+	memberRemove: async ({ request, params }) => {
 		if (!params.id) return fail(400, { message: 'Missing org id.' });
+
+		const org = await loadOrgOrFail(params.id);
+		const tops = org.isInternal ? TOP_ROLE_FOR_INTERNAL : TOP_ROLE_FOR_CLIENT;
 
 		const form = await request.formData();
 		const userId = String(form.get('userId') ?? '').trim();
@@ -259,11 +289,12 @@ export const actions: Actions = {
 			)
 			.limit(1);
 		if (!current) return fail(404, { message: 'Member not found.' });
-		if (current.role === 'owner') {
-			const owners = await countOwners(params.id);
-			if (owners <= 1) {
+
+		if (tops.includes(current.role)) {
+			const remaining = await countTopRoleHolders(params.id, org.isInternal);
+			if (remaining <= 1) {
 				return fail(409, {
-					message: 'Cannot remove the last owner. Promote another member first.'
+					message: 'Cannot remove the last top-role holder. Promote another member first.'
 				});
 			}
 		}

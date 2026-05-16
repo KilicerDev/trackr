@@ -7,6 +7,7 @@
         taskCount?: number;
         projects?: { id: string; key: string; name: string; color: string }[];
         favoriteProjectIds?: string[];
+        isAdmin?: boolean;
     };
 
     const taskCount = $derived((page.data as LayoutShape).taskCount ?? 0);
@@ -15,6 +16,7 @@
         new Set((page.data as LayoutShape).favoriteProjectIds ?? [])
     );
     const favorites = $derived(projectList.filter((p) => favoriteIds.has(p.id)));
+    const isAdmin = $derived(!!(page.data as LayoutShape).isAdmin);
 
     const workspaceItems = $derived([
         { key: "week", label: "My Week", icon: "calendar", href: "/week" },
@@ -175,6 +177,7 @@
             {/if}
         </div>
 
+        {#if isAdmin}
         <div class="py-1.5">
             <div
                 class="px-3 pt-2.5 pb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-text-4"
@@ -202,6 +205,7 @@
                 </a>
             {/each}
         </div>
+        {/if}
     </div>
 
 </aside>

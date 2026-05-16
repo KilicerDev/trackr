@@ -9,8 +9,9 @@ import {
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
 import { loadTasks } from '$lib/server/tasks';
+import { assertCan } from '$lib/server/permissions';
 
-const ALLOWED_MEMBER_ROLES = new Set(['owner', 'admin', 'member']);
+const ALLOWED_MEMBER_ROLES = new Set(['project.manager', 'project.member', 'project.viewer']);
 
 function initials(name: string): string {
 	return name
@@ -36,6 +37,11 @@ export const load: ServerLoad = async ({ params, locals }) => {
 
 	const [row] = await db.select().from(project).where(eq(project.id, id)).limit(1);
 	if (!row) throw error(404, 'Project not found');
+
+	// Authorise read access. Trackr team is granted via their internal-org
+	// role (project.tasks.read); project members get it via their explicit
+	// project_member row.
+	await assertCan(locals, 'project.tasks.read', { projectId: id });
 
 	const memberRows = await db
 		.select({
@@ -103,6 +109,7 @@ export const actions: Actions = {
 	archive: async ({ params, locals }) => {
 		if (!locals.user) throw error(401, 'Not authenticated');
 		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		await assertCan(locals, 'project.archive', { projectId: params.id });
 		await db.update(project).set({ archivedAt: new Date() }).where(eq(project.id, params.id));
 		return { success: true };
 	},
@@ -110,6 +117,7 @@ export const actions: Actions = {
 	unarchive: async ({ params, locals }) => {
 		if (!locals.user) throw error(401, 'Not authenticated');
 		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		await assertCan(locals, 'project.archive', { projectId: params.id });
 		await db.update(project).set({ archivedAt: null }).where(eq(project.id, params.id));
 		return { success: true };
 	},
@@ -141,6 +149,10 @@ export const actions: Actions = {
 	delete: async ({ params, locals }) => {
 		if (!locals.user) throw error(401, 'Not authenticated');
 		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		// project.archive is the closest existing perm; project deletion is
+		// strictly more destructive but we don't model a separate perm yet.
+		// Restrict to managers and Trackr admins via project.archive.
+		await assertCan(locals, 'project.archive', { projectId: params.id });
 		// FK cascades take care of project_member, tasks, task_assignee, etc.
 		await db.delete(project).where(eq(project.id, params.id));
 		return { success: true };
@@ -149,10 +161,11 @@ export const actions: Actions = {
 	memberAdd: async ({ request, params, locals }) => {
 		if (!locals.user) throw error(401, 'Not authenticated');
 		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		await assertCan(locals, 'project.members.manage', { projectId: params.id });
 
 		const form = await request.formData();
 		const userId = String(form.get('userId') ?? '').trim();
-		const role = String(form.get('role') ?? 'member');
+		const role = String(form.get('role') ?? 'project.member');
 		if (!userId) return fail(400, { message: 'Missing user.' });
 		if (!ALLOWED_MEMBER_ROLES.has(role)) return fail(400, { message: 'Invalid role.' });
 
@@ -177,6 +190,7 @@ export const actions: Actions = {
 	leadSet: async ({ request, params, locals }) => {
 		if (!locals.user) throw error(401, 'Not authenticated');
 		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		await assertCan(locals, 'project.members.manage', { projectId: params.id });
 
 		const form = await request.formData();
 		const userId = String(form.get('userId') ?? '').trim();
@@ -210,9 +224,30 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
+	memberSetRole: async ({ request, params, locals }) => {
+		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		await assertCan(locals, 'project.members.manage', { projectId: params.id });
+
+		const form = await request.formData();
+		const userId = String(form.get('userId') ?? '').trim();
+		const role = String(form.get('role') ?? '');
+		if (!userId) return fail(400, { message: 'Missing user.' });
+		if (!ALLOWED_MEMBER_ROLES.has(role)) return fail(400, { message: 'Invalid role.' });
+
+		await db
+			.update(projectMember)
+			.set({ role })
+			.where(
+				and(eq(projectMember.projectId, params.id), eq(projectMember.userId, userId))
+			);
+		return { success: true };
+	},
+
 	memberRemove: async ({ request, params, locals }) => {
 		if (!locals.user) throw error(401, 'Not authenticated');
 		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		await assertCan(locals, 'project.members.manage', { projectId: params.id });
 
 		const form = await request.formData();
 		const userId = String(form.get('userId') ?? '').trim();
