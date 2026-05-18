@@ -21,6 +21,7 @@ import {
 } from '$lib/server/tickets';
 import { notify } from '$lib/server/notify';
 import { ticketRecipients } from '$lib/server/notify-recipients';
+import { getPreferences } from '$lib/server/preferences';
 
 export const load: ServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
@@ -54,7 +55,14 @@ export const load: ServerLoad = async ({ locals }) => {
 		tickets = [...anyRows, ...ownRows];
 	}
 
-	return { tickets, canCreateTicket: await anyCreatePerm(locals, myOrgIds, trackrTeam) };
+	const preferences = await getPreferences(locals.user.id);
+	const savedView = (preferences.viewState?.tickets ?? {}) as Record<string, unknown>;
+
+	return {
+		tickets,
+		canCreateTicket: await anyCreatePerm(locals, myOrgIds, trackrTeam),
+		savedView
+	};
 };
 
 async function anyCreatePerm(

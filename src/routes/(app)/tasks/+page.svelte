@@ -8,7 +8,7 @@
 	import type { ProjectId, StatusId, Task } from '$lib/types';
 	import type { PageData } from './$types';
 	import { page } from '$app/state';
-	import { saveView } from '$lib/viewState';
+	import { readView, saveView } from '$lib/viewState';
 
 	let { data }: { data: PageData } = $props();
 
@@ -21,8 +21,13 @@
 		sub?: SubGroup;
 		filters?: Record<string, string[]>;
 	};
-	const saved = ((data.preferences?.viewState as Record<string, unknown> | undefined)?.tasks ??
-		{}) as SavedTasksView;
+	// localStorage cache wins over the server snapshot — it's mirrored on
+	// every saveView() call so it always reflects the latest in-tab change,
+	// even before the debounced server write has flushed.
+	const saved: SavedTasksView = {
+		...((data.savedView ?? {}) as SavedTasksView),
+		...readView<SavedTasksView>('tasks')
+	};
 	const urlView = page.url.searchParams.get('view');
 
 	// URL ?view= wins on first load (so links/bookmarks work) but doesn't

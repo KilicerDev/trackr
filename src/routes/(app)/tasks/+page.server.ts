@@ -12,15 +12,23 @@ import {
 import { user } from '$lib/server/db/auth.schema';
 import { loadTasks } from '$lib/server/tasks';
 import { accessibleProjectIds, assertCan, can } from '$lib/server/permissions';
+import { getPreferences } from '$lib/server/preferences';
 
 export const load: ServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
 	const access = accessibleProjectIds(locals);
-	const tasks = await loadTasks({
-		plannerUserId: locals.user.id,
-		projectIds: access.all ? undefined : [...access.ids]
-	});
-	return { tasks };
+	const [tasks, preferences] = await Promise.all([
+		loadTasks({
+			plannerUserId: locals.user.id,
+			projectIds: access.all ? undefined : [...access.ids]
+		}),
+		getPreferences(locals.user.id)
+	]);
+	// Returned at the page level (not the layout) so SvelteKit re-runs this
+	// load on every revisit to /tasks — keeping savedView fresh without a
+	// hard reload.
+	const savedView = (preferences.viewState?.tasks ?? {}) as Record<string, unknown>;
+	return { tasks, savedView };
 };
 
 async function resolveTaskByDisplayId(displayId: string) {

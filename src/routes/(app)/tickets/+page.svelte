@@ -6,14 +6,14 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { saveView } from '$lib/viewState';
+	import { readView, saveView } from '$lib/viewState';
 	import type { TicketRow } from '$lib/server/tickets';
 
 	type PageData = {
 		tickets: TicketRow[];
 		canCreateTicket: boolean;
 		orgs?: { id: string; name: string; slug: string; color: string }[];
-		preferences?: { viewState?: Record<string, unknown> };
+		savedView?: Record<string, unknown>;
 	};
 
 	let { data }: { data: PageData } = $props();
@@ -23,8 +23,11 @@
 		group?: GroupBy;
 		filters?: Record<string, string[]>;
 	};
-	const saved = ((data.preferences?.viewState as Record<string, unknown> | undefined)?.tickets ??
-		{}) as SavedView;
+	// localStorage cache wins over the server snapshot — see /tasks for rationale.
+	const saved: SavedView = {
+		...((data.savedView ?? {}) as SavedView),
+		...readView<SavedView>('tickets')
+	};
 
 	let group = $state<GroupBy>(saved.group ?? 'status');
 	let filters = $state<Record<string, string[]>>(saved.filters ?? {});
