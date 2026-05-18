@@ -136,9 +136,6 @@
 				{/if}
 			</Popover>
 		</div>
-		<IconButton ariaLabel="Messages">
-			<Icon name="msg" size={15} />
-		</IconButton>
 		<div class="w-px h-5 bg-border mx-1"></div>
 		<div class="relative">
 			<button

@@ -42,6 +42,12 @@
 		}
 	}
 
+	$effect(() => {
+		const open = () => (paletteOpen = true);
+		window.addEventListener('trackr:open-palette', open);
+		return () => window.removeEventListener('trackr:open-palette', open);
+	});
+
 	function handleAction(id: string) {
 		switch (id) {
 			case 'nav.week':

@@ -116,6 +116,7 @@
 
     <button
         type="button"
+        onclick={() => window.dispatchEvent(new CustomEvent("trackr:open-palette"))}
         class="mx-3 mb-3.5 mt-1 flex items-center gap-2 bg-surface border border-border rounded-lg px-2.5 py-2 text-text-3 text-[14px] hover:text-text-2 transition-colors"
     >
         <Icon name="search" size={14} />
