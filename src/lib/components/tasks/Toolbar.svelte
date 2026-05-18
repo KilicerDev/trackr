@@ -102,6 +102,24 @@
 	function valuesPopFor(field: string): string[] {
 		return filters[field] ?? [];
 	}
+
+	// Resolve a raw filter value (status id, user id, project key, …) to the
+	// human label shown in the chip. Falls back to the raw value if no match —
+	// better to surface a stale id than to blank the chip out.
+	function valueLabel(field: string, value: string): string {
+		if (field === 'status') return TRACKR_STATUSES.find((s) => s.id === value)?.label ?? value;
+		if (field === 'priority') return TRACKR_PRIORITIES.find((p) => p.id === value)?.label ?? value;
+		if (field === 'assignee') {
+			const u = ((page.data as LayoutData).users ?? []).find((x) => x.id === value);
+			return u?.name ?? value;
+		}
+		if (field === 'project') {
+			const p = ((page.data as LayoutData).projects ?? []).find((x) => x.key === value);
+			return p?.name ?? value;
+		}
+		if (field === 'tags') return TRACKR_LABELS[value]?.label ?? value;
+		return value;
+	}
 </script>
 
 {#snippet valuesList(field: string)}
@@ -330,7 +348,7 @@
 				<span class="text-text-3">{fieldLabel(field)}:</span>
 				<span class="text-text font-medium">
 					{#if values.length === 1}
-						{values[0]}
+						{valueLabel(field, values[0])}
 					{:else}
 						{values.length} selected
 					{/if}
