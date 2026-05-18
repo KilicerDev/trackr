@@ -18,6 +18,18 @@
 	}
 	let { crumbs, actions }: Props = $props();
 
+	type NotifItem = {
+		id: string;
+		kind: string;
+		title: string;
+		body: string | null;
+		url: string;
+		actorId: string | null;
+		readAt: string | null;
+		createdAt: string;
+	};
+	type NotifData = { items: NotifItem[]; unreadCount: number };
+
 	const me = $derived.by(() => {
 		const u = page.data?.user as { id: string; name: string | null; email: string } | undefined;
 		if (!u) return undefined;
@@ -34,8 +46,25 @@
 		return { name, email: u.email, initials, color: `hsl(${h % 360} 55% 60%)` };
 	});
 
+	const notifications = $derived(
+		(page.data?.notifications as NotifData | undefined) ?? { items: [], unreadCount: 0 }
+	);
+
 	let acctOpen = $state(false);
+	let bellOpen = $state(false);
 	let feedbackOpen = $state(false);
+
+	function timeAgo(iso: string): string {
+		const diff = Date.now() - new Date(iso).getTime();
+		const s = Math.max(1, Math.floor(diff / 1000));
+		if (s < 60) return `${s}s`;
+		const m = Math.floor(s / 60);
+		if (m < 60) return `${m}m`;
+		const h = Math.floor(m / 60);
+		if (h < 24) return `${h}h`;
+		const d = Math.floor(h / 24);
+		return `${d}d`;
+	}
 </script>
 
 <header class="flex items-center gap-3.5 px-[22px] py-3 border-b border-border bg-bg shrink-0">
@@ -51,9 +80,62 @@
 	</div>
 	<div class="ml-auto flex items-center gap-2">
 		{#if actions}{@render actions()}{/if}
-		<IconButton ariaLabel="Notifications" dot>
-			<Icon name="bell" size={15} />
-		</IconButton>
+		<div class="relative">
+			<IconButton
+				ariaLabel="Notifications"
+				dot={notifications.unreadCount > 0}
+				onclick={() => (bellOpen = !bellOpen)}
+			>
+				<Icon name="bell" size={15} />
+			</IconButton>
+			<Popover open={bellOpen} onclose={() => (bellOpen = false)} align="right" minWidth={340}>
+				<div class="flex items-center justify-between px-2 pt-1 pb-2">
+					<span class="text-[12px] font-medium">Notifications</span>
+					{#if notifications.unreadCount > 0}
+						<span class="text-[10.5px] uppercase tracking-[0.08em] text-text-3">
+							{notifications.unreadCount} unread
+						</span>
+					{/if}
+				</div>
+				<div class="h-px bg-border -mx-0.5 mb-1"></div>
+				{#if notifications.items.length === 0}
+					<div class="px-2 py-6 text-center text-[12px] text-text-3">You're all caught up.</div>
+				{:else}
+					<div class="max-h-[360px] overflow-y-auto -mx-0.5">
+						{#each notifications.items as n (n.id)}
+							<a
+								href={n.url}
+								onclick={() => (bellOpen = false)}
+								class="flex items-start gap-2 px-2 py-2 rounded-md hover:bg-surface-2 {n.readAt
+									? 'text-text-2'
+									: 'text-text'}"
+							>
+								{#if !n.readAt}
+									<span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+								{:else}
+									<span class="mt-1.5 w-1.5 h-1.5 shrink-0"></span>
+								{/if}
+								<div class="min-w-0 flex-1">
+									<div class="text-[12.5px] font-medium truncate">{n.title}</div>
+									{#if n.body}
+										<div class="text-[11.5px] text-text-3 line-clamp-2 mt-0.5">{n.body}</div>
+									{/if}
+								</div>
+								<span class="text-[10.5px] text-text-4 shrink-0 mt-0.5">{timeAgo(n.createdAt)}</span>
+							</a>
+						{/each}
+					</div>
+					<div class="h-px bg-border -mx-0.5 mt-1"></div>
+					<a
+						href="/me/notifications"
+						onclick={() => (bellOpen = false)}
+						class="block text-center text-[11.5px] text-text-3 hover:text-text px-2 py-1.5"
+					>
+						View all
+					</a>
+				{/if}
+			</Popover>
+		</div>
 		<IconButton ariaLabel="Messages">
 			<Icon name="msg" size={15} />
 		</IconButton>

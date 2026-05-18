@@ -29,7 +29,9 @@
 	const hiddenPaletteIds = $derived(
 		new Set<string>([
 			...(perms.has('project.tasks.create') ? [] : ['create.task']),
-			...(perms.has('project.create') ? [] : ['create.project'])
+			...(perms.has('project.create') ? [] : ['create.project']),
+			// Wiki is Trackr-internal only.
+			...(data.isTrackrTeam ? [] : ['nav.wiki'])
 		])
 	);
 

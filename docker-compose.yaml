@@ -1,0 +1,94 @@
+# Postgres + the SvelteKit app. Migrations run on app container start
+# (scripts/migrate.ts). Used for both production deploy and `bun db:start`
+# during dev — the latter starts only the `db` service.
+#
+# Production:
+#   cp .env.example .env       # then fill in production values
+#   docker compose up -d --build
+#
+# Dev (Postgres only, app runs on host via `bun dev`):
+#   bun db:start
+#
+# The `app` service does NOT publish a host port. A reverse proxy in front
+# (Traefik via Coolify, Caddy, nginx, …) reaches it directly over the Docker
+# network using the EXPOSEd port from the Dockerfile (3000). Publishing the
+# port here would collide with other apps on a multi-tenant host and bypass
+# the proxy's routing.
+#
+# The `db` service publishes 5432 on 127.0.0.1 only — so `bun dev` and tools
+# like `drizzle-kit studio` can connect from the host. If port 5432 is already
+# in use on the prod host, override with POSTGRES_PORT.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-trackr}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      # Exposed on loopback so the host can connect during dev (`bun dev`,
+      # `drizzle-kit studio`, psql, etc). Safe on a single-host prod box too.
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      # The app uses src/lib/server/db/resolve-url.ts to build the URL from
+      # these vars. Override by setting DATABASE_URL (e.g. for a managed DB).
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-trackr}
+      DATABASE_URL: ${DATABASE_URL:-}
+      # adapter-node derives each request's URL from the headers that
+      # Traefik/Caddy/nginx forward. This is required for host-based routing
+      # (admin.example.com + example.com on the same container) — src/hooks.ts
+      # reads url.hostname to decide which route tree to serve.
+      #
+      # ORIGIN is intentionally NOT declared here. adapter-node's logic is
+      # `base: origin || get_origin(req.headers)` — when ORIGIN is set it
+      # wins unconditionally and the headers are ignored, collapsing every
+      # request to the ORIGIN host. An empty-string ORIGIN also fails
+      # (parse_origin only short-circuits on undefined, not ""). So the key
+      # must be absent entirely. Set ORIGIN in your platform's env UI only
+      # for a single-host deploy that does NOT need host routing.
+      #
+      # Defaults match the 99% case (standard reverse proxy). Override in .env
+      # for atypical setups: bare metal w/o proxy (HOST_HEADER=host), chained
+      # proxies like Cloudflare → Traefik (XFF_DEPTH=2), or custom headers.
+      PROTOCOL_HEADER: ${PROTOCOL_HEADER:-x-forwarded-proto}
+      HOST_HEADER: ${HOST_HEADER:-x-forwarded-host}
+      XFF_DEPTH: ${XFF_DEPTH:-1}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
+      EMAIL_FROM: ${EMAIL_FROM}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      ROOT_EMAIL: ${ROOT_EMAIL}
+      ROOT_PASSWORD: ${ROOT_PASSWORD}
+      ROOT_NAME: ${ROOT_NAME}
+    # No `ports:` — the reverse proxy routes to container port 3000 via the
+    # Docker network. EXPOSE 3000 in the Dockerfile is the contract.
+
+volumes:
+  pgdata:

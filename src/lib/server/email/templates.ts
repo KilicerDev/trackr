@@ -35,6 +35,26 @@ export function invitationEmail(opts: {
 	};
 }
 
+export function notificationEmail(opts: {
+	to: string;
+	title: string;
+	body?: string | null;
+	url: string;
+	actorName?: string | null;
+}): EmailMessage {
+	const lines = [opts.title];
+	if (opts.body) {
+		lines.push('', opts.body);
+	}
+	lines.push('', `Open: ${opts.url}`);
+	lines.push('', `— ${PRODUCT_NAME}`);
+	return {
+		to: opts.to,
+		subject: `[${PRODUCT_NAME}] ${opts.title}`,
+		text: lines.join('\n')
+	};
+}
+
 export function passwordResetEmail(opts: { to: string; resetUrl: string }): EmailMessage {
 	const text = [
 		'Hi,',

@@ -121,6 +121,33 @@ export const TRACKR_LABELS: Record<string, { label: string; color: string }> = {
 	copy: { label: 'copy', color: '#8fb6c4' }
 };
 
+export const TICKET_STATUSES = [
+	{ id: 'open', label: 'Open', dot: '#7a9cf0', tint: 'rgba(122,156,240,0.14)' },
+	{ id: 'in_progress', label: 'In Progress', dot: '#f0a85c', tint: 'rgba(240,168,92,0.16)' },
+	{ id: 'waiting_on_customer', label: 'Waiting on customer', dot: '#b591e3', tint: 'rgba(181,145,227,0.14)' },
+	{ id: 'waiting_on_agent', label: 'Waiting on agent', dot: '#ef7a6d', tint: 'rgba(239,122,109,0.14)' },
+	{ id: 'paused', label: 'Paused', dot: '#e9c46a', tint: 'rgba(233,196,106,0.14)' },
+	{ id: 'resolved', label: 'Resolved', dot: '#7fc8a9', tint: 'rgba(127,200,169,0.16)' },
+	{ id: 'closed', label: 'Closed', dot: '#7c7c84', tint: 'rgba(124,124,132,0.14)' }
+] as const;
+
+export const TICKET_CATEGORIES = [
+	{ id: 'general', label: 'General', color: '#9aa4b2' },
+	{ id: 'billing', label: 'Billing', color: '#e9c46a' },
+	{ id: 'technical_issue', label: 'Technical issue', color: '#ef7a6d' },
+	{ id: 'feature_request', label: 'Feature request', color: '#7fc8a9' }
+] as const;
+
+export const TICKET_CHANNELS = [
+	{ id: 'web_form', label: 'Web form' },
+	{ id: 'email', label: 'Email' },
+	{ id: 'chat', label: 'Chat' },
+	{ id: 'api', label: 'API' }
+] as const;
+
+// Tickets reuse TRACKR_PRIORITIES minus 'none' — every ticket has a priority.
+export const TICKET_PRIORITIES = TRACKR_PRIORITIES.filter((p) => p.id !== 'none');
+
 export const TRACKR_TYPES = [
 	{ id: 'task', label: 'Task', color: '#7a9cf0', icon: 'square' },
 	{ id: 'bug', label: 'Bug', color: '#ef7a6d', icon: 'bug' },

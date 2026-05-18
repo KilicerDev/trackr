@@ -25,6 +25,7 @@
 		{
 			title: 'Tickets',
 			items: [
+				{ key: 'ticketCreated', label: 'New tickets', desc: 'When a ticket is opened in an organization you support.' },
 				{ key: 'ticketAssigned', label: 'Assigned to me', desc: 'When a ticket is routed to you.' },
 				{ key: 'ticketMessage', label: 'New messages', desc: 'On tickets you handle.' }
 			]

@@ -1,16 +1,103 @@
 <script lang="ts">
 	import Topbar from '$lib/components/shell/Topbar.svelte';
+	import Toolbar from '$lib/components/tickets/Toolbar.svelte';
+	import ListView from '$lib/components/tickets/ListView.svelte';
+	import CreateTicketModal from '$lib/components/tickets/CreateTicketModal.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { saveView } from '$lib/viewState';
+	import type { TicketRow } from '$lib/server/tickets';
+
+	type PageData = {
+		tickets: TicketRow[];
+		canCreateTicket: boolean;
+		orgs?: { id: string; name: string; slug: string; color: string }[];
+		preferences?: { viewState?: Record<string, unknown> };
+	};
+
+	let { data }: { data: PageData } = $props();
+
+	type GroupBy = 'status' | 'priority' | 'category' | 'org' | 'none';
+	type SavedView = {
+		group?: GroupBy;
+		filters?: Record<string, string[]>;
+	};
+	const saved = ((data.preferences?.viewState as Record<string, unknown> | undefined)?.tickets ??
+		{}) as SavedView;
+
+	let group = $state<GroupBy>(saved.group ?? 'status');
+	let filters = $state<Record<string, string[]>>(saved.filters ?? {});
+	let search = $state('');
+	let createOpen = $state(false);
+
+	function setGroup(g: GroupBy) {
+		group = g;
+		saveView('tickets', { group: g });
+	}
+	function setFilters(f: Record<string, string[]>) {
+		filters = f;
+		saveView('tickets', { filters: f });
+	}
+
+	const orgs = $derived(data.orgs ?? []);
+
+	const filtered = $derived.by(() => {
+		const q = search.trim().toLowerCase();
+		return data.tickets.filter((t) => {
+			if (q) {
+				const hay = `${t.subject} ${t.displayId}`.toLowerCase();
+				if (!hay.includes(q)) return false;
+			}
+			for (const [field, values] of Object.entries(filters)) {
+				if (!values?.length) continue;
+				if (field === 'status' && !values.includes(t.status)) return false;
+				if (field === 'priority' && !values.includes(t.priority)) return false;
+				if (field === 'category' && !values.includes(t.category)) return false;
+				if (field === 'org' && !values.includes(t.orgId)) return false;
+			}
+			return true;
+		});
+	});
+
+	// Keep filters reactive to page navigation back into /tickets.
+	$effect(() => {
+		void page.url;
+	});
 </script>
 
 <svelte:head><title>Trackr · Support Tickets</title></svelte:head>
 
 <Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: 'Support Tickets' }]} />
 
-<div class="flex-1 min-h-0 grid place-items-center">
-	<EmptyState
-		icon="ticket"
-		title="Support tickets coming soon"
-		hint="External customer-facing inbox. Wire up your help-desk integration to populate it."
+<Toolbar
+	{search}
+	setSearch={(s) => (search = s)}
+	{filters}
+	{setFilters}
+	{group}
+	{setGroup}
+	canCreate={data.canCreateTicket}
+	onNew={() => (createOpen = true)}
+	{orgs}
+/>
+
+{#if data.tickets.length === 0}
+	<div class="flex-1 min-h-0 grid place-items-center">
+		<EmptyState
+			icon="ticket"
+			title="No tickets yet"
+			hint={data.canCreateTicket
+				? 'Open your first ticket to start a support thread.'
+				: 'When tickets are filed in your organization they will appear here.'}
+		/>
+	</div>
+{:else}
+	<ListView
+		tickets={filtered}
+		{group}
+		onSelect={(t) => goto(`/tickets/${t.id}`)}
 	/>
-</div>
+{/if}
+
+<CreateTicketModal open={createOpen} onclose={() => (createOpen = false)} {orgs} />

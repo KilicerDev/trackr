@@ -3,9 +3,11 @@ import { db } from '$lib/server/db';
 import { eq } from 'drizzle-orm';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import { deleteWikiPage, getWikiPage, updateWikiPage } from '$lib/server/wiki';
+import { isTrackrTeam } from '$lib/server/permissions';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
+	if (!isTrackrTeam(locals)) error(403, 'Wiki is restricted to the Trackr team.');
 	const page = await getWikiPage(params.id);
 	if (!page) error(404, 'Page not found');
 
@@ -27,6 +29,7 @@ export const load: PageServerLoad = async ({ params }) => {
 export const actions: Actions = {
 	update: async ({ params, request, locals }) => {
 		if (!locals.user) return fail(401, { message: 'Not authenticated' });
+		if (!isTrackrTeam(locals)) return fail(403, { message: 'Wiki is restricted.' });
 		const form = await request.formData();
 		const title = form.get('title');
 		const body = form.get('body');
@@ -48,6 +51,7 @@ export const actions: Actions = {
 
 	delete: async ({ params, locals }) => {
 		if (!locals.user) return fail(401, { message: 'Not authenticated' });
+		if (!isTrackrTeam(locals)) return fail(403, { message: 'Wiki is restricted.' });
 		const existing = await getWikiPage(params.id);
 		if (!existing) return fail(404, { message: 'Page not found.' });
 		await deleteWikiPage(params.id);

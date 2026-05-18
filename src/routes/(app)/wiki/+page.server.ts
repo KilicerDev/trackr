@@ -1,8 +1,10 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import { createWikiPage, getFirstRootPageId, getWikiPage } from '$lib/server/wiki';
+import { isTrackrTeam } from '$lib/server/permissions';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
+	if (!isTrackrTeam(locals)) error(403, 'Wiki is restricted to the Trackr team.');
 	const id = await getFirstRootPageId();
 	if (id) redirect(302, `/wiki/${id}`);
 	return {};
@@ -11,6 +13,7 @@ export const load: PageServerLoad = async () => {
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
 		if (!locals.user) return fail(401, { message: 'Not authenticated' });
+		if (!isTrackrTeam(locals)) return fail(403, { message: 'Wiki is restricted.' });
 		const form = await request.formData();
 		const title = String(form.get('title') ?? '').trim();
 		const isFolder = String(form.get('isFolder') ?? '') === 'true';

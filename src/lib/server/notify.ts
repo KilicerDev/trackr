@@ -1,0 +1,116 @@
+// Central emit helper. Every call site that creates a notification goes
+// through `notify()` — it loads each recipient's preferences and fans out
+// to the in-app inbox and/or email channel exactly as configured.
+//
+// Recipient *eligibility* is the caller's responsibility (use
+// notify-recipients.ts), preferences and channel routing are ours.
+
+import { env } from '$env/dynamic/private';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { db } from './db';
+import { notification, type NotificationKind } from './db/app.schema';
+import { user as userTable } from './db/auth.schema';
+import { getPreferences } from './preferences';
+import { sendEmailFireAndForget } from './email';
+import { notificationEmail } from './email/templates';
+
+export type NotifyInput = {
+	kind: NotificationKind;
+	recipients: Iterable<string>;
+	// Caller is responsible for excluding the actor from recipients normally,
+	// but we belt-and-brace it: notify() drops `actorId` from the list.
+	actorId?: string | null;
+	orgId?: string | null;
+	title: string;
+	body?: string | null;
+	url: string;
+	entity?: { type: string; id: string } | null;
+};
+
+function buildUrl(path: string): string {
+	const origin = env.ORIGIN?.replace(/\/$/, '') ?? '';
+	if (!origin) return path;
+	if (path.startsWith('http')) return path;
+	return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
+}
+
+export async function notify(input: NotifyInput): Promise<void> {
+	const recipientIds = Array.from(new Set(input.recipients)).filter(
+		(id) => id && id !== input.actorId
+	);
+	if (recipientIds.length === 0) return;
+
+	// Pull prefs in parallel. getPreferences merges with NOTIFICATION_DEFAULTS
+	// so the channel object is always populated.
+	const prefsList = await Promise.all(recipientIds.map((id) => getPreferences(id)));
+	const wantsInApp: string[] = [];
+	const wantsEmail: string[] = [];
+	for (let i = 0; i < recipientIds.length; i++) {
+		const pref = prefsList[i].notifications[input.kind];
+		if (pref?.inApp) wantsInApp.push(recipientIds[i]);
+		if (pref?.email) wantsEmail.push(recipientIds[i]);
+	}
+
+	const fullUrl = buildUrl(input.url);
+
+	if (wantsInApp.length > 0) {
+		const rows = wantsInApp.map((recipientId) => ({
+			id: crypto.randomUUID(),
+			recipientId,
+			orgId: input.orgId ?? null,
+			kind: input.kind,
+			title: input.title,
+			body: input.body ?? null,
+			url: input.url,
+			actorId: input.actorId ?? null,
+			entityType: input.entity?.type ?? null,
+			entityId: input.entity?.id ?? null
+		}));
+		await db.insert(notification).values(rows);
+	}
+
+	if (wantsEmail.length > 0) {
+		const emailRows = await db
+			.select({ id: userTable.id, email: userTable.email, banned: userTable.banned })
+			.from(userTable)
+			.where(inArray(userTable.id, wantsEmail));
+		for (const u of emailRows) {
+			if (u.banned) continue;
+			sendEmailFireAndForget(
+				notificationEmail({
+					to: u.email,
+					title: input.title,
+					body: input.body,
+					url: fullUrl
+				})
+			);
+		}
+	}
+}
+
+// Mark all of a recipient's unread notifications for a given entity as read.
+// Called from entity detail loads so opening the page clears the bell.
+export async function markEntityRead(
+	recipientId: string,
+	entityType: string,
+	entityId: string
+): Promise<void> {
+	await db
+		.update(notification)
+		.set({ readAt: new Date() })
+		.where(
+			and(
+				eq(notification.recipientId, recipientId),
+				eq(notification.entityType, entityType),
+				eq(notification.entityId, entityId),
+				isNull(notification.readAt)
+			)
+		);
+}
+
+export async function markAllRead(recipientId: string): Promise<void> {
+	await db
+		.update(notification)
+		.set({ readAt: new Date() })
+		.where(and(eq(notification.recipientId, recipientId), isNull(notification.readAt)));
+}

@@ -8,6 +8,7 @@
         projects?: { id: string; key: string; name: string; color: string }[];
         favoriteProjectIds?: string[];
         isAdmin?: boolean;
+        isTrackrTeam?: boolean;
     };
 
     const taskCount = $derived((page.data as LayoutShape).taskCount ?? 0);
@@ -17,6 +18,7 @@
     );
     const favorites = $derived(projectList.filter((p) => favoriteIds.has(p.id)));
     const isAdmin = $derived(!!(page.data as LayoutShape).isAdmin);
+    const isTrackrTeam = $derived(!!(page.data as LayoutShape).isTrackrTeam);
 
     const workspaceItems = $derived([
         { key: "week", label: "My Week", icon: "calendar", href: "/week" },
@@ -41,7 +43,10 @@
             href: "/tasks",
             count: taskCount,
         },
-        { key: "wiki", label: "Wiki", icon: "book", href: "/wiki" },
+        // Wiki is internal-only — hidden from client / external-org users.
+        ...(isTrackrTeam
+            ? [{ key: "wiki", label: "Wiki", icon: "book", href: "/wiki" }]
+            : []),
     ]);
 
     const adminItems = [

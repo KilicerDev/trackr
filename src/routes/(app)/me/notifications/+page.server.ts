@@ -9,6 +9,7 @@ const EVENTS = [
 	'taskCommented',
 	'taskStatusChanged',
 	'taskDueSoon',
+	'ticketCreated',
 	'ticketAssigned',
 	'ticketMessage',
 	'wikiUpdated'

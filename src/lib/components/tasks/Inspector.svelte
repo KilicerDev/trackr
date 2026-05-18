@@ -13,6 +13,7 @@
 	import AvatarStack from '../AvatarStack.svelte';
 	import Icon from '../Icon.svelte';
 	import IconButton from '../IconButton.svelte';
+	import Composer from '../Composer.svelte';
 	import TypeBadge from '../TypeBadge.svelte';
 	import TimeLogger from './TimeLogger.svelte';
 	import StatusPopover from '../popovers/StatusPopover.svelte';
@@ -578,44 +579,13 @@
 			</div>
 		</div>
 
-		<div class="border-t border-border bg-bg-elev p-3">
-			<div class="flex items-end gap-2">
-				<textarea
-					bind:value={commentBody}
-					onkeydown={(e) => {
-						if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-							e.preventDefault();
-							void sendComment();
-						}
-					}}
-					placeholder="Write a comment…  (⌘↵ to send)"
-					rows="3"
-					class="flex-1 resize-none bg-surface border border-border rounded-lg px-3 py-2 text-[13px] outline-none focus:border-border-strong min-h-[72px] disabled:opacity-60"
-					disabled={commentSending}
-				></textarea>
-				<div class="flex flex-col gap-2">
-					<button
-						type="button"
-						aria-label="Attach"
-						class="w-8 h-8 grid place-items-center rounded-lg bg-surface border border-border text-text-2 hover:text-text hover:bg-surface-2 hover:border-border-strong transition-colors"
-					>
-						<Icon name="paperclip" size={13} />
-					</button>
-					<button
-						type="button"
-						aria-label="Send"
-						onclick={sendComment}
-						disabled={commentSending || !commentBody.trim()}
-						class="w-8 h-8 grid place-items-center rounded-lg bg-accent hover:bg-accent-strong text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-					>
-						{#if commentSending}
-							<span class="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin"></span>
-						{:else}
-							<Icon name="send" size={13} />
-						{/if}
-					</button>
-				</div>
-			</div>
+		<div class="p-3">
+			<Composer
+				bind:value={commentBody}
+				placeholder="Write a comment…"
+				sending={commentSending}
+				onsend={sendComment}
+			/>
 		</div>
 	{/if}
 </Drawer>

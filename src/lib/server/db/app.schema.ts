@@ -60,6 +60,7 @@ export const organization = pgTable(
 		// Enforced by a partial unique index `organization_internal_unique`.
 		isInternal: boolean('is_internal').notNull().default(false),
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		nextTicketNumber: integer('next_ticket_number').notNull().default(1),
 		archivedAt: timestamp('archived_at'),
 		createdAt: timestamp('created_at').defaultNow().notNull(),
 		updatedAt: timestamp('updated_at')
@@ -503,6 +504,7 @@ export type NotificationPrefs = Partial<{
 	taskCommented: NotificationChannelPrefs;
 	taskStatusChanged: NotificationChannelPrefs;
 	taskDueSoon: NotificationChannelPrefs;
+	ticketCreated: NotificationChannelPrefs;
 	ticketAssigned: NotificationChannelPrefs;
 	ticketMessage: NotificationChannelPrefs;
 	wikiUpdated: NotificationChannelPrefs;
@@ -581,6 +583,169 @@ export const wikiPageRelations = relations(wikiPage, ({ one }) => ({
 		fields: [wikiPage.updatedById],
 		references: [user.id],
 		relationName: 'wiki_updated_by'
+	})
+}));
+
+// ─── Tickets ───────────────────────────────────────────────────────────────
+// Org-scoped support requests. Clients (org.client role) see only tickets in
+// their own org; internal Trackr staff act as agents and see every org's
+// tickets. Numbering is per-org via `organization.next_ticket_number`,
+// allocated in a transaction the same way `task.number` is.
+
+export const ticket = pgTable(
+	'ticket',
+	{
+		id: text('id').primaryKey(),
+		orgId: text('org_id')
+			.notNull()
+			.references(() => organization.id, { onDelete: 'cascade' }),
+		number: integer('number').notNull(),
+		subject: text('subject').notNull(),
+		description: text('description'),
+		status: text('status').notNull().default('open'),
+		priority: text('priority').notNull().default('medium'),
+		category: text('category').notNull().default('general'),
+		channel: text('channel').notNull().default('web_form'),
+		customerId: text('customer_id').references(() => user.id, { onDelete: 'set null' }),
+		assignedAgentId: text('assigned_agent_id').references(() => user.id, { onDelete: 'set null' }),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		firstResponseAt: timestamp('first_response_at'),
+		resolvedAt: timestamp('resolved_at'),
+		closedAt: timestamp('closed_at'),
+		satisfactionScore: integer('satisfaction_score'),
+		tags: text('tags').array().notNull().default([]),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at')
+			.defaultNow()
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull()
+	},
+	(t) => [
+		uniqueIndex('ticket_org_number_idx').on(t.orgId, t.number),
+		index('ticket_org_status_idx').on(t.orgId, t.status),
+		index('ticket_assignee_idx').on(t.assignedAgentId),
+		index('ticket_customer_idx').on(t.customerId)
+	]
+);
+
+export type Ticket = typeof ticket.$inferSelect;
+
+export const ticketMessage = pgTable(
+	'ticket_message',
+	{
+		id: text('id').primaryKey(),
+		ticketId: text('ticket_id')
+			.notNull()
+			.references(() => ticket.id, { onDelete: 'cascade' }),
+		authorId: text('author_id').references(() => user.id, { onDelete: 'set null' }),
+		body: text('body').notNull(),
+		// Hidden from client viewers — agents-only annotations on the thread.
+		isInternalNote: boolean('is_internal_note').notNull().default(false),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at')
+			.defaultNow()
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull()
+	},
+	(t) => [index('ticket_message_ticket_idx').on(t.ticketId, t.createdAt)]
+);
+
+export type TicketMessage = typeof ticketMessage.$inferSelect;
+
+export const ticketRelations = relations(ticket, ({ one, many }) => ({
+	org: one(organization, {
+		fields: [ticket.orgId],
+		references: [organization.id]
+	}),
+	customer: one(user, {
+		fields: [ticket.customerId],
+		references: [user.id],
+		relationName: 'ticket_customer'
+	}),
+	assignedAgent: one(user, {
+		fields: [ticket.assignedAgentId],
+		references: [user.id],
+		relationName: 'ticket_assignee'
+	}),
+	creator: one(user, {
+		fields: [ticket.createdBy],
+		references: [user.id],
+		relationName: 'ticket_creator'
+	}),
+	messages: many(ticketMessage)
+}));
+
+export const ticketMessageRelations = relations(ticketMessage, ({ one }) => ({
+	ticket: one(ticket, {
+		fields: [ticketMessage.ticketId],
+		references: [ticket.id]
+	}),
+	author: one(user, {
+		fields: [ticketMessage.authorId],
+		references: [user.id]
+	})
+}));
+
+// ─── Notifications ─────────────────────────────────────────────────────────
+// Per-recipient inbox. One row = one in-app notification. Email delivery is
+// decided by user prefs at emit time and is not represented here. `kind`
+// matches `NotificationPrefs` keys. `entityType/entityId` are used to mark
+// rows read when the recipient opens the related entity page.
+
+export const NOTIFICATION_KINDS = [
+	'taskAssigned',
+	'taskMentioned',
+	'taskCommented',
+	'taskStatusChanged',
+	'taskDueSoon',
+	'ticketCreated',
+	'ticketAssigned',
+	'ticketMessage',
+	'wikiUpdated'
+] as const;
+export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
+
+export const notification = pgTable(
+	'notification',
+	{
+		id: text('id').primaryKey(),
+		recipientId: text('recipient_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		orgId: text('org_id').references(() => organization.id, { onDelete: 'cascade' }),
+		kind: text('kind').$type<NotificationKind>().notNull(),
+		title: text('title').notNull(),
+		body: text('body'),
+		url: text('url').notNull(),
+		actorId: text('actor_id').references(() => user.id, { onDelete: 'set null' }),
+		entityType: text('entity_type'),
+		entityId: text('entity_id'),
+		readAt: timestamp('read_at'),
+		createdAt: timestamp('created_at').defaultNow().notNull()
+	},
+	(t) => [
+		index('notification_recipient_created_idx').on(t.recipientId, t.createdAt),
+		index('notification_recipient_unread_idx').on(t.recipientId, t.readAt),
+		index('notification_entity_idx').on(t.entityType, t.entityId)
+	]
+);
+
+export type Notification = typeof notification.$inferSelect;
+
+export const notificationRelations = relations(notification, ({ one }) => ({
+	recipient: one(user, {
+		fields: [notification.recipientId],
+		references: [user.id],
+		relationName: 'notification_recipient'
+	}),
+	actor: one(user, {
+		fields: [notification.actorId],
+		references: [user.id],
+		relationName: 'notification_actor'
+	}),
+	org: one(organization, {
+		fields: [notification.orgId],
+		references: [organization.id]
 	})
 }));
 

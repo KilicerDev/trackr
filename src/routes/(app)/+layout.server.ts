@@ -1,11 +1,14 @@
 import { redirect } from '@sveltejs/kit';
-import { and, count, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import {
+	notification as notificationTable,
 	organization,
+	organizationMember,
 	project as projectTable,
 	projectFavorite as projectFavoriteTable,
+	projectMember,
 	task as taskTable
 } from '$lib/server/db/app.schema';
 import {
@@ -52,23 +55,62 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 
 	// Lookup data exposed app-wide so components can resolve users + projects
 	// from $page.data without prop-drilling or mock imports.
-	const userRows = await db
+	//
+	// Security: non-internal-staff users only see users they share an org or
+	// project with — exposing the full directory leaks every Trackr staff
+	// member's email to clients. Banned users are excluded for non-staff so
+	// disabled-account metadata isn't leaked either.
+	const trackrTeamFlag = isTrackrTeam(locals);
+	let visibleUserIds: Set<string> | null = null;
+	if (!trackrTeamFlag) {
+		const myOrgIds = (locals.memberships?.orgs ?? []).map((m) => m.orgId);
+		const myProjectIds = (locals.memberships?.projects ?? []).map((m) => m.projectId);
+		const [orgMates, projectMates] = await Promise.all([
+			myOrgIds.length
+				? db
+						.select({ userId: organizationMember.userId })
+						.from(organizationMember)
+						.where(inArray(organizationMember.orgId, myOrgIds))
+				: Promise.resolve([] as { userId: string }[]),
+			myProjectIds.length
+				? db
+						.select({ userId: projectMember.userId })
+						.from(projectMember)
+						.where(inArray(projectMember.projectId, myProjectIds))
+				: Promise.resolve([] as { userId: string }[])
+		]);
+		visibleUserIds = new Set<string>([locals.user.id]);
+		for (const r of orgMates) visibleUserIds.add(r.userId);
+		for (const r of projectMates) visibleUserIds.add(r.userId);
+	}
+
+	const userQuery = db
 		.select({
 			id: userTable.id,
 			name: userTable.name,
 			email: userTable.email,
 			banned: userTable.banned
 		})
-		.from(userTable);
+		.from(userTable)
+		.$dynamic();
+	const userRows = trackrTeamFlag
+		? await userQuery
+		: visibleUserIds && visibleUserIds.size > 0
+			? await userQuery.where(inArray(userTable.id, [...visibleUserIds]))
+			: [];
 
-	const users = userRows.map((u) => ({
-		id: u.id,
-		name: u.name,
-		email: u.email,
-		initials: initials(u.name),
-		color: userColor(u.id),
-		status: (u.banned ? 'disabled' : 'active') as 'active' | 'invited' | 'disabled'
-	}));
+	const users = userRows
+		// Hide banned accounts from non-staff so disabled-account state isn't
+		// leaked. Staff continue to see them to support moderation flows.
+		.filter((u) => trackrTeamFlag || !u.banned)
+		.map((u) => ({
+			id: u.id,
+			name: u.name,
+			email: u.email,
+			initials: initials(u.name),
+			color: userColor(u.id),
+			status: (u.banned ? 'disabled' : 'active') as 'active' | 'invited' | 'disabled'
+		}));
 
 	// Project visibility — Trackr internal team members see everything;
 	// everyone else sees only projects they're explicitly a member of.
@@ -137,7 +179,12 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 
 	// Active orgs — surfaced app-wide so the global command palette can open
 	// the create-project modal without re-fetching from each page.
-	const orgs = await db
+	//
+	// Security: non-internal-staff users must only see orgs they belong to.
+	// Leaking the full org list lets a client see every other client we work
+	// with by name. Admin pages that need the full list query it directly.
+	const myOrgIds = (locals.memberships?.orgs ?? []).map((m) => m.orgId);
+	const orgsBase = db
 		.select({
 			id: organization.id,
 			name: organization.name,
@@ -145,8 +192,14 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			color: organization.color
 		})
 		.from(organization)
-		.where(isNull(organization.archivedAt))
-		.orderBy(organization.name);
+		.$dynamic();
+	const orgs = trackrTeamFlag
+		? await orgsBase.where(isNull(organization.archivedAt)).orderBy(organization.name)
+		: myOrgIds.length === 0
+			? []
+			: await orgsBase
+					.where(and(isNull(organization.archivedAt), inArray(organization.id, myOrgIds)))
+					.orderBy(organization.name);
 
 	const memberRoles = {
 		orgs: Object.fromEntries(
@@ -159,6 +212,48 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 
 	const preferences = await getPreferences(locals.user.id);
 
+	// Bell dropdown data. We surface only the 15 most recent rows; older
+	// items are reachable from the /me/notifications inbox page.
+	const [recentNotifications, unreadAgg] = await Promise.all([
+		db
+			.select({
+				id: notificationTable.id,
+				kind: notificationTable.kind,
+				title: notificationTable.title,
+				body: notificationTable.body,
+				url: notificationTable.url,
+				actorId: notificationTable.actorId,
+				readAt: notificationTable.readAt,
+				createdAt: notificationTable.createdAt
+			})
+			.from(notificationTable)
+			.where(eq(notificationTable.recipientId, locals.user.id))
+			.orderBy(desc(notificationTable.createdAt))
+			.limit(15),
+		db
+			.select({ total: count() })
+			.from(notificationTable)
+			.where(
+				and(
+					eq(notificationTable.recipientId, locals.user.id),
+					isNull(notificationTable.readAt)
+				)
+			)
+	]);
+	const notifications = {
+		items: recentNotifications.map((n) => ({
+			id: n.id,
+			kind: n.kind,
+			title: n.title,
+			body: n.body,
+			url: n.url,
+			actorId: n.actorId,
+			readAt: n.readAt?.toISOString() ?? null,
+			createdAt: n.createdAt.toISOString()
+		})),
+		unreadCount: Number(unreadAgg[0]?.total ?? 0)
+	};
+
 	return {
 		user: locals.user,
 		impersonator,
@@ -170,9 +265,10 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		currentUserId: locals.user.id,
 		orgs,
 		isAdmin: !!locals.isAdmin,
-		isTrackrTeam: isTrackrTeam(locals),
+		isTrackrTeam: trackrTeamFlag,
 		memberRoles,
 		effectivePermissions: await effectivePermissions(locals),
-		preferences
+		preferences,
+		notifications
 	};
 };
