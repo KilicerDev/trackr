@@ -271,6 +271,7 @@ export const task = pgTable(
 		tags: text('tags').array().notNull().default([]),
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
 		archivedAt: timestamp('archived_at'),
+		deletedAt: timestamp('deleted_at'),
 		createdAt: timestamp('created_at').defaultNow().notNull(),
 		updatedAt: timestamp('updated_at')
 			.defaultNow()

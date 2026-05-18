@@ -29,7 +29,7 @@ export async function loadTasks(opts?: {
 	// caller is signalling "this user can see zero projects".
 	if (opts?.projectIds && opts.projectIds.length === 0) return [];
 
-	const conditions = [isNull(task.archivedAt)];
+	const conditions = [isNull(task.archivedAt), isNull(task.deletedAt)];
 	if (opts?.projectId) {
 		// Detail page can still see tasks of an archived project so the user
 		// can review history before unarchiving / deleting.

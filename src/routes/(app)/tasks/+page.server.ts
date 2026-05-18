@@ -1,5 +1,5 @@
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
 	project,
@@ -34,7 +34,9 @@ async function resolveTaskByDisplayId(displayId: string) {
 		.select({ id: task.id, projectId: project.id, createdBy: task.createdBy })
 		.from(task)
 		.innerJoin(project, eq(project.id, task.projectId))
-		.where(and(eq(project.key, key), eq(task.number, number)))
+		.where(
+			and(eq(project.key, key), eq(task.number, number), isNull(task.deletedAt))
+		)
 		.limit(1);
 	return row ?? null;
 }
@@ -332,6 +334,31 @@ export const actions: Actions = {
 		} catch (err) {
 			console.error('time log add failed', err);
 			return fail(500, { message: 'Failed to log time.' });
+		}
+
+		return { success: true };
+	},
+
+	delete: async ({ request, locals }) => {
+		if (!locals.user) throw error(401, 'Not authenticated');
+
+		const form = await request.formData();
+		const displayId = String(form.get('id') ?? '').trim();
+		if (!displayId) return fail(400, { message: 'Missing task id.' });
+
+		const target = await resolveTaskByDisplayId(displayId);
+		if (!target) return fail(404, { message: 'Task not found.' });
+
+		await assertCan(locals, 'project.tasks.delete.any', { projectId: target.projectId });
+
+		try {
+			await db
+				.update(task)
+				.set({ deletedAt: new Date() })
+				.where(eq(task.id, target.id));
+		} catch (err) {
+			console.error('task delete failed', err);
+			return fail(500, { message: 'Failed to delete task.' });
 		}
 
 		return { success: true };

@@ -3,6 +3,7 @@
 	import { deserialize } from '$app/forms';
 	import { page } from '$app/state';
 	import { showToast } from '$lib/toast.svelte';
+	import { confirm } from '$lib/components/confirm.svelte';
 	import type { ActionResult } from '@sveltejs/kit';
 	import type { PriorityId, StatusId, Task } from '$lib/types';
 	import Drawer from '../Drawer.svelte';
@@ -21,6 +22,7 @@
 	import AssigneePopover from '../popovers/AssigneePopover.svelte';
 	import DatePopover from '../popovers/DatePopover.svelte';
 	import EstimatePopover from '../popovers/EstimatePopover.svelte';
+	import TaskMenuPopover from '../popovers/TaskMenuPopover.svelte';
 	import {
 		TRACKR_PRIORITIES,
 		TRACKR_STATUSES,
@@ -80,7 +82,7 @@
 	let savingField = $state<string | null>(null);
 
 	async function postAction(
-		action: 'update' | 'commentAdd' | 'timeLogAdd' | 'planSet',
+		action: 'update' | 'commentAdd' | 'timeLogAdd' | 'planSet' | 'delete',
 		field: string,
 		body: Record<string, string | string[]>
 	): Promise<boolean> {
@@ -180,8 +182,44 @@
 		commentBody = '';
 	});
 
-	type PopId = 'status' | 'priority' | 'assignees' | 'due' | 'estimate' | 'plan' | null;
+	type PopId =
+		| 'status'
+		| 'priority'
+		| 'assignees'
+		| 'due'
+		| 'estimate'
+		| 'plan'
+		| 'menu'
+		| null;
 	let openPop = $state<PopId>(null);
+
+	const canDelete = $derived.by(() => {
+		const t = task;
+		if (!t) return false;
+		const pd = page.data as LayoutShape & { effectivePermissions?: string[] };
+		if (pd.isTrackrTeam) return true;
+		const projectId = pd.projects?.find((p) => p.key === t.project)?.id;
+		if (projectId) {
+			const role = pd.memberRoles?.projects?.[projectId];
+			if (role === 'project.manager') return true;
+		}
+		return (pd.effectivePermissions ?? []).includes('project.tasks.delete.any');
+	});
+
+	async function deleteTask() {
+		if (!draft) return;
+		const confirmed = await confirm({
+			title: `Delete ${draft.id}?`,
+			message: 'This task will be permanently deleted.',
+			confirmLabel: 'Delete',
+			cancelLabel: 'Cancel',
+			tone: 'danger',
+			icon: 'trash'
+		});
+		if (!confirmed) return;
+		const ok = await postAction('delete', 'delete', {});
+		if (ok) onclose();
+	}
 
 	let status = $derived.by(() => {
 		const d = draft;
@@ -281,7 +319,18 @@
 			{/if}
 			<div class="ml-auto flex items-center gap-1">
 				<IconButton size={28} ariaLabel="Copy link"><Icon name="link" size={14} /></IconButton>
-				<IconButton size={28} ariaLabel="More"><Icon name="settings" size={14} /></IconButton>
+				<div class="relative">
+					<IconButton size={28} ariaLabel="More" onclick={() => toggle('menu')}>
+						<Icon name="settings" size={14} />
+					</IconButton>
+					{#if openPop === 'menu'}
+						<TaskMenuPopover
+							canDelete={canDelete}
+							ondelete={() => void deleteTask()}
+							onclose={() => (openPop = null)}
+						/>
+					{/if}
+				</div>
 				<IconButton size={28} ariaLabel="Close" onclick={onclose}><Icon name="x" size={14} /></IconButton>
 			</div>
 		</div>
