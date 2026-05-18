@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { and, count, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import {
@@ -122,6 +122,11 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			: // Empty access set — short-circuit by matching no rows.
 				eq(projectTable.id, '__none__');
 
+	// Sorted by name so consumers (sidebar, board columns grouped by project,
+	// filter dropdowns) render in a stable order. Without an ORDER BY,
+	// Postgres returns heap-scan order, which shifts whenever a project row
+	// is updated — e.g. creating a task bumps `nextTaskNumber`, which moves
+	// that project to a different position on the next read.
 	const projects = await db
 		.select({
 			id: projectTable.id,
@@ -135,7 +140,8 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			projectAccessFilter
 				? and(isNull(projectTable.archivedAt), projectAccessFilter)
 				: isNull(projectTable.archivedAt)
-		);
+		)
+		.orderBy(asc(projectTable.name));
 
 	// Archived projects exposed separately so historical tasks still resolve
 	// their icon/color without polluting the "active" list.
@@ -152,7 +158,8 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			projectAccessFilter
 				? and(isNotNull(projectTable.archivedAt), projectAccessFilter)
 				: isNotNull(projectTable.archivedAt)
-		);
+		)
+		.orderBy(asc(projectTable.name));
 
 	// Count tasks whose parent project is active AND the user can see it.
 	const [activeTasks] = await db
