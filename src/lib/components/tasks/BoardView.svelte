@@ -77,16 +77,18 @@
 		}
 		if (group === 'assignee') {
 			const ids = Array.from(new Set(tasks.flatMap((t) => t.assignees ?? [t.assignee])));
-			return ids.map((uid) => {
-				const u = resolveUser(uid);
-				return {
-					key: uid,
-					label: u?.name ?? uid,
-					color: u?.color ?? '#666',
-					userId: uid,
-					tasks: tasks.filter((t) => (t.assignees ?? [t.assignee]).includes(uid))
-				};
-			});
+			return ids
+				.map((uid) => {
+					const u = resolveUser(uid);
+					return {
+						key: uid,
+						label: u?.name ?? uid,
+						color: u?.color ?? '#666',
+						userId: uid,
+						tasks: tasks.filter((t) => (t.assignees ?? [t.assignee]).includes(uid))
+					};
+				})
+				.sort((a, b) => a.label.localeCompare(b.label));
 		}
 		return [{ key: 'all', label: 'All tasks', color: 'transparent', tasks }];
 	});
@@ -155,7 +157,8 @@
 					tasks: items.filter((t) => (t.assignees ?? [t.assignee]).includes(uid))
 				};
 			})
-			.filter((g) => g.tasks.length > 0);
+			.filter((g) => g.tasks.length > 0)
+			.sort((a, b) => a.label.localeCompare(b.label));
 	}
 </script>
 

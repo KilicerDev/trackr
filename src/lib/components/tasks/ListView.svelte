@@ -48,8 +48,8 @@
 				.filter((g) => g.tasks.length > 0);
 		}
 		if (group === 'project') {
-			// Derive group order from projects that actually appear in the
-			// loaded task list, resolving each via real DB data when possible.
+			// Stable alphabetical group order so the section headers don't
+			// reshuffle every time a task's updatedAt changes.
 			const keys = Array.from(new Set(tasks.map((t) => t.project)));
 			return keys
 				.map((key) => {
@@ -61,7 +61,8 @@
 						tasks: tasks.filter((t) => t.project === key)
 					};
 				})
-				.filter((g) => g.tasks.length > 0);
+				.filter((g) => g.tasks.length > 0)
+				.sort((a, b) => a.label.localeCompare(b.label));
 		}
 		// assignee
 		const ids = Array.from(new Set(tasks.flatMap((t) => t.assignees ?? [t.assignee])));
@@ -75,7 +76,8 @@
 					tasks: tasks.filter((t) => (t.assignees ?? [t.assignee]).includes(uid))
 				};
 			})
-			.filter((g) => g.tasks.length > 0);
+			.filter((g) => g.tasks.length > 0)
+			.sort((a, b) => a.label.localeCompare(b.label));
 	});
 
 	// Touch `page.data` so the lookup helpers stay reactive when the layout
