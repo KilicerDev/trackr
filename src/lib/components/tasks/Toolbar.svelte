@@ -1,18 +1,15 @@
 <script lang="ts">
 	import Icon from '../Icon.svelte';
-	import Chip from '../Chip.svelte';
 	import Button from '../Button.svelte';
 	import StatusDot from '../StatusDot.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
 	import Avatar from '../Avatar.svelte';
+	import FilterBar from '../FilterBar.svelte';
+	import type { FilterField } from '../FilterBar.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/motion';
-	import {
-		TRACKR_PRIORITIES,
-		TRACKR_STATUSES,
-		TRACKR_LABELS
-	} from '$lib/data';
+	import { TRACKR_PRIORITIES, TRACKR_STATUSES, TRACKR_LABELS } from '$lib/data';
 	import { page } from '$app/state';
 
 	type LayoutData = {
@@ -69,7 +66,7 @@
 	const groupLabel = (id: GroupBy) => GROUP_OPTIONS.find((g) => g.id === id)?.label ?? '';
 	const subLabel = (id: SubBy) => SUB_OPTIONS.find((s) => s.id === id)?.label ?? '';
 
-	const FIELDS = [
+	const FIELDS: FilterField[] = [
 		{ id: 'status', label: 'Status', icon: 'check' },
 		{ id: 'priority', label: 'Priority', icon: 'filter' },
 		{ id: 'assignee', label: 'Assignee', icon: 'users' },
@@ -77,12 +74,9 @@
 		{ id: 'tags', label: 'Tags', icon: 'bookmark' }
 	];
 
-	// State machine:
-	//   none           — closed
-	//   add:fields     — initial "+ Filter" pop showing the list of fields
-	//   add:<field>    — nested values pop for the field just picked (still inside the add flow)
-	//   chip:<field>   — values pop opened by clicking an existing chip
-	let pop = $state<string | null>(null);
+	// Group/Sub popovers live outside the FilterBar's scroll area, so they
+	// still use ordinary absolute positioning. Their own micro state-machine.
+	let pop = $state<'group' | 'sub' | null>(null);
 
 	function toggleValue(field: string, value: string) {
 		const cur = filters[field] ?? [];
@@ -90,17 +84,6 @@
 		const merged = { ...filters, [field]: next };
 		if (next.length === 0) delete merged[field];
 		setFilters(merged);
-	}
-
-	function clearAll() {
-		setFilters({});
-	}
-
-	let activeFilters = $derived(Object.entries(filters).filter(([, v]) => v.length > 0));
-	const fieldLabel = (id: string) => FIELDS.find((f) => f.id === id)?.label ?? id;
-
-	function valuesPopFor(field: string): string[] {
-		return filters[field] ?? [];
 	}
 
 	// Resolve a raw filter value (status id, user id, project key, …) to the
@@ -123,7 +106,7 @@
 </script>
 
 {#snippet valuesList(field: string)}
-	{@const values = valuesPopFor(field)}
+	{@const values = filters[field] ?? []}
 	{#if field === 'status'}
 		{#each TRACKR_STATUSES as s (s.id)}
 			<button
@@ -240,7 +223,10 @@
 				{#each GROUP_OPTIONS as o (o.id)}
 					<button
 						type="button"
-						onclick={() => { setGroup?.(o.id); pop = null; }}
+						onclick={() => {
+							setGroup?.(o.id);
+							pop = null;
+						}}
 						class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text text-[13px]"
 					>
 						<span>{o.label}</span>
@@ -274,7 +260,10 @@
 					{#each SUB_OPTIONS as o (o.id)}
 						<button
 							type="button"
-							onclick={() => { setSub?.(o.id); pop = null; }}
+							onclick={() => {
+								setSub?.(o.id);
+								pop = null;
+							}}
 							class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text text-[13px]"
 						>
 							<span>{o.label}</span>
@@ -290,88 +279,9 @@
 
 	<div class="w-px h-5 bg-border"></div>
 
-	<div class="relative">
-		<Chip variant="add" onclick={() => (pop = pop?.startsWith('add:') ? null : 'add:fields')}>
-			<Icon name="plus" size={12} /> Filter
-		</Chip>
-		{#if pop === 'add:fields'}
-			<div
-				use:clickOutside={() => (pop = null)}
-				in:fly={POPOVER_IN}
-				class="absolute top-full left-0 mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[200px]"
-				style:box-shadow="var(--shadow-lg)"
-			>
-				{#each FIELDS as f (f.id)}
-					<button
-						type="button"
-						onclick={() => (pop = `add:${f.id}`)}
-						class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left"
-					>
-						<span class="text-text-3"><Icon name={f.icon} size={13} /></span>
-						<span class="text-[13px]">{f.label}</span>
-						<span class="ml-auto text-text-4"><Icon name="chevron-r" size={11} /></span>
-					</button>
-				{/each}
-			</div>
-		{:else if pop?.startsWith('add:') && pop !== 'add:fields'}
-			{@const field = pop.slice(4)}
-			<div
-				use:clickOutside={() => (pop = null)}
-				in:fly={POPOVER_IN}
-				class="absolute top-full left-0 mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[240px]"
-				style:box-shadow="var(--shadow-lg)"
-			>
-				<button
-					type="button"
-					onclick={() => (pop = 'add:fields')}
-					class="w-full flex items-center gap-1.5 px-2 py-1 mb-1 rounded-md hover:bg-surface-2 text-text-3 hover:text-text text-[11.5px] uppercase tracking-[0.06em] text-left border-b border-border pb-2"
-				>
-					<Icon name="chevron-r" size={10} class="rotate-180" />
-					{fieldLabel(field)}
-				</button>
-				{@render valuesList(field)}
-			</div>
-		{/if}
-	</div>
+	<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
 
-	{#each activeFilters as [field, values] (field)}
-		<div class="relative">
-			<Chip
-				variant="filter"
-				onclick={() => (pop = pop === `chip:${field}` ? null : `chip:${field}`)}
-				onremove={() => {
-					const next = { ...filters };
-					delete next[field];
-					setFilters(next);
-				}}
-			>
-				<span class="text-text-3">{fieldLabel(field)}:</span>
-				<span class="text-text font-medium">
-					{#if values.length === 1}
-						{valueLabel(field, values[0])}
-					{:else}
-						{values.length} selected
-					{/if}
-				</span>
-			</Chip>
-			{#if pop === `chip:${field}`}
-				<div
-					use:clickOutside={() => (pop = null)}
-					in:fly={POPOVER_IN}
-					class="absolute top-full left-0 mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[220px]"
-					style:box-shadow="var(--shadow-lg)"
-				>
-					{@render valuesList(field)}
-				</div>
-			{/if}
-		</div>
-	{/each}
-
-	{#if activeFilters.length >= 2}
-		<button onclick={clearAll} class="text-[12px] text-text-3 hover:text-text px-2">Clear</button>
-	{/if}
-
-	<div class="ml-auto flex items-center gap-2">
+	<div class="ml-auto flex items-center gap-2 shrink-0">
 		<div class="relative">
 			<span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none">
 				<Icon name="search" size={13} />
