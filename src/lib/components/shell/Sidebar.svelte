@@ -27,7 +27,6 @@
             label: "Support Tickets",
             icon: "ticket",
             href: "/tickets",
-            count: 4,
         },
         {
             key: "projects",
