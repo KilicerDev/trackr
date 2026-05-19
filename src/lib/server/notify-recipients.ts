@@ -61,6 +61,28 @@ async function internalStaffWithAnyPerm(perms: Permission[]): Promise<Set<string
 	return out;
 }
 
+export type TaskRecipientCtx = {
+	creatorId: string | null;
+	assigneeIds: Iterable<string>;
+	// Optional extras — used by the comment-add path to also notify previous
+	// commenters. Keep this opt-in so the default audience stays tight.
+	extraIds?: Iterable<string>;
+};
+
+// Recipients for a task event: current assignees, the creator, and any
+// extras the caller supplies (e.g. prior commenters). The actor is dropped
+// inside notify() so callers don't need to filter themselves out here.
+//
+// Deliberately NOT broadcasting to "everyone with project.tasks.read.any"
+// — that would page entire project teams on every status change.
+export function taskRecipients(ctx: TaskRecipientCtx): Set<string> {
+	const out = new Set<string>();
+	for (const id of ctx.assigneeIds) if (id) out.add(id);
+	if (ctx.creatorId) out.add(ctx.creatorId);
+	if (ctx.extraIds) for (const id of ctx.extraIds) if (id) out.add(id);
+	return out;
+}
+
 export type TicketRecipientCtx = {
 	orgId: string;
 	customerId: string | null;

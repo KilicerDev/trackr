@@ -180,6 +180,16 @@
 		draft = task ? { ...task, assignees: task.assignees ?? [task.assignee] } : null;
 		// Reset the compose box when the task changes.
 		commentBody = '';
+		// Best-effort mark-read so the bell dot clears when the user opens
+		// a task they were notified about. Failures are silent — bell state
+		// resolves itself on next page load.
+		if (task) {
+			void fetch('/api/notifications/read', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ entityType: 'task', displayId: task.id })
+			}).catch(() => {});
+		}
 	});
 
 	type PopId =

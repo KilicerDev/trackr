@@ -11,6 +11,8 @@ import {
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
 import { loadTasks } from '$lib/server/tasks';
+import { notify } from '$lib/server/notify';
+import { taskRecipients } from '$lib/server/notify-recipients';
 import { accessibleProjectIds, assertCan, can } from '$lib/server/permissions';
 import { getPreferences } from '$lib/server/preferences';
 
@@ -39,7 +41,15 @@ async function resolveTaskByDisplayId(displayId: string) {
 	if (!Number.isFinite(number)) return null;
 
 	const [row] = await db
-		.select({ id: task.id, projectId: project.id, createdBy: task.createdBy })
+		.select({
+			id: task.id,
+			title: task.title,
+			status: task.status,
+			projectId: project.id,
+			projectKey: project.key,
+			projectOrgId: project.orgId,
+			createdBy: task.createdBy
+		})
 		.from(task)
 		.innerJoin(project, eq(project.id, task.projectId))
 		.where(
@@ -53,7 +63,7 @@ const ALLOWED_STATUS = new Set(['backlog', 'todo', 'in_progress', 'paused', 'in_
 const ALLOWED_PRIORITY = new Set(['none', 'low', 'medium', 'high', 'urgent']);
 
 export const actions: Actions = {
-	create: async ({ request, locals }) => {
+	create: async ({ request, locals, url }) => {
 		if (!locals.user) throw error(401, 'Not authenticated');
 		const me = locals.user;
 
@@ -76,7 +86,7 @@ export const actions: Actions = {
 		}
 
 		const [p] = await db
-			.select({ id: project.id, key: project.key })
+			.select({ id: project.id, key: project.key, orgId: project.orgId })
 			.from(project)
 			.where(eq(project.key, projectKey))
 			.limit(1);
@@ -90,6 +100,7 @@ export const actions: Actions = {
 
 		const newId = crypto.randomUUID();
 		let displayId = '';
+		let assignedIds: string[] = [];
 		try {
 			await db.transaction(async (tx) => {
 				const [bumped] = await tx
@@ -137,16 +148,31 @@ export const actions: Actions = {
 				}
 
 				displayId = `${p.key}-${number}`;
+				assignedIds = validAssignees;
 			});
 		} catch (err) {
 			console.error('task create failed', err);
 			return fail(500, { message: 'Failed to create task.' });
 		}
 
+		// Notify each newly-assigned user (notify() drops the actor itself, so
+		// self-assignment is silent). Fire-and-forget: a failed notification
+		// must never undo the create.
+		void notify({
+			kind: 'taskAssigned',
+			recipients: assignedIds,
+			actorId: me.id,
+			orgId: p.orgId,
+			title: `Assigned to you: ${displayId} — ${title}`,
+			url: `/tasks?task=${displayId}`,
+			entity: { type: 'task', id: newId },
+			baseUrl: url.origin
+		}).catch((err) => console.error('task create notify failed', err));
+
 		return { success: true, id: newId, displayId };
 	},
 
-	update: async ({ request, locals }) => {
+	update: async ({ request, locals, url }) => {
 		if (!locals.user) throw error(401, 'Not authenticated');
 
 		const form = await request.formData();
@@ -207,6 +233,22 @@ export const actions: Actions = {
 			}
 		}
 
+		// Snapshot prior assignees so we can compute the *added* set and only
+		// notify newly-assigned users. Reads outside the transaction are fine
+		// here — the resolve already pinned the task and we use the snapshot
+		// purely for diffing, not for correctness of the write.
+		const priorAssigneeRows = await db
+			.select({ userId: taskAssignee.userId })
+			.from(taskAssignee)
+			.where(eq(taskAssignee.taskId, target.id));
+		const priorAssignees = new Set(priorAssigneeRows.map((r) => r.userId));
+		const priorStatus = target.status;
+
+		// Declared via a holder object so TypeScript's control-flow analysis
+		// doesn't collapse the type to `null` based on the outer initializer
+		// — mutations happen inside the transaction callback, which CFA
+		// cannot follow.
+		const assigneeOut: { next: string[] | null } = { next: null };
 		try {
 			await db.transaction(async (tx) => {
 				if (Object.keys(patch).length > 0) {
@@ -224,6 +266,9 @@ export const actions: Actions = {
 								valid.map((u) => ({ taskId: target.id, userId: u.id }))
 							);
 						}
+						assigneeOut.next = valid.map((u) => u.id);
+					} else {
+						assigneeOut.next = [];
 					}
 				}
 			});
@@ -232,10 +277,51 @@ export const actions: Actions = {
 			return fail(500, { message: 'Failed to save changes.' });
 		}
 
+		const me = locals.user;
+		const taskUrl = `/tasks?task=${displayId}`;
+
+		// Notify users newly added to the task.
+		const assigned = assigneeOut.next;
+		if (assigned !== null) {
+			const added = assigned.filter((id) => !priorAssignees.has(id));
+			if (added.length > 0) {
+				void notify({
+					kind: 'taskAssigned',
+					recipients: added,
+					actorId: me.id,
+					orgId: target.projectOrgId,
+					title: `Assigned to you: ${displayId} — ${target.title}`,
+					url: taskUrl,
+					entity: { type: 'task', id: target.id },
+					baseUrl: url.origin
+				}).catch((err) => console.error('task assign notify failed', err));
+			}
+		}
+
+		// Notify watchers on status change. "Watchers" = current assignees +
+		// the creator. Use the post-update assignee set if it changed.
+		if (typeof patch.status === 'string' && patch.status !== priorStatus) {
+			const finalAssignees = assigneeOut.next ?? [...priorAssignees];
+			const recipients = taskRecipients({
+				creatorId: target.createdBy,
+				assigneeIds: finalAssignees
+			});
+			void notify({
+				kind: 'taskStatusChanged',
+				recipients,
+				actorId: me.id,
+				orgId: target.projectOrgId,
+				title: `${displayId} → ${patch.status}: ${target.title}`,
+				url: taskUrl,
+				entity: { type: 'task', id: target.id },
+				baseUrl: url.origin
+			}).catch((err) => console.error('task status notify failed', err));
+		}
+
 		return { success: true };
 	},
 
-	commentAdd: async ({ request, locals }) => {
+	commentAdd: async ({ request, locals, url }) => {
 		if (!locals.user) throw error(401, 'Not authenticated');
 		const me = locals.user;
 
@@ -263,6 +349,38 @@ export const actions: Actions = {
 			console.error('comment add failed', err);
 			return fail(500, { message: 'Failed to add comment.' });
 		}
+
+		// Notify assignees + creator + anyone else who commented on the task.
+		// Looped previous-commenter query is cheap relative to the comment
+		// insert itself and lets us avoid notifying drive-by readers.
+		const [assigneeRows, priorCommenterRows] = await Promise.all([
+			db
+				.select({ userId: taskAssignee.userId })
+				.from(taskAssignee)
+				.where(eq(taskAssignee.taskId, target.id)),
+			db
+				.select({ authorId: taskComment.authorId })
+				.from(taskComment)
+				.where(eq(taskComment.taskId, target.id))
+		]);
+		const recipients = taskRecipients({
+			creatorId: target.createdBy,
+			assigneeIds: assigneeRows.map((r) => r.userId),
+			extraIds: priorCommenterRows
+				.map((r) => r.authorId)
+				.filter((id): id is string => id !== null)
+		});
+		void notify({
+			kind: 'taskCommented',
+			recipients,
+			actorId: me.id,
+			orgId: target.projectOrgId,
+			title: `New comment on ${displayId}: ${target.title}`,
+			body,
+			url: `/tasks?task=${displayId}`,
+			entity: { type: 'task', id: target.id },
+			baseUrl: url.origin
+		}).catch((err) => console.error('task comment notify failed', err));
 
 		return { success: true };
 	},

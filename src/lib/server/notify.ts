@@ -25,12 +25,19 @@ export type NotifyInput = {
 	body?: string | null;
 	url: string;
 	entity?: { type: string; id: string } | null;
+	// Origin to prefix `url` with when building the email link, e.g.
+	// `https://trackr.example.com`. Callers in request scope should pass
+	// `event.url.origin` so links match whichever host the actor used —
+	// host-based deploys can't rely on env.ORIGIN (it pins adapter-node to
+	// a single host and breaks routing). Falls back to env.ORIGIN, then to
+	// a relative path if neither is available.
+	baseUrl?: string | null;
 };
 
-function buildUrl(path: string): string {
-	const origin = env.ORIGIN?.replace(/\/$/, '') ?? '';
-	if (!origin) return path;
+function buildUrl(path: string, baseUrl?: string | null): string {
 	if (path.startsWith('http')) return path;
+	const origin = (baseUrl ?? env.ORIGIN ?? '').replace(/\/$/, '');
+	if (!origin) return path;
 	return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
 }
 
@@ -51,7 +58,7 @@ export async function notify(input: NotifyInput): Promise<void> {
 		if (pref?.email) wantsEmail.push(recipientIds[i]);
 	}
 
-	const fullUrl = buildUrl(input.url);
+	const fullUrl = buildUrl(input.url, input.baseUrl);
 
 	if (wantsInApp.length > 0) {
 		const rows = wantsInApp.map((recipientId) => ({
