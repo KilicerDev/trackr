@@ -66,7 +66,7 @@ export const load: ServerLoad = async ({ locals }) => {
 	// they're a project_member of.
 	const access = accessibleProjectIds(locals);
 	if (!access.all && access.ids.size === 0) {
-		return { projects: [], archivedProjects: [], orgs: [] };
+		return { projectsList: [], archivedProjectsList: [], orgs: [] };
 	}
 	const accessFilter = access.all ? undefined : inArray(project.id, [...access.ids]);
 
@@ -144,8 +144,12 @@ export const load: ServerLoad = async ({ locals }) => {
 		org: r.orgId ? (orgById.get(r.orgId) ?? null) : null
 	}));
 
-	const projects = all.filter((p) => !p.archivedAt);
-	const archivedProjects = all.filter((p) => !!p.archivedAt);
+	// Renamed from `projects`/`archivedProjects` to avoid colliding with the
+	// (app) layout fields of the same name — `page.data` merges layout + page
+	// loads, so identical keys would override the layout's name-sorted list
+	// and reshuffle the sidebar's favorites order on this route.
+	const projectsList = all.filter((p) => !p.archivedAt);
+	const archivedProjectsList = all.filter((p) => !!p.archivedAt);
 
 	// Active orgs for the create-project modal's org picker.
 	const orgsForPicker = await db
@@ -159,7 +163,7 @@ export const load: ServerLoad = async ({ locals }) => {
 		.where(isNull(organization.archivedAt))
 		.orderBy(organization.name);
 
-	return { projects, archivedProjects, orgs: orgsForPicker };
+	return { projectsList, archivedProjectsList, orgs: orgsForPicker };
 };
 
 export const actions: Actions = {

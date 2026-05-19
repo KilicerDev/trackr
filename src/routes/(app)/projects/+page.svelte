@@ -12,7 +12,7 @@
 	let tab = $state<'active' | 'archived'>('active');
 	let createOpen = $state(false);
 
-	const visibleProjects = $derived(tab === 'active' ? data.projects : data.archivedProjects);
+	const visibleProjects = $derived(tab === 'active' ? data.projectsList : data.archivedProjectsList);
 	const canCreate = $derived(
 		(data.effectivePermissions ?? []).includes('project.create')
 	);
@@ -30,7 +30,7 @@
 			<div>
 				<h1 class="text-[26px] font-semibold tracking-[-0.014em] text-text">Projects</h1>
 				<p class="text-[13px] text-text-3 mt-1">
-					{data.projects.length} active · {data.archivedProjects.length} archived
+					{data.projectsList.length} active · {data.archivedProjectsList.length} archived
 				</p>
 			</div>
 			<div class="ml-auto flex items-center gap-2">
@@ -41,7 +41,7 @@
 						class="inline-flex items-center gap-1.5 px-2.5 h-full rounded-md text-[12.5px] transition-colors {tab === 'active' ? 'bg-bg-elev text-text' : 'text-text-3 hover:text-text'}"
 					>
 						Active
-						<span class="font-mono text-[10.5px] text-text-3">{data.projects.length}</span>
+						<span class="font-mono text-[10.5px] text-text-3">{data.projectsList.length}</span>
 					</button>
 					<button
 						type="button"
@@ -50,7 +50,7 @@
 					>
 						Archived
 						<span class="font-mono text-[10.5px] text-text-3"
-							>{data.archivedProjects.length}</span
+							>{data.archivedProjectsList.length}</span
 						>
 					</button>
 				</div>
