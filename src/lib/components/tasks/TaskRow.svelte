@@ -31,6 +31,23 @@
 	<span class="font-mono text-[12px] text-text-3 truncate">{task.id}</span>
 	<span class="flex items-center gap-2 min-w-0">
 		<span class="truncate text-[13.5px] text-text">{task.title}</span>
+		{#if task.plannedFor || task.inMyPlan}
+			<span
+				class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] text-accent shrink-0"
+				style:background="rgba(239,122,109,0.14)"
+				title={task.plannedFor
+					? `Planned for ${formatDateShort(task.plannedFor)}`
+					: 'In your week (no date set)'}
+			>
+				{#if task.plannedFor}
+					<Icon name="calendar" size={12} />
+					<span class="font-mono">{formatDateShort(task.plannedFor)}</span>
+				{:else}
+					<Icon name="bookmark" size={12} />
+					<span>This week</span>
+				{/if}
+			</span>
+		{/if}
 		{#each task.labels as l (l)}
 			<LabelChip id={l} />
 		{/each}

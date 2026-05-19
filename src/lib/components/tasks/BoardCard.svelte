@@ -6,7 +6,7 @@
 	import AvatarStack from '../AvatarStack.svelte';
 	import TypeBadge from '../TypeBadge.svelte';
 	import Icon from '../Icon.svelte';
-	import { formatDateLong, formatEstimate } from '$lib/data';
+	import { formatDateLong, formatDateShort, formatEstimate } from '$lib/data';
 	import { resolveUser } from '$lib/lookup.svelte';
 
 	interface Props {
@@ -29,6 +29,23 @@
 			<TypeBadge type={task.type} />
 		{/if}
 		<span class="font-mono text-[10.5px] text-text-3">{task.id}</span>
+		{#if task.plannedFor || task.inMyPlan}
+			<span
+				class="ml-auto inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] text-accent"
+				style:background="rgba(239,122,109,0.14)"
+				title={task.plannedFor
+					? `Planned for ${formatDateShort(task.plannedFor)}`
+					: 'In your week (no date set)'}
+			>
+				{#if task.plannedFor}
+					<Icon name="calendar" size={12} />
+					<span class="font-mono">{formatDateShort(task.plannedFor)}</span>
+				{:else}
+					<Icon name="bookmark" size={12} />
+					<span>This week</span>
+				{/if}
+			</span>
+		{/if}
 	</div>
 	<div class="text-[13px] font-medium text-text leading-snug mb-1.5 line-clamp-3">
 		{task.title}
