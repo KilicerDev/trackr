@@ -78,7 +78,7 @@ async function anyCreatePerm(
 }
 
 export const actions: Actions = {
-	create: async ({ request, locals }) => {
+	create: async ({ request, locals, url }) => {
 		if (!locals.user) throw error(401, 'Not authenticated');
 		const me = locals.user;
 
@@ -150,7 +150,8 @@ export const actions: Actions = {
 				title: `New ticket ${displayId}: ${subject}`,
 				body: description,
 				url: `/tickets/${id}`,
-				entity: { type: 'ticket', id }
+				entity: { type: 'ticket', id },
+				baseUrl: url.origin
 			});
 			if (assignedAgentId && assignedAgentId !== me.id) {
 				await notify({
@@ -160,7 +161,8 @@ export const actions: Actions = {
 					orgId,
 					title: `Assigned to you: ${displayId} — ${subject}`,
 					url: `/tickets/${id}`,
-					entity: { type: 'ticket', id }
+					entity: { type: 'ticket', id },
+					baseUrl: url.origin
 				});
 			}
 
@@ -171,7 +173,7 @@ export const actions: Actions = {
 		}
 	},
 
-	update: async ({ request, locals }) => {
+	update: async ({ request, locals, url }) => {
 		if (!locals.user) throw error(401, 'Not authenticated');
 
 		const form = await request.formData();
@@ -230,7 +232,8 @@ export const actions: Actions = {
 					orgId: before.orgId,
 					title: `Assigned to you: ${before.displayId} — ${before.subject}`,
 					url: `/tickets/${id}`,
-					entity: { type: 'ticket', id }
+					entity: { type: 'ticket', id },
+					baseUrl: url.origin
 				});
 			}
 			return { ok: true };
@@ -240,7 +243,7 @@ export const actions: Actions = {
 		}
 	},
 
-	message: async ({ request, locals }) => {
+	message: async ({ request, locals, url }) => {
 		if (!locals.user) throw error(401, 'Not authenticated');
 		const me = locals.user;
 
@@ -293,7 +296,8 @@ export const actions: Actions = {
 						: `New message on ${t.displayId} — ${t.subject}`,
 					body: body.slice(0, 280),
 					url: `/tickets/${id}`,
-					entity: { type: 'ticket', id }
+					entity: { type: 'ticket', id },
+					baseUrl: url.origin
 				});
 			}
 
