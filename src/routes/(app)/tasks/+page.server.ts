@@ -67,9 +67,13 @@ export const actions: Actions = {
 		const estimateRaw = String(form.get('estimate') ?? '').trim();
 		const tags = form.getAll('tags').map((v) => String(v)).filter(Boolean);
 		const assigneeIds = form.getAll('assignees').map((v) => String(v)).filter(Boolean);
+		const plannedFor = String(form.get('plannedFor') ?? '').trim();
 
 		if (!title) return fail(400, { message: 'Title is required.' });
 		if (!projectKey) return fail(400, { message: 'Project is required.' });
+		if (plannedFor && !/^\d{4}-\d{2}-\d{2}$/.test(plannedFor)) {
+			return fail(400, { message: 'Invalid planned date.' });
+		}
 
 		const [p] = await db
 			.select({ id: project.id, key: project.key })
@@ -123,6 +127,14 @@ export const actions: Actions = {
 				await tx.insert(taskAssignee).values(
 					validAssignees.map((userId) => ({ taskId: newId, userId }))
 				);
+
+				if (plannedFor) {
+					await tx.insert(taskPlanning).values({
+						taskId: newId,
+						userId: me.id,
+						plannedFor
+					});
+				}
 
 				displayId = `${p.key}-${number}`;
 			});

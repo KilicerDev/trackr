@@ -10,10 +10,27 @@
 	import PriorityBars from '$lib/components/PriorityBars.svelte';
 	import { resolveProject } from '$lib/lookup.svelte';
 	import { formatEstimate } from '$lib/data';
+	import { showToast } from '$lib/toast.svelte';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { deserialize } from '$app/forms';
+	import { readView, saveView } from '$lib/viewState';
+	import type { ActionResult } from '@sveltejs/kit';
 	import type { Task } from '$lib/types';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	type SavedWeekView = {
+		weekStart?: string;
+		tab?: 'planned' | 'unplanned' | 'all';
+	};
+	// localStorage cache wins over the server snapshot — it's mirrored on
+	// every saveView() call so it always reflects the latest in-tab change,
+	// even before the debounced server write has flushed.
+	const saved: SavedWeekView = {
+		...((data.savedView ?? {}) as SavedWeekView),
+		...readView<SavedWeekView>('week')
+	};
 
 	const WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 	const DEFAULT_ESTIMATE = 60;
@@ -42,18 +59,53 @@
 		priority?: ComposerDraft['priority'];
 		assignees?: string[];
 		estimate?: number;
+		plannedFor?: string | null;
 	}>({});
 
 	function expandComposer(d: ComposerDraft) {
+		const iso = composerDay !== null ? data.weekDates[composerDay] ?? null : null;
 		createPrefill = {
 			title: d.title,
 			project: d.project,
 			priority: d.priority,
 			assignees: [d.assignee],
-			estimate: d.estimate
+			estimate: d.estimate,
+			plannedFor: iso
 		};
 		creating = true;
 		composerDay = null;
+	}
+
+	async function submitComposer(dayIndex: number, d: ComposerDraft) {
+		const iso = data.weekDates[dayIndex];
+		if (!iso || !d.title) return;
+
+		const body = new FormData();
+		body.set('title', d.title);
+		body.set('project', d.project);
+		body.set('status', 'todo');
+		body.set('priority', d.priority);
+		body.set('estimate', String(d.estimate));
+		body.append('assignees', d.assignee);
+		body.set('plannedFor', iso);
+
+		try {
+			const res = await fetch('/tasks?/create', { method: 'POST', body });
+			const result = deserialize(await res.text()) as ActionResult;
+			if (result.type === 'success') {
+				composerDay = null;
+				await invalidateAll();
+			} else if (result.type === 'failure') {
+				const msg =
+					(result.data as { message?: string } | undefined)?.message ?? 'Failed to create task.';
+				showToast('err', msg);
+			} else if (result.type === 'error') {
+				showToast('err', result.error?.message ?? 'Failed to create task.');
+			}
+		} catch (err) {
+			console.error('week composer submit failed', err);
+			showToast('err', 'Failed to create task.');
+		}
 	}
 
 	const plannedByDay = $derived.by(() => {
@@ -86,25 +138,27 @@
 		return plannedByDay[i].reduce((s, t) => s + (t.estimate ?? DEFAULT_ESTIMATE), 0);
 	}
 
-	let unscheduledTab = $state<'mine' | 'assigned' | 'all'>('mine');
-	type LayoutShape = { currentUserId?: string };
-	const meId = $derived((data as unknown as LayoutShape).currentUserId);
+	let unscheduledTab = $state<'planned' | 'unplanned' | 'all'>(saved.tab ?? 'planned');
+	function setUnscheduledTab(t: 'planned' | 'unplanned' | 'all') {
+		unscheduledTab = t;
+		saveView('week', { tab: t });
+	}
 
 	const unscheduled = $derived.by(() => {
 		// "Unscheduled" = anything without a specific day, regardless of plan
-		// status. Tasks the user explicitly added to their week (undated plans)
-		// sit on top with a bookmark badge; the rest follow the active tab.
+		// status. Tabs split on "in my week (no date)" vs the rest. Bookmarked
+		// rows always sort to the top of whichever list contains them.
 		const all = data.tasks.filter(
 			(t) => !t.plannedFor && t.status !== 'done' && t.status !== 'in_review'
 		);
-		const planned = all.filter((t) => t.inMyPlan);
-
-		let rest = all.filter((t) => !t.inMyPlan);
-		if (unscheduledTab === 'mine' && meId) {
-			rest = rest.filter((t) => t.assignee === meId);
-		} else if (unscheduledTab === 'assigned' && meId) {
-			rest = rest.filter((t) => (t.assignees ?? [t.assignee]).includes(meId));
-		}
+		const filtered =
+			unscheduledTab === 'planned'
+				? all.filter((t) => t.inMyPlan)
+				: unscheduledTab === 'unplanned'
+					? all.filter((t) => !t.inMyPlan)
+					: all;
+		const planned = filtered.filter((t) => t.inMyPlan);
+		const rest = filtered.filter((t) => !t.inMyPlan);
 		return [...planned, ...rest].slice(0, 16);
 	});
 
@@ -117,6 +171,59 @@
 		return `${f} — ${l}`;
 	}
 
+	function startOfWeekIso(iso: string): string {
+		const d = new Date(iso + 'T00:00:00Z');
+		const offset = (d.getUTCDay() + 6) % 7;
+		d.setUTCDate(d.getUTCDate() - offset);
+		return d.toISOString().slice(0, 10);
+	}
+
+	function addDays(iso: string, n: number): string {
+		const d = new Date(iso + 'T00:00:00Z');
+		d.setUTCDate(d.getUTCDate() + n);
+		return d.toISOString().slice(0, 10);
+	}
+
+	const currentWeekStart = $derived(startOfWeekIso(data.todayIso));
+	const weekDelta = $derived(
+		Math.round(
+			(Date.UTC(
+				...(data.weekStartIso.split('-').map(Number) as [number, number, number])
+			) -
+				Date.UTC(
+					...(currentWeekStart.split('-').map(Number) as [number, number, number])
+				)) /
+				86400000 /
+				7
+		)
+	);
+
+	// ISO-8601 week number — the week containing the Thursday of that Mon-Sun
+	// span belongs to the ISO year of that Thursday.
+	function isoWeek(iso: string): { week: number; year: number } {
+		const d = new Date(iso + 'T00:00:00Z');
+		d.setUTCDate(d.getUTCDate() + 3 - ((d.getUTCDay() + 6) % 7));
+		const jan4 = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+		jan4.setUTCDate(jan4.getUTCDate() + 3 - ((jan4.getUTCDay() + 6) % 7));
+		const week = 1 + Math.round((d.getTime() - jan4.getTime()) / 86400000 / 7);
+		return { week, year: d.getUTCFullYear() };
+	}
+
+	const weekLabel = $derived.by(() => {
+		const { week, year } = isoWeek(data.weekStartIso);
+		const today = isoWeek(data.todayIso);
+		const padded = String(week).padStart(2, '0');
+		return year === today.year ? `KW${padded}` : `KW${padded} ${year}`;
+	});
+
+	function gotoWeek(iso: string | null) {
+		const resolved = iso ?? currentWeekStart;
+		saveView('week', { weekStart: resolved });
+		// Always carry ?week= in the URL so navigation is authoritative and
+		// doesn't race the debounced viewState write. Saved week is only
+		// consulted on fresh entries to /week (no param).
+		goto(`/week?week=${resolved}`, { noScroll: true, keepFocus: true });
+	}
 </script>
 
 <svelte:head><title>Trackr · My Week</title></svelte:head>
@@ -125,18 +232,36 @@
 
 <div class="flex-1 min-h-0 overflow-y-auto">
 	<div class="flex items-center gap-3 px-6 py-3 border-b border-border">
-		<Button size="sm" variant="default">Today</Button>
+		<Button size="sm" variant="default" onclick={() => gotoWeek(null)} disabled={weekDelta === 0}>
+			Today
+		</Button>
 		<div class="inline-flex bg-surface border border-border rounded-lg overflow-hidden">
-			<button class="w-7 h-7 grid place-items-center text-text-3 hover:text-text hover:bg-surface-2"
-				><Icon name="chevron-r" size={12} class="rotate-180" /></button
+			<button
+				type="button"
+				aria-label="Previous week"
+				onclick={() => gotoWeek(addDays(data.weekStartIso, -7))}
+				class="w-7 h-7 grid place-items-center text-text-3 hover:text-text hover:bg-surface-2"
 			>
-			<button class="w-7 h-7 grid place-items-center text-text-3 hover:text-text hover:bg-surface-2"
-				><Icon name="chevron-r" size={12} /></button
+				<Icon name="chevron-r" size={12} class="rotate-180" />
+			</button>
+			<button
+				type="button"
+				aria-label="Next week"
+				onclick={() => gotoWeek(addDays(data.weekStartIso, 7))}
+				class="w-7 h-7 grid place-items-center text-text-3 hover:text-text hover:bg-surface-2"
 			>
+				<Icon name="chevron-r" size={12} />
+			</button>
 		</div>
-		<div class="text-[13.5px] text-text-2">
-			<span class="text-text font-medium">This week</span>
-			<span class="text-text-4 mx-2">·</span>
+		<div class="text-[13.5px] text-text-2 flex items-center gap-2">
+			<span class="text-text font-mono font-medium tracking-tight">{weekLabel}</span>
+			{#if weekDelta === 0}
+				<span
+					class="px-1.5 py-0.5 text-[10px] uppercase tracking-[0.06em] font-medium rounded-full text-accent"
+					style:background="rgba(239,122,109,0.14)">Now</span
+				>
+			{/if}
+			<span class="text-text-4">·</span>
 			<span class="text-text-3 font-mono text-[12.5px]">{weekRangeLabel()}</span>
 		</div>
 		<div class="ml-auto flex items-center gap-3 bg-bg-elev border border-border rounded-xl px-3.5 py-2">
@@ -209,7 +334,10 @@
 							{/each}
 							{#if composerDay === i}
 								<SmartComposer
-									onsubmit={() => (composerDay = null)}
+									users={data.users}
+									projects={data.projects}
+									currentUserId={data.currentUserId}
+									onsubmit={(d) => submitComposer(i, d)}
 									oncancel={() => (composerDay = null)}
 									onexpand={expandComposer}
 								/>
@@ -242,10 +370,10 @@
 				<div
 					class="inline-flex items-center h-7 bg-surface border border-border rounded-lg p-0.5 text-[11.5px] w-full"
 				>
-					{#each [['mine', 'Mine'], ['assigned', 'Assigned'], ['all', 'All']] as [k, lbl] (k)}
+					{#each [['planned', 'In my week'], ['unplanned', 'Others'], ['all', 'All']] as [k, lbl] (k)}
 						<button
 							type="button"
-							onclick={() => (unscheduledTab = k as 'mine' | 'assigned' | 'all')}
+							onclick={() => setUnscheduledTab(k as 'planned' | 'unplanned' | 'all')}
 							class="flex-1 h-full rounded-md transition-colors {unscheduledTab === k
 								? 'bg-bg-elev text-text'
 								: 'text-text-3 hover:text-text'}"
@@ -278,9 +406,9 @@
 						<span class="font-mono text-[10.5px] text-text-3">{t.id}</span>
 						<PriorityBars priority={t.priority} />
 						<span class="text-[12.5px] text-text truncate flex-1">{t.title}</span>
-						<span class="font-mono text-[10px] text-text-4"
-							>{formatEstimate(t.estimate ?? DEFAULT_ESTIMATE)}</span
-						>
+						<span class="font-mono text-[10px] {t.estimate ? 'text-text-4' : 'text-text-4/60'}">
+							{t.estimate ? formatEstimate(t.estimate) : '—'}
+						</span>
 					</button>
 				{/each}
 				{#if unscheduled.length === 0}

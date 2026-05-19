@@ -31,13 +31,14 @@
 	import type { PriorityId, ProjectId, StatusId } from '$lib/types';
 
 	interface Prefill {
-		project?: ProjectId;
+		project?: string;
 		status?: StatusId;
 		priority?: PriorityId;
 		assignees?: string[];
 		due?: string | null;
 		estimate?: number;
 		title?: string;
+		plannedFor?: string | null;
 	}
 
 	type AssignableUser = {
@@ -95,6 +96,7 @@
 	let due = $state<string | null>(null);
 	let estimate = $state<number | undefined>(undefined);
 	let tags = $state<string[]>([]);
+	let plannedFor = $state<string | null>(null);
 
 	let pop = $state<string | null>(null);
 	let submitting = $state(false);
@@ -105,13 +107,14 @@
 			title = prefill?.title ?? '';
 			description = '';
 			const defaultProject = (projectList[0]?.key as ProjectId) ?? 'TRACKR';
-			project = prefill?.project ?? defaultProject;
+			project = (prefill?.project as ProjectId | undefined) ?? defaultProject;
 			status = prefill?.status ?? 'todo';
 			priority = prefill?.priority ?? 'medium';
 			assignees = prefill?.assignees ?? [meId];
 			due = prefill?.due ?? null;
 			estimate = prefill?.estimate;
 			tags = [];
+			plannedFor = prefill?.plannedFor ?? null;
 			pop = null;
 			submitting = false;
 		}
@@ -323,6 +326,7 @@
 			<input type="hidden" name="priority" value={priority} />
 			<input type="hidden" name="due" value={due ?? ''} />
 			<input type="hidden" name="estimate" value={estimate ?? ''} />
+			<input type="hidden" name="plannedFor" value={plannedFor ?? ''} />
 			{#each assignees as a (a)}
 				<input type="hidden" name="assignees" value={a} />
 			{/each}

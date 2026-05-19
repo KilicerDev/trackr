@@ -7,48 +7,50 @@
 	import ProjectPopover from '../popovers/ProjectPopover.svelte';
 	import EstimatePopover from '../popovers/EstimatePopover.svelte';
 	import AssigneePopover from '../popovers/AssigneePopover.svelte';
-	import {
-		TRACKR_PRIORITIES,
-		TRACKR_PROJECTS,
-		TRACKR_USERS,
-		formatEstimate,
-		userById
-	} from '$lib/data';
-	import type { PriorityId, ProjectId } from '$lib/types';
+	import { TRACKR_PRIORITIES, formatEstimate } from '$lib/data';
+	import type { PriorityId } from '$lib/types';
+
+	type AssignableUser = {
+		id: string;
+		name: string;
+		email: string;
+		initials: string;
+		color: string;
+		status: 'active' | 'invited' | 'disabled';
+	};
+	type PickableProject = { key: string; name: string; color: string; icon: string };
 
 	export interface ComposerDraft {
 		title: string;
-		project: ProjectId;
+		project: string;
 		priority: PriorityId;
 		assignee: string;
 		estimate: number;
 	}
 
 	interface Props {
-		onsubmit?: (text: string) => void;
+		users: AssignableUser[];
+		projects: PickableProject[];
+		currentUserId: string;
+		onsubmit?: (draft: ComposerDraft) => void;
 		oncancel?: () => void;
 		onexpand?: (draft: ComposerDraft) => void;
 	}
-	let { onsubmit, oncancel, onexpand }: Props = $props();
+	let { users, projects, currentUserId, onsubmit, oncancel, onexpand }: Props = $props();
 
 	let text = $state('');
 	let focused = $state(true);
 	let inputEl = $state<HTMLInputElement>();
 
+	const defaultProject = $derived(projects[0]?.key ?? '');
+
 	// Manual overrides — when set, take precedence over token parsing.
-	let projectOverride = $state<ProjectId | null>(null);
+	let projectOverride = $state<string | null>(null);
 	let priorityOverride = $state<PriorityId | null>(null);
 	let assigneeOverride = $state<string | null>(null);
 	let estimateOverride = $state<number | null>(null);
 
 	let pop = $state<'project' | 'priority' | 'assignee' | 'estimate' | null>(null);
-
-	const PROJECT_TOKENS: Record<string, ProjectId> = {
-		'+siweb': 'SIWEB',
-		'+trackr': 'TRACKR',
-		'+maja': 'MAJA',
-		'+webim': 'WEBIM'
-	};
 
 	const PRIO_TOKENS: Record<string, PriorityId> = {
 		'!urgent': 'urgent',
@@ -68,33 +70,42 @@
 	}
 
 	let parsed = $derived.by(() => {
-		const tokens = text.toLowerCase().split(/\s+/);
-		let project: ProjectId = 'TRACKR';
+		const tokens = text.split(/\s+/);
+		let project: string = defaultProject;
 		let priority: PriorityId = 'medium';
-		let assignee = 'u6';
+		let assignee = currentUserId;
 		let estimate = 60;
 		let projectFromToken = false;
 		let prioFromToken = false;
 		let assigneeFromToken = false;
 		let estimateFromToken = false;
 
-		for (const t of tokens) {
-			if (PROJECT_TOKENS[t]) {
-				project = PROJECT_TOKENS[t];
-				projectFromToken = true;
+		const projectByKey = new Map(projects.map((p) => [p.key.toLowerCase(), p.key]));
+
+		for (const raw of tokens) {
+			const t = raw.toLowerCase();
+			if (raw.startsWith('+')) {
+				const key = projectByKey.get(raw.slice(1).toLowerCase());
+				if (key) {
+					project = key;
+					projectFromToken = true;
+				}
 			} else if (PRIO_TOKENS[t]) {
 				priority = PRIO_TOKENS[t];
 				prioFromToken = true;
-			} else if (t.startsWith('@')) {
-				const name = t.slice(1);
-				const u = TRACKR_USERS.find(
-					(u) => u.name.toLowerCase().startsWith(name) || u.initials.toLowerCase() === name
+			} else if (raw.startsWith('@')) {
+				const name = raw.slice(1).toLowerCase();
+				const u = users.find(
+					(u) =>
+						u.name.toLowerCase().startsWith(name) ||
+						u.initials.toLowerCase() === name ||
+						u.email.toLowerCase().startsWith(name)
 				);
 				if (u) {
 					assignee = u.id;
 					assigneeFromToken = true;
 				}
-			} else if (t.startsWith('~')) {
+			} else if (raw.startsWith('~')) {
 				const e = parseEstimate(t);
 				if (e !== null) {
 					estimate = e;
@@ -115,7 +126,6 @@
 		};
 	});
 
-	// Effective values: override > token > default
 	let project = $derived(projectOverride ?? parsed.project);
 	let priority = $derived(priorityOverride ?? parsed.priority);
 	let assignee = $derived(assigneeOverride ?? parsed.assignee);
@@ -126,23 +136,40 @@
 	let assigneeActive = $derived(assigneeOverride !== null || parsed.assigneeFromToken);
 	let estimateActive = $derived(estimateOverride !== null || parsed.estimateFromToken);
 
+	let projectMeta = $derived(
+		projects.find((p) => p.key === project) ?? {
+			key: '',
+			name: '—',
+			color: '#7c7c84',
+			icon: '?'
+		}
+	);
+	let assigneeUser = $derived(users.find((u) => u.id === assignee));
+
 	// Strip tokens out of the title so the expanded modal gets the clean text
 	let cleanTitle = $derived(
 		text
 			.split(/\s+/)
-			.filter(
-				(t) =>
-					!PROJECT_TOKENS[t.toLowerCase()] &&
-					!PRIO_TOKENS[t.toLowerCase()] &&
-					!t.startsWith('@') &&
-					!t.startsWith('~')
-			)
+			.filter((raw) => {
+				const t = raw.toLowerCase();
+				if (raw.startsWith('+')) return false;
+				if (PRIO_TOKENS[t]) return false;
+				if (raw.startsWith('@')) return false;
+				if (raw.startsWith('~')) return false;
+				return true;
+			})
 			.join(' ')
+			.trim()
 	);
 
+	function draft(): ComposerDraft {
+		return { title: cleanTitle, project, priority, assignee, estimate };
+	}
+
 	function submit() {
-		if (!text.trim()) return;
-		onsubmit?.(text);
+		if (!cleanTitle) return;
+		if (!project) return;
+		onsubmit?.(draft());
 		text = '';
 		projectOverride = null;
 		priorityOverride = null;
@@ -151,13 +178,7 @@
 	}
 
 	function expand() {
-		onexpand?.({
-			title: cleanTitle,
-			project,
-			priority,
-			assignee,
-			estimate
-		});
+		onexpand?.(draft());
 	}
 
 	function handleKey(e: KeyboardEvent) {
@@ -217,15 +238,15 @@
 				class={chipClass(projectActive)}
 				style:background={projectActive ? 'rgba(239,122,109,0.14)' : undefined}
 			>
-				<span class="w-2 h-2 rounded-full" style:background={TRACKR_PROJECTS[project].color}
-				></span>
-				{TRACKR_PROJECTS[project].name}
+				<span class="w-2 h-2 rounded-full" style:background={projectMeta.color}></span>
+				{projectMeta.name}
 			</button>
 			{#if pop === 'project'}
 				<ProjectPopover
-					value={project}
-					onchange={(v) => (projectOverride = v)}
+					value={project as never}
+					onchange={(v) => (projectOverride = v as unknown as string)}
 					onclose={() => (pop = null)}
+					{projects}
 				/>
 			{/if}
 		</div>
@@ -259,14 +280,19 @@
 				class={chipClass(assigneeActive)}
 				style:background={assigneeActive ? 'rgba(239,122,109,0.14)' : undefined}
 			>
-				<Avatar user={userById(assignee)} size={14} />
-				{userById(assignee)?.name}
+				{#if assigneeUser}
+					<Avatar user={assigneeUser} size={14} />
+					{assigneeUser.name}
+				{:else}
+					<span class="text-text-3">Unassigned</span>
+				{/if}
 			</button>
 			{#if pop === 'assignee'}
 				<AssigneePopover
 					value={[assignee]}
 					onchange={(v) => (assigneeOverride = v[0] ?? null)}
 					onclose={() => (pop = null)}
+					{users}
 				/>
 			{/if}
 		</div>
