@@ -9,7 +9,7 @@
 	let { project }: Props = $props();
 
 	let st = $derived(
-		PROJECT_STATUS[project.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.on_track
+		PROJECT_STATUS[project.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.active
 	);
 
 	function relative(d: Date): string {
@@ -44,14 +44,6 @@
 		<div class="min-w-0 flex-1">
 			<div class="flex items-center gap-2">
 				<div class="text-[15px] font-semibold text-text truncate">{project.name}</div>
-				{#if project.archivedAt}
-					<span
-						class="text-[10px] uppercase tracking-[0.06em] px-1.5 py-0.5 rounded text-text-3 shrink-0"
-						style:background="rgba(154,164,178,0.18)"
-					>
-						Archived
-					</span>
-				{/if}
 			</div>
 			<div class="font-mono text-[11px] text-text-3 flex items-center gap-1.5">
 				<span>{project.key}</span>

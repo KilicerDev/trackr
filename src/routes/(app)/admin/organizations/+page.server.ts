@@ -1,5 +1,5 @@
 import { fail, type Actions } from '@sveltejs/kit';
-import { count, eq, isNull } from 'drizzle-orm';
+import { count, eq, ne } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { organization, project } from '$lib/server/db/app.schema';
 import type { PageServerLoad } from './$types';
@@ -45,7 +45,7 @@ export const load: PageServerLoad = async () => {
 	const counts = await db
 		.select({ orgId: project.orgId, total: count() })
 		.from(project)
-		.where(isNull(project.archivedAt))
+		.where(ne(project.status, 'archived'))
 		.groupBy(project.orgId);
 	const countByOrg = new Map<string, number>();
 	for (const c of counts) {

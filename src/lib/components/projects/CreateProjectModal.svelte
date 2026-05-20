@@ -38,14 +38,21 @@
 		'#d97cae'
 	];
 
-	const STATUSES: Project['status'][] = ['on_track', 'at_risk', 'paused', 'off_track'];
+	const STATUSES: Project['status'][] = [
+		'prospect',
+		'planned',
+		'active',
+		'paused',
+		'completed',
+		'cancelled'
+	];
 
 	let name = $state('');
 	let key = $state('');
 	let keyTouched = $state(false);
 	let description = $state('');
 	let color = $state(PALETTE[0]);
-	let status = $state<Project['status']>('on_track');
+	let status = $state<Project['status']>('active');
 	let orgId = $state<string>(''); // empty string = internal (no org)
 	let submitting = $state(false);
 
@@ -86,7 +93,7 @@
 			keyTouched = false;
 			description = '';
 			color = PALETTE[0];
-			status = 'on_track';
+			status = 'active';
 			orgId = '';
 			submitting = false;
 			pop = null;

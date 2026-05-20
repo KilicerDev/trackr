@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { db } from './db';
 import {
 	project,
@@ -36,7 +36,7 @@ export async function loadTasks(opts?: {
 		conditions.push(eq(task.projectId, opts.projectId));
 	} else {
 		// Global view excludes tasks whose parent project is archived.
-		conditions.push(isNull(project.archivedAt));
+		conditions.push(ne(project.status, 'archived'));
 	}
 	if (opts?.projectIds) {
 		conditions.push(inArray(task.projectId, opts.projectIds));

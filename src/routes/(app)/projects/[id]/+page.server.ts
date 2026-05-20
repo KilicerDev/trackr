@@ -12,6 +12,15 @@ import { loadTasks } from '$lib/server/tasks';
 import { assertCan } from '$lib/server/permissions';
 
 const ALLOWED_MEMBER_ROLES = new Set(['project.manager', 'project.member', 'project.viewer']);
+const ALLOWED_STATUSES = new Set([
+	'prospect',
+	'planned',
+	'active',
+	'paused',
+	'completed',
+	'cancelled',
+	'archived'
+]);
 
 function initials(name: string): string {
 	return name
@@ -95,8 +104,7 @@ export const load: ServerLoad = async ({ params, locals }) => {
 			status: row.status,
 			leadId: row.leadId,
 			createdAt: row.createdAt,
-			updatedAt: row.updatedAt,
-			archivedAt: row.archivedAt
+			updatedAt: row.updatedAt
 		},
 		lead,
 		members,
@@ -106,11 +114,52 @@ export const load: ServerLoad = async ({ params, locals }) => {
 };
 
 export const actions: Actions = {
+	update: async ({ request, params, locals }) => {
+		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		await assertCan(locals, 'project.edit', { projectId: params.id });
+
+		const form = await request.formData();
+		const name = String(form.get('name') ?? '').trim();
+		const description = String(form.get('description') ?? '').trim();
+		const status = String(form.get('status') ?? '').trim();
+		const color = String(form.get('color') ?? '').trim();
+
+		if (!name) return fail(400, { message: 'Project name is required.' });
+		if (!ALLOWED_STATUSES.has(status)) return fail(400, { message: 'Invalid status.' });
+
+		const icon = (name[0] ?? 'P').toUpperCase();
+
+		try {
+			await db
+				.update(project)
+				.set({
+					name,
+					description: description || null,
+					status,
+					icon,
+					...(color ? { color } : {}),
+					updatedAt: new Date()
+				})
+				.where(eq(project.id, params.id));
+		} catch (err) {
+			console.error('project update failed', err);
+			return fail(500, { message: 'Failed to update project.' });
+		}
+		return { success: true };
+	},
+
+	// Archive is now a status value rather than a separate timestamp column.
+	// Until the project audit log lands (which will record the prior status),
+	// unarchive restores to 'active' as a sensible default.
 	archive: async ({ params, locals }) => {
 		if (!locals.user) throw error(401, 'Not authenticated');
 		if (!params.id) return fail(400, { message: 'Missing project id.' });
 		await assertCan(locals, 'project.archive', { projectId: params.id });
-		await db.update(project).set({ archivedAt: new Date() }).where(eq(project.id, params.id));
+		await db
+			.update(project)
+			.set({ status: 'archived', updatedAt: new Date() })
+			.where(eq(project.id, params.id));
 		return { success: true };
 	},
 
@@ -118,7 +167,10 @@ export const actions: Actions = {
 		if (!locals.user) throw error(401, 'Not authenticated');
 		if (!params.id) return fail(400, { message: 'Missing project id.' });
 		await assertCan(locals, 'project.archive', { projectId: params.id });
-		await db.update(project).set({ archivedAt: null }).where(eq(project.id, params.id));
+		await db
+			.update(project)
+			.set({ status: 'active', updatedAt: new Date() })
+			.where(eq(project.id, params.id));
 		return { success: true };
 	},
 

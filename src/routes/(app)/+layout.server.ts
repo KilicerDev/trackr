@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { and, asc, count, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import {
@@ -138,8 +138,8 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		.from(projectTable)
 		.where(
 			projectAccessFilter
-				? and(isNull(projectTable.archivedAt), projectAccessFilter)
-				: isNull(projectTable.archivedAt)
+				? and(ne(projectTable.status, 'archived'), projectAccessFilter)
+				: ne(projectTable.status, 'archived')
 		)
 		.orderBy(asc(projectTable.name));
 
@@ -156,8 +156,8 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		.from(projectTable)
 		.where(
 			projectAccessFilter
-				? and(isNotNull(projectTable.archivedAt), projectAccessFilter)
-				: isNotNull(projectTable.archivedAt)
+				? and(eq(projectTable.status, 'archived'), projectAccessFilter)
+				: eq(projectTable.status, 'archived')
 		)
 		.orderBy(asc(projectTable.name));
 
@@ -170,10 +170,10 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			projectAccessFilter
 				? and(
 						isNull(taskTable.archivedAt),
-						isNull(projectTable.archivedAt),
+						ne(projectTable.status, 'archived'),
 						projectAccessFilter
 					)
-				: and(isNull(taskTable.archivedAt), isNull(projectTable.archivedAt))
+				: and(isNull(taskTable.archivedAt), ne(projectTable.status, 'archived'))
 		);
 	const taskCount = Number(activeTasks?.total ?? 0);
 

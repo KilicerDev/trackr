@@ -82,17 +82,20 @@ export const ROLE_PERMISSIONS = [
 ];
 
 export const TRACKR_PROJECTS: Record<ProjectId, Project> = {
-	SIWEB: { name: 'Siweb Marketplace', color: '#e07a5f', description: 'B2B parts marketplace with SKU search, inventory sync, and German localization.', status: 'on_track', lead: 'u2', members: ['u1', 'u2', 'u3', 'u4', 'u5'], updated: '2 hours ago', icon: 'S' },
-	TRACKR: { name: 'Trackr Internal', color: '#7a9cf0', description: 'Our own task system — Linear-style workspace for small teams.', status: 'on_track', lead: 'u6', members: ['u2', 'u3', 'u6'], updated: '5 hours ago', icon: 'T' },
-	MAJA: { name: 'Maja Demo', color: '#c08bd6', description: 'Demo workspace for the Maja onboarding flow and translation gaps.', status: 'at_risk', lead: 'u1', members: ['u1', 'u4'], updated: 'Yesterday', icon: 'M' },
+	SIWEB: { name: 'Siweb Marketplace', color: '#e07a5f', description: 'B2B parts marketplace with SKU search, inventory sync, and German localization.', status: 'active', lead: 'u2', members: ['u1', 'u2', 'u3', 'u4', 'u5'], updated: '2 hours ago', icon: 'S' },
+	TRACKR: { name: 'Trackr Internal', color: '#7a9cf0', description: 'Our own task system — Linear-style workspace for small teams.', status: 'active', lead: 'u6', members: ['u2', 'u3', 'u6'], updated: '5 hours ago', icon: 'T' },
+	MAJA: { name: 'Maja Demo', color: '#c08bd6', description: 'Demo workspace for the Maja onboarding flow and translation gaps.', status: 'prospect', lead: 'u1', members: ['u1', 'u4'], updated: 'Yesterday', icon: 'M' },
 	WEBIM: { name: 'Webim Campaign', color: '#7fc8a9', description: 'Q2 paid acquisition campaign — landing page, Google ads, copy variants.', status: 'paused', lead: 'u5', members: ['u5', 'u6'], updated: '3 days ago', icon: 'W' }
 };
 
 export const PROJECT_STATUS = {
-	on_track: { label: 'On track', color: '#7fc8a9' },
-	at_risk: { label: 'At risk', color: '#e9c46a' },
+	prospect: { label: 'Prospect', color: '#c08bd6' },
+	planned: { label: 'Planned', color: '#7a9cf0' },
+	active: { label: 'Active', color: '#7fc8a9' },
 	paused: { label: 'Paused', color: '#9aa4b2' },
-	off_track: { label: 'Off track', color: '#ef7a6d' }
+	completed: { label: 'Completed', color: '#7c9b86' },
+	cancelled: { label: 'Cancelled', color: '#ef7a6d' },
+	archived: { label: 'Archived', color: '#9aa4b2' }
 } as const;
 
 export const TRACKR_STATUSES = [

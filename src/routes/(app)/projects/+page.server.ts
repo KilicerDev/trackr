@@ -9,6 +9,7 @@ import {
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
 import { accessibleProjectIds, assertCan } from '$lib/server/permissions';
+import { getPreferences } from '$lib/server/preferences';
 
 interface MemberSummary {
 	id: string;
@@ -26,7 +27,6 @@ export interface ProjectListItem {
 	icon: string;
 	status: Project['status'];
 	updatedAt: Date;
-	archivedAt: Date | null;
 	lead: MemberSummary | null;
 	members: MemberSummary[];
 	org: { id: string; name: string; slug: string } | null;
@@ -65,8 +65,10 @@ export const load: ServerLoad = async ({ locals }) => {
 	// Trackr internal team sees every project; everyone else only sees rows
 	// they're a project_member of.
 	const access = accessibleProjectIds(locals);
+	const preferences = await getPreferences(locals.user.id);
+	const savedView = (preferences.viewState?.projects ?? {}) as Record<string, unknown>;
 	if (!access.all && access.ids.size === 0) {
-		return { projectsList: [], archivedProjectsList: [], orgs: [] };
+		return { projectsList: [], orgs: [], savedView };
 	}
 	const accessFilter = access.all ? undefined : inArray(project.id, [...access.ids]);
 
@@ -83,8 +85,7 @@ export const load: ServerLoad = async ({ locals }) => {
 			status: project.status,
 			leadId: project.leadId,
 			orgId: project.orgId,
-			updatedAt: project.updatedAt,
-			archivedAt: project.archivedAt
+			updatedAt: project.updatedAt
 		})
 		.from(project)
 		.where(accessFilter)
@@ -138,18 +139,17 @@ export const load: ServerLoad = async ({ locals }) => {
 		icon: r.icon,
 		status: r.status as Project['status'],
 		updatedAt: r.updatedAt,
-		archivedAt: r.archivedAt,
 		lead: r.leadId ? (leadById.get(r.leadId) ?? null) : null,
 		members: membersByProject.get(r.id) ?? [],
 		org: r.orgId ? (orgById.get(r.orgId) ?? null) : null
 	}));
 
-	// Renamed from `projects`/`archivedProjects` to avoid colliding with the
-	// (app) layout fields of the same name — `page.data` merges layout + page
-	// loads, so identical keys would override the layout's name-sorted list
-	// and reshuffle the sidebar's favorites order on this route.
-	const projectsList = all.filter((p) => !p.archivedAt);
-	const archivedProjectsList = all.filter((p) => !!p.archivedAt);
+	// Renamed from `projects` to avoid colliding with the (app) layout field of
+	// the same name — `page.data` merges layout + page loads, so an identical
+	// key would override the layout's name-sorted list and reshuffle the
+	// sidebar's favorites order on this route. Archived is now a status value,
+	// so there's no separate archived partition.
+	const projectsList = all;
 
 	// Active orgs for the create-project modal's org picker.
 	const orgsForPicker = await db
@@ -163,7 +163,7 @@ export const load: ServerLoad = async ({ locals }) => {
 		.where(isNull(organization.archivedAt))
 		.orderBy(organization.name);
 
-	return { projectsList, archivedProjectsList, orgs: orgsForPicker };
+	return { projectsList, orgs: orgsForPicker, savedView };
 };
 
 export const actions: Actions = {
@@ -178,7 +178,7 @@ export const actions: Actions = {
 		const description = String(form.get('description') ?? '').trim() || null;
 		const color = String(form.get('color') ?? '#7a9cf0');
 		const icon = (String(form.get('icon') ?? '').trim()[0] ?? 'P').toUpperCase();
-		const status = String(form.get('status') ?? 'on_track') as Project['status'];
+		const status = String(form.get('status') ?? 'active') as Project['status'];
 		const leadId = String(form.get('lead') ?? '') || null;
 		const orgId = String(form.get('orgId') ?? '').trim() || null;
 		const memberIds = form.getAll('members').map((v) => String(v)).filter(Boolean);

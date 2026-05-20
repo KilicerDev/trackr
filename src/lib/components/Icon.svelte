@@ -51,6 +51,20 @@
 			cy="12"
 			r="1"
 		/><circle cx="4" cy="18" r="1" />
+	{:else if name === 'grid'}
+		<rect x="3" y="3" width="7" height="7" rx="1.5" /><rect
+			x="14"
+			y="3"
+			width="7"
+			height="7"
+			rx="1.5"
+		/><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect
+			x="14"
+			y="14"
+			width="7"
+			height="7"
+			rx="1.5"
+		/>
 	{:else if name === 'board'}
 		<rect x="3" y="4" width="6" height="16" rx="2" /><rect
 			x="13"

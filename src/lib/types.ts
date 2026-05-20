@@ -33,7 +33,7 @@ export interface Project {
 	name: string;
 	color: string;
 	description: string;
-	status: 'on_track' | 'at_risk' | 'paused' | 'off_track';
+	status: 'prospect' | 'planned' | 'active' | 'paused' | 'completed' | 'cancelled' | 'archived';
 	lead: string;
 	members: string[];
 	updated: string;

@@ -8,6 +8,7 @@
 	import PriorityBars from '$lib/components/PriorityBars.svelte';
 	import Inspector from '$lib/components/tasks/Inspector.svelte';
 	import CreateTaskModal from '$lib/components/tasks/CreateTaskModal.svelte';
+	import EditProjectModal from '$lib/components/projects/EditProjectModal.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { PROJECT_STATUS, TRACKR_STATUSES, formatDateShort } from '$lib/data';
 	import { resolveUser } from '$lib/lookup.svelte';
@@ -31,7 +32,7 @@
 
 	const p = $derived(data.project);
 	const st = $derived(
-		PROJECT_STATUS[p.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.on_track
+		PROJECT_STATUS[p.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.active
 	);
 
 	// Tasks come from the DB load (same Task shape as the /tasks page).
@@ -75,6 +76,7 @@
 	let openMemberMenu = $state<string | null>(null);
 
 	let settingsOpen = $state(false);
+	let editing = $state(false);
 	let projectBusy = $state<'archive' | 'unarchive' | 'delete' | 'favoriteAdd' | 'favoriteRemove' | null>(null);
 
 	type LayoutFav = { favoriteProjectIds?: string[] };
@@ -260,14 +262,6 @@
 			<div class="flex-1 min-w-0">
 				<div class="flex items-center gap-2">
 					<h1 class="text-[26px] font-semibold tracking-[-0.014em] text-text">{p.name}</h1>
-					{#if p.archivedAt}
-						<span
-							class="text-[10.5px] uppercase tracking-[0.06em] px-1.5 py-0.5 rounded text-text-3"
-							style:background="rgba(154,164,178,0.16)"
-						>
-							Archived
-						</span>
-					{/if}
 				</div>
 				<div class="flex items-center gap-2 mt-1.5 text-[12.5px] text-text-3">
 					<span
@@ -307,6 +301,17 @@
 						>
 							<button
 								type="button"
+								onclick={() => {
+									settingsOpen = false;
+									editing = true;
+								}}
+								class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text"
+							>
+								<Icon name="settings" size={12} /> Edit details
+							</button>
+							<div class="my-1 border-t border-border/60"></div>
+							<button
+								type="button"
 								onclick={toggleFavorite}
 								disabled={projectBusy !== null}
 								class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text disabled:opacity-50"
@@ -323,7 +328,7 @@
 								{/if}
 							</button>
 							<div class="my-1 border-t border-border/60"></div>
-							{#if p.archivedAt}
+							{#if p.status === 'archived'}
 								<button
 									type="button"
 									onclick={unarchiveProject}
@@ -579,6 +584,18 @@
 		</div>
 	</div>
 </div>
+
+<EditProjectModal
+	open={editing}
+	onclose={() => (editing = false)}
+	project={{
+		key: p.key,
+		name: p.name,
+		description: p.description,
+		color: p.color,
+		status: p.status
+	}}
+/>
 
 <Inspector task={selected} onclose={() => (selectedId = null)} users={data.users} />
 

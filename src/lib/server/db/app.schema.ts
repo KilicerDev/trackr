@@ -91,12 +91,11 @@ export const project = pgTable(
 		description: text('description'),
 		color: text('color').notNull().default('#7a9cf0'),
 		icon: text('icon').notNull().default('P'),
-		status: text('status').notNull().default('on_track'),
+		status: text('status').notNull().default('active'),
 		orgId: text('org_id').references(() => organization.id, { onDelete: 'set null' }),
 		leadId: text('lead_id').references(() => user.id, { onDelete: 'set null' }),
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
 		nextTaskNumber: integer('next_task_number').notNull().default(1),
-		archivedAt: timestamp('archived_at'),
 		createdAt: timestamp('created_at').defaultNow().notNull(),
 		updatedAt: timestamp('updated_at')
 			.defaultNow()
@@ -366,7 +365,6 @@ export const taskCommentRelations = relations(taskComment, ({ one }) => ({
 		references: [user.id]
 	})
 }));
-
 // ─── Task time logs ────────────────────────────────────────────────────────
 
 export const taskTimeLog = pgTable(
