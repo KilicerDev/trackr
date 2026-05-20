@@ -1,14 +1,17 @@
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
 	project,
+	projectActivity,
 	projectFavorite,
 	projectMember,
 	organization
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
 import { loadTasks } from '$lib/server/tasks';
+import { loadProjectActivity } from '$lib/server/activity-feed';
+import { logActivityFF } from '$lib/server/activity';
 import { assertCan } from '$lib/server/permissions';
 
 const ALLOWED_MEMBER_ROLES = new Set(['project.manager', 'project.member', 'project.viewer']);
@@ -93,6 +96,10 @@ export const load: ServerLoad = async ({ params, locals }) => {
 	// Tasks for this project — same shape as /tasks page.
 	const tasks = await loadTasks({ projectId: id, plannerUserId: locals.user.id });
 
+	// Initial page of the activity feed for the history sidebar. The sidebar
+	// fetches further pages on demand via the `?/activity` endpoint.
+	const activity = await loadProjectActivity(id, { limit: 50 });
+
 	return {
 		project: {
 			id: row.id,
@@ -109,7 +116,8 @@ export const load: ServerLoad = async ({ params, locals }) => {
 		lead,
 		members,
 		org,
-		tasks
+		tasks,
+		activity
 	};
 };
 
@@ -130,6 +138,18 @@ export const actions: Actions = {
 
 		const icon = (name[0] ?? 'P').toUpperCase();
 
+		const [prior] = await db
+			.select({
+				name: project.name,
+				description: project.description,
+				status: project.status,
+				color: project.color
+			})
+			.from(project)
+			.where(eq(project.id, params.id))
+			.limit(1);
+		if (!prior) return fail(404, { message: 'Project not found.' });
+
 		try {
 			await db
 				.update(project)
@@ -146,6 +166,35 @@ export const actions: Actions = {
 			console.error('project update failed', err);
 			return fail(500, { message: 'Failed to update project.' });
 		}
+
+		const actorId = locals.user.id;
+		if (name !== prior.name) {
+			logActivityFF({
+				projectId: params.id,
+				actorId,
+				type: 'project.name',
+				meta: { from: prior.name, to: name }
+			});
+		}
+		if ((description || null) !== prior.description) {
+			logActivityFF({ projectId: params.id, actorId, type: 'project.description' });
+		}
+		if (status !== prior.status) {
+			logActivityFF({
+				projectId: params.id,
+				actorId,
+				type: 'project.status',
+				meta: { from: prior.status, to: status }
+			});
+		}
+		if (color && color !== prior.color) {
+			logActivityFF({
+				projectId: params.id,
+				actorId,
+				type: 'project.color',
+				meta: { from: prior.color, to: color }
+			});
+		}
 		return { success: true };
 	},
 
@@ -160,6 +209,12 @@ export const actions: Actions = {
 			.update(project)
 			.set({ status: 'archived', updatedAt: new Date() })
 			.where(eq(project.id, params.id));
+		logActivityFF({
+			projectId: params.id,
+			actorId: locals.user.id,
+			type: 'project.status',
+			meta: { to: 'archived' }
+		});
 		return { success: true };
 	},
 
@@ -171,6 +226,12 @@ export const actions: Actions = {
 			.update(project)
 			.set({ status: 'active', updatedAt: new Date() })
 			.where(eq(project.id, params.id));
+		logActivityFF({
+			projectId: params.id,
+			actorId: locals.user.id,
+			type: 'project.status',
+			meta: { from: 'archived', to: 'active' }
+		});
 		return { success: true };
 	},
 
@@ -236,6 +297,12 @@ export const actions: Actions = {
 			console.error('project memberAdd failed', err);
 			return fail(500, { message: 'Failed to add member.' });
 		}
+		logActivityFF({
+			projectId: params.id,
+			actorId: locals.user.id,
+			type: 'member.added',
+			meta: { userId, role }
+		});
 		return { success: true };
 	},
 
@@ -251,6 +318,11 @@ export const actions: Actions = {
 			if (!userId) {
 				// Clear the lead.
 				await db.update(project).set({ leadId: null }).where(eq(project.id, params.id));
+				logActivityFF({
+					projectId: params.id,
+					actorId: locals.user.id,
+					type: 'lead.cleared'
+				});
 				return { success: true };
 			}
 
@@ -273,6 +345,12 @@ export const actions: Actions = {
 			console.error('project leadSet failed', err);
 			return fail(500, { message: 'Failed to update lead.' });
 		}
+		logActivityFF({
+			projectId: params.id,
+			actorId: locals.user.id,
+			type: 'lead.set',
+			meta: { userId }
+		});
 		return { success: true };
 	},
 
@@ -293,6 +371,12 @@ export const actions: Actions = {
 			.where(
 				and(eq(projectMember.projectId, params.id), eq(projectMember.userId, userId))
 			);
+		logActivityFF({
+			projectId: params.id,
+			actorId: locals.user.id,
+			type: 'member.role',
+			meta: { userId, role }
+		});
 		return { success: true };
 	},
 
@@ -332,6 +416,52 @@ export const actions: Actions = {
 			console.error('project memberRemove failed', err);
 			return fail(500, { message: 'Failed to remove member.' });
 		}
+		logActivityFF({
+			projectId: params.id,
+			actorId: locals.user.id,
+			type: 'member.removed',
+			meta: { userId }
+		});
 		return { success: true };
+	},
+
+	// Project-level comment posted from the history sidebar (taskId stays null).
+	commentAdd: async ({ request, params, locals }) => {
+		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		await assertCan(locals, 'project.tasks.read', { projectId: params.id });
+
+		const form = await request.formData();
+		const body = String(form.get('body') ?? '').trim();
+		if (!body) return fail(400, { message: 'Comment cannot be empty.' });
+
+		try {
+			await db.insert(projectActivity).values({
+				id: crypto.randomUUID(),
+				projectId: params.id,
+				actorId: locals.user.id,
+				type: 'comment',
+				body
+			});
+		} catch (err) {
+			console.error('project comment add failed', err);
+			return fail(500, { message: 'Failed to add comment.' });
+		}
+		return { success: true };
+	},
+
+	// Pagination endpoint for the history sidebar's "load more".
+	activity: async ({ request, params, locals }) => {
+		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		await assertCan(locals, 'project.tasks.read', { projectId: params.id });
+
+		const form = await request.formData();
+		const offset = Number(form.get('offset') ?? 0);
+		const items = await loadProjectActivity(params.id, {
+			limit: 50,
+			offset: Number.isFinite(offset) && offset > 0 ? offset : 0
+		});
+		return { success: true, items };
 	}
 };

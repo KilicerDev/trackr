@@ -9,6 +9,7 @@
 	import Inspector from '$lib/components/tasks/Inspector.svelte';
 	import CreateTaskModal from '$lib/components/tasks/CreateTaskModal.svelte';
 	import EditProjectModal from '$lib/components/projects/EditProjectModal.svelte';
+	import ProjectHistory from '$lib/components/projects/ProjectHistory.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { PROJECT_STATUS, TRACKR_STATUSES, formatDateShort } from '$lib/data';
 	import { resolveUser } from '$lib/lookup.svelte';
@@ -77,6 +78,7 @@
 
 	let settingsOpen = $state(false);
 	let editing = $state(false);
+	let historyOpen = $state(false);
 	let projectBusy = $state<'archive' | 'unarchive' | 'delete' | 'favoriteAdd' | 'favoriteRemove' | null>(null);
 
 	type LayoutFav = { favoriteProjectIds?: string[] };
@@ -283,6 +285,9 @@
 				</div>
 			</div>
 			<div class="flex items-center gap-2">
+				<IconButton ariaLabel="History" onclick={() => (historyOpen = true)}>
+					<Icon name="logs" size={14} />
+				</IconButton>
 				<IconButton ariaLabel="Share"><Icon name="link" size={14} /></IconButton>
 				<div class="relative">
 					<IconButton
@@ -598,6 +603,17 @@
 />
 
 <Inspector task={selected} onclose={() => (selectedId = null)} users={data.users} />
+
+<ProjectHistory
+	open={historyOpen}
+	onclose={() => (historyOpen = false)}
+	activity={data.activity}
+	taskIds={data.tasks.map((t) => t.id)}
+	onOpenTask={(ref) => {
+		historyOpen = false;
+		selectedId = ref;
+	}}
+/>
 
 <CreateTaskModal
 	open={creating}

@@ -333,35 +333,83 @@ export const taskAssigneeRelations = relations(taskAssignee, ({ one }) => ({
 	})
 }));
 
-// ─── Task comments ─────────────────────────────────────────────────────────
+// ─── Project activity ────────────────────────────────────────────────────────
+// Append-only event log + comment store for a project. One row per event:
+// field changes, membership changes, task lifecycle, time logs, and comments.
+// `taskId` is non-null when the event concerns a task; it is `set null` (not
+// cascade) on task deletion so the history survives — `meta.taskRef` /
+// `meta.taskTitle` keep the entry readable after the task is gone.
+//
+// This is also the single source of truth for comments (the former
+// `task_comment` table was folded in here): a comment is a row with
+// `type = 'comment'` and the text in `body`. Task-scoped comments carry a
+// `taskId`; project-level comments leave it null.
 
-export const taskComment = pgTable(
-	'task_comment',
+export const PROJECT_ACTIVITY_TYPES = [
+	'comment',
+	'project.name',
+	'project.description',
+	'project.status',
+	'project.color',
+	'member.added',
+	'member.removed',
+	'member.role',
+	'lead.set',
+	'lead.cleared',
+	'task.created',
+	'task.status',
+	'task.priority',
+	'task.assignee',
+	'task.deleted',
+	'time.logged'
+] as const;
+export type ProjectActivityType = (typeof PROJECT_ACTIVITY_TYPES)[number];
+
+// Loosely-typed payload — shape depends on `type`. Common keys: `from`/`to`
+// for field changes, `field` to name the changed attribute, `minutes`/`note`
+// for time logs, `userId`/`role` for membership, `taskRef`/`taskTitle` to
+// preserve a deleted task's identity.
+export type ProjectActivityMeta = Record<string, unknown>;
+
+export const projectActivity = pgTable(
+	'project_activity',
 	{
 		id: text('id').primaryKey(),
-		taskId: text('task_id')
+		projectId: text('project_id')
 			.notNull()
-			.references(() => task.id, { onDelete: 'cascade' }),
-		authorId: text('author_id').references(() => user.id, { onDelete: 'set null' }),
-		body: text('body').notNull(),
+			.references(() => project.id, { onDelete: 'cascade' }),
+		taskId: text('task_id').references(() => task.id, { onDelete: 'set null' }),
+		actorId: text('actor_id').references(() => user.id, { onDelete: 'set null' }),
+		type: text('type').$type<ProjectActivityType>().notNull(),
+		body: text('body'),
+		meta: jsonb('meta').$type<ProjectActivityMeta>(),
 		createdAt: timestamp('created_at').defaultNow().notNull(),
 		updatedAt: timestamp('updated_at')
 			.defaultNow()
 			.$onUpdate(() => /* @__PURE__ */ new Date())
 			.notNull()
 	},
-	(t) => [index('task_comment_task_idx').on(t.taskId, t.createdAt)]
+	(t) => [
+		index('project_activity_project_idx').on(t.projectId, t.createdAt),
+		index('project_activity_task_idx')
+			.on(t.taskId, t.createdAt)
+			.where(sql`${t.taskId} is not null`)
+	]
 );
 
-export type TaskComment = typeof taskComment.$inferSelect;
+export type ProjectActivity = typeof projectActivity.$inferSelect;
 
-export const taskCommentRelations = relations(taskComment, ({ one }) => ({
+export const projectActivityRelations = relations(projectActivity, ({ one }) => ({
+	project: one(project, {
+		fields: [projectActivity.projectId],
+		references: [project.id]
+	}),
 	task: one(task, {
-		fields: [taskComment.taskId],
+		fields: [projectActivity.taskId],
 		references: [task.id]
 	}),
-	author: one(user, {
-		fields: [taskComment.authorId],
+	actor: one(user, {
+		fields: [projectActivity.actorId],
 		references: [user.id]
 	})
 }));

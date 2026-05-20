@@ -2,9 +2,9 @@ import { and, desc, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { db } from './db';
 import {
 	project,
+	projectActivity,
 	task,
 	taskAssignee,
-	taskComment,
 	taskPlanning,
 	taskTimeLog
 } from './db/app.schema';
@@ -83,28 +83,37 @@ export async function loadTasks(opts?: {
 		assigneesByTask.set(r.taskId, list);
 	}
 
+	// Comments now live in project_activity (type='comment'); task-scoped
+	// comments carry the taskId. Same output shape as before so the Inspector
+	// is unchanged.
 	const commentRows = taskIds.length
 		? await db
 				.select({
-					taskId: taskComment.taskId,
-					authorId: taskComment.authorId,
-					body: taskComment.body,
-					createdAt: taskComment.createdAt
+					taskId: projectActivity.taskId,
+					authorId: projectActivity.actorId,
+					body: projectActivity.body,
+					createdAt: projectActivity.createdAt
 				})
-				.from(taskComment)
-				.where(inArray(taskComment.taskId, taskIds))
+				.from(projectActivity)
+				.where(
+					and(
+						eq(projectActivity.type, 'comment'),
+						inArray(projectActivity.taskId, taskIds)
+					)
+				)
 		: [];
 	const commentsByTask = new Map<
 		string,
 		{ user: string; date: string; text: string; createdAt: string }[]
 	>();
 	for (const c of commentRows) {
+		if (!c.taskId) continue;
 		const list = commentsByTask.get(c.taskId) ?? [];
 		const iso = c.createdAt.toISOString();
 		list.push({
 			user: c.authorId ?? '',
 			date: iso.slice(0, 10),
-			text: c.body,
+			text: c.body ?? '',
 			createdAt: iso
 		});
 		commentsByTask.set(c.taskId, list);

@@ -3,14 +3,15 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
 	project,
+	projectActivity,
 	task,
 	taskAssignee,
-	taskComment,
 	taskPlanning,
 	taskTimeLog
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
 import { loadTasks } from '$lib/server/tasks';
+import { logActivity, logActivityFF } from '$lib/server/activity';
 import { notify } from '$lib/server/notify';
 import { taskRecipients } from '$lib/server/notify-recipients';
 import { accessibleProjectIds, assertCan, can } from '$lib/server/permissions';
@@ -45,6 +46,7 @@ async function resolveTaskByDisplayId(displayId: string) {
 			id: task.id,
 			title: task.title,
 			status: task.status,
+			priority: task.priority,
 			projectId: project.id,
 			projectKey: project.key,
 			projectOrgId: project.orgId,
@@ -149,6 +151,14 @@ export const actions: Actions = {
 
 				displayId = `${p.key}-${number}`;
 				assignedIds = validAssignees;
+
+				await logActivity(tx, {
+					projectId: p.id,
+					taskId: newId,
+					actorId: me.id,
+					type: 'task.created',
+					meta: { taskRef: displayId, taskTitle: title }
+				});
 			});
 		} catch (err) {
 			console.error('task create failed', err);
@@ -318,6 +328,42 @@ export const actions: Actions = {
 			}).catch((err) => console.error('task status notify failed', err));
 		}
 
+		// Activity feed: one row per meaningful change. Fire-and-forget — a
+		// failed log must never undo the saved edit.
+		const taskMeta = { taskRef: displayId, taskTitle: target.title };
+		if (typeof patch.status === 'string' && patch.status !== priorStatus) {
+			logActivityFF({
+				projectId,
+				taskId: target.id,
+				actorId: me.id,
+				type: 'task.status',
+				meta: { ...taskMeta, from: priorStatus, to: patch.status }
+			});
+		}
+		if (typeof patch.priority === 'string' && patch.priority !== target.priority) {
+			logActivityFF({
+				projectId,
+				taskId: target.id,
+				actorId: me.id,
+				type: 'task.priority',
+				meta: { ...taskMeta, from: target.priority, to: patch.priority }
+			});
+		}
+		if (assigneeOut.next !== null) {
+			const next = new Set(assigneeOut.next);
+			const added = assigneeOut.next.filter((id) => !priorAssignees.has(id));
+			const removed = [...priorAssignees].filter((id) => !next.has(id));
+			if (added.length || removed.length) {
+				logActivityFF({
+					projectId,
+					taskId: target.id,
+					actorId: me.id,
+					type: 'task.assignee',
+					meta: { ...taskMeta, added, removed }
+				});
+			}
+		}
+
 		return { success: true };
 	},
 
@@ -337,10 +383,12 @@ export const actions: Actions = {
 		await assertCan(locals, 'project.tasks.comment', { projectId: target.projectId });
 
 		try {
-			await db.insert(taskComment).values({
+			await db.insert(projectActivity).values({
 				id: crypto.randomUUID(),
+				projectId: target.projectId,
 				taskId: target.id,
-				authorId: me.id,
+				actorId: me.id,
+				type: 'comment',
 				body
 			});
 			// Bump the task's updatedAt so the activity flag is accurate.
@@ -351,17 +399,19 @@ export const actions: Actions = {
 		}
 
 		// Notify assignees + creator + anyone else who commented on the task.
-		// Looped previous-commenter query is cheap relative to the comment
-		// insert itself and lets us avoid notifying drive-by readers.
+		// Prior commenters are read from the activity feed (the single comment
+		// store) and let us avoid notifying drive-by readers.
 		const [assigneeRows, priorCommenterRows] = await Promise.all([
 			db
 				.select({ userId: taskAssignee.userId })
 				.from(taskAssignee)
 				.where(eq(taskAssignee.taskId, target.id)),
 			db
-				.select({ authorId: taskComment.authorId })
-				.from(taskComment)
-				.where(eq(taskComment.taskId, target.id))
+				.select({ authorId: projectActivity.actorId })
+				.from(projectActivity)
+				.where(
+					and(eq(projectActivity.taskId, target.id), eq(projectActivity.type, 'comment'))
+				)
 		]);
 		const recipients = taskRecipients({
 			creatorId: target.createdBy,
@@ -474,6 +524,14 @@ export const actions: Actions = {
 			return fail(500, { message: 'Failed to log time.' });
 		}
 
+		logActivityFF({
+			projectId: target.projectId,
+			taskId: target.id,
+			actorId: me.id,
+			type: 'time.logged',
+			meta: { taskRef: displayId, taskTitle: target.title, minutes: total, note, loggedAt: date }
+		});
+
 		return { success: true };
 	},
 
@@ -498,6 +556,14 @@ export const actions: Actions = {
 			console.error('task delete failed', err);
 			return fail(500, { message: 'Failed to delete task.' });
 		}
+
+		logActivityFF({
+			projectId: target.projectId,
+			taskId: target.id,
+			actorId: locals.user.id,
+			type: 'task.deleted',
+			meta: { taskRef: displayId, taskTitle: target.title }
+		});
 
 		return { success: true };
 	}
