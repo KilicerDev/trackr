@@ -18,7 +18,14 @@
 		color: string;
 		status: 'active' | 'invited' | 'disabled';
 	};
-	type PickableProject = { key: string; name: string; color: string; icon: string };
+	type PickableProject = {
+		id: string;
+		key: string;
+		name: string;
+		color: string;
+		icon: string;
+		status: string;
+	};
 
 	export interface ComposerDraft {
 		title: string;
@@ -32,11 +39,22 @@
 		users: AssignableUser[];
 		projects: PickableProject[];
 		currentUserId: string;
+		memberProjectIds?: string[];
+		allAccess?: boolean;
 		onsubmit?: (draft: ComposerDraft) => void;
 		oncancel?: () => void;
 		onexpand?: (draft: ComposerDraft) => void;
 	}
-	let { users, projects, currentUserId, onsubmit, oncancel, onexpand }: Props = $props();
+	let {
+		users,
+		projects,
+		currentUserId,
+		memberProjectIds = [],
+		allAccess = false,
+		onsubmit,
+		oncancel,
+		onexpand
+	}: Props = $props();
 
 	let text = $state('');
 	let focused = $state(true);
@@ -247,6 +265,8 @@
 					onchange={(v) => (projectOverride = v as unknown as string)}
 					onclose={() => (pop = null)}
 					{projects}
+					{memberProjectIds}
+					{allAccess}
 				/>
 			{/if}
 		</div>

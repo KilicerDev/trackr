@@ -133,7 +133,8 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			key: projectTable.key,
 			name: projectTable.name,
 			color: projectTable.color,
-			icon: projectTable.icon
+			icon: projectTable.icon,
+			status: projectTable.status
 		})
 		.from(projectTable)
 		.where(

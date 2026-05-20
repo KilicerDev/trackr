@@ -141,4 +141,6 @@
 	users={data.users}
 	projects={data.projects}
 	currentUserId={data.currentUserId}
+	memberProjectIds={Object.keys(data.memberRoles.projects)}
+	allAccess={data.isTrackrTeam}
 />

@@ -49,7 +49,14 @@
 		color: string;
 		status: 'active' | 'invited' | 'disabled';
 	};
-	type PickableProject = { key: string; name: string; color: string; icon: string };
+	type PickableProject = {
+		id: string;
+		key: string;
+		name: string;
+		color: string;
+		icon: string;
+		status: string;
+	};
 
 	interface Props {
 		open: boolean;
@@ -58,6 +65,11 @@
 		users?: AssignableUser[];
 		projects?: PickableProject[];
 		currentUserId?: string;
+		// Project ids the current user is a member of + whether they can see every
+		// project (Trackr team). Forwarded to the project picker so it can default
+		// to "my projects" with a "show all" toggle for all-access users.
+		memberProjectIds?: string[];
+		allAccess?: boolean;
 		oncreated?: (displayId: string) => void;
 		onerror?: (msg: string) => void;
 	}
@@ -69,6 +81,8 @@
 		users: providedUsers,
 		projects: providedProjects,
 		currentUserId,
+		memberProjectIds = [],
+		allAccess = false,
 		oncreated,
 		onerror
 	}: Props = $props();
@@ -79,10 +93,12 @@
 	const projectList = $derived<PickableProject[]>(
 		providedProjects ??
 			(Object.keys(TRACKR_PROJECTS) as ProjectId[]).map((id) => ({
+				id,
 				key: id,
 				name: TRACKR_PROJECTS[id].name,
 				color: TRACKR_PROJECTS[id].color,
-				icon: TRACKR_PROJECTS[id].icon
+				icon: TRACKR_PROJECTS[id].icon,
+				status: 'active'
 			}))
 	);
 	const meId = $derived(currentUserId ?? 'u6');
@@ -186,6 +202,8 @@
 						onchange={(v) => (project = v)}
 						onclose={() => (pop = null)}
 						projects={projectList}
+						{memberProjectIds}
+						{allAccess}
 					/>
 				{/if}
 			</div>
