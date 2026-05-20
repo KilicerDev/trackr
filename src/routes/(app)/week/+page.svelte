@@ -14,6 +14,8 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import { readView, saveView } from '$lib/viewState';
+	import { slide } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	import type { ActionResult } from '@sveltejs/kit';
 	import type { Task } from '$lib/types';
 	import type { PageData } from './$types';
@@ -338,7 +340,7 @@
 						</div>
 					</button>
 					{#if !isCollapsed}
-						<div>
+						<div transition:slide={{ duration: 180, easing: cubicOut }}>
 							{#each tasks as t (t.id)}
 								<MWTaskRow task={t} onclick={() => (selectedId = t.id)} />
 							{/each}

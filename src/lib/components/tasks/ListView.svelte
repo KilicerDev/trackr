@@ -5,6 +5,8 @@
 	import { page } from '$app/state';
 	import TaskRow from './TaskRow.svelte';
 	import Icon from '../Icon.svelte';
+	import { slide } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 
 	type GroupBy = 'status' | 'priority' | 'assignee' | 'project' | 'none';
 
@@ -113,9 +115,11 @@
 				</button>
 			{/if}
 			{#if !isCollapsed}
-				{#each g.tasks as t (t.id)}
-					<TaskRow task={t} selected={selectedId === t.id} onclick={() => onSelect?.(t)} />
-				{/each}
+				<div transition:slide={{ duration: 180, easing: cubicOut }}>
+					{#each g.tasks as t (t.id)}
+						<TaskRow task={t} selected={selectedId === t.id} onclick={() => onSelect?.(t)} />
+					{/each}
+				</div>
 			{/if}
 		</div>
 	{/each}

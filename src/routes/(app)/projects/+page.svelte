@@ -10,6 +10,8 @@
 	import CreateProjectModal from '$lib/components/projects/CreateProjectModal.svelte';
 	import { PROJECT_STATUS } from '$lib/data';
 	import { showToast } from '$lib/toast.svelte';
+	import { slide } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	import { readView, saveView } from '$lib/viewState';
 	import type { ProjectListItem } from './+page.server';
 	import type { PageData } from './$types';
@@ -227,13 +229,12 @@
 		<div class="bg-bg-elev border border-border rounded-2xl overflow-hidden">
 			<div
 				class="grid items-center gap-3 px-5 py-2.5 text-[11px] uppercase tracking-[0.08em] text-text-4 border-b border-border"
-				style:grid-template-columns="1.5fr 1fr 1fr 0.6fr 0.6fr 1fr"
+				style:grid-template-columns="1.5fr 1fr 1fr 0.6fr 1fr"
 			>
 				<span>Project</span>
 				<span>Lead</span>
 				<span>Status</span>
 				<span>Key</span>
-				<span>Members</span>
 				<span>Updated</span>
 			</div>
 			{#each (group === 'none' ? [{ key: 'all', label: '', color: '', projects: visibleProjects }] : listColumns) as col (col.key)}
@@ -252,30 +253,33 @@
 						<span class="font-mono text-[11px] text-text-3">{col.projects.length}</span>
 					</button>
 				{/if}
-				{#each (isCollapsed ? [] : col.projects) as p (p.id)}
-					{@const st = PROJECT_STATUS[p.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.active}
-					<a
-						href="/projects/{p.id}"
-						class="grid items-center gap-3 px-5 py-3 border-b border-border last:border-b-0 hover:bg-[var(--row-hover)] transition-colors text-[13px]"
-						style:grid-template-columns="1.5fr 1fr 1fr 0.6fr 0.6fr 1fr"
-					>
-						<span class="flex items-center gap-2.5 min-w-0">
-							<span
-								class="w-7 h-7 rounded-md grid place-items-center text-white font-semibold text-[12px] shrink-0"
-								style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%, #000) 85%)"
-							>{p.icon}</span>
-							<span class="truncate font-medium">{p.name}</span>
-						</span>
-						<span class="text-text-2 truncate">{p.lead?.name ?? '—'}</span>
-						<span class="inline-flex items-center gap-1.5 text-text-2">
-							<span class="w-1.5 h-1.5 rounded-full" style:background={st.color}></span>
-							{st.label}
-						</span>
-						<span class="font-mono text-text-3">{p.key}</span>
-						<span class="text-text-3 font-mono">{p.members.length}</span>
-						<span class="text-text-3">{p.updatedAt.toISOString().slice(0, 10)}</span>
-					</a>
-				{/each}
+				{#if !isCollapsed}
+					<div transition:slide={{ duration: 180, easing: cubicOut }}>
+						{#each col.projects as p (p.id)}
+							{@const st = PROJECT_STATUS[p.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.active}
+							<a
+								href="/projects/{p.id}"
+								class="grid items-center gap-3 px-5 py-3 hover:bg-[var(--row-hover)] transition-colors text-[13px]"
+								style:grid-template-columns="1.5fr 1fr 1fr 0.6fr 1fr"
+							>
+								<span class="flex items-center gap-2.5 min-w-0">
+									<span
+										class="w-7 h-7 rounded-md grid place-items-center text-white font-semibold text-[12px] shrink-0"
+										style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%, #000) 85%)"
+									>{p.icon}</span>
+									<span class="truncate font-medium">{p.name}</span>
+								</span>
+								<span class="text-text-2 truncate">{p.lead?.name ?? '—'}</span>
+								<span class="inline-flex items-center gap-1.5 text-text-2">
+									<span class="w-1.5 h-1.5 rounded-full" style:background={st.color}></span>
+									{st.label}
+								</span>
+								<span class="font-mono text-text-3">{p.key}</span>
+								<span class="text-text-3">{p.updatedAt.toISOString().slice(0, 10)}</span>
+							</a>
+						{/each}
+					</div>
+				{/if}
 			{/each}
 		</div>
 	</div>
