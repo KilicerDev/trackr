@@ -9,6 +9,8 @@
 	import Avatar from '../Avatar.svelte';
 	import Icon from '../Icon.svelte';
 	import IconButton from '../IconButton.svelte';
+	import { slide } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 
 	export type BoardGroup = 'project' | 'status' | 'priority' | 'assignee' | 'none';
 	export type BoardSub = 'none' | 'status' | 'priority' | 'assignee';
@@ -220,7 +222,7 @@
 								</button>
 							{/if}
 							{#if !isCollapsed}
-								<div class="space-y-2 mt-1.5">
+								<div class="space-y-2 mt-1.5" transition:slide={{ duration: 180, easing: cubicOut }}>
 									{#each g.tasks as t (t.id)}
 										<BoardCard task={t} onclick={() => onSelect?.(t)} />
 									{/each}

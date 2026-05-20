@@ -2,6 +2,8 @@
 	import Icon from '../Icon.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
 	import Avatar from '../Avatar.svelte';
+	import { slide } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 	import { resolveUser } from '$lib/lookup.svelte';
 	import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from '$lib/data';
 	import type { TicketRow } from '$lib/server/tickets';
@@ -105,44 +107,46 @@
 				</button>
 			{/if}
 			{#if !isCollapsed}
-				{#each g.tickets as t (t.id)}
-					{@const assignee = resolveUser(t.assignedAgentId)}
-					<button
-						type="button"
-						onclick={() => onSelect?.(t)}
-						class="w-full flex items-center gap-3 pl-5 pr-4 h-10 border-b border-border text-left text-[13px] hover:bg-surface transition-colors {selectedId === t.id ? 'bg-surface' : ''}"
-					>
-						<PriorityBars priority={t.priority} />
-						<span class="font-mono text-[11.5px] text-text-3 shrink-0 w-[112px] truncate">{t.displayId}</span>
-						<span
-							class="w-2.5 h-2.5 rounded-full shrink-0"
-							style:background={statusDot(t.status)}
-							title={t.status}
-						></span>
-						<span class="truncate flex-1 text-text">{t.subject}</span>
-						<span
-							class="hidden md:inline-flex items-center gap-1 text-[11.5px] text-text-3 px-1.5 py-0.5 rounded-md border border-border bg-surface shrink-0"
-							title={t.orgName}
+				<div transition:slide={{ duration: 180, easing: cubicOut }}>
+					{#each g.tickets as t (t.id)}
+						{@const assignee = resolveUser(t.assignedAgentId)}
+						<button
+							type="button"
+							onclick={() => onSelect?.(t)}
+							class="w-full flex items-center gap-3 pl-5 pr-4 h-10 border-b border-border text-left text-[13px] hover:bg-surface transition-colors {selectedId === t.id ? 'bg-surface' : ''}"
 						>
-							<span class="w-1.5 h-1.5 rounded-full" style:background={t.orgColor}></span>
-							<span class="truncate max-w-[120px]">{t.orgName}</span>
-						</span>
-						{#if t.messageCount > 0}
-							<span class="hidden md:inline-flex items-center gap-1 text-[11.5px] text-text-3 shrink-0">
-								<Icon name="msg" size={11} />
-								{t.messageCount}
+							<PriorityBars priority={t.priority} />
+							<span class="font-mono text-[11.5px] text-text-3 shrink-0 w-[112px] truncate">{t.displayId}</span>
+							<span
+								class="w-2.5 h-2.5 rounded-full shrink-0"
+								style:background={statusDot(t.status)}
+								title={t.status}
+							></span>
+							<span class="truncate flex-1 text-text">{t.subject}</span>
+							<span
+								class="hidden md:inline-flex items-center gap-1 text-[11.5px] text-text-3 px-1.5 py-0.5 rounded-md border border-border bg-surface shrink-0"
+								title={t.orgName}
+							>
+								<span class="w-1.5 h-1.5 rounded-full" style:background={t.orgColor}></span>
+								<span class="truncate max-w-[120px]">{t.orgName}</span>
 							</span>
-						{/if}
-						<span class="hidden lg:inline text-[11px] text-text-3 shrink-0 w-[72px] text-right">
-							{relTime(t.lastMessageAt ?? t.updatedAt)}
-						</span>
-						{#if assignee}
-							<Avatar user={assignee} size={20} />
-						{:else}
-							<span class="w-5 h-5 rounded-full border border-dashed border-border-strong"></span>
-						{/if}
-					</button>
-				{/each}
+							{#if t.messageCount > 0}
+								<span class="hidden md:inline-flex items-center gap-1 text-[11.5px] text-text-3 shrink-0">
+									<Icon name="msg" size={11} />
+									{t.messageCount}
+								</span>
+							{/if}
+							<span class="hidden lg:inline text-[11px] text-text-3 shrink-0 w-[72px] text-right">
+								{relTime(t.lastMessageAt ?? t.updatedAt)}
+							</span>
+							{#if assignee}
+								<Avatar user={assignee} size={20} />
+							{:else}
+								<span class="w-5 h-5 rounded-full border border-dashed border-border-strong"></span>
+							{/if}
+						</button>
+					{/each}
+				</div>
 			{/if}
 		</div>
 	{/each}
