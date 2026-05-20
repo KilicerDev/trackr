@@ -1,4 +1,4 @@
-import { asc, eq, isNull, sql } from 'drizzle-orm';
+import { asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import { db } from './db';
 import { wikiPage } from './db/app.schema';
 
@@ -28,6 +28,23 @@ export async function loadWikiTree(): Promise<WikiTreeNode[]> {
 export async function getWikiPage(id: string) {
 	const [row] = await db.select().from(wikiPage).where(eq(wikiPage.id, id)).limit(1);
 	return row ?? null;
+}
+
+// Most recently edited pages (folders excluded) — drives the /wiki landing
+// view's "Recent" shortcuts. There's no per-user view tracking, so updatedAt
+// is the closest available signal for "what you were just working on".
+export async function getRecentWikiPages(limit = 5) {
+	return db
+		.select({
+			id: wikiPage.id,
+			title: wikiPage.title,
+			icon: wikiPage.icon,
+			parentId: wikiPage.parentId
+		})
+		.from(wikiPage)
+		.where(eq(wikiPage.isFolder, false))
+		.orderBy(desc(wikiPage.updatedAt))
+		.limit(limit);
 }
 
 export async function getFirstRootPageId(): Promise<string | null> {

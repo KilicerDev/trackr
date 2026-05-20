@@ -1,13 +1,12 @@
-import { error, fail, redirect } from '@sveltejs/kit';
-import { createWikiPage, getFirstRootPageId, getWikiPage } from '$lib/server/wiki';
+import { error, fail } from '@sveltejs/kit';
+import { createWikiPage, getRecentWikiPages, getWikiPage } from '$lib/server/wiki';
 import { isTrackrTeam } from '$lib/server/permissions';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
 	if (!isTrackrTeam(locals)) error(403, 'Wiki is restricted to the Trackr team.');
-	const id = await getFirstRootPageId();
-	if (id) redirect(302, `/wiki/${id}`);
-	return {};
+	const recent = await getRecentWikiPages(5);
+	return { recent };
 };
 
 export const actions: Actions = {
