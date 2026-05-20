@@ -23,6 +23,9 @@
 	type SavedWeekView = {
 		weekStart?: string;
 		tab?: 'planned' | 'unplanned' | 'all';
+		// ISO dates the user has collapsed. Persisted by date (not weekday index)
+		// so collapsing one day doesn't collapse that weekday in every week.
+		collapsedDates?: string[];
 	};
 	// localStorage cache wins over the server snapshot — it's mirrored on
 	// every saveView() call so it always reflects the latest in-tab change,
@@ -45,7 +48,11 @@
 	);
 	const todayIndex = $derived(data.weekDates.findIndex((iso) => iso === data.todayIso));
 
-	let collapsed = $state<Set<number>>(new Set());
+	// Stored as ISO dates; the per-week collapsed indices are derived from it.
+	let collapsedDates = $state<Set<string>>(new Set(saved.collapsedDates ?? []));
+	const collapsed = $derived(
+		new Set(data.weekDates.map((iso, i) => (collapsedDates.has(iso) ? i : -1)).filter((i) => i >= 0))
+	);
 	let composerDay = $state<number | null>(null);
 	let selectedId = $state<string | null>(null);
 	let selected = $derived(
@@ -129,9 +136,12 @@
 	});
 
 	function toggle(i: number) {
-		const n = new Set(collapsed);
-		n.has(i) ? n.delete(i) : n.add(i);
-		collapsed = n;
+		const iso = data.weekDates[i];
+		if (!iso) return;
+		const n = new Set(collapsedDates);
+		n.has(iso) ? n.delete(iso) : n.add(iso);
+		collapsedDates = n;
+		saveView('week', { collapsedDates: [...n] });
 	}
 
 	function dayMinutes(i: number): number {
