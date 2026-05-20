@@ -95,3 +95,58 @@ export async function updateWikiPage(
 export async function deleteWikiPage(id: string): Promise<void> {
 	await db.delete(wikiPage).where(eq(wikiPage.id, id));
 }
+
+export type MoveWikiInput = {
+	id: string;
+	parentId: string | null;
+	/** Ordered ids of all siblings under the target parent, including the moved item. */
+	orderedIds: string[];
+	updatedById: string;
+};
+
+/**
+ * Reparents a page/folder and renumbers siblings under the target parent.
+ * Guards against cycles (a folder cannot be moved into its own descendant) and
+ * only allows folders to receive children. Pure reordering does not touch
+ * `updatedAt`; the moved item's `updatedAt`/`updatedById` are bumped.
+ */
+export async function moveWikiPage(input: MoveWikiInput): Promise<void> {
+	const { id, parentId, orderedIds, updatedById } = input;
+
+	const all = await db
+		.select({ id: wikiPage.id, parentId: wikiPage.parentId, isFolder: wikiPage.isFolder })
+		.from(wikiPage);
+
+	const moved = all.find((r) => r.id === id);
+	if (!moved) throw new Error('Page not found.');
+
+	if (parentId) {
+		if (parentId === id) throw new Error('Cannot move an item into itself.');
+		const parent = all.find((r) => r.id === parentId);
+		if (!parent) throw new Error('Target folder not found.');
+		if (!parent.isFolder) throw new Error('Only folders can contain pages.');
+
+		// Reject dropping a folder into one of its own descendants.
+		const descendants = new Set<string>();
+		const stack = [id];
+		while (stack.length) {
+			const cur = stack.pop()!;
+			for (const r of all)
+				if (r.parentId === cur && !descendants.has(r.id)) {
+					descendants.add(r.id);
+					stack.push(r.id);
+				}
+		}
+		if (descendants.has(parentId)) throw new Error('Cannot move a folder into its own subtree.');
+	}
+
+	await db.transaction(async (tx) => {
+		await tx.update(wikiPage).set({ parentId, updatedById }).where(eq(wikiPage.id, id));
+		// Renumber siblings without bumping updatedAt (raw SQL bypasses $onUpdate).
+		for (let i = 0; i < orderedIds.length; i++) {
+			await tx.execute(
+				sql`update wiki_page set sort_order = ${i} where id = ${orderedIds[i]}`
+			);
+		}
+	});
+}
