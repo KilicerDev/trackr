@@ -39,6 +39,12 @@
 		return trail;
 	});
 
+	const children = $derived(
+		tree
+			.filter((n) => n.parentId === pg.id)
+			.sort((a, b) => a.title.localeCompare(b.title))
+	);
+
 	let editing = $state(false);
 	let titleDraft = $state(pg.title);
 	let bodyDraft = $state(pg.body);
@@ -297,13 +303,7 @@
 				</div>
 			{/if}
 
-			{#if pg.isFolder && !pg.body && !editing}
-				<EmptyState
-					icon="book"
-					title="This folder has no content of its own"
-					hint="Pick a page in the sidebar."
-				/>
-			{:else}
+			{#if editing || !pg.isFolder || pg.body}
 				<WikiEditor
 					content={editing ? bodyDraft : pg.body}
 					editable={editing}
@@ -311,6 +311,40 @@
 					onUpdate={onEditorUpdate}
 					onReady={onEditorReady}
 				/>
+			{/if}
+
+			{#if pg.isFolder && !editing}
+				{#if children.length > 0}
+					<div class="mt-2">
+						<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-3">
+							In this folder
+						</div>
+						<div class="border-t border-border">
+							{#each children as child (child.id)}
+								<a
+									href="/wiki/{child.id}"
+									class="group flex items-center gap-3 py-2.5 border-b border-border hover:bg-surface transition-colors -mx-2 px-2 rounded-md"
+								>
+									<span class="text-text-3 group-hover:text-text">
+										<Icon name={child.isFolder ? 'folder' : 'book'} size={15} />
+									</span>
+									<span class="text-[14px] text-text-2 group-hover:text-text flex-1 truncate">
+										{child.title}
+									</span>
+									<span class="text-text-4 opacity-0 group-hover:opacity-100 transition-opacity">
+										<Icon name="chevron" size={13} />
+									</span>
+								</a>
+							{/each}
+						</div>
+					</div>
+				{:else if !pg.body}
+					<EmptyState
+						icon="folder"
+						title="This folder is empty"
+						hint="Add a page or subfolder using the + next to it in the sidebar."
+					/>
+				{/if}
 			{/if}
 		</article>
 
