@@ -6,7 +6,7 @@
 	import AvatarStack from '../AvatarStack.svelte';
 	import TypeBadge from '../TypeBadge.svelte';
 	import Icon from '../Icon.svelte';
-	import { formatDateLong, formatDateShort, formatEstimate } from '$lib/data';
+	import { formatDateLong, formatDateShort, formatEstimate, dueCountdown } from '$lib/data';
 	import { resolveUser } from '$lib/lookup.svelte';
 
 	interface Props {
@@ -16,6 +16,15 @@
 	let { task, onclick }: Props = $props();
 
 	let assignees = $derived((task.assignees ?? [task.assignee]).map((id) => resolveUser(id)));
+
+	// Same nearing/overdue indicator as the list view; suppressed for done tasks.
+	let dueDate = $derived(task.endDate ?? task.due);
+	let due = $derived(task.status === 'done' ? null : dueCountdown(dueDate));
+	const DUE_TONE: Record<string, string> = {
+		overdue: 'text-[#ef4f5e] font-medium',
+		urgent: 'text-accent',
+		soon: 'text-[#d8a24a]'
+	};
 </script>
 
 <button
@@ -54,11 +63,18 @@
 		{#if task.priority !== 'none'}
 			<PriorityBars priority={task.priority} />
 		{/if}
-		{#if task.endDate || task.due}
-			<span class="inline-flex items-center gap-1">
-				<Icon name="calendar" size={11} />
-				<span class="font-mono">{formatDateLong(task.endDate ?? task.due!)}</span>
-			</span>
+		{#if dueDate}
+			{#if due && due.label}
+				<span class="inline-flex items-center gap-1 {DUE_TONE[due.tone]}" title={formatDateLong(dueDate)}>
+					<Icon name="calendar" size={11} />
+					<span>{due.label}</span>
+				</span>
+			{:else}
+				<span class="inline-flex items-center gap-1">
+					<Icon name="calendar" size={11} />
+					<span class="font-mono">{formatDateLong(dueDate)}</span>
+				</span>
+			{/if}
 		{/if}
 		{#if task.estimate}
 			<span class="font-mono">{formatEstimate(task.estimate)}</span>

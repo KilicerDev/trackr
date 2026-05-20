@@ -4,15 +4,13 @@
 	import Button from '$lib/components/Button.svelte';
 	import IconButton from '$lib/components/IconButton.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
-	import StatusDot from '$lib/components/StatusDot.svelte';
-	import PriorityBars from '$lib/components/PriorityBars.svelte';
 	import Inspector from '$lib/components/tasks/Inspector.svelte';
+	import TaskRow from '$lib/components/tasks/TaskRow.svelte';
 	import CreateTaskModal from '$lib/components/tasks/CreateTaskModal.svelte';
 	import EditProjectModal from '$lib/components/projects/EditProjectModal.svelte';
 	import ProjectHistory from '$lib/components/projects/ProjectHistory.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
-	import { PROJECT_STATUS, TRACKR_STATUSES, formatDateShort } from '$lib/data';
-	import { resolveUser } from '$lib/lookup.svelte';
+	import { PROJECT_STATUS, TRACKR_STATUSES } from '$lib/data';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { autoPlace } from '$lib/actions/autoPlace';
@@ -569,20 +567,7 @@
 						<span class="font-mono text-[11px] text-text-3">{g.tasks.length}</span>
 					</div>
 					{#each g.tasks as t (t.id)}
-						<button
-							type="button"
-							onclick={() => (selectedId = t.id)}
-							class="w-full flex items-center gap-3 px-4 py-2.5 border-b border-border/40 hover:bg-[var(--row-hover)] transition-colors text-left"
-						>
-							<StatusDot status={t.status} />
-							<span class="font-mono text-[11.5px] text-text-3 w-[78px] shrink-0">{t.id}</span>
-							<span class="text-[13px] text-text truncate flex-1">{t.title}</span>
-							{#if t.priority !== 'none'}<PriorityBars priority={t.priority} />{/if}
-							<span class="font-mono text-[11px] text-text-3 w-16 text-right">
-								{#if t.endDate}{formatDateShort(t.endDate)}{:else if t.due}{formatDateShort(t.due)}{:else}—{/if}
-							</span>
-							<Avatar user={resolveUser(t.assignee)} size={20} />
-						</button>
+						<TaskRow task={t} selected={selectedId === t.id} onclick={() => (selectedId = t.id)} />
 					{/each}
 				{/each}
 			{/if}

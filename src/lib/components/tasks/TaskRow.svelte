@@ -5,7 +5,7 @@
 	import LabelChip from '../LabelChip.svelte';
 	import Avatar from '../Avatar.svelte';
 	import Icon from '../Icon.svelte';
-	import { TRACKR_PRIORITIES, formatDateShort } from '$lib/data';
+	import { TRACKR_PRIORITIES, formatDateShort, dueCountdown } from '$lib/data';
 	import { resolveUser } from '$lib/lookup.svelte';
 
 	interface Props {
@@ -17,6 +17,15 @@
 
 	let prio = $derived(TRACKR_PRIORITIES.find((p) => p.id === task.priority)!);
 	let assignee = $derived(resolveUser(task.assignee));
+
+	// Suppress the countdown for completed tasks — a finished task isn't
+	// "overdue". Only show the live indicator while work is still pending.
+	let due = $derived(task.status === 'done' ? null : dueCountdown(task.due));
+	const DUE_TONE: Record<string, string> = {
+		overdue: 'text-[#ef4f5e] font-medium',
+		urgent: 'text-accent',
+		soon: 'text-[#d8a24a]'
+	};
 </script>
 
 <button
@@ -60,8 +69,14 @@
 			<span class="text-text-4">—</span>
 		{/if}
 	</span>
-	<span class="font-mono text-[12px] text-text-3">
-		{#if task.due}{formatDateShort(task.due)}{:else}—{/if}
+	<span class="text-[12px]">
+		{#if !task.due}
+			<span class="font-mono text-text-3">—</span>
+		{:else if due && due.label}
+			<span class={DUE_TONE[due.tone]} title={formatDateShort(task.due)}>{due.label}</span>
+		{:else}
+			<span class="font-mono text-text-3">{formatDateShort(task.due)}</span>
+		{/if}
 	</span>
 	<span class="font-mono text-[12px] text-text-3">
 		{formatDateShort(task.updated)}

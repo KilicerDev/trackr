@@ -379,6 +379,31 @@ export function formatDateLong(iso: string | null | undefined): string {
 	return `${m[3]}.${m[2]}.${m[1]}`;
 }
 
+export type DueTone = 'overdue' | 'urgent' | 'soon' | 'normal';
+
+// Relative due-date indicator. Returns a countdown label + urgency tone when
+// the due date is within a week (or past), otherwise tone 'normal' with an
+// empty label so callers fall back to the absolute date. `days` is whole-day
+// difference from today (negative = overdue).
+export function dueCountdown(
+	iso: string | null | undefined
+): { label: string; tone: DueTone; days: number } | null {
+	if (!iso) return null;
+	const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+	if (!m) return null;
+	const due = new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+	const now = new Date();
+	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	const days = Math.round((due.getTime() - today.getTime()) / 86_400_000);
+
+	if (days < 0) return { label: 'Overdue', tone: 'overdue', days };
+	if (days === 0) return { label: 'Today', tone: 'urgent', days };
+	if (days === 1) return { label: '1 day left', tone: 'urgent', days };
+	if (days <= 3) return { label: `${days} days left`, tone: 'urgent', days };
+	if (days <= 7) return { label: `${days} days left`, tone: 'soon', days };
+	return { label: '', tone: 'normal', days };
+}
+
 export function formatEstimate(minutes: number | undefined): string {
 	if (!minutes) return '—';
 	const h = Math.floor(minutes / 60);
