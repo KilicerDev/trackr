@@ -46,16 +46,18 @@
 				...dbProjects.map((p) => p.key),
 				...fromTasks.filter((k) => !dbProjects.some((p) => p.key === k))
 			];
-			return orderedKeys.map((key) => {
-				const p = resolveProject(key);
-				return {
-					key,
-					label: p?.name ?? key,
-					color: p?.color ?? '#7c7c84',
-					project: key as ProjectId,
-					tasks: tasks.filter((t) => t.project === key)
-				};
-			});
+			return orderedKeys
+				.map((key) => {
+					const p = resolveProject(key);
+					return {
+						key,
+						label: p?.name ?? key,
+						color: p?.color ?? '#7c7c84',
+						project: key as ProjectId,
+						tasks: tasks.filter((t) => t.project === key)
+					};
+				})
+				.filter((c) => c.tasks.length > 0);
 		}
 		if (group === 'status') {
 			return TRACKR_STATUSES.map((s) => ({
