@@ -36,6 +36,7 @@ export const PERMISSIONS = {
 	OrgTicketsReadAny: 'org.tickets.read.any',
 	OrgTicketsEditOwn: 'org.tickets.edit.own',
 	OrgTicketsEditAny: 'org.tickets.edit.any',
+	OrgTicketsDeleteAny: 'org.tickets.delete.any',
 	OrgTicketsComment: 'org.tickets.comment',
 	OrgMembersManage: 'org.members.manage',
 	// Project-scoped (tasks, project settings)

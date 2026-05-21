@@ -661,6 +661,9 @@ export const ticket = pgTable(
 		closedAt: timestamp('closed_at'),
 		satisfactionScore: integer('satisfaction_score'),
 		tags: text('tags').array().notNull().default([]),
+		// Soft delete: set when an admin deletes the ticket. Non-null rows are
+		// excluded from every read path (list, detail, mutations).
+		deletedAt: timestamp('deleted_at'),
 		createdAt: timestamp('created_at').defaultNow().notNull(),
 		updatedAt: timestamp('updated_at')
 			.defaultNow()

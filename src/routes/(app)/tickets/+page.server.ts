@@ -1,5 +1,5 @@
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { organization, ticket } from '$lib/server/db/app.schema';
 import { assertCan, can, isTrackrTeam } from '$lib/server/permissions';
@@ -8,6 +8,7 @@ import {
 	createTicket,
 	getTicket,
 	loadTickets,
+	softDeleteTicket,
 	updateTicket,
 	TICKET_CATEGORY_SET,
 	TICKET_CHANNEL_SET,
@@ -243,6 +244,28 @@ export const actions: Actions = {
 		}
 	},
 
+	delete: async ({ request, locals }) => {
+		if (!locals.user) throw error(401, 'Not authenticated');
+
+		const form = await request.formData();
+		const id = String(form.get('id') ?? '').trim();
+		if (!id) return fail(400, { message: 'Ticket id required.' });
+
+		const orgId = await getTicketOrgId(id);
+		if (!orgId) return fail(404, { message: 'Ticket not found.' });
+
+		// Administrational: only the internal admin roles hold this grant.
+		await assertCan(locals, 'org.tickets.delete.any', { orgId });
+
+		try {
+			await softDeleteTicket(id);
+			return { ok: true };
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : 'Failed to delete ticket';
+			return fail(500, { message: msg });
+		}
+	},
+
 	message: async ({ request, locals, url }) => {
 		if (!locals.user) throw error(401, 'Not authenticated');
 		const me = locals.user;
@@ -313,7 +336,7 @@ async function getTicketOrgId(ticketId: string): Promise<string | null> {
 	const [row] = await db
 		.select({ orgId: ticket.orgId })
 		.from(ticket)
-		.where(eq(ticket.id, ticketId))
+		.where(and(eq(ticket.id, ticketId), isNull(ticket.deletedAt)))
 		.limit(1);
 	return row?.orgId ?? null;
 }

@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from './db';
 import { organization, ticket, ticketMessage } from './db/app.schema';
 
@@ -97,7 +97,7 @@ type AccessOpts = {
 export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 	if (opts.orgIds && opts.orgIds.length === 0) return [];
 
-	const conditions = [];
+	const conditions = [isNull(ticket.deletedAt)];
 	if (opts.orgIds) conditions.push(inArray(ticket.orgId, opts.orgIds));
 	if (opts.ownerUserId) {
 		conditions.push(
@@ -339,6 +339,16 @@ export async function addTicketMessage(input: AddMessageInput): Promise<{ id: st
 	return { id };
 }
 
+// Soft delete: stamps deleted_at so the ticket drops out of every read path.
+// Messages stay in place (cascade only fires on a hard row delete), which keeps
+// the record recoverable. No-op if the ticket is already gone.
+export async function softDeleteTicket(ticketId: string): Promise<void> {
+	await db
+		.update(ticket)
+		.set({ deletedAt: new Date() })
+		.where(and(eq(ticket.id, ticketId), isNull(ticket.deletedAt)));
+}
+
 export async function getTicket(ticketId: string): Promise<TicketRow | null> {
 	const [row] = await db
 		.select({
@@ -350,7 +360,7 @@ export async function getTicket(ticketId: string): Promise<TicketRow | null> {
 		})
 		.from(ticket)
 		.innerJoin(organization, eq(organization.id, ticket.orgId))
-		.where(eq(ticket.id, ticketId))
+		.where(and(eq(ticket.id, ticketId), isNull(ticket.deletedAt)))
 		.limit(1);
 	if (!row) return null;
 	const t = row.t;

@@ -1,5 +1,7 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
+	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
 	import { showToast } from '$lib/toast.svelte';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
@@ -124,6 +126,34 @@
 
 	const isAgent = $derived(data.isAgent);
 	const users = $derived(data.users ?? []);
+
+	// Deletion is admin-only. effectivePermissions is the workspace-wide union
+	// (UI gating only); the server re-checks org.tickets.delete.any per-org.
+	const canDelete = $derived(
+		((page.data.effectivePermissions as string[] | undefined) ?? []).includes(
+			'org.tickets.delete.any'
+		)
+	);
+
+	async function deleteTicket() {
+		const ok = await uiConfirm({
+			title: `Delete ${t.displayId}?`,
+			message: `"${t.subject}" and its conversation will be removed from the ticket list. This is an administrative action.`,
+			confirmLabel: 'Delete ticket',
+			tone: 'danger',
+			icon: 'trash'
+		});
+		if (!ok) return;
+		const fd = new FormData();
+		fd.set('id', t.id);
+		try {
+			const res = await fetch('/tickets?/delete', { method: 'POST', body: fd });
+			if (!res.ok) throw new Error('Delete failed');
+			await goto('/tickets');
+		} catch (err) {
+			showToast('err', err instanceof Error ? err.message : 'Delete failed');
+		}
+	}
 </script>
 
 <svelte:head>
@@ -141,12 +171,22 @@
 <div class="flex-1 min-h-0 overflow-auto">
 	<div class="max-w-[820px] mx-auto px-6 py-6">
 		<!-- Header -->
-		<div class="flex items-baseline gap-2 text-[11.5px] text-text-3 mb-1">
+		<div class="flex items-center gap-2 text-[11.5px] text-text-3 mb-1">
 			<span class="font-mono text-text-4">{t.displayId}</span>
 			<span class="inline-flex items-center gap-1.5">
 				<span class="w-1.5 h-1.5 rounded-full" style:background={t.orgColor}></span>
 				<span>{t.orgName}</span>
 			</span>
+			{#if canDelete}
+				<button
+					type="button"
+					onclick={deleteTicket}
+					class="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-surface text-[12px] text-text-2 hover:text-[#ef4f5e] hover:border-[#ef4f5e]/40 hover:bg-[#ef4f5e]/10 transition-colors"
+				>
+					<Icon name="trash" size={14} />
+					<span>Delete</span>
+				</button>
+			{/if}
 		</div>
 		<h1 class="text-[22px] font-semibold tracking-[-0.012em] leading-tight text-text mb-4">
 			{t.subject}

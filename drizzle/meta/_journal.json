@@ -141,6 +141,13 @@
       "when": 1779278362857,
       "tag": "0019_gray_dark_phoenix",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1779368930257,
+      "tag": "0020_majestic_talisman",
+      "breakpoints": true
     }
   ]
 }

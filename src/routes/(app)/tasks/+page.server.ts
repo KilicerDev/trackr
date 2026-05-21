@@ -11,6 +11,7 @@ import {
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
 import { loadTasks } from '$lib/server/tasks';
+import { normalizeTag } from '$lib/labelMeta';
 import { logActivity, logActivityFF } from '$lib/server/activity';
 import { notify } from '$lib/server/notify';
 import { taskRecipients } from '$lib/server/notify-recipients';
@@ -77,7 +78,9 @@ export const actions: Actions = {
 		const priority = String(form.get('priority') ?? 'medium');
 		const due = String(form.get('due') ?? '').trim();
 		const estimateRaw = String(form.get('estimate') ?? '').trim();
-		const tags = form.getAll('tags').map((v) => String(v)).filter(Boolean);
+		const tags = [
+			...new Set(form.getAll('tags').map((v) => normalizeTag(String(v))).filter(Boolean))
+		];
 		const assigneeIds = form.getAll('assignees').map((v) => String(v)).filter(Boolean);
 		const plannedFor = String(form.get('plannedFor') ?? '').trim();
 
@@ -229,6 +232,16 @@ export const actions: Actions = {
 		if (form.has('estimate')) {
 			const v = String(form.get('estimate')).trim();
 			patch.estimateMinutes = v ? Number(v) : null;
+		}
+		// Tags: multi-value `tags`, or a single `__clear__` sentinel for empty.
+		// Normalized + deduped server-side so free-form input stays consistent.
+		if (form.has('tags')) {
+			const all = form.getAll('tags').map((v) => String(v));
+			if (all.length === 1 && all[0] === '__clear__') {
+				patch.tags = [];
+			} else {
+				patch.tags = [...new Set(all.map(normalizeTag).filter(Boolean))];
+			}
 		}
 
 		// Assignees come either as the multi-value `assignees` field, or as a

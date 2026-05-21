@@ -22,6 +22,7 @@
 	import AssigneePopover from '../popovers/AssigneePopover.svelte';
 	import DatePopover from '../popovers/DatePopover.svelte';
 	import EstimatePopover from '../popovers/EstimatePopover.svelte';
+	import TagsPopover from '../popovers/TagsPopover.svelte';
 	import TaskMenuPopover from '../popovers/TaskMenuPopover.svelte';
 	import {
 		TRACKR_PRIORITIES,
@@ -199,9 +200,19 @@
 		| 'due'
 		| 'estimate'
 		| 'plan'
+		| 'tags'
 		| 'menu'
 		| null;
 	let openPop = $state<PopId>(null);
+
+	// Every tag in use across the loaded tasks — offered as quick picks in the
+	// tag popover so existing custom tags are reusable, not just retyped.
+	const tagSuggestions = $derived.by(() => {
+		const tasks = (page.data as { tasks?: { labels?: string[] }[] }).tasks ?? [];
+		const set = new Set<string>();
+		for (const t of tasks) for (const l of t.labels ?? []) set.add(l);
+		return [...set];
+	});
 
 	const canDelete = $derived.by(() => {
 		const t = task;
@@ -566,14 +577,37 @@
 				class="w-full resize-none bg-transparent border-0 outline-none text-[13.5px] leading-relaxed text-text-2 mb-5 placeholder:text-text-4 min-h-[60px]"
 			></textarea>
 
-			{#if draft.parent || (draft.labels && draft.labels.length > 0)}
-				<div class="flex flex-wrap gap-2 mb-6">
+			{#if draft.parent || (draft.labels && draft.labels.length > 0) || canEdit}
+				<div class="flex flex-wrap items-center gap-2 mb-6">
 					{#if draft.parent}
 						<span class="inline-flex items-center gap-1.5 text-[11.5px] font-mono px-2 py-1 rounded border border-border bg-surface text-text-3">
 							<Icon name="chevron-r" size={11} /> {draft.parent}
 						</span>
 					{/if}
 					{#each draft.labels as l (l)}<LabelChip id={l} />{/each}
+					{#if canEdit}
+						<div class="relative">
+							<button
+								type="button"
+								onclick={() => toggle('tags')}
+								class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-dashed border-border text-[12px] text-text-3 hover:text-text hover:border-border-strong transition-colors {openPop === 'tags' ? 'ring-2 ring-accent/40' : ''}"
+							>
+								<Icon name="bookmark" size={12} />
+								<span>{draft.labels.length > 0 ? 'Add tag' : 'Add tags'}</span>
+							</button>
+							{#if openPop === 'tags'}
+								<TagsPopover
+									value={draft.labels}
+									suggestions={tagSuggestions}
+									onchange={(v) => {
+										if (draft) draft.labels = v;
+										void patch('tags', { tags: v });
+									}}
+									onclose={() => (openPop = null)}
+								/>
+							{/if}
+						</div>
+					{/if}
 				</div>
 			{/if}
 

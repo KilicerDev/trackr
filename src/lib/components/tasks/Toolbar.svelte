@@ -10,12 +10,30 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/motion';
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES, TRACKR_LABELS } from '$lib/data';
+	import { labelMeta } from '$lib/labelMeta';
 	import { page } from '$app/state';
 
 	type LayoutData = {
 		users?: { id: string; name: string; initials: string; color: string; status: string }[];
 		projects?: { key: string; name: string; color: string }[];
+		tasks?: { labels?: string[] }[];
 	};
+
+	// Predefined labels + every tag actually in use across the loaded tasks,
+	// so custom (free-form) tags are filterable too. Predefined come first.
+	const allTags = $derived.by(() => {
+		const seen = new Set<string>(Object.keys(TRACKR_LABELS));
+		const extra: string[] = [];
+		for (const t of (page.data as LayoutData).tasks ?? []) {
+			for (const l of t.labels ?? []) {
+				if (!seen.has(l)) {
+					seen.add(l);
+					extra.push(l);
+				}
+			}
+		}
+		return [...Object.keys(TRACKR_LABELS), ...extra];
+	});
 
 	type GroupBy = 'status' | 'priority' | 'assignee' | 'project' | 'none';
 	type SubBy = 'none' | 'status' | 'priority' | 'assignee';
@@ -114,7 +132,7 @@
 			const p = ((page.data as LayoutData).projects ?? []).find((x) => x.key === value);
 			return p?.name ?? value;
 		}
-		if (field === 'tags') return TRACKR_LABELS[value]?.label ?? value;
+		if (field === 'tags') return labelMeta(value).label;
 		return value;
 	}
 </script>
@@ -180,14 +198,15 @@
 			</button>
 		{/each}
 	{:else if field === 'tags'}
-		{#each Object.keys(TRACKR_LABELS) as id (id)}
+		{#each allTags as id (id)}
+			{@const l = labelMeta(id)}
 			<button
 				type="button"
 				onclick={() => toggleValue('tags', id)}
 				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 			>
-				<span class="w-2 h-2 rounded-full" style:background={TRACKR_LABELS[id].color}></span>
-				<span class="text-[13px]">{TRACKR_LABELS[id].label}</span>
+				<span class="w-2 h-2 rounded-full" style:background={l.color}></span>
+				<span class="text-[13px] truncate">{l.label}</span>
 				<span class="ml-auto text-accent {values.includes(id) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
 				</span>
