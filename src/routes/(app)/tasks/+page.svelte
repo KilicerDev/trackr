@@ -20,7 +20,9 @@
 		boardGroup?: GroupBy;
 		sub?: SubGroup;
 		filters?: Record<string, string[]>;
+		time?: TimeWindow;
 	};
+	type TimeWindow = '7d' | '14d' | '30d' | '90d' | 'all';
 	// localStorage cache wins over the server snapshot — it's mirrored on
 	// every saveView() call so it always reflects the latest in-tab change,
 	// even before the debounced server write has flushed.
@@ -59,6 +61,20 @@
 		filters = f;
 		saveView('tasks', { filters: f });
 	}
+	// Forward horizon for the Time filter. Past tasks always stay visible —
+	// this only ever trims far-future scheduled items, defaulting to 30 days.
+	let time = $state<TimeWindow>(saved.time ?? '30d');
+	function setTime(t: TimeWindow) {
+		time = t;
+		saveView('tasks', { time: t });
+	}
+	const TIME_HORIZON_DAYS: Record<TimeWindow, number | null> = {
+		'7d': 7,
+		'14d': 14,
+		'30d': 30,
+		'90d': 90,
+		all: null
+	};
 	let sub = $state<SubGroup>(saved.sub ?? 'status');
 	function setSub(s: SubGroup) {
 		sub = s;
@@ -77,7 +93,27 @@
 		creating = true;
 	}
 
+	// A task is in the window if the SOONEST of its dueDate / plannedFor falls
+	// at or before the forward horizon. Past dates always pass; undated tasks
+	// (no dueDate and no plannedFor) always show — they're backlog, not future.
+	function withinWindow(t: Task): boolean {
+		const days = TIME_HORIZON_DAYS[time];
+		if (days == null) return true;
+		const candidates: number[] = [];
+		for (const v of [t.due, t.plannedFor]) {
+			if (!v) continue;
+			const ms = new Date(v).getTime();
+			if (!Number.isNaN(ms)) candidates.push(ms);
+		}
+		if (candidates.length === 0) return true;
+		const horizon = new Date();
+		horizon.setHours(23, 59, 59, 999);
+		horizon.setDate(horizon.getDate() + days);
+		return Math.min(...candidates) <= horizon.getTime();
+	}
+
 	function matches(t: Task): boolean {
+		if (!withinWindow(t)) return false;
 		for (const [field, values] of Object.entries(filters)) {
 			if (values.length === 0) continue;
 			if (field === 'status' && !values.includes(t.status)) return false;
@@ -116,6 +152,8 @@
 	{setGroup}
 	{sub}
 	{setSub}
+	{time}
+	{setTime}
 	onNewTask={() => openCreate()}
 	{canCreate}
 />

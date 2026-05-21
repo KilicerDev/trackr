@@ -19,6 +19,7 @@
 
 	type GroupBy = 'status' | 'priority' | 'assignee' | 'project' | 'none';
 	type SubBy = 'none' | 'status' | 'priority' | 'assignee';
+	type TimeWindow = '7d' | '14d' | '30d' | '90d' | 'all';
 
 	interface Props {
 		view: 'list' | 'board';
@@ -31,6 +32,8 @@
 		setGroup?: (g: GroupBy) => void;
 		sub?: SubBy;
 		setSub?: (s: SubBy) => void;
+		time?: TimeWindow;
+		setTime?: (t: TimeWindow) => void;
 		onNewTask?: () => void;
 		canCreate?: boolean;
 	}
@@ -45,6 +48,8 @@
 		setGroup,
 		sub = 'status',
 		setSub,
+		time = '30d',
+		setTime,
 		onNewTask,
 		canCreate = true
 	}: Props = $props();
@@ -63,8 +68,17 @@
 		{ id: 'none', label: 'None' }
 	];
 
+	const TIME_OPTIONS: { id: TimeWindow; label: string }[] = [
+		{ id: '7d', label: 'Next 7 days' },
+		{ id: '14d', label: 'Next 2 weeks' },
+		{ id: '30d', label: 'Next month' },
+		{ id: '90d', label: 'Next 3 months' },
+		{ id: 'all', label: 'All' }
+	];
+
 	const groupLabel = (id: GroupBy) => GROUP_OPTIONS.find((g) => g.id === id)?.label ?? '';
 	const subLabel = (id: SubBy) => SUB_OPTIONS.find((s) => s.id === id)?.label ?? '';
+	const timeLabel = (id: TimeWindow) => TIME_OPTIONS.find((t) => t.id === id)?.label ?? '';
 
 	const FIELDS: FilterField[] = [
 		{ id: 'status', label: 'Status', icon: 'check' },
@@ -76,7 +90,7 @@
 
 	// Group/Sub popovers live outside the FilterBar's scroll area, so they
 	// still use ordinary absolute positioning. Their own micro state-machine.
-	let pop = $state<'group' | 'sub' | null>(null);
+	let pop = $state<'group' | 'sub' | 'time' | null>(null);
 
 	function toggleValue(field: string, value: string) {
 		const cur = filters[field] ?? [];
@@ -276,6 +290,46 @@
 			{/if}
 		</div>
 	{/if}
+
+	<div class="w-px h-5 bg-border"></div>
+
+	<!-- Time window: forward horizon for end/planned dates (past always shown) -->
+	<div class="relative">
+		<button
+			type="button"
+			onclick={() => (pop = pop === 'time' ? null : 'time')}
+			class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] transition-colors"
+		>
+			<Icon name="calendar" size={13} class="text-text-3" />
+			<span class="text-text-3">Time</span>
+			<span class="text-text font-medium">{timeLabel(time)}</span>
+			<Icon name="chevron" size={10} class="text-text-3" />
+		</button>
+		{#if pop === 'time'}
+			<div
+				use:clickOutside={() => (pop = null)}
+				in:fly={POPOVER_IN}
+				class="absolute top-full left-0 mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[170px]"
+				style:box-shadow="var(--shadow-lg)"
+			>
+				{#each TIME_OPTIONS as o (o.id)}
+					<button
+						type="button"
+						onclick={() => {
+							setTime?.(o.id);
+							pop = null;
+						}}
+						class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text text-[13px]"
+					>
+						<span>{o.label}</span>
+						<span class="ml-auto text-accent {time === o.id ? 'opacity-100' : 'opacity-0'}">
+							<Icon name="check" size={12} />
+						</span>
+					</button>
+				{/each}
+			</div>
+		{/if}
+	</div>
 
 	<div class="w-px h-5 bg-border"></div>
 
