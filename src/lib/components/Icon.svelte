@@ -37,6 +37,8 @@
 		<path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2zM4 17a2 2 0 0 1 2-2h13" />
 	{:else if name === 'file'}
 		<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
+	{:else if name === 'download'}
+		<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
 	{:else if name === 'org'}
 		<path d="M3 21V8l9-5 9 5v13" /><path d="M9 21v-7h6v7M9 11h.01M15 11h.01" />
 	{:else if name === 'shield'}

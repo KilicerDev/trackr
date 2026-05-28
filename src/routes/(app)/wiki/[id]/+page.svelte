@@ -214,6 +214,24 @@
 		);
 	}
 
+	let exporting = $state(false);
+	async function onExportPdf() {
+		if (!browser || !editor || exporting) return;
+		menuOpen = false;
+		exporting = true;
+		const title = pg.title || 'Untitled';
+		const doc = editor.getJSON();
+		try {
+			const { exportWikiPageToPdf } = await import('$lib/wiki/pdf-export');
+			await exportWikiPageToPdf(title, doc);
+		} catch (e) {
+			console.error('PDF export failed', e);
+			showToast('err', 'Could not export PDF');
+		} finally {
+			exporting = false;
+		}
+	}
+
 	async function onDelete() {
 		const ok = await confirm({
 			title: pg.isFolder ? 'Delete folder?' : 'Delete page?',
@@ -328,6 +346,17 @@
 					<Icon name="settings" size={14} />
 				</IconButton>
 				<Popover open={menuOpen} onclose={() => (menuOpen = false)} align="right" minWidth={160}>
+					{#if !pg.isFolder && editor}
+						<button
+							type="button"
+							disabled={exporting}
+							onclick={() => void onExportPdf()}
+							class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 text-left text-[13px] leading-none disabled:opacity-50"
+						>
+							<span class="grid place-items-center w-4 h-4"><Icon name="download" size={13} /></span>
+							<span>{exporting ? 'Exporting…' : 'Export as PDF'}</span>
+						</button>
+					{/if}
 					<button
 						type="button"
 						onclick={() => {
