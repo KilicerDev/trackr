@@ -74,18 +74,29 @@ function build(): Hocuspocus {
 					return row?.ydoc ?? null;
 				},
 				store: async ({ documentName, state, lastContext }) => {
-					const html = deriveHtml(state);
+					// `ydoc` is the source of truth and MUST always persist. The HTML
+					// read-model is derived best-effort: deriving it can throw in the
+					// bundled prod runtime (tiptap/prosemirror dual-package), and that
+					// must never block saving the actual document state.
+					let html: string | null = null;
+					try {
+						html = deriveHtml(state);
+					} catch (e) {
+						console.warn(`[collab] deriveHtml failed for ${documentName}; saving ydoc only:`, e);
+					}
 					await db
 						.update(document)
-						.set({ ydoc: state, bodyHtml: html, updatedAt: new Date() })
+						.set({ ydoc: state, ...(html !== null ? { bodyHtml: html } : {}), updatedAt: new Date() })
 						.where(eq(document.id, documentName));
 					// Keep the wiki row's "edited" signal fresh for list/recent views,
 					// attributed to the most recent editor.
 					const userId = (lastContext as { userId?: string } | undefined)?.userId;
-					await db
-						.update(wikiPage)
-						.set({ body: html, ...(userId ? { updatedById: userId } : {}) })
-						.where(eq(wikiPage.documentId, documentName));
+					const wikiPatch = {
+						...(html !== null ? { body: html } : {}),
+						...(userId ? { updatedById: userId } : {})
+					};
+					if (Object.keys(wikiPatch).length)
+						await db.update(wikiPage).set(wikiPatch).where(eq(wikiPage.documentId, documentName));
 				}
 			})
 		],
@@ -101,11 +112,19 @@ function build(): Hocuspocus {
 				.where(eq(document.id, documentName))
 				.limit(1);
 			if (!row?.bodyHtml) return;
-			// toYdoc expects ProseMirror JSON, so parse the stored HTML first.
-			const json = htmlToProseMirrorJSON(row.bodyHtml);
-			const seeded = TiptapTransformer.toYdoc(json, COLLAB_FIELD, collabSchemaExtensions);
-			Y.applyUpdate(ydoc, Y.encodeStateAsUpdate(seeded));
-			seeded.destroy();
+			// Seeding legacy HTML can throw (tiptap/prosemirror dual-package under the
+			// bundled prod runtime). A seed failure must NOT abort the load — that
+			// aborts the whole document and blocks all saving. Fall back to an empty
+			// doc; once anything is typed and stored, this path is skipped.
+			try {
+				// toYdoc expects ProseMirror JSON, so parse the stored HTML first.
+				const json = htmlToProseMirrorJSON(row.bodyHtml);
+				const seeded = TiptapTransformer.toYdoc(json, COLLAB_FIELD, collabSchemaExtensions);
+				Y.applyUpdate(ydoc, Y.encodeStateAsUpdate(seeded));
+				seeded.destroy();
+			} catch (e) {
+				console.warn(`[collab] seed from HTML failed for ${documentName}; starting empty:`, e);
+			}
 			return ydoc;
 		},
 
