@@ -21,7 +21,13 @@ export const invitation = pgTable(
 		id: text('id').primaryKey(),
 		email: text('email').notNull().unique(),
 		name: text('name').notNull(),
+		// `role` is the derived better-auth user.role (user/admin/superadmin),
+		// kept for impersonation + admin-UI visibility. `orgId`/`orgRole` are the
+		// org membership the invitee receives on accept — the source of truth for
+		// the permission engine. Older invitations may have null org fields.
 		role: text('role').notNull().default('user'),
+		orgId: text('org_id').references(() => organization.id, { onDelete: 'set null' }),
+		orgRole: text('org_role'),
 		token: text('token').notNull().unique(),
 		invitedBy: text('invited_by').references(() => user.id, { onDelete: 'set null' }),
 		expiresAt: timestamp('expires_at').notNull(),

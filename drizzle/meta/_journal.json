@@ -155,6 +155,13 @@
       "when": 1779953062671,
       "tag": "0021_eager_paladin",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1779964433308,
+      "tag": "0022_nifty_doomsday",
+      "breakpoints": true
     }
   ]
 }

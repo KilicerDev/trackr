@@ -1,6 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
-import { eq } from 'drizzle-orm';
+import { eq, isNull } from 'drizzle-orm';
 import { auth } from '$lib/server/auth';
 import { sendEmail } from '$lib/server/email';
 import { invitationEmail } from '$lib/server/email/templates';
@@ -13,21 +13,48 @@ import {
 } from '$lib/server/invitations';
 import { db } from '$lib/server/db';
 import { user as userTable } from '$lib/server/db/auth.schema';
-import { canAssignRole, canManageTarget, isAdminLike, isSuperadmin, type Role } from '$lib/roles';
+import { organization, organizationMember } from '$lib/server/db/app.schema';
+import { asc, desc } from 'drizzle-orm';
+import {
+	canAssignRole,
+	canManageTarget,
+	deriveUserRole,
+	isAdminLike,
+	isAllowedOrgRole,
+	isSuperadmin
+} from '$lib/roles';
 import type { Actions, PageServerLoad } from './$types';
 
 function roleOf(u: unknown): string | null | undefined {
 	return (u as { role?: string | null } | undefined)?.role;
 }
 
-function asRole(value: FormDataEntryValue | null): Role {
-	if (value === 'admin') return 'admin';
-	if (value === 'superadmin') return 'superadmin';
-	return 'user';
-}
-
 function s(value: FormDataEntryValue | null): string {
 	return value?.toString().trim() ?? '';
+}
+
+type ResolvedOrg =
+	| { ok: true; orgId: string; orgRole: string; isInternal: boolean }
+	| { ok: false; status: number; message: string };
+
+// Validate the org + org-role chosen in the form. The org-role is the source of
+// truth; the better-auth user.role is derived from it downstream.
+async function resolveOrgRole(form: FormData): Promise<ResolvedOrg> {
+	const orgId = s(form.get('orgId'));
+	const orgRole = s(form.get('orgRole'));
+	if (!orgId || !orgRole) {
+		return { ok: false, status: 400, message: 'Pick an organization and a role.' };
+	}
+	const [org] = await db
+		.select({ id: organization.id, isInternal: organization.isInternal })
+		.from(organization)
+		.where(eq(organization.id, orgId))
+		.limit(1);
+	if (!org) return { ok: false, status: 404, message: 'Organization not found.' };
+	if (!isAllowedOrgRole(orgRole, org.isInternal)) {
+		return { ok: false, status: 400, message: `Role "${orgRole}" is not valid on this organization.` };
+	}
+	return { ok: true, orgId, orgRole, isInternal: org.isInternal };
 }
 
 export const load: PageServerLoad = async (event) => {
@@ -44,13 +71,27 @@ export const load: PageServerLoad = async (event) => {
 
 	const viewerIsSuperadmin = isSuperadmin(callerRole);
 
+	// Orgs the admin can place the new user into. The role picker is derived
+	// client-side from `isInternal`.
+	const orgs = await db
+		.select({
+			id: organization.id,
+			name: organization.name,
+			color: organization.color,
+			isInternal: organization.isInternal
+		})
+		.from(organization)
+		.where(isNull(organization.archivedAt))
+		.orderBy(desc(organization.isInternal), asc(organization.name));
+
 	return {
 		users: viewerIsSuperadmin ? list.users : list.users.filter((u) => !isSuperadmin(u.role)),
 		invitations: viewerIsSuperadmin
 			? invitations
 			: invitations.filter((inv) => !isSuperadmin(inv.role)),
 		currentUserId: event.locals.user!.id,
-		viewerIsSuperadmin
+		viewerIsSuperadmin,
+		orgs
 	};
 };
 
@@ -65,22 +106,34 @@ export const actions: Actions = {
 		const name = s(form.get('name'));
 		const email = s(form.get('email')).toLowerCase();
 		const password = form.get('password')?.toString() ?? '';
-		const role = asRole(form.get('role'));
 
 		if (!name || !email || password.length < 8) {
 			return fail(400, {
 				message: 'Name, email, and a password of at least 8 characters are required.'
 			});
 		}
+
+		const resolved = await resolveOrgRole(form);
+		if (!resolved.ok) return fail(resolved.status, { message: resolved.message });
+
+		const role = deriveUserRole(resolved.orgRole, resolved.isInternal);
 		if (!canAssignRole(callerRole, role)) {
 			return fail(403, { message: 'You cannot assign that role.' });
 		}
 
 		try {
-			await auth.api.createUser({
+			const created = await auth.api.createUser({
 				body: { name, email, password, role: role as 'admin' | 'user' },
 				headers: event.request.headers
 			});
+			// Grant the org membership that makes the role meaningful.
+			await db
+				.insert(organizationMember)
+				.values({ orgId: resolved.orgId, userId: created.user.id, role: resolved.orgRole })
+				.onConflictDoUpdate({
+					target: [organizationMember.orgId, organizationMember.userId],
+					set: { role: resolved.orgRole }
+				});
 		} catch (err) {
 			if (err instanceof APIError) {
 				return fail(400, { message: err.message || 'Failed to create user.' });
@@ -100,11 +153,15 @@ export const actions: Actions = {
 		const form = await event.request.formData();
 		const name = s(form.get('name'));
 		const email = s(form.get('email')).toLowerCase();
-		const role = asRole(form.get('role'));
 
 		if (!name || !email) {
 			return fail(400, { message: 'Name and email are required.' });
 		}
+
+		const resolved = await resolveOrgRole(form);
+		if (!resolved.ok) return fail(resolved.status, { message: resolved.message });
+
+		const role = deriveUserRole(resolved.orgRole, resolved.isInternal);
 		if (!canAssignRole(callerRole, role)) {
 			return fail(403, { message: 'You cannot invite at that role.' });
 		}
@@ -114,6 +171,8 @@ export const actions: Actions = {
 				email,
 				name,
 				role,
+				orgId: resolved.orgId,
+				orgRole: resolved.orgRole,
 				invitedBy: event.locals.user?.id ?? null
 			});
 			await sendEmail(
@@ -154,6 +213,8 @@ export const actions: Actions = {
 				email: existing.email,
 				name: existing.name,
 				role: (existing.role as InvitationRole) ?? 'user',
+				orgId: existing.orgId,
+				orgRole: existing.orgRole,
 				invitedBy: event.locals.user?.id ?? existing.invitedBy
 			});
 			await sendEmail(

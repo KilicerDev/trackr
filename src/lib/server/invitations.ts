@@ -3,7 +3,7 @@ import { hashPassword } from 'better-auth/crypto';
 import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db';
 import { account, user } from '$lib/server/db/auth.schema';
-import { invitation, type Invitation } from '$lib/server/db/app.schema';
+import { invitation, organizationMember, type Invitation } from '$lib/server/db/app.schema';
 import type { Role } from '$lib/roles';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -33,6 +33,8 @@ export async function createOrRefreshInvitation(opts: {
 	email: string;
 	name: string;
 	role: InvitationRole;
+	orgId: string | null;
+	orgRole: string | null;
 	invitedBy?: string | null;
 }): Promise<CreatedInvitation> {
 	const email = opts.email.trim().toLowerCase();
@@ -48,6 +50,8 @@ export async function createOrRefreshInvitation(opts: {
 			.set({
 				name,
 				role: opts.role,
+				orgId: opts.orgId,
+				orgRole: opts.orgRole,
 				token,
 				expiresAt,
 				acceptedAt: null,
@@ -65,6 +69,8 @@ export async function createOrRefreshInvitation(opts: {
 			email,
 			name,
 			role: opts.role,
+			orgId: opts.orgId,
+			orgRole: opts.orgRole,
 			token,
 			expiresAt,
 			invitedBy: opts.invitedBy ?? null
@@ -149,6 +155,15 @@ export async function acceptInvitation(opts: {
 			createdAt: now,
 			updatedAt: now
 		});
+		// Grant the org membership the invite was issued for — this is what
+		// actually gives the new user permissions. Older invites with no org
+		// fields fall through with no membership (legacy behaviour).
+		if (inv.orgId && inv.orgRole) {
+			await tx
+				.insert(organizationMember)
+				.values({ orgId: inv.orgId, userId, role: inv.orgRole })
+				.onConflictDoNothing();
+		}
 		await tx.update(invitation).set({ acceptedAt: now }).where(eq(invitation.id, inv.id));
 	});
 

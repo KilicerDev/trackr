@@ -10,13 +10,30 @@
 	import Drawer from '$lib/components/Drawer.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
-	import { ROLE_META, type Role } from '$lib/admin-meta';
+	import { ROLE_META, ORG_ROLE_META, type Role } from '$lib/admin-meta';
+	import { allowedOrgRoles } from '$lib/roles';
+	import { clickOutside } from '$lib/actions/clickOutside';
+	import { fly } from 'svelte/transition';
+	import { POPOVER_IN } from '$lib/motion';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
 	type UserRow = PageData['users'][number];
 	type InvitationRow = PageData['invitations'][number];
+	type OrgOption = PageData['orgs'][number];
+
+	type OrgRolePickerProps = {
+		selectedOrg: OrgOption | undefined;
+		orgId: string;
+		orgRole: string;
+		roleOptions: string[];
+		pop: 'org' | 'role' | null;
+		onTogglePop: (which: 'org' | 'role') => void;
+		onClosePop: () => void;
+		onPickOrg: (id: string) => void;
+		onPickRole: (r: string) => void;
+	};
 
 	type StatusFilter = 'all' | 'active' | 'banned';
 	let filter = $state<StatusFilter>('all');
@@ -198,19 +215,50 @@
 		}
 	}
 
+	// Org / role pickers. The org-role is the source of truth — the better-auth
+	// user.role is derived from it on the server, so we only ask once.
+	function rolesForOrg(orgId: string): string[] {
+		const org = data.orgs.find((o) => o.id === orgId);
+		let roles = [...allowedOrgRoles(org?.isInternal ?? false)] as string[];
+		// Only superadmins can confer the superadmin tier.
+		if (!data.viewerIsSuperadmin) roles = roles.filter((r) => r !== 'org.superadmin');
+		return roles;
+	}
+	function defaultOrgId(): string {
+		return data.orgs[0]?.id ?? '';
+	}
+	function defaultRoleFor(orgId: string): string {
+		const roles = rolesForOrg(orgId);
+		const org = data.orgs.find((o) => o.id === orgId);
+		const preferred = org?.isInternal ? 'org.staff' : 'org.member';
+		return roles.includes(preferred) ? preferred : (roles[roles.length - 1] ?? '');
+	}
+
 	// Create user modal state
 	let cName = $state('');
 	let cEmail = $state('');
 	let cPassword = $state('');
-	let cRole = $state<Role>('user');
+	let cOrgId = $state(defaultOrgId());
+	let cOrgRole = $state(defaultRoleFor(defaultOrgId()));
 	let cSubmitting = $state(false);
 	let cError = $state<string | null>(null);
+
+	const cRoleOptions = $derived(rolesForOrg(cOrgId));
+	const cSelectedOrg = $derived(data.orgs.find((o) => o.id === cOrgId));
+	let cPop = $state<'org' | 'role' | null>(null);
+
+	function pickCreateOrg(orgId: string) {
+		cOrgId = orgId;
+		cOrgRole = defaultRoleFor(orgId);
+		cPop = null;
+	}
 
 	function resetCreate() {
 		cName = '';
 		cEmail = '';
 		cPassword = '';
-		cRole = 'user';
+		cOrgId = defaultOrgId();
+		cOrgRole = defaultRoleFor(cOrgId);
 		cError = null;
 	}
 
@@ -230,13 +278,18 @@
 			cError = 'Password must be at least 8 characters.';
 			return;
 		}
+		if (!cOrgId || !cOrgRole) {
+			cError = 'Pick an organization and a role.';
+			return;
+		}
 		cSubmitting = true;
 		try {
 			await postAction('createUser', {
 				name: cName,
 				email: cEmail,
 				password: cPassword,
-				role: cRole
+				orgId: cOrgId,
+				orgRole: cOrgRole
 			});
 			showToast('ok', `Created ${cEmail}.`);
 			resetCreate();
@@ -251,23 +304,44 @@
 	// Invite user modal state
 	let iName = $state('');
 	let iEmail = $state('');
-	let iRole = $state<Role>('user');
+	let iOrgId = $state(defaultOrgId());
+	let iOrgRole = $state(defaultRoleFor(defaultOrgId()));
 	let iSubmitting = $state(false);
 	let iError = $state<string | null>(null);
+
+	const iRoleOptions = $derived(rolesForOrg(iOrgId));
+	const iSelectedOrg = $derived(data.orgs.find((o) => o.id === iOrgId));
+	let iPop = $state<'org' | 'role' | null>(null);
+
+	function pickInviteOrg(orgId: string) {
+		iOrgId = orgId;
+		iOrgRole = defaultRoleFor(orgId);
+		iPop = null;
+	}
 
 	function resetInvite() {
 		iName = '';
 		iEmail = '';
-		iRole = 'user';
+		iOrgId = defaultOrgId();
+		iOrgRole = defaultRoleFor(iOrgId);
 		iError = null;
 	}
 
 	async function submitInvite(e: Event) {
 		e.preventDefault();
 		iError = null;
+		if (!iOrgId || !iOrgRole) {
+			iError = 'Pick an organization and a role.';
+			return;
+		}
 		iSubmitting = true;
 		try {
-			await postAction('inviteUser', { name: iName, email: iEmail, role: iRole });
+			await postAction('inviteUser', {
+				name: iName,
+				email: iEmail,
+				orgId: iOrgId,
+				orgRole: iOrgRole
+			});
 			showToast('ok', `Invitation sent to ${iEmail}.`);
 			resetInvite();
 			inviteOpen = false;
@@ -279,10 +353,6 @@
 	}
 
 	let showPassword = $state(false);
-
-	const assignableRoles: Role[] = $derived(
-		data.viewerIsSuperadmin ? ['user', 'admin', 'superadmin'] : ['user', 'admin']
-	);
 </script>
 
 <svelte:head><title>Trackr · User Management</title></svelte:head>
@@ -343,7 +413,7 @@
 				</div>
 				<div class="bg-bg-elev border border-border rounded-2xl overflow-hidden">
 					{#each data.invitations as inv (inv.id)}
-						{@const meta = ROLE_META[inv.role as Role] ?? ROLE_META.user}
+						{@const meta = ORG_ROLE_META[inv.orgRole ?? ''] ?? ROLE_META[inv.role as Role] ?? ROLE_META.user}
 						{@const expired = new Date(inv.expiresAt).getTime() < Date.now()}
 						<div
 							class="flex items-center gap-3 px-5 py-3 border-b border-border/40 last:border-b-0"
@@ -570,6 +640,89 @@
 	{/if}
 </Drawer>
 
+<!-- Shared org + role picker, used by both the create and invite modals -->
+{#snippet orgRolePicker(p: OrgRolePickerProps)}
+	<div class="grid grid-cols-2 gap-3">
+		<div class="relative">
+			<span class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">Organization</span>
+			<button
+				type="button"
+				onclick={() => p.onTogglePop('org')}
+				class="w-full inline-flex items-center gap-2 bg-surface border border-border rounded-lg px-3 py-2 text-[13px] text-left transition-colors hover:border-border-strong {p.pop === 'org' ? 'border-border-strong' : ''}"
+			>
+				<span class="w-2 h-2 rounded-full shrink-0" style:background={p.selectedOrg?.color ?? '#7a9cf0'}></span>
+				<span class="truncate">{p.selectedOrg?.name ?? 'Select…'}</span>
+				{#if p.selectedOrg?.isInternal}
+					<span class="text-[10px] font-mono text-text-4">internal</span>
+				{/if}
+				<Icon name="chevron" size={11} class="text-text-3 ml-auto shrink-0" />
+			</button>
+			{#if p.pop === 'org'}
+				<div
+					use:clickOutside={p.onClosePop}
+					in:fly={POPOVER_IN}
+					class="absolute top-full left-0 mt-1.5 z-50 w-full max-h-56 overflow-y-auto bg-bg-elev border border-border rounded-[10px] p-1.5"
+					style:box-shadow="var(--shadow-lg)"
+				>
+					{#each data.orgs as o (o.id)}
+						<button
+							type="button"
+							onclick={() => p.onPickOrg(o.id)}
+							class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+						>
+							<span class="w-2 h-2 rounded-full shrink-0" style:background={o.color}></span>
+							<span class="text-[13px] truncate">{o.name}</span>
+							{#if o.isInternal}
+								<span class="text-[10px] font-mono text-text-4">internal</span>
+							{/if}
+							<span class="ml-auto text-accent {p.orgId === o.id ? 'opacity-100' : 'opacity-0'}">
+								<Icon name="check" size={13} />
+							</span>
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</div>
+		<div class="relative">
+			<span class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">Role</span>
+			<button
+				type="button"
+				onclick={() => p.onTogglePop('role')}
+				class="w-full inline-flex items-center gap-2 bg-surface border border-border rounded-lg px-3 py-2 text-[13px] text-left transition-colors hover:border-border-strong {p.pop === 'role' ? 'border-border-strong' : ''}"
+			>
+				<span class="w-2 h-2 rounded-full shrink-0" style:background={ORG_ROLE_META[p.orgRole]?.color ?? '#7a9cf0'}></span>
+				<span class="truncate">{ORG_ROLE_META[p.orgRole]?.label ?? p.orgRole}</span>
+				<Icon name="chevron" size={11} class="text-text-3 ml-auto shrink-0" />
+			</button>
+			{#if p.pop === 'role'}
+				<div
+					use:clickOutside={p.onClosePop}
+					in:fly={POPOVER_IN}
+					class="absolute top-full left-0 mt-1.5 z-50 w-full bg-bg-elev border border-border rounded-[10px] p-1.5"
+					style:box-shadow="var(--shadow-lg)"
+				>
+					{#each p.roleOptions as r (r)}
+						<button
+							type="button"
+							onclick={() => p.onPickRole(r)}
+							class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+						>
+							<span class="w-2 h-2 rounded-full shrink-0" style:background={ORG_ROLE_META[r]?.color ?? '#7a9cf0'}></span>
+							<span class="text-[13px] truncate">{ORG_ROLE_META[r]?.label ?? r}</span>
+							<span class="ml-auto text-accent {p.orgRole === r ? 'opacity-100' : 'opacity-0'}">
+								<Icon name="check" size={13} />
+							</span>
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</div>
+	</div>
+	{#if p.orgRole}
+		<p class="text-[11.5px] text-text-3 mt-2">{ORG_ROLE_META[p.orgRole]?.perm ?? ''}</p>
+	{/if}
+{/snippet}
+
 <!-- Create user modal -->
 <Modal
 	open={createOpen}
@@ -653,19 +806,20 @@
 					</div>
 				</div>
 			</div>
-			<div>
-				<label for="c-role" class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">Role</label>
-				<select
-					id="c-role"
-					bind:value={cRole}
-					class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-[13px]"
-				>
-					{#each assignableRoles as r (r)}
-						<option value={r}>{ROLE_META[r].label}</option>
-					{/each}
-				</select>
-				<p class="text-[11.5px] text-text-3 mt-1.5">{ROLE_META[cRole].perm}</p>
-			</div>
+			{@render orgRolePicker({
+				selectedOrg: cSelectedOrg,
+				orgId: cOrgId,
+				orgRole: cOrgRole,
+				roleOptions: cRoleOptions,
+				pop: cPop,
+				onTogglePop: (w) => (cPop = cPop === w ? null : w),
+				onClosePop: () => (cPop = null),
+				onPickOrg: pickCreateOrg,
+				onPickRole: (r) => {
+					cOrgRole = r;
+					cPop = null;
+				}
+			})}
 			{#if cError}
 				<div
 					class="rounded-lg border px-3 py-2 text-[12.5px]"
@@ -749,19 +903,20 @@
 					class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-[13px] outline-none focus:border-border-strong"
 				/>
 			</div>
-			<div>
-				<label for="i-role" class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">Role</label>
-				<select
-					id="i-role"
-					bind:value={iRole}
-					class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-[13px]"
-				>
-					{#each assignableRoles as r (r)}
-						<option value={r}>{ROLE_META[r].label}</option>
-					{/each}
-				</select>
-				<p class="text-[11.5px] text-text-3 mt-1.5">{ROLE_META[iRole].perm}</p>
-			</div>
+			{@render orgRolePicker({
+				selectedOrg: iSelectedOrg,
+				orgId: iOrgId,
+				orgRole: iOrgRole,
+				roleOptions: iRoleOptions,
+				pop: iPop,
+				onTogglePop: (w) => (iPop = iPop === w ? null : w),
+				onClosePop: () => (iPop = null),
+				onPickOrg: pickInviteOrg,
+				onPickRole: (r) => {
+					iOrgRole = r;
+					iPop = null;
+				}
+			})}
 			<p class="text-[12px] text-text-3 leading-relaxed">
 				The invitee will receive an email with a link to set their password. The link expires in 7 days.
 			</p>

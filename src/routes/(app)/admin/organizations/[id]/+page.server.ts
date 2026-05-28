@@ -3,17 +3,15 @@ import { and, count, desc, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { organization, organizationMember, project } from '$lib/server/db/app.schema';
 import { user as userTable } from '$lib/server/db/auth.schema';
+import { allowedOrgRoles } from '$lib/roles';
 import type { PageServerLoad } from './$types';
 
-// Role IDs assignable on each org type. Internal-only roles (superadmin /
-// admin / staff) belong exclusively to the Trackr internal org; client orgs
-// get the two client-side roles. The /admin/+layout.server.ts guard already
-// ensured the caller has admin.access.
-const INTERNAL_ROLES = new Set(['org.superadmin', 'org.admin', 'org.staff']);
-const CLIENT_ROLES = new Set(['org.client', 'org.member']);
-
+// Role IDs assignable on each org type come from the shared helper. Internal-
+// only roles (superadmin / admin / staff) belong exclusively to the Trackr
+// internal org; client orgs get the two client-side roles. The
+// /admin/+layout.server.ts guard already ensured the caller has admin.access.
 function allowedRoles(isInternal: boolean): Set<string> {
-	return isInternal ? INTERNAL_ROLES : CLIENT_ROLES;
+	return new Set(allowedOrgRoles(isInternal));
 }
 
 // Highest role on each org type — used for the "last admin" check that
