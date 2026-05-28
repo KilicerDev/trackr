@@ -1,5 +1,5 @@
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
-import { eq, desc, isNull, inArray } from 'drizzle-orm';
+import { eq, desc, isNull, inArray, and } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
 	project,
@@ -151,7 +151,9 @@ export const load: ServerLoad = async ({ locals }) => {
 	// so there's no separate archived partition.
 	const projectsList = all;
 
-	// Active orgs for the create-project modal's org picker.
+	// Active client orgs for the create-project modal's org picker. The internal
+	// (host) org is excluded: "Internal" work is modeled as orgId = null, and the
+	// Trackr org itself isn't a client you'd assign a project to.
 	const orgsForPicker = await db
 		.select({
 			id: organization.id,
@@ -160,7 +162,7 @@ export const load: ServerLoad = async ({ locals }) => {
 			color: organization.color
 		})
 		.from(organization)
-		.where(isNull(organization.archivedAt))
+		.where(and(isNull(organization.archivedAt), eq(organization.isInternal, false)))
 		.orderBy(organization.name);
 
 	return { projectsList, orgs: orgsForPicker, savedView };
