@@ -10,6 +10,7 @@ import {
 	index,
 	uniqueIndex,
 	primaryKey,
+	customType,
 	type AnyPgColumn
 } from 'drizzle-orm/pg-core';
 import { user } from './auth.schema';
@@ -584,11 +585,39 @@ export const userPreferencesRelations = relations(userPreferences, ({ one }) => 
 	})
 }));
 
+// ─── Collaborative documents ─────────────────────────────────────────────────
+// Feature-agnostic rich-text primitive backing real-time collaborative editing.
+// `ydoc` is the authoritative Yjs CRDT state (binary); `body_html` is a derived
+// read-model regenerated server-side on every persist, used for SSR/no-JS
+// rendering and previews. Features (wiki, future meeting notes, …) reference a
+// document by FK; the Hocuspocus server only ever deals with this table by id.
+
+const bytea = customType<{ data: Uint8Array; driverData: Buffer }>({
+	dataType: () => 'bytea',
+	toDriver: (v) => Buffer.from(v),
+	fromDriver: (v) => new Uint8Array(v as Buffer)
+});
+
+export const document = pgTable('document', {
+	id: text('id').primaryKey(),
+	// Null until the first debounced store from Hocuspocus; seeded lazily from
+	// `body_html` on first load (see onLoadDocument).
+	ydoc: bytea('ydoc'),
+	bodyHtml: text('body_html').notNull().default(''),
+	updatedAt: timestamp('updated_at')
+		.defaultNow()
+		.$onUpdate(() => /* @__PURE__ */ new Date())
+		.notNull()
+});
+
+export type Document = typeof document.$inferSelect;
+
 // ─── Wiki ──────────────────────────────────────────────────────────────────
 // One row per page or folder. Folders are pages with `is_folder = true` and
 // (typically) empty body; they exist to group children in the sidebar.
-// `parent_id` self-references for the tree; null = root. Body is markdown
-// text; rendering happens client-side via $lib/markdown.
+// `parent_id` self-references for the tree; null = root. Page content lives in
+// the linked `document` (Yjs + derived HTML); the legacy `body` column is kept
+// as a seed source / fallback during the collab rollout.
 
 export const wikiPage = pgTable(
 	'wiki_page',
@@ -601,6 +630,7 @@ export const wikiPage = pgTable(
 		icon: text('icon').notNull().default('book'),
 		isFolder: boolean('is_folder').notNull().default(false),
 		body: text('body').notNull().default(''),
+		documentId: text('document_id').references(() => document.id, { onDelete: 'set null' }),
 		authorId: text('author_id').references(() => user.id, { onDelete: 'set null' }),
 		updatedById: text('updated_by_id').references(() => user.id, { onDelete: 'set null' }),
 		sortOrder: integer('sort_order').notNull().default(0),
@@ -616,6 +646,10 @@ export const wikiPage = pgTable(
 export type WikiPage = typeof wikiPage.$inferSelect;
 
 export const wikiPageRelations = relations(wikiPage, ({ one }) => ({
+	document: one(document, {
+		fields: [wikiPage.documentId],
+		references: [document.id]
+	}),
 	parent: one(wikiPage, {
 		fields: [wikiPage.parentId],
 		references: [wikiPage.id],

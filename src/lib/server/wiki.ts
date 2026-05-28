@@ -1,6 +1,6 @@
-import { asc, desc, eq, isNull, sql } from 'drizzle-orm';
+import { asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from './db';
-import { wikiPage } from './db/app.schema';
+import { document, wikiPage } from './db/app.schema';
 
 export type WikiTreeNode = {
 	id: string;
@@ -28,6 +28,28 @@ export async function loadWikiTree(): Promise<WikiTreeNode[]> {
 export async function getWikiPage(id: string) {
 	const [row] = await db.select().from(wikiPage).where(eq(wikiPage.id, id)).limit(1);
 	return row ?? null;
+}
+
+/**
+ * Ensures the page has a linked collaborative `document`, creating one (seeded
+ * from the legacy `body` HTML) and linking it on first access. Returns the
+ * document id, or null for a page that doesn't exist. Idempotent.
+ */
+export async function ensureDocumentForPage(pageId: string): Promise<string | null> {
+	const [page] = await db
+		.select({ documentId: wikiPage.documentId, body: wikiPage.body })
+		.from(wikiPage)
+		.where(eq(wikiPage.id, pageId))
+		.limit(1);
+	if (!page) return null;
+	if (page.documentId) return page.documentId;
+
+	const docId = crypto.randomUUID();
+	await db.transaction(async (tx) => {
+		await tx.insert(document).values({ id: docId, bodyHtml: page.body ?? '' });
+		await tx.update(wikiPage).set({ documentId: docId }).where(eq(wikiPage.id, pageId));
+	});
+	return docId;
 }
 
 // Most recently edited pages (folders excluded) — drives the /wiki landing
@@ -77,16 +99,23 @@ export type CreateWikiInput = {
 export async function createWikiPage(input: CreateWikiInput) {
 	const id = crypto.randomUUID();
 	const sortOrder = await nextSortOrder(input.parentId);
-	await db.insert(wikiPage).values({
-		id,
-		parentId: input.parentId,
-		title: input.title,
-		icon: input.icon ?? (input.isFolder ? 'folder' : 'book'),
-		isFolder: input.isFolder,
-		body: input.body ?? '',
-		authorId: input.authorId,
-		updatedById: input.authorId,
-		sortOrder
+	// Pages get a collaborative document up front; folders stay doc-less until a
+	// description is added (ensureDocumentForPage creates one lazily then).
+	const docId = input.isFolder ? null : crypto.randomUUID();
+	await db.transaction(async (tx) => {
+		if (docId) await tx.insert(document).values({ id: docId, bodyHtml: input.body ?? '' });
+		await tx.insert(wikiPage).values({
+			id,
+			parentId: input.parentId,
+			title: input.title,
+			icon: input.icon ?? (input.isFolder ? 'folder' : 'book'),
+			isFolder: input.isFolder,
+			body: input.body ?? '',
+			documentId: docId,
+			authorId: input.authorId,
+			updatedById: input.authorId,
+			sortOrder
+		});
 	});
 	return id;
 }
@@ -110,7 +139,29 @@ export async function updateWikiPage(
 }
 
 export async function deleteWikiPage(id: string): Promise<void> {
-	await db.delete(wikiPage).where(eq(wikiPage.id, id));
+	// Deleting a page cascades to its child pages (parent_id FK). Collect the
+	// linked documents across the whole subtree first so they don't orphan, then
+	// delete the root (cascading the rows) and finally the documents.
+	const all = await db
+		.select({ id: wikiPage.id, parentId: wikiPage.parentId, documentId: wikiPage.documentId })
+		.from(wikiPage);
+
+	const subtree = new Set<string>([id]);
+	const stack = [id];
+	while (stack.length) {
+		const cur = stack.pop()!;
+		for (const r of all)
+			if (r.parentId === cur && !subtree.has(r.id)) {
+				subtree.add(r.id);
+				stack.push(r.id);
+			}
+	}
+	const docIds = all.filter((r) => subtree.has(r.id) && r.documentId).map((r) => r.documentId!);
+
+	await db.transaction(async (tx) => {
+		await tx.delete(wikiPage).where(eq(wikiPage.id, id));
+		if (docIds.length) await tx.delete(document).where(inArray(document.id, docIds));
+	});
 }
 
 export type MoveWikiInput = {

@@ -5,7 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "vite build && bun scripts/build-server.ts",
+		"start": "bun build/server-entry.js",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -31,8 +32,10 @@
 		"@tailwindcss/forms": "^0.5.11",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.2.2",
+		"@types/jsdom": "^28.0.3",
 		"@types/node": "^24",
 		"@types/nodemailer": "^8.0.0",
+		"@types/ws": "^8.18.1",
 		"drizzle-kit": "^0.31.10",
 		"eslint": "^10.2.0",
 		"eslint-config-prettier": "^10.1.8",
@@ -48,19 +51,29 @@
 		"vite": "^8.0.7"
 	},
 	"dependencies": {
+		"@hocuspocus/extension-database": "^4.1.0",
+		"@hocuspocus/provider": "^4.1.0",
+		"@hocuspocus/server": "^4.1.0",
+		"@hocuspocus/transformer": "^4.1.0",
 		"@lucide/svelte": "^1.14.0",
 		"@sveltejs/kit": "^2.57.0",
 		"@tiptap/core": "^3.23.4",
+		"@tiptap/extension-collaboration": "^3.23.4",
+		"@tiptap/extension-collaboration-caret": "^3.23.6",
 		"@tiptap/extension-link": "^3.23.4",
 		"@tiptap/extension-placeholder": "^3.23.4",
 		"@tiptap/extension-task-item": "^3.23.4",
 		"@tiptap/extension-task-list": "^3.23.4",
+		"@tiptap/html": "^3.23.4",
 		"@tiptap/starter-kit": "^3.23.4",
 		"@tiptap/suggestion": "^3.23.4",
 		"better-auth": "~1.4.21",
 		"drizzle-orm": "^0.45.2",
+		"jsdom": "^29.1.1",
 		"nodemailer": "^8.0.7",
 		"postgres": "^3.4.9",
-		"svelte": "^5.55.2"
+		"svelte": "^5.55.2",
+		"ws": "^8.21.0",
+		"yjs": "^13"
 	}
 }

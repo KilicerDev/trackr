@@ -1,0 +1,124 @@
+<script lang="ts">
+	import { onDestroy, onMount } from 'svelte';
+	import { Editor } from '@tiptap/core';
+	import Placeholder from '@tiptap/extension-placeholder';
+	import Collaboration from '@tiptap/extension-collaboration';
+	import CollaborationCaret from '@tiptap/extension-collaboration-caret';
+	import { HocuspocusProvider, type WebSocketStatus } from '@hocuspocus/provider';
+	import * as Y from 'yjs';
+	import { collabSchemaExtensions, COLLAB_FIELD } from '$lib/collab/extensions';
+	import { SlashCommand } from './slash-command.svelte';
+	import './wiki-editor.css';
+
+	export type PresenceUser = { clientId: number; isSelf: boolean; name: string; color: string };
+
+	interface Props {
+		/** The collaborative document id (wiki_page.documentId). */
+		documentId: string;
+		/** Identity shown on this user's remote caret. */
+		user: { name: string; color: string };
+		editable?: boolean;
+		placeholder?: string;
+		onUpdate?: (editor: Editor) => void;
+		onReady?: (editor: Editor) => void;
+		onStatus?: (status: WebSocketStatus) => void;
+		/** Live collaborators currently connected to this document (incl. self). */
+		onPresence?: (users: PresenceUser[]) => void;
+	}
+	let {
+		documentId,
+		user,
+		editable = true,
+		placeholder = "Type '/' for commands…",
+		onUpdate,
+		onReady,
+		onStatus,
+		onPresence
+	}: Props = $props();
+
+	let host: HTMLDivElement | undefined = $state();
+	let editor: Editor | undefined;
+	let provider: HocuspocusProvider | undefined;
+	let ydoc: Y.Doc | undefined;
+
+	function collabUrl(): string {
+		const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+		return `${proto}//${location.host}/collab`;
+	}
+
+	// The session cookie is httpOnly, so the provider fetches a short-lived collab
+	// token from a cookie-authenticated endpoint. Returning a function lets the
+	// provider re-fetch on every (re)connect, so expiry is handled transparently.
+	async function fetchToken(): Promise<string> {
+		const res = await fetch('/collab-token');
+		if (!res.ok) throw new Error('Could not obtain collaboration token');
+		return (await res.json()).token as string;
+	}
+
+	onMount(() => {
+		if (!host) return;
+		ydoc = new Y.Doc();
+		provider = new HocuspocusProvider({
+			url: collabUrl(),
+			name: documentId,
+			document: ydoc,
+			token: fetchToken
+		});
+		provider.on('status', (e: { status: WebSocketStatus }) => onStatus?.(e.status));
+
+		if (onPresence) {
+			const awareness = provider.awareness;
+			const emit = () => {
+				const self = awareness?.clientID;
+				const users: PresenceUser[] = [];
+				awareness?.getStates().forEach((state, clientId) => {
+					const u = (state as { user?: { name?: string; color?: string } }).user;
+					if (!u) return;
+					users.push({
+						clientId,
+						isSelf: clientId === self,
+						name: u.name ?? 'Someone',
+						color: u.color ?? '#888'
+					});
+				});
+				onPresence(users);
+			};
+			awareness?.on('change', emit);
+			emit();
+		}
+
+		editor = new Editor({
+			element: host,
+			editable,
+			extensions: [
+				...collabSchemaExtensions,
+				Collaboration.configure({ document: ydoc, field: COLLAB_FIELD }),
+				CollaborationCaret.configure({ provider, user }),
+				Placeholder.configure({ placeholder }),
+				SlashCommand
+			],
+			onUpdate: ({ editor }) => onUpdate?.(editor),
+			onCreate: ({ editor }) => onReady?.(editor)
+		});
+	});
+
+	$effect(() => {
+		if (editor && editor.isEditable !== editable) editor.setEditable(editable);
+	});
+
+	$effect(() => {
+		// Keep the caret label/color in sync if the user identity changes.
+		if (editor && provider) editor.commands.updateUser(user);
+	});
+
+	onDestroy(() => {
+		editor?.destroy();
+		editor = undefined;
+		provider?.destroy();
+		provider = undefined;
+		ydoc?.destroy();
+		ydoc = undefined;
+	});
+</script>
+
+<div bind:this={host} class="wiki-editor"></div>

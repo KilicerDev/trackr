@@ -148,6 +148,13 @@
       "when": 1779368930257,
       "tag": "0020_majestic_talisman",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1779953062671,
+      "tag": "0021_eager_paladin",
+      "breakpoints": true
     }
   ]
 }

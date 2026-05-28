@@ -1,10 +1,10 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import type { ActionResult } from '@sveltejs/kit';
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
-	import Button from '$lib/components/Button.svelte';
 	import IconButton from '$lib/components/IconButton.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -12,8 +12,12 @@
 	import { confirm } from '$lib/components/confirm.svelte';
 	import { showToast } from '$lib/toast.svelte';
 	import WikiEditor from '$lib/components/wiki/WikiEditor.svelte';
+	import CollaborativeWikiEditor, {
+		type PresenceUser
+	} from '$lib/components/wiki/CollaborativeWikiEditor.svelte';
 	import type { PageData } from './$types';
 	import type { Editor } from '@tiptap/core';
+	import type { WebSocketStatus } from '@hocuspocus/provider';
 
 	type TreeNode = {
 		id: string;
@@ -27,6 +31,7 @@
 	const pg = $derived(data.page);
 	const authors = $derived(data.authors ?? []);
 	const updatedBy = $derived(authors[0] ?? null);
+	const me = $derived(data.me);
 
 	const tree = $derived(((page.data as { tree?: TreeNode[] }).tree ?? []) as TreeNode[]);
 	const breadcrumbs = $derived.by(() => {
@@ -40,61 +45,13 @@
 	});
 
 	const children = $derived(
-		tree
-			.filter((n) => n.parentId === pg.id)
-			.sort((a, b) => a.title.localeCompare(b.title))
+		tree.filter((n) => n.parentId === pg.id).sort((a, b) => a.title.localeCompare(b.title))
 	);
 
-	let editing = $state(false);
-	let titleDraft = $state(pg.title);
-	let bodyDraft = $state(pg.body);
-	let saving = $state(false);
 	let menuOpen = $state(false);
 	let editor: Editor | undefined = $state();
-
-	$effect(() => {
-		// Reset drafts when navigating between pages.
-		void pg.id;
-		titleDraft = pg.title;
-		bodyDraft = pg.body;
-		editing = false;
-	});
-
-	const outline = $state<{ items: { level: number; text: string; id: string }[] }>({ items: [] });
-	function rebuildOutline() {
-		if (!editor) return outline.items = [];
-		const headings: { level: number; text: string; id: string }[] = [];
-		editor.state.doc.descendants((node) => {
-			if (node.type.name === 'heading') {
-				const level = node.attrs.level as number;
-				const text = node.textContent;
-				if (text.trim()) {
-					const id = text
-						.toLowerCase()
-						.replace(/[^a-z0-9\s-]/g, '')
-						.trim()
-						.replace(/\s+/g, '-');
-					headings.push({ level, text, id });
-				}
-			}
-		});
-		outline.items = headings;
-	}
-
-	function onEditorReady(ed: Editor) {
-		editor = ed;
-		rebuildOutline();
-	}
-	function onEditorUpdate(html: string) {
-		bodyDraft = html;
-		rebuildOutline();
-	}
-
-	$effect(() => {
-		// When body source changes (route change, save), refresh outline.
-		void pg.body;
-		rebuildOutline();
-	});
+	let collabStatus = $state<WebSocketStatus | undefined>(undefined);
+	let presence = $state<PresenceUser[]>([]);
 
 	function userColor(id: string): string {
 		let h = 0;
@@ -115,6 +72,19 @@
 			? { name: updatedBy.name, initials: initialsOf(updatedBy.name), color: userColor(updatedBy.id) }
 			: undefined
 	);
+	const collabUser = $derived(
+		me ? { name: me.name, color: userColor(me.id) } : { name: 'Someone', color: '#888' }
+	);
+
+	// Live collaborators other than me, de-duplicated by name (one person, many tabs).
+	const others = $derived.by(() => {
+		const out: PresenceUser[] = [];
+		for (const u of presence) {
+			if (u.isSelf || out.some((o) => o.name === u.name)) continue;
+			out.push(u);
+		}
+		return out;
+	});
 
 	function relativeTime(d: Date | string): string {
 		const dt = typeof d === 'string' ? new Date(d) : d;
@@ -130,32 +100,74 @@
 		return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 	}
 
-	function startEdit() {
-		titleDraft = pg.title;
-		bodyDraft = pg.body;
-		editing = true;
-		queueMicrotask(() => editor?.commands.focus('end'));
-	}
+	// ─── Outline + scroll-spy (driven by the live editor) ───────────────────
+	const outline = $state<{ items: { level: number; text: string }[] }>({ items: [] });
+	let activeIdx = $state(-1);
 
-	function cancelEdit() {
-		titleDraft = pg.title;
-		bodyDraft = pg.body;
-		editing = false;
+	function headingEls(): HTMLElement[] {
+		if (!editor) return [];
+		return Array.from(editor.view.dom.querySelectorAll('h1, h2, h3'));
 	}
-
-	async function save() {
-		const title = titleDraft.trim();
-		if (!title) {
-			showToast('err', 'Title cannot be empty');
-			return;
+	function rebuildOutline(ed?: Editor) {
+		const e = ed ?? editor;
+		if (!e) return (outline.items = []);
+		const items: { level: number; text: string }[] = [];
+		e.state.doc.descendants((node) => {
+			if (node.type.name === 'heading' && node.textContent.trim()) {
+				items.push({ level: node.attrs.level as number, text: node.textContent });
+			}
+		});
+		outline.items = items;
+		recomputeActive();
+	}
+	function recomputeActive() {
+		const heads = headingEls();
+		if (!heads.length) return (activeIdx = -1);
+		let idx = 0;
+		for (let i = 0; i < heads.length; i++) {
+			if (heads[i].getBoundingClientRect().top - 140 <= 0) idx = i;
+			else break;
 		}
-		if (saving) return;
-		saving = true;
+		activeIdx = idx;
+	}
+	function scrollToHeading(i: number) {
+		headingEls()[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
+	function onEditorReady(ed: Editor) {
+		editor = ed;
+		rebuildOutline(ed);
+	}
+	function onEditorUpdate(ed: Editor) {
+		rebuildOutline(ed);
+	}
+	$effect(() => {
+		if (!browser) return;
+		// `true` capture also catches scroll inside the layout's scroll container.
+		const onScroll = () => recomputeActive();
+		window.addEventListener('scroll', onScroll, true);
+		return () => window.removeEventListener('scroll', onScroll, true);
+	});
 
+	// ─── Title (always-editable inline; debounced autosave) ──────────────────
+	let titleDraft = $state(pg.title);
+	let titleSaving = $state(false);
+	let titleTimer: ReturnType<typeof setTimeout> | undefined;
+
+	$effect(() => {
+		void pg.id;
+		titleDraft = pg.title;
+		collabStatus = undefined;
+		presence = [];
+	});
+
+	async function saveTitle() {
+		const title = titleDraft.trim();
+		if (!title || title === pg.title) return;
+		if (titleSaving) return;
+		titleSaving = true;
 		try {
 			const fd = new FormData();
 			fd.append('title', title);
-			fd.append('body', bodyDraft);
 			const res = await fetch(`/wiki/${pg.id}?/update`, {
 				method: 'POST',
 				body: fd,
@@ -165,27 +177,41 @@
 				{ success?: boolean },
 				{ message?: string }
 			>;
-			if (result.type === 'success') {
-				showToast('ok', 'Saved');
-				editing = false;
+			if (result.type === 'failure') {
+				showToast('err', result.data?.message ?? 'Could not rename');
+				titleDraft = pg.title;
+			} else if (result.type === 'success') {
 				await invalidateAll();
-			} else if (result.type === 'failure') {
-				showToast('err', result.data?.message ?? 'Could not save');
-			} else {
-				showToast('err', 'Could not save');
 			}
 		} catch {
 			showToast('err', 'Network error');
 		} finally {
-			saving = false;
+			titleSaving = false;
 		}
 	}
-
+	function onTitleInput() {
+		clearTimeout(titleTimer);
+		titleTimer = setTimeout(saveTitle, 800);
+	}
+	function onTitleBlur() {
+		clearTimeout(titleTimer);
+		void saveTitle();
+	}
 	function onTitleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter') {
 			e.preventDefault();
+			clearTimeout(titleTimer);
+			void saveTitle();
 			editor?.commands.focus('start');
 		}
+	}
+
+	function copyLink() {
+		if (!browser) return;
+		navigator.clipboard?.writeText(location.href).then(
+			() => showToast('ok', 'Link copied'),
+			() => showToast('err', 'Could not copy')
+		);
 	}
 
 	async function onDelete() {
@@ -221,46 +247,86 @@
 		}
 	}
 
-	function onKeydown(e: KeyboardEvent) {
-		if (!editing) return;
-		if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-			e.preventDefault();
-			void save();
-		}
-		if (e.key === 'Escape') {
-			cancelEdit();
-		}
-	}
+	const statusLabel = $derived(
+		collabStatus === 'connected'
+			? 'Live'
+			: collabStatus === 'connecting'
+				? 'Connecting'
+				: collabStatus === 'disconnected'
+					? 'Offline'
+					: ''
+	);
 </script>
 
 <svelte:head><title>Trackr · {pg.title}</title></svelte:head>
-<svelte:window onkeydown={onKeydown} />
 
-<div class="px-8 pt-6 pb-20 mx-auto max-w-[1100px]">
-	<div class="flex items-center gap-2 mb-6 text-[12.5px]">
-		<a href="/wiki" class="text-text-3 hover:text-text">Wiki</a>
-		{#each breadcrumbs as crumb, i (crumb.id)}
-			<span class="text-text-4">/</span>
-			{#if i === breadcrumbs.length - 1}
-				<span class="text-text font-medium truncate max-w-[260px]">{crumb.title}</span>
-			{:else}
-				<a href="/wiki/{crumb.id}" class="text-text-3 hover:text-text truncate max-w-[180px]">
-					{crumb.title}
-				</a>
+<div class="wiki-doc relative min-h-full">
+	<!-- Ambient warmth behind the header so the page reads as a crafted document. -->
+	<div class="wiki-doc__glow" aria-hidden="true"></div>
+
+	<header
+		class="sticky top-0 z-20 flex items-center gap-3 px-8 h-[52px] border-b border-border/70 bg-bg/80 backdrop-blur-md"
+	>
+		<nav class="flex items-center gap-1.5 text-[12.5px] min-w-0">
+			<a href="/wiki" class="text-text-3 hover:text-text transition-colors">Wiki</a>
+			{#each breadcrumbs as crumb, i (crumb.id)}
+				<span class="text-text-4 select-none">/</span>
+				{#if i === breadcrumbs.length - 1}
+					<span class="text-text-2 font-medium truncate max-w-[240px]">{crumb.title}</span>
+				{:else}
+					<a
+						href="/wiki/{crumb.id}"
+						class="text-text-3 hover:text-text transition-colors truncate max-w-[160px]"
+					>
+						{crumb.title}
+					</a>
+				{/if}
+			{/each}
+		</nav>
+
+		<div class="ml-auto flex items-center gap-3">
+			<!-- Live collaborators -->
+			{#if others.length > 0}
+				<div class="flex items-center -space-x-1.5">
+					{#each others.slice(0, 4) as u (u.clientId)}
+						<span
+							class="grid place-items-center rounded-full text-[9.5px] font-semibold text-white select-none"
+							style:width="22px"
+							style:height="22px"
+							style:background={u.color}
+							style:box-shadow="0 0 0 2px var(--bg), 0 0 0 3.5px {u.color}55"
+							title="{u.name} · editing now"
+						>
+							{initialsOf(u.name)}
+						</span>
+					{/each}
+					{#if others.length > 4}
+						<span
+							class="grid place-items-center rounded-full bg-surface-2 text-text-3 text-[9.5px] font-semibold"
+							style:width="22px"
+							style:height="22px"
+							style:box-shadow="0 0 0 2px var(--bg)"
+						>
+							+{others.length - 4}
+						</span>
+					{/if}
+				</div>
 			{/if}
-		{/each}
-		<div class="ml-auto flex items-center gap-1.5 relative">
-			{#if editing}
-				<Button variant="ghost" size="sm" onclick={cancelEdit}>Cancel</Button>
-				<Button variant="primary" size="sm" onclick={save} disabled={saving}>
-					{saving ? 'Saving…' : 'Save'}
-				</Button>
-			{:else}
-				<IconButton ariaLabel="Copy link"><Icon name="link" size={14} /></IconButton>
+
+			{#if statusLabel}
+				<span class="wiki-status" data-state={collabStatus} title="Real-time sync status">
+					<span class="wiki-status__dot"></span>
+					{statusLabel}
+				</span>
+			{/if}
+
+			<div class="h-4 w-px bg-border"></div>
+
+			<IconButton ariaLabel="Copy link" onclick={copyLink}><Icon name="link" size={14} /></IconButton>
+			<div class="relative">
 				<IconButton ariaLabel="More" onclick={() => (menuOpen = !menuOpen)}>
 					<Icon name="settings" size={14} />
 				</IconButton>
-				<Button variant="default" size="sm" onclick={startEdit}>Edit</Button>
 				<Popover open={menuOpen} onclose={() => (menuOpen = false)} align="right" minWidth={160}>
 					<button
 						type="button"
@@ -274,110 +340,251 @@
 						<span>Delete {pg.isFolder ? 'folder' : 'page'}</span>
 					</button>
 				</Popover>
-			{/if}
+			</div>
 		</div>
-	</div>
+	</header>
 
-	<div class="grid gap-12" style:grid-template-columns="minmax(0, 1fr) 220px">
-		<article class="min-w-0">
-			{#if editing}
+	<div
+		class="relative z-10 mx-auto max-w-[1080px] px-8 pt-12 pb-28 lg:grid lg:gap-14 lg:[grid-template-columns:minmax(0,1fr)_212px]"
+	>
+		<article class="min-w-0 max-w-[720px]">
+			<!-- Document title block -->
+			<div class="flex items-start gap-3.5 mb-5">
+				<span class="wiki-doc__icon shrink-0">
+					<Icon name={pg.isFolder ? 'folder' : 'file'} size={20} stroke={1.75} />
+				</span>
 				<input
 					bind:value={titleDraft}
 					maxlength="120"
 					placeholder="Untitled"
+					oninput={onTitleInput}
+					onblur={onTitleBlur}
 					onkeydown={onTitleKeydown}
-					class="w-full bg-transparent border-0 outline-none text-[34px] font-semibold tracking-[-0.014em] text-text mb-3 placeholder:text-text-4"
+					class="w-full bg-transparent border-0 outline-none text-[33px] font-semibold tracking-[-0.02em] text-text leading-[1.12] placeholder:text-text-4 pt-1"
 				/>
-			{:else}
-				<h1 class="text-[34px] font-semibold tracking-[-0.014em] text-text mb-3 leading-[1.15]">
-					{pg.title}
-				</h1>
+			</div>
+
+			<!-- Byline -->
+			<div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[12.5px] text-text-3 mb-8 pl-[54px]">
+				{#if updaterAvatar}
+					<span class="flex items-center gap-2">
+						<Avatar user={updaterAvatar} size={20} />
+						<span>Edited by <span class="text-text-2 font-medium">{updatedBy?.name}</span></span>
+					</span>
+					<span class="text-text-4 select-none">·</span>
+				{/if}
+				<span>Updated {relativeTime(pg.updatedAt)}</span>
+			</div>
+
+			<div class="h-px bg-gradient-to-r from-border to-transparent mb-8"></div>
+
+			{#if browser && pg.documentId}
+				{#key pg.documentId}
+					<CollaborativeWikiEditor
+						documentId={pg.documentId}
+						user={collabUser}
+						placeholder={pg.isFolder ? 'Add a description…' : "Write, or type '/' for commands…"}
+						onUpdate={onEditorUpdate}
+						onReady={onEditorReady}
+						onStatus={(s) => (collabStatus = s)}
+						onPresence={(u) => (presence = u)}
+					/>
+				{/key}
+			{:else if pg.body}
+				<WikiEditor content={pg.body} editable={false} />
 			{/if}
 
-			{#if updaterAvatar && !editing}
-				<div class="flex items-center gap-2 text-[12px] text-text-3 mb-7">
-					<Avatar user={updaterAvatar} size={20} />
-					<span>Edited by <span class="text-text-2 font-medium">{updatedBy?.name}</span></span>
-					<span class="text-text-4">·</span>
-					<span>Updated {relativeTime(pg.updatedAt)}</span>
-				</div>
-			{/if}
-
-			{#if editing || !pg.isFolder || pg.body}
-				<WikiEditor
-					content={editing ? bodyDraft : pg.body}
-					editable={editing}
-					placeholder={pg.isFolder ? 'Folder description (optional)…' : "Type '/' for commands…"}
-					onUpdate={onEditorUpdate}
-					onReady={onEditorReady}
-				/>
-			{/if}
-
-			{#if pg.isFolder && !editing}
+			{#if pg.isFolder}
 				{#if children.length > 0}
-					<div class="mt-2">
-						<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-3">
-							In this folder
-						</div>
-						<div class="border-t border-border">
+					<div class="mt-10">
+						<div class="wiki-rail__label mb-3">In this folder</div>
+						<div class="grid gap-1.5">
 							{#each children as child (child.id)}
 								<a
 									href="/wiki/{child.id}"
-									class="group flex items-center gap-3 py-2.5 border-b border-border hover:bg-surface transition-colors -mx-2 px-2 rounded-md"
+									class="group flex items-center gap-3 rounded-xl border border-border/70 bg-bg-elev/40 px-3.5 py-3 hover:border-border-strong hover:bg-surface transition-all"
 								>
-									<span class="text-text-3 group-hover:text-text">
-										<Icon name={child.isFolder ? 'folder' : 'book'} size={15} />
+									<span
+										class="grid place-items-center w-8 h-8 rounded-lg bg-surface text-text-3 group-hover:text-accent transition-colors"
+									>
+										<Icon name={child.isFolder ? 'folder' : 'file'} size={15} stroke={1.75} />
 									</span>
-									<span class="text-[14px] text-text-2 group-hover:text-text flex-1 truncate">
+									<span class="flex-1 truncate text-[13.5px] text-text-2 group-hover:text-text">
 										{child.title}
 									</span>
-									<span class="text-text-4 opacity-0 group-hover:opacity-100 transition-opacity">
-										<Icon name="chevron" size={13} />
+									<span
+										class="text-text-4 -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all"
+									>
+										<Icon name="chevron" size={14} />
 									</span>
 								</a>
 							{/each}
 						</div>
 					</div>
 				{:else if !pg.body}
-					<EmptyState
-						icon="folder"
-						title="This folder is empty"
-						hint="Add a page or subfolder using the + next to it in the sidebar."
-					/>
+					<div class="mt-8">
+						<EmptyState
+							icon="folder"
+							title="This folder is empty"
+							hint="Add a page or subfolder using the + next to it in the sidebar."
+						/>
+					</div>
 				{/if}
 			{/if}
 		</article>
 
-		<aside class="hidden md:block sticky top-6 self-start">
-			{#if outline.items.length > 0}
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-3">On this page</div>
-				<div class="space-y-1.5 mb-6">
-					{#each outline.items as h (h.id + h.text)}
-						<a
-							href="#{h.id}"
-							class="block text-[12.5px] text-text-3 hover:text-text truncate"
-							style:padding-left="{(h.level - 1) * 12}px"
-						>
-							{h.text}
-						</a>
-					{/each}
+		<!-- Right rail -->
+		<aside class="hidden lg:block">
+			<div class="sticky top-[76px] space-y-7">
+				{#if outline.items.length > 0}
+					<nav>
+						<div class="wiki-rail__label mb-3">On this page</div>
+						<ul class="space-y-0.5 border-l border-border">
+							{#each outline.items as h, i (i + h.text)}
+								<li>
+									<button
+										type="button"
+										onclick={() => scrollToHeading(i)}
+										class="wiki-toc-item {activeIdx === i ? 'is-active' : ''}"
+										style:padding-left="{12 + (h.level - 1) * 12}px"
+									>
+										{h.text}
+									</button>
+								</li>
+							{/each}
+						</ul>
+					</nav>
+				{/if}
+
+				<div>
+					<div class="wiki-rail__label mb-3">Details</div>
+					<dl class="space-y-2.5 text-[12.5px]">
+						<div class="flex items-center justify-between gap-2">
+							<dt class="text-text-4">Type</dt>
+							<dd class="flex items-center gap-1.5 text-text-2">
+								<Icon name={pg.isFolder ? 'folder' : 'file'} size={12} />
+								{pg.isFolder ? 'Folder' : 'Page'}
+							</dd>
+						</div>
+						<div class="flex items-center justify-between gap-2">
+							<dt class="text-text-4">Created</dt>
+							<dd class="text-text-2">{fmtDate(pg.createdAt)}</dd>
+						</div>
+						<div class="flex items-center justify-between gap-2">
+							<dt class="text-text-4">Updated</dt>
+							<dd class="text-text-2">{fmtDate(pg.updatedAt)}</dd>
+						</div>
+					</dl>
 				</div>
-			{/if}
-			<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-3">Details</div>
-			<dl class="space-y-2 text-[12.5px]">
-				<div class="flex items-center justify-between gap-2">
-					<dt class="text-text-3">Type</dt>
-					<dd class="text-text-2">{pg.isFolder ? 'Folder' : 'Page'}</dd>
-				</div>
-				<div class="flex items-center justify-between gap-2">
-					<dt class="text-text-3">Created</dt>
-					<dd class="text-text-2">{fmtDate(pg.createdAt)}</dd>
-				</div>
-				<div class="flex items-center justify-between gap-2">
-					<dt class="text-text-3">Updated</dt>
-					<dd class="text-text-2">{fmtDate(pg.updatedAt)}</dd>
-				</div>
-			</dl>
+			</div>
 		</aside>
 	</div>
 </div>
+
+<style>
+	.wiki-doc__glow {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		height: 320px;
+		pointer-events: none;
+		background: radial-gradient(
+			60% 130% at 18% -10%,
+			color-mix(in oklab, var(--accent) 11%, transparent),
+			transparent 70%
+		);
+		opacity: 0.7;
+	}
+
+	.wiki-doc__icon {
+		display: grid;
+		place-items: center;
+		width: 40px;
+		height: 40px;
+		border-radius: 12px;
+		color: var(--accent);
+		background: color-mix(in oklab, var(--accent) 12%, var(--bg-elev));
+		border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--border));
+		box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+		margin-top: 2px;
+	}
+
+	/* Live status pill */
+	.wiki-status {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 11.5px;
+		font-weight: 500;
+		letter-spacing: 0.01em;
+		color: var(--text-3);
+		user-select: none;
+	}
+	.wiki-status__dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--text-4);
+	}
+	.wiki-status[data-state='connected'] {
+		color: #7fc8a9;
+	}
+	.wiki-status[data-state='connected'] .wiki-status__dot {
+		background: #7fc8a9;
+		box-shadow: 0 0 0 0 rgba(127, 200, 169, 0.5);
+		animation: wiki-pulse 2.2s ease-out infinite;
+	}
+	.wiki-status[data-state='connecting'] {
+		color: var(--color-status-paused, #e9c46a);
+	}
+	.wiki-status[data-state='connecting'] .wiki-status__dot {
+		background: var(--color-status-paused, #e9c46a);
+	}
+	@keyframes wiki-pulse {
+		0% {
+			box-shadow: 0 0 0 0 rgba(127, 200, 169, 0.45);
+		}
+		70% {
+			box-shadow: 0 0 0 5px rgba(127, 200, 169, 0);
+		}
+		100% {
+			box-shadow: 0 0 0 0 rgba(127, 200, 169, 0);
+		}
+	}
+
+	/* Right-rail micro labels */
+	:global(.wiki-rail__label) {
+		font-family: var(--font-mono);
+		font-size: 10.5px;
+		text-transform: uppercase;
+		letter-spacing: 0.13em;
+		color: var(--text-4);
+	}
+
+	/* Table-of-contents items with an active marker on the rail line */
+	.wiki-toc-item {
+		position: relative;
+		display: block;
+		width: 100%;
+		text-align: left;
+		font-size: 12.5px;
+		line-height: 1.35;
+		padding-top: 4px;
+		padding-bottom: 4px;
+		color: var(--text-3);
+		border-left: 1.5px solid transparent;
+		margin-left: -1px;
+		transition:
+			color 0.15s,
+			border-color 0.15s;
+	}
+	.wiki-toc-item:hover {
+		color: var(--text);
+	}
+	.wiki-toc-item.is-active {
+		color: var(--text);
+		font-weight: 500;
+		border-left-color: var(--accent);
+	}
+</style>

@@ -30,33 +30,40 @@
 		</h1>
 
 		{#if data.recent.length > 0}
-			<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-1 px-2">Recent</div>
-			<div>
+			<div class="mb-3 px-0.5 font-mono text-[10.5px] uppercase tracking-[0.14em] text-text-4">
+				Recent
+			</div>
+			<div class="grid gap-2">
 				{#each data.recent as p (p.id)}
+					{@const path = p.parentId ? folderPath(p.parentId) : ''}
 					<a
 						href="/wiki/{p.id}"
-						class="group flex items-center gap-3 py-2.5 border-b border-border hover:bg-surface transition-colors -mx-2 px-2 rounded-md"
+						class="group flex items-center gap-3 rounded-xl border border-border/70 bg-bg-elev/40 px-3.5 py-3 transition-all hover:border-border-strong hover:bg-surface"
 					>
-						<span class="text-text-3 group-hover:text-text">
-							<Icon name={p.icon} size={15} />
+						<span
+							class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface text-text-3 transition-colors group-hover:text-accent"
+						>
+							<Icon name="file" size={15} stroke={1.75} />
 						</span>
-						<span class="text-[14px] text-text-2 group-hover:text-text shrink-0 truncate max-w-[55%]">
-							{p.title}
-						</span>
-						{#if p.parentId}
-							<span class="text-[12px] text-accent/70 truncate min-w-0">
-								{folderPath(p.parentId)}
+						<span class="min-w-0 flex-1">
+							<span class="block truncate text-[13.5px] text-text-2 group-hover:text-text">
+								{p.title}
 							</span>
-						{/if}
-						<span class="ml-auto text-text-4 opacity-0 group-hover:opacity-100 transition-opacity">
-							<Icon name="chevron" size={13} />
+							{#if path}
+								<span class="mt-0.5 block truncate text-[12px] text-text-4">{path}</span>
+							{/if}
+						</span>
+						<span
+							class="shrink-0 -translate-x-1 text-text-4 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100"
+						>
+							<Icon name="chevron" size={14} />
 						</span>
 					</a>
 				{/each}
 			</div>
 		{:else}
 			<EmptyState
-				icon="book"
+				icon="file"
 				title="No pages yet"
 				hint="Create your first wiki page from the sidebar to get started."
 			/>
