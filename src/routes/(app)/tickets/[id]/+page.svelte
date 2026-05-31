@@ -18,11 +18,19 @@
 		TICKET_STATUSES
 	} from '$lib/data';
 	import type { TicketRow, TicketMessageRow } from '$lib/server/tickets';
+	import AttachmentList from '$lib/components/attachments/AttachmentList.svelte';
+	import AttachmentUploader from '$lib/components/attachments/AttachmentUploader.svelte';
+	import AttachmentDropzone from '$lib/components/attachments/AttachmentDropzone.svelte';
+	import StagedFileList from '$lib/components/attachments/StagedFileList.svelte';
+	import { selectStageable, type AttachmentDTO } from '$lib/attachments/config';
 
 	type PageData = {
 		ticket: TicketRow;
 		messages: TicketMessageRow[];
 		isAgent: boolean;
+		attachments: AttachmentDTO[];
+		messageAttachments: Record<string, AttachmentDTO[]>;
+		currentUserId: string;
 		users?: { id: string; name: string; initials: string; color: string }[];
 	};
 	let { data }: { data: PageData } = $props();
@@ -58,20 +66,37 @@
 	let body = $state('');
 	let internal = $state(false);
 	let sending = $state(false);
+	let commentFiles = $state<File[]>([]);
+	let commentFileInput = $state<HTMLInputElement>();
+
+	function addCommentFiles(incoming: File[]) {
+		const { accepted, errors } = selectStageable(incoming, commentFiles.length);
+		for (const err of errors) showToast('err', err);
+		if (accepted.length) commentFiles = [...commentFiles, ...accepted];
+	}
+
+	function onCommentPick(e: Event) {
+		const target = e.currentTarget as HTMLInputElement;
+		if (target.files?.length) addCommentFiles(Array.from(target.files));
+		target.value = '';
+	}
 
 	async function send() {
 		const text = body.trim();
-		if (!text || sending) return;
+		// Allow a files-only reply (attachment with no text).
+		if ((!text && commentFiles.length === 0) || sending) return;
 		sending = true;
 		const fd = new FormData();
 		fd.set('id', t.id);
-		fd.set('body', text);
+		fd.set('body', text || (commentFiles.length ? '(attachment)' : ''));
 		fd.set('internal', internal ? '1' : '0');
+		for (const file of commentFiles) fd.append('attachments', file);
 		try {
 			const res = await fetch('/tickets?/message', { method: 'POST', body: fd });
 			if (!res.ok) throw new Error('Send failed');
 			body = '';
 			internal = false;
+			commentFiles = [];
 			await invalidateAll();
 		} catch (err) {
 			showToast('err', err instanceof Error ? err.message : 'Send failed');
@@ -81,12 +106,12 @@
 	}
 
 	// ─── Activity events (timeline) ─────────────────────────────────────────
-	type Event =
+	type TimelineEvent =
 		| { id: string; kind: 'created'; at: string; userId: string | null }
 		| { id: string; kind: 'message'; at: string; userId: string | null; body: string; internal: boolean };
 
-	const events = $derived.by<Event[]>(() => {
-		const out: Event[] = [
+	const events = $derived.by<TimelineEvent[]>(() => {
+		const out: TimelineEvent[] = [
 			{ id: '__created', kind: 'created', at: t.createdAt, userId: t.customerId }
 		];
 		for (const m of data.messages) {
@@ -381,6 +406,25 @@
 			</div>
 		{/if}
 
+		<!-- Attachments -->
+		<div class="mb-6">
+			<div class="flex items-center justify-between mb-2">
+				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">
+					Attachments{#if data.attachments.length}<span class="ml-1.5 text-text-3">{data.attachments.length}</span>{/if}
+				</div>
+				<AttachmentUploader entityType="ticket" entityId={t.id} />
+			</div>
+			{#if data.attachments.length}
+				<AttachmentList
+					attachments={data.attachments}
+					canDelete={isAgent}
+					currentUserId={data.currentUserId}
+				/>
+			{:else}
+				<p class="text-[12.5px] text-text-3">No files attached.</p>
+			{/if}
+		</div>
+
 		<!-- Activity timeline -->
 		<div class="mt-2">
 			<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-3">Activity</div>
@@ -415,6 +459,15 @@
 									? 'bg-[#e9c46a]/8 border border-[#e9c46a]/30 text-text'
 									: 'bg-surface border border-border text-text'}"
 							>{e.body}</div>
+							{#if data.messageAttachments[e.id]?.length}
+								<div class="mt-2">
+									<AttachmentList
+										attachments={data.messageAttachments[e.id]}
+										canDelete={isAgent}
+										currentUserId={data.currentUserId}
+									/>
+								</div>
+							{/if}
 						{/if}
 					</div>
 				{/each}
@@ -447,30 +500,51 @@
 <!-- Composer docked at bottom -->
 <div class="px-6 py-3">
 	<div class="max-w-[820px] mx-auto">
-		<Composer
-			bind:value={body}
-			placeholder={internal ? 'Add an internal note…' : 'Write a reply…'}
-			accent={internal ? 'warning' : 'default'}
-			{sending}
-			onsend={send}
-		>
-			{#snippet rightActions()}
-				{#if isAgent}
+		<AttachmentDropzone onfiles={addCommentFiles} disabled={sending} label="Drop files to attach to your reply">
+			{#if commentFiles.length}
+				<div class="mb-2">
+					<StagedFileList
+						files={commentFiles}
+						disabled={sending}
+						onremove={(i) => (commentFiles = commentFiles.filter((_, idx) => idx !== i))}
+					/>
+				</div>
+			{/if}
+			<Composer
+				bind:value={body}
+				placeholder={internal ? 'Add an internal note…' : 'Write a reply…'}
+				accent={internal ? 'warning' : 'default'}
+				{sending}
+				onsend={send}
+			>
+				{#snippet rightActions()}
 					<button
 						type="button"
-						aria-label={internal ? 'Switch to public reply' : 'Switch to internal note'}
-						title={internal ? 'Internal note · click to switch to reply' : 'Internal note (agents only)'}
-						aria-pressed={internal}
-						onclick={() => (internal = !internal)}
-						class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-[12px] transition-colors {internal
-							? 'bg-[#e9c46a]/15 border-[#e9c46a]/40 text-[#e9c46a]'
-							: 'bg-transparent border-transparent text-text-3 hover:text-text hover:bg-surface-2'}"
+						aria-label="Attach files"
+						title="Attach files"
+						onclick={() => commentFileInput?.click()}
+						class="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-transparent text-text-3 hover:text-text hover:bg-surface-2 transition-colors"
 					>
-						<Icon name="shield" size={12} />
-						<span>{internal ? 'Internal' : 'Public'}</span>
+						<Icon name="paperclip" size={14} />
 					</button>
-				{/if}
-			{/snippet}
-		</Composer>
+					{#if isAgent}
+						<button
+							type="button"
+							aria-label={internal ? 'Switch to public reply' : 'Switch to internal note'}
+							title={internal ? 'Internal note · click to switch to reply' : 'Internal note (agents only)'}
+							aria-pressed={internal}
+							onclick={() => (internal = !internal)}
+							class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-[12px] transition-colors {internal
+								? 'bg-[#e9c46a]/15 border-[#e9c46a]/40 text-[#e9c46a]'
+								: 'bg-transparent border-transparent text-text-3 hover:text-text hover:bg-surface-2'}"
+						>
+							<Icon name="shield" size={12} />
+							<span>{internal ? 'Internal' : 'Public'}</span>
+						</button>
+					{/if}
+				{/snippet}
+			</Composer>
+			<input bind:this={commentFileInput} type="file" multiple hidden onchange={onCommentPick} />
+		</AttachmentDropzone>
 	</div>
 </div>

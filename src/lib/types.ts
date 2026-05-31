@@ -42,6 +42,8 @@ export interface Project {
 
 export interface Task {
 	id: string;
+	/** Real database UUID (distinct from `id`, which is the display ref). */
+	uuid?: string;
 	title: string;
 	status: StatusId;
 	priority: PriorityId;
@@ -61,7 +63,16 @@ export interface Task {
 	createdAt?: string;
 	description?: string;
 	attachments?: { name: string; size: string }[];
-	comments?: { user: string; date: string; text: string; createdAt?: string }[];
+	/** Real uploaded attachments (populated from the DB by loadTasks). */
+	files?: import('$lib/attachments/config').AttachmentDTO[];
+	comments?: {
+		id?: string;
+		user: string;
+		date: string;
+		text: string;
+		createdAt?: string;
+		files?: import('$lib/attachments/config').AttachmentDTO[];
+	}[];
 	timeLogs?: {
 		user: string;
 		date: string;

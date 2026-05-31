@@ -9,6 +9,7 @@ import {
 	taskTimeLog
 } from './db/app.schema';
 import type { Task } from '$lib/types';
+import { listAttachmentsForMany } from './attachments';
 
 function fmtDate(d: Date | null): string {
 	if (!d) return '';
@@ -70,6 +71,8 @@ export async function loadTasks(opts?: {
 	const taskRows = await baseQuery.orderBy(desc(task.updatedAt));
 	const taskIds = taskRows.map((t) => t.id);
 
+	const attachmentsByTask = await listAttachmentsForMany('task', taskIds);
+
 	const assigneeRows = taskIds.length
 		? await db
 				.select({ taskId: taskAssignee.taskId, userId: taskAssignee.userId })
@@ -89,6 +92,7 @@ export async function loadTasks(opts?: {
 	const commentRows = taskIds.length
 		? await db
 				.select({
+					id: projectActivity.id,
 					taskId: projectActivity.taskId,
 					authorId: projectActivity.actorId,
 					body: projectActivity.body,
@@ -102,19 +106,23 @@ export async function loadTasks(opts?: {
 					)
 				)
 		: [];
-	const commentsByTask = new Map<
-		string,
-		{ user: string; date: string; text: string; createdAt: string }[]
-	>();
+	// Attachments on comments, keyed by the comment's project_activity id.
+	const commentAttachments = await listAttachmentsForMany(
+		'project_activity',
+		commentRows.map((c) => c.id)
+	);
+	const commentsByTask = new Map<string, NonNullable<Task['comments']>>();
 	for (const c of commentRows) {
 		if (!c.taskId) continue;
 		const list = commentsByTask.get(c.taskId) ?? [];
 		const iso = c.createdAt.toISOString();
 		list.push({
+			id: c.id,
 			user: c.authorId ?? '',
 			date: iso.slice(0, 10),
 			text: c.body ?? '',
-			createdAt: iso
+			createdAt: iso,
+			files: commentAttachments.get(c.id) ?? []
 		});
 		commentsByTask.set(c.taskId, list);
 	}
@@ -177,6 +185,7 @@ export async function loadTasks(opts?: {
 		const assigneeIds = assigneesByTask.get(t.id) ?? [];
 		return {
 			id: `${t.projectKey}-${t.number}`,
+			uuid: t.id,
 			title: t.title,
 			status: t.status as Task['status'],
 			priority: t.priority as Task['priority'],
@@ -196,6 +205,7 @@ export async function loadTasks(opts?: {
 			createdAt: fmtDate(t.createdAt),
 			description: t.description ?? undefined,
 			comments: commentsByTask.get(t.id) ?? [],
+			files: attachmentsByTask.get(t.id) ?? [],
 			timeLogs: logsByTask.get(t.id) ?? [],
 			plannedFor: planByTask.has(t.id) ? planByTask.get(t.id) || null : null,
 			inMyPlan: planByTask.has(t.id)

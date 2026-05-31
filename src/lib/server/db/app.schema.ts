@@ -14,6 +14,7 @@ import {
 	type AnyPgColumn
 } from 'drizzle-orm/pg-core';
 import { user } from './auth.schema';
+import type { AttachmentEntityType } from '$lib/attachments/config';
 
 export const invitation = pgTable(
 	'invitation',
@@ -773,6 +774,71 @@ export const ticketMessageRelations = relations(ticketMessage, ({ one }) => ({
 	author: one(user, {
 		fields: [ticketMessage.authorId],
 		references: [user.id]
+	})
+}));
+
+// ─── Attachments ─────────────────────────────────────────────────────────────
+// One row per uploaded file. Polymorphic: a single table serves every parent
+// (tickets, tasks, wiki pages, ticket messages, task comments) via
+// `entity_type` + `entity_id` — the parents live in different tables with
+// different scopes, so a per-parent FK column would be sparse and awkward.
+//
+// Because the link is polymorphic there is no DB-level FK cascade from the
+// parent; instead `org_id`/`project_id` cascade-delete the row when the *org*
+// or *project* goes away, and the parent's delete path calls
+// `deleteAttachmentsFor(...)` for finer-grained cleanup. An orphaned row simply
+// stops being served (its parent is gone); an orphaned file is harmless.
+//
+// File bytes live in the storage layer (local disk today) under
+// `attachments/<id>/original` (+ `/thumb` for images); only metadata is here.
+
+export const attachment = pgTable(
+	'attachment',
+	{
+		id: text('id').primaryKey(),
+		entityType: text('entity_type').$type<AttachmentEntityType>().notNull(),
+		entityId: text('entity_id').notNull(),
+		// Denormalized scope captured at upload time so serve/delete endpoints can
+		// assertCan() without re-walking the parent. Null org = team-only (wiki).
+		orgId: text('org_id').references(() => organization.id, { onDelete: 'cascade' }),
+		projectId: text('project_id').references(() => project.id, { onDelete: 'cascade' }),
+		uploadedBy: text('uploaded_by').references(() => user.id, { onDelete: 'set null' }),
+		// Base key in the storage layer: `attachments/<id>`.
+		storageKey: text('storage_key').notNull(),
+		filename: text('filename').notNull(),
+		mimeType: text('mime_type').notNull(),
+		sizeBytes: integer('size_bytes').notNull(),
+		// Image-only niceties (null for non-images). `thumbhash` is a tiny (~25
+		// byte) blurred preview inlined as a placeholder before the thumb loads.
+		width: integer('width'),
+		height: integer('height'),
+		hasThumbnail: boolean('has_thumbnail').notNull().default(false),
+		thumbhash: bytea('thumbhash'),
+		// Soft delete: matches the ticket/task pattern. Non-null rows are excluded
+		// from every read path and no longer served.
+		deletedAt: timestamp('deleted_at'),
+		createdAt: timestamp('created_at').defaultNow().notNull()
+	},
+	(t) => [
+		index('attachment_entity_idx').on(t.entityType, t.entityId),
+		index('attachment_org_idx').on(t.orgId)
+	]
+);
+
+export type Attachment = typeof attachment.$inferSelect;
+
+export const attachmentRelations = relations(attachment, ({ one }) => ({
+	uploader: one(user, {
+		fields: [attachment.uploadedBy],
+		references: [user.id]
+	}),
+	org: one(organization, {
+		fields: [attachment.orgId],
+		references: [organization.id]
+	}),
+	project: one(project, {
+		fields: [attachment.projectId],
+		references: [project.id]
 	})
 }));
 

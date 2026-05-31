@@ -12,6 +12,9 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/motion';
 	import { TICKET_CATEGORIES, TICKET_PRIORITIES } from '$lib/data';
+	import AttachmentDropzone from '../attachments/AttachmentDropzone.svelte';
+	import StagedFileList from '../attachments/StagedFileList.svelte';
+	import { selectStageable } from '$lib/attachments/config';
 
 	type OrgOption = { id: string; name: string; slug: string; color: string };
 
@@ -37,7 +40,21 @@
 	let submitting = $state(false);
 
 	let formEl = $state<HTMLFormElement>();
+	let fileInput = $state<HTMLInputElement>();
+	let stagedFiles = $state<File[]>([]);
 	let pop = $state<'org' | 'priority' | 'category' | null>(null);
+
+	function addFiles(incoming: File[]) {
+		const { accepted, errors } = selectStageable(incoming, stagedFiles.length);
+		for (const err of errors) showToast('err', err);
+		if (accepted.length) stagedFiles = [...stagedFiles, ...accepted];
+	}
+
+	function onPick(e: Event) {
+		const target = e.currentTarget as HTMLInputElement;
+		if (target.files?.length) addFiles(Array.from(target.files));
+		target.value = '';
+	}
 
 	const selectedOrg = $derived(orgs.find((o) => o.id === orgId));
 	const priorityMeta = $derived(TICKET_PRIORITIES.find((p) => p.id === priority)!);
@@ -51,6 +68,7 @@
 			priority = 'medium';
 			category = 'general';
 			submitting = false;
+			stagedFiles = [];
 			pop = null;
 		}
 	});
@@ -72,7 +90,11 @@
 		bind:this={formEl}
 		method="POST"
 		action="/tickets?/create"
-		use:enhance={() => {
+		enctype="multipart/form-data"
+		use:enhance={({ formData }) => {
+			// Staged files ride along with the form; the create action attaches
+			// them to the new ticket after it exists.
+			for (const file of stagedFiles) formData.append('attachments', file);
 			submitting = true;
 			return async ({ result }: { result: ActionResult }) => {
 				submitting = false;
@@ -90,6 +112,7 @@
 			};
 		}}
 	>
+		<AttachmentDropzone onfiles={addFiles} disabled={submitting} label="Drop files to attach to this ticket">
 		<div class="flex items-center px-5 pt-4 pb-3 border-b border-border">
 			<div>
 				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">Support</div>
@@ -252,6 +275,26 @@
 			<input type="hidden" name="priority" value={priority} />
 			<input type="hidden" name="category" value={category} />
 			<input type="hidden" name="channel" value="web_form" />
+
+			<!-- Attachments -->
+			<div class="mt-4 space-y-2">
+				{#if stagedFiles.length}
+					<StagedFileList
+						files={stagedFiles}
+						disabled={submitting}
+						onremove={(i) => (stagedFiles = stagedFiles.filter((_, idx) => idx !== i))}
+					/>
+				{/if}
+				<button
+					type="button"
+					onclick={() => fileInput?.click()}
+					class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed border-border hover:border-border-strong text-[12.5px] text-text-3 hover:text-text transition-colors"
+				>
+					<Icon name="paperclip" size={13} />
+					<span>Attach files</span>
+				</button>
+				<input bind:this={fileInput} type="file" multiple hidden onchange={onPick} />
+			</div>
 		</div>
 
 		<div class="flex items-center gap-2 px-5 py-3 border-t border-border bg-bg/40 rounded-b-2xl">
@@ -269,5 +312,6 @@
 				</button>
 			</div>
 		</div>
+		</AttachmentDropzone>
 	</form>
 </Modal>

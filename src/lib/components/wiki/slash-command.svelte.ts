@@ -85,6 +85,18 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 		icon: '—',
 		run: ({ editor, range }) =>
 			editor.chain().focus().deleteRange(range).setHorizontalRule().run()
+	},
+	{
+		id: 'image',
+		label: 'Image',
+		hint: 'Upload and embed an image',
+		icon: '🖼',
+		run: ({ editor, range }) => {
+			// Drop the "/image" text, then open the file picker (async upload +
+			// insert is handled by the WikiImageUpload extension).
+			editor.chain().focus().deleteRange(range).run();
+			editor.commands.openWikiImagePicker();
+		}
 	}
 ];
 

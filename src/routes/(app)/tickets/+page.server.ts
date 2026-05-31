@@ -1,8 +1,9 @@
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
 import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { organization, ticket } from '$lib/server/db/app.schema';
+import { organization, ticket, ticketMessage } from '$lib/server/db/app.schema';
 import { assertCan, can, isTrackrTeam } from '$lib/server/permissions';
+import { attachFormFiles, deleteAttachmentsFor } from '$lib/server/attachments';
 import {
 	addTicketMessage,
 	createTicket,
@@ -167,7 +168,18 @@ export const actions: Actions = {
 				});
 			}
 
-			return { ok: true, id, displayId };
+			// Attach any files dropped on the create modal. Best-effort: the
+			// ticket already exists, so a failed attachment is warned, not fatal.
+			const { failed } = await attachFormFiles({
+				files: form.getAll('attachments'),
+				entityType: 'ticket',
+				entityId: id,
+				orgId,
+				projectId: null,
+				uploadedBy: me.id
+			});
+
+			return { ok: true, id, displayId, attachmentsFailed: failed };
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : 'Failed to create ticket';
 			return fail(500, { message: msg });
@@ -259,6 +271,15 @@ export const actions: Actions = {
 
 		try {
 			await softDeleteTicket(id);
+			// The ticket's read paths are now closed, so its attachments are
+			// already unreachable; remove their files (ticket-level + per-message)
+			// to reclaim disk.
+			await deleteAttachmentsFor('ticket', id);
+			const msgs = await db
+				.select({ id: ticketMessage.id })
+				.from(ticketMessage)
+				.where(eq(ticketMessage.ticketId, id));
+			for (const m of msgs) await deleteAttachmentsFor('ticket_message', m.id);
 			return { ok: true };
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : 'Failed to delete ticket';
@@ -291,12 +312,22 @@ export const actions: Actions = {
 		const authorIsAgent = await can(locals, 'org.tickets.edit.any', { orgId });
 
 		try {
-			await addTicketMessage({
+			const { id: messageId } = await addTicketMessage({
 				ticketId: id,
 				authorId: me.id,
 				body,
 				isInternalNote: internal,
 				authorIsAgent
+			});
+
+			// Attach any files staged on the composer to the new message.
+			await attachFormFiles({
+				files: form.getAll('attachments'),
+				entityType: 'ticket_message',
+				entityId: messageId,
+				orgId,
+				projectId: null,
+				uploadedBy: me.id
 			});
 
 			const t = await getTicket(id);

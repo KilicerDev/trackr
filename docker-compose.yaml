@@ -87,8 +87,18 @@ services:
       ROOT_EMAIL: ${ROOT_EMAIL}
       ROOT_PASSWORD: ${ROOT_PASSWORD}
       ROOT_NAME: ${ROOT_NAME}
+      # File storage for attachments. The local driver writes under
+      # STORAGE_LOCAL_DIR, which is backed by the `uploads` volume below so
+      # files survive container rebuilds. BODY_SIZE_LIMIT must exceed the
+      # per-file upload cap or uploads fail before reaching the handler.
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      STORAGE_LOCAL_DIR: /app/data/attachments
+      BODY_SIZE_LIMIT: ${BODY_SIZE_LIMIT:-100M}
+    volumes:
+      - uploads:/app/data/attachments
     # No `ports:` — the reverse proxy routes to container port 3000 via the
     # Docker network. EXPOSE 3000 in the Dockerfile is the contract.
 
 volumes:
   pgdata:
+  uploads:

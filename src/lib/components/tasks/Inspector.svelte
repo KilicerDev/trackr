@@ -17,6 +17,11 @@
 	import Composer from '../Composer.svelte';
 	import TypeBadge from '../TypeBadge.svelte';
 	import TimeLogger from './TimeLogger.svelte';
+	import AttachmentList from '../attachments/AttachmentList.svelte';
+	import AttachmentUploader from '../attachments/AttachmentUploader.svelte';
+	import AttachmentDropzone from '../attachments/AttachmentDropzone.svelte';
+	import StagedFileList from '../attachments/StagedFileList.svelte';
+	import { selectStageable } from '$lib/attachments/config';
 	import StatusPopover from '../popovers/StatusPopover.svelte';
 	import PriorityPopover from '../popovers/PriorityPopover.svelte';
 	import AssigneePopover from '../popovers/AssigneePopover.svelte';
@@ -85,7 +90,8 @@
 	async function postAction(
 		action: 'update' | 'commentAdd' | 'timeLogAdd' | 'planSet' | 'delete',
 		field: string,
-		body: Record<string, string | string[]>
+		body: Record<string, string | string[]>,
+		files: File[] = []
 	): Promise<boolean> {
 		if (!draft) return false;
 		savingField = field;
@@ -99,6 +105,7 @@
 				fd.append(k, v);
 			}
 		}
+		for (const file of files) fd.append('attachments', file);
 		try {
 			const res = await fetch(`/tasks?/${action}`, {
 				method: 'POST',
@@ -140,14 +147,31 @@
 
 	let commentBody = $state('');
 	let commentSending = $state(false);
+	let commentFiles = $state<File[]>([]);
+	let commentFileInput = $state<HTMLInputElement>();
+
+	function addCommentFiles(incoming: File[]) {
+		const { accepted, errors } = selectStageable(incoming, commentFiles.length);
+		for (const err of errors) showToast('err', err);
+		if (accepted.length) commentFiles = [...commentFiles, ...accepted];
+	}
+
+	function onCommentPick(e: Event) {
+		const target = e.currentTarget as HTMLInputElement;
+		if (target.files?.length) addCommentFiles(Array.from(target.files));
+		target.value = '';
+	}
 
 	async function sendComment() {
 		const text = commentBody.trim();
-		if (!text || !draft || commentSending) return;
+		if ((!text && commentFiles.length === 0) || !draft || commentSending) return;
 		commentSending = true;
-		const ok = await postAction('commentAdd', 'comment', { body: text });
+		const ok = await postAction('commentAdd', 'comment', { body: text }, commentFiles);
 		commentSending = false;
-		if (ok) commentBody = '';
+		if (ok) {
+			commentBody = '';
+			commentFiles = [];
+		}
 	}
 
 	async function logTime(entry: { h: number; m: number; date: string; note: string }) {
@@ -269,6 +293,7 @@
 			date: string;
 			sortKey: string;
 			data?: any;
+			files?: import('$lib/attachments/config').AttachmentDTO[];
 		}[] = [];
 		(draft.comments ?? []).forEach((c, i) =>
 			list.push({
@@ -277,7 +302,8 @@
 				user: c.user,
 				date: c.date,
 				sortKey: c.createdAt ?? c.date,
-				data: c.text
+				data: c.text,
+				files: c.files
 			})
 		);
 		(draft.timeLogs ?? []).forEach((t, i) =>
@@ -611,18 +637,23 @@
 				</div>
 			{/if}
 
-			{#if draft.attachments && draft.attachments.length > 0}
+			{#if draft.uuid}
 				<div class="mb-6">
-					<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-2">Attachments</div>
-					<div class="space-y-1.5">
-						{#each draft.attachments as a (a.name)}
-							<div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border text-[12.5px]">
-								<Icon name="link" size={13} />
-								<span class="truncate">{a.name}</span>
-								<span class="ml-auto font-mono text-[11px] text-text-3">{a.size}</span>
-							</div>
-						{/each}
+					<div class="flex items-center justify-between mb-2">
+						<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">
+							Attachments{#if draft.files?.length}<span class="ml-1.5 text-text-3">{draft.files.length}</span>{/if}
+						</div>
+						<AttachmentUploader entityType="task" entityId={draft.uuid} />
 					</div>
+					{#if draft.files?.length}
+						<AttachmentList
+							attachments={draft.files}
+							canDelete={canEdit}
+							currentUserId={(page.data as { currentUserId?: string }).currentUserId ?? null}
+						/>
+					{:else}
+						<p class="text-[12.5px] text-text-3">No files attached.</p>
+					{/if}
 				</div>
 			{/if}
 
@@ -657,6 +688,15 @@
 								<div class="mt-2 p-3 rounded-lg bg-surface border border-border text-[13px] leading-relaxed text-text">
 									{e.data}
 								</div>
+								{#if e.files?.length}
+									<div class="mt-2">
+										<AttachmentList
+											attachments={e.files}
+											canDelete={canEdit}
+											currentUserId={(page.data as { currentUserId?: string }).currentUserId ?? null}
+										/>
+									</div>
+								{/if}
 							{:else if e.kind === 'time' && e.data.note}
 								<div class="mt-1.5 text-[12.5px] text-text-3 italic">{e.data.note}</div>
 							{/if}
@@ -673,12 +713,36 @@
 		</div>
 
 		<div class="p-3">
-			<Composer
-				bind:value={commentBody}
-				placeholder="Write a comment…"
-				sending={commentSending}
-				onsend={sendComment}
-			/>
+			<AttachmentDropzone onfiles={addCommentFiles} disabled={commentSending} label="Drop files to attach to your comment">
+				{#if commentFiles.length}
+					<div class="mb-2">
+						<StagedFileList
+							files={commentFiles}
+							disabled={commentSending}
+							onremove={(i) => (commentFiles = commentFiles.filter((_, idx) => idx !== i))}
+						/>
+					</div>
+				{/if}
+				<Composer
+					bind:value={commentBody}
+					placeholder="Write a comment…"
+					sending={commentSending}
+					onsend={sendComment}
+				>
+					{#snippet rightActions()}
+						<button
+							type="button"
+							aria-label="Attach files"
+							title="Attach files"
+							onclick={() => commentFileInput?.click()}
+							class="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-transparent text-text-3 hover:text-text hover:bg-surface-2 transition-colors"
+						>
+							<Icon name="paperclip" size={14} />
+						</button>
+					{/snippet}
+				</Composer>
+				<input bind:this={commentFileInput} type="file" multiple hidden onchange={onCommentPick} />
+			</AttachmentDropzone>
 		</div>
 	{/if}
 </Drawer>

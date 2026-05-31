@@ -8,6 +8,7 @@
 	import * as Y from 'yjs';
 	import { collabSchemaExtensions, COLLAB_FIELD } from '$lib/collab/extensions';
 	import { SlashCommand } from './slash-command.svelte';
+	import { WikiImageUpload } from './image-upload';
 	import './wiki-editor.css';
 
 	export type PresenceUser = { clientId: number; isSelf: boolean; name: string; color: string };
@@ -15,6 +16,8 @@
 	interface Props {
 		/** The collaborative document id (wiki_page.documentId). */
 		documentId: string;
+		/** The wiki_page id — used to scope uploaded image attachments. */
+		pageId: string;
 		/** Identity shown on this user's remote caret. */
 		user: { name: string; color: string };
 		editable?: boolean;
@@ -27,6 +30,7 @@
 	}
 	let {
 		documentId,
+		pageId,
 		user,
 		editable = true,
 		placeholder = "Type '/' for commands…",
@@ -95,7 +99,8 @@
 				Collaboration.configure({ document: ydoc, field: COLLAB_FIELD }),
 				CollaborationCaret.configure({ provider, user }),
 				Placeholder.configure({ placeholder }),
-				SlashCommand
+				SlashCommand,
+				WikiImageUpload.configure({ entityId: pageId })
 			],
 			onUpdate: ({ editor }) => onUpdate?.(editor),
 			onCreate: ({ editor }) => onReady?.(editor)

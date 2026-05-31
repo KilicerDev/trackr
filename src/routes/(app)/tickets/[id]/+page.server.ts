@@ -2,6 +2,7 @@ import { error, redirect, type ServerLoad } from '@sveltejs/kit';
 import { can, isTrackrTeam } from '$lib/server/permissions';
 import { getTicket, loadTicketMessages } from '$lib/server/tickets';
 import { markEntityRead } from '$lib/server/notify';
+import { listAttachments, listAttachmentsForMany } from '$lib/server/attachments';
 
 export const load: ServerLoad = async ({ params, locals }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
@@ -24,9 +25,26 @@ export const load: ServerLoad = async ({ params, locals }) => {
 
 	const messages = await loadTicketMessages(id, { includeInternal: isAgent });
 
+	// Attachments: ticket-level, plus those on each message (keyed by message id).
+	const [attachments, messageAttachmentMap] = await Promise.all([
+		listAttachments('ticket', id),
+		listAttachmentsForMany(
+			'ticket_message',
+			messages.map((m) => m.id)
+		)
+	]);
+	const messageAttachments = Object.fromEntries(messageAttachmentMap);
+
 	// Opening the ticket clears any unread bell items pointing at it.
 	// Fire and forget — a failed update should never break the load.
 	void markEntityRead(locals.user.id, 'ticket', id).catch(() => {});
 
-	return { ticket, messages, isAgent };
+	return {
+		ticket,
+		messages,
+		isAgent,
+		attachments,
+		messageAttachments,
+		currentUserId: locals.user.id
+	};
 };

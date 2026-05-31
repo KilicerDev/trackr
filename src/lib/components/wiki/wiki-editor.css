@@ -198,3 +198,17 @@
 	user-select: none;
 	white-space: nowrap;
 }
+
+/* Embedded images (WikiImageUpload). Stable /api/attachments/<id> src. */
+.wiki-editor .wiki-image {
+	max-width: 100%;
+	height: auto;
+	border-radius: 10px;
+	border: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+	margin: 0.5rem 0;
+	display: block;
+}
+.wiki-editor .wiki-image.ProseMirror-selectednode {
+	outline: 2px solid var(--color-accent, #ef7a6d);
+	outline-offset: 2px;
+}

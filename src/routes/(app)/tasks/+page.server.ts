@@ -16,6 +16,7 @@ import { logActivity, logActivityFF } from '$lib/server/activity';
 import { notify } from '$lib/server/notify';
 import { taskRecipients } from '$lib/server/notify-recipients';
 import { accessibleProjectIds, assertCan, can } from '$lib/server/permissions';
+import { attachFormFiles, deleteAttachmentsFor } from '$lib/server/attachments';
 import { getPreferences } from '$lib/server/preferences';
 
 export const load: ServerLoad = async ({ locals }) => {
@@ -182,7 +183,18 @@ export const actions: Actions = {
 			baseUrl: url.origin
 		}).catch((err) => console.error('task create notify failed', err));
 
-		return { success: true, id: newId, displayId };
+		// Attach any files dropped on the create modal. Best-effort: the task
+		// already exists, so a failed attachment is warned, not fatal.
+		const { failed } = await attachFormFiles({
+			files: form.getAll('attachments'),
+			entityType: 'task',
+			entityId: newId,
+			orgId: null,
+			projectId: p.id,
+			uploadedBy: me.id
+		});
+
+		return { success: true, id: newId, displayId, attachmentsFailed: failed };
 	},
 
 	update: async ({ request, locals, url }) => {
@@ -387,25 +399,39 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const displayId = String(form.get('id') ?? '').trim();
 		const body = String(form.get('body') ?? '').trim();
+		const stagedFiles = form.getAll('attachments');
 		if (!displayId) return fail(400, { message: 'Missing task id.' });
-		if (!body) return fail(400, { message: 'Comment cannot be empty.' });
+		// Allow a files-only comment (attachment with no text).
+		if (!body && !stagedFiles.some((f) => f instanceof File && f.size > 0)) {
+			return fail(400, { message: 'Comment cannot be empty.' });
+		}
 
 		const target = await resolveTaskByDisplayId(displayId);
 		if (!target) return fail(404, { message: 'Task not found.' });
 
 		await assertCan(locals, 'project.tasks.comment', { projectId: target.projectId });
 
+		const commentId = crypto.randomUUID();
 		try {
 			await db.insert(projectActivity).values({
-				id: crypto.randomUUID(),
+				id: commentId,
 				projectId: target.projectId,
 				taskId: target.id,
 				actorId: me.id,
 				type: 'comment',
-				body
+				body: body || '(attachment)'
 			});
 			// Bump the task's updatedAt so the activity flag is accurate.
 			await db.update(task).set({ updatedAt: new Date() }).where(eq(task.id, target.id));
+			// Attach any files staged on the composer to the new comment.
+			await attachFormFiles({
+				files: stagedFiles,
+				entityType: 'project_activity',
+				entityId: commentId,
+				orgId: null,
+				projectId: target.projectId,
+				uploadedBy: me.id
+			});
 		} catch (err) {
 			console.error('comment add failed', err);
 			return fail(500, { message: 'Failed to add comment.' });
@@ -565,6 +591,14 @@ export const actions: Actions = {
 				.update(task)
 				.set({ deletedAt: new Date() })
 				.where(eq(task.id, target.id));
+			// The task's read paths are now closed, so its attachments are already
+			// unreachable; remove their files (task-level + per-comment) to reclaim disk.
+			await deleteAttachmentsFor('task', target.id);
+			const comments = await db
+				.select({ id: projectActivity.id })
+				.from(projectActivity)
+				.where(and(eq(projectActivity.taskId, target.id), eq(projectActivity.type, 'comment')));
+			for (const c of comments) await deleteAttachmentsFor('project_activity', c.id);
 		} catch (err) {
 			console.error('task delete failed', err);
 			return fail(500, { message: 'Failed to delete task.' });

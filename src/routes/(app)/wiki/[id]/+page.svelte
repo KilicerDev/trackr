@@ -411,6 +411,7 @@
 				{#key pg.documentId}
 					<CollaborativeWikiEditor
 						documentId={pg.documentId}
+						pageId={pg.id}
 						user={collabUser}
 						placeholder={pg.isFolder ? 'Add a description…' : "Write, or type '/' for commands…"}
 						onUpdate={onEditorUpdate}

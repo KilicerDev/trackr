@@ -47,6 +47,11 @@ COPY --from=build     /app/scripts              ./scripts
 COPY --from=build     /app/src/lib/server/db    ./src/lib/server/db
 COPY --from=build     /app/package.json         ./
 
+# Attachment storage root (STORAGE_LOCAL_DIR). Pre-create and hand it to the
+# `bun` user so the mounted volume seeds with writable ownership — otherwise
+# the volume mounts as root and uploads fail with EACCES.
+RUN mkdir -p /app/data/attachments && chown -R bun:bun /app/data
+
 # Drop privileges. The `bun` user/group is provided by the base image.
 USER bun
 

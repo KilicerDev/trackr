@@ -162,6 +162,13 @@
       "when": 1779964433308,
       "tag": "0022_nifty_doomsday",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1780259474530,
+      "tag": "0023_lively_shotgun",
+      "breakpoints": true
     }
   ]
 }

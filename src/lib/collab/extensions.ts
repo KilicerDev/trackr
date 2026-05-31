@@ -12,6 +12,7 @@
 import StarterKit from '@tiptap/starter-kit';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
+import Image from '@tiptap/extension-image';
 import type { Extensions } from '@tiptap/core';
 
 /** The Yjs field name the document is stored under; must match Collaboration's `field`. */
@@ -32,5 +33,9 @@ export const collabSchemaExtensions: Extensions = [
 		}
 	}),
 	TaskList,
-	TaskItem.configure({ nested: true })
+	TaskItem.configure({ nested: true }),
+	// Image *node* only. Embedded images reference a stable /api/attachments/<id>
+	// URL (uploaded via the client-only WikiImageUpload extension); base64 data
+	// URIs are disallowed to keep the CRDT and derived HTML small.
+	Image.configure({ allowBase64: false, HTMLAttributes: { class: 'wiki-image' } })
 ];

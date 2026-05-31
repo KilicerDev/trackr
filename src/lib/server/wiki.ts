@@ -1,6 +1,7 @@
 import { asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from './db';
 import { document, wikiPage } from './db/app.schema';
+import { deleteAttachmentsFor } from './attachments';
 
 export type WikiTreeNode = {
 	id: string;
@@ -162,6 +163,10 @@ export async function deleteWikiPage(id: string): Promise<void> {
 		await tx.delete(wikiPage).where(eq(wikiPage.id, id));
 		if (docIds.length) await tx.delete(document).where(inArray(document.id, docIds));
 	});
+
+	// Remove embedded-image attachments for every page in the deleted subtree.
+	// (wiki attachments are not FK-linked, so they don't cascade.)
+	for (const pageId of subtree) await deleteAttachmentsFor('wiki_page', pageId);
 }
 
 export type MoveWikiInput = {
