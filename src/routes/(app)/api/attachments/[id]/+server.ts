@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import {
 	authorizeAttachmentAccess,
+	authorizeAttachmentDelete,
 	deleteAttachment,
 	getAttachment,
 	originalKey,
@@ -79,9 +80,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 	const ctx = await resolveEntityContext(row.entityType, row.entityId);
 	if (!ctx) return json({ message: 'Attachment not found' }, { status: 404 });
 
-	const isUploader = row.uploadedBy === locals.user.id;
-	const canWrite = await authorizeAttachmentAccess(locals, row.entityType, ctx, 'write');
-	if (!isUploader && !canWrite) {
+	if (!(await authorizeAttachmentDelete(locals, row, ctx))) {
 		return json({ message: 'You do not have permission to delete this file.' }, { status: 403 });
 	}
 

@@ -179,6 +179,17 @@ export function isTrackrTeam(locals: Locals): boolean {
 	return locals.memberships.orgs.some((o) => o.isInternal);
 }
 
+// True iff the user is an external organization user with NO project access —
+// i.e. a pure ticket user (org.client / org.member). These users get the
+// minimal ticket portal shell instead of the full app, and are confined to the
+// ticket routes. A non-team user who DOES have project access stays a normal
+// app user.
+export function isPortalUser(locals: Locals): boolean {
+	if (!locals.memberships) return false;
+	if (isTrackrTeam(locals)) return false;
+	return locals.memberships.orgs.length > 0 && locals.memberships.projects.length === 0;
+}
+
 // Throws 403 if the user lacks the permission. Use in load functions and
 // form actions to enforce gates inline. Returns void on success.
 export async function assertCan(

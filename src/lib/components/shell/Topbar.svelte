@@ -6,6 +6,7 @@
 	import Kbd from '../Kbd.svelte';
 	import FeedbackModal from '../FeedbackModal.svelte';
 	import { page } from '$app/state';
+	import { setActiveOrg, type PortalOrg } from '$lib/portal';
 	import type { Snippet } from 'svelte';
 
 	interface Crumb {
@@ -53,6 +54,15 @@
 	let acctOpen = $state(false);
 	let bellOpen = $state(false);
 	let feedbackOpen = $state(false);
+	let orgListOpen = $state(false);
+
+	// Portal users (external ticket-only) belonging to multiple orgs get an
+	// organization switcher in place of the (inert) "Switch workspace" item.
+	const portalOrgs = $derived(
+		(page.data?.isPortalUser ? ((page.data?.orgs as PortalOrg[] | undefined) ?? []) : [])
+	);
+	const activeOrgId = $derived((page.data?.activeOrgId as string | null | undefined) ?? null);
+	const showOrgSwitcher = $derived(portalOrgs.length > 1);
 
 	function timeAgo(iso: string): string {
 		const diff = Date.now() - new Date(iso).getTime();
@@ -182,11 +192,43 @@
 					<span>Notifications</span>
 				</a>
 				<div class="h-px bg-border -mx-0.5 my-1"></div>
-				<button class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none">
-					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="home" size={14} /></span>
-					<span>Switch workspace</span>
-					<span class="ml-auto"><Kbd>⌘O</Kbd></span>
-				</button>
+				{#if showOrgSwitcher}
+					<button
+						type="button"
+						onclick={() => (orgListOpen = !orgListOpen)}
+						class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
+					>
+						<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="org" size={14} /></span>
+						<span>Switch organization</span>
+						<span class="ml-auto text-text-3"><Icon name={orgListOpen ? 'chevron' : 'chevron-r'} size={12} /></span>
+					</button>
+					{#if orgListOpen}
+						<div class="pl-1.5">
+							{#each portalOrgs as o (o.id)}
+								<button
+									type="button"
+									onclick={() => {
+										acctOpen = false;
+										if (o.id !== activeOrgId) void setActiveOrg(o.id);
+									}}
+									class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[12.5px] leading-none"
+								>
+									<span class="w-2 h-2 rounded-full shrink-0" style:background={o.color}></span>
+									<span class="truncate">{o.name}</span>
+									<span class="ml-auto text-accent {o.id === activeOrgId ? 'opacity-100' : 'opacity-0'}">
+										<Icon name="check" size={13} />
+									</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+				{:else if !page.data?.isPortalUser}
+					<button class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none">
+						<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="home" size={14} /></span>
+						<span>Switch workspace</span>
+						<span class="ml-auto"><Kbd>⌘O</Kbd></span>
+					</button>
+				{/if}
 				<button
 					type="button"
 					onclick={() => {

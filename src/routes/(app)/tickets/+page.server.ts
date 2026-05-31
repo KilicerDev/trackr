@@ -1,7 +1,7 @@
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
 import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { organization, ticket, ticketMessage } from '$lib/server/db/app.schema';
+import { organization, ticket, ticketMessage, ticketFavorite } from '$lib/server/db/app.schema';
 import { assertCan, can, isTrackrTeam } from '$lib/server/permissions';
 import { attachFormFiles, deleteAttachmentsFor } from '$lib/server/attachments';
 import {
@@ -360,6 +360,36 @@ export const actions: Actions = {
 			const msg = err instanceof Error ? err.message : 'Failed to post message';
 			return fail(500, { message: msg });
 		}
+	},
+
+	pinAdd: async ({ request, locals }) => {
+		if (!locals.user) throw error(401, 'Not authenticated');
+		const form = await request.formData();
+		const id = String(form.get('id') ?? '').trim();
+		if (!id) return fail(400, { message: 'Ticket id required.' });
+		// Only pin tickets the user can actually see.
+		const orgId = await getTicketOrgId(id);
+		if (!orgId) return fail(404, { message: 'Ticket not found.' });
+		const allowed =
+			(await can(locals, 'org.tickets.read.any', { orgId })) ||
+			(await can(locals, 'org.tickets.read.own', { orgId }));
+		if (!allowed) return fail(403, { message: 'You cannot pin this ticket.' });
+		await db
+			.insert(ticketFavorite)
+			.values({ userId: locals.user.id, ticketId: id })
+			.onConflictDoNothing();
+		return { ok: true };
+	},
+
+	pinRemove: async ({ request, locals }) => {
+		if (!locals.user) throw error(401, 'Not authenticated');
+		const form = await request.formData();
+		const id = String(form.get('id') ?? '').trim();
+		if (!id) return fail(400, { message: 'Ticket id required.' });
+		await db
+			.delete(ticketFavorite)
+			.where(and(eq(ticketFavorite.userId, locals.user.id), eq(ticketFavorite.ticketId, id)));
+		return { ok: true };
 	}
 };
 

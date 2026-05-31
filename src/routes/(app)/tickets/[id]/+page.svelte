@@ -31,16 +31,48 @@
 		attachments: AttachmentDTO[];
 		messageAttachments: Record<string, AttachmentDTO[]>;
 		currentUserId: string;
+		isPinned: boolean;
+		isPortalUser: boolean;
+		participants: { id: string; name: string; initials: string; color: string }[];
 		users?: { id: string; name: string; initials: string; color: string }[];
 	};
 	let { data }: { data: PageData } = $props();
+
+	// Names of everyone on this ticket, resolved server-side. Prefer this over the
+	// global directory lookup so an assigned agent (not in a client's org) still
+	// renders by name rather than "Unassigned"/"Unknown".
+	const participantMap = $derived(new Map(data.participants.map((p) => [p.id, p])));
+	function who(id: string | null | undefined) {
+		if (!id) return undefined;
+		return participantMap.get(id) ?? resolveUser(id);
+	}
+
+	let pinPending = $state(false);
+	async function togglePin() {
+		if (pinPending) return;
+		pinPending = true;
+		const fd = new FormData();
+		fd.set('id', t.id);
+		try {
+			const res = await fetch(`/tickets?/${data.isPinned ? 'pinRemove' : 'pinAdd'}`, {
+				method: 'POST',
+				body: fd
+			});
+			if (!res.ok) throw new Error('Pin failed');
+			await invalidateAll();
+		} catch (err) {
+			showToast('err', err instanceof Error ? err.message : 'Pin failed');
+		} finally {
+			pinPending = false;
+		}
+	}
 
 	const t = $derived(data.ticket);
 	const statusMeta = $derived(TICKET_STATUSES.find((s) => s.id === t.status));
 	const priorityMeta = $derived(TICKET_PRIORITIES.find((p) => p.id === t.priority));
 	const categoryMeta = $derived(TICKET_CATEGORIES.find((c) => c.id === t.category));
-	const assignee = $derived(resolveUser(t.assignedAgentId));
-	const customer = $derived(resolveUser(t.customerId));
+	const assignee = $derived(who(t.assignedAgentId));
+	const customer = $derived(who(t.customerId));
 
 	let pop = $state<'status' | 'priority' | 'category' | 'assignee' | null>(null);
 	let pending = $state(false);
@@ -186,11 +218,13 @@
 </svelte:head>
 
 <Topbar
-	crumbs={[
-		{ label: 'Trackr Workspace', href: '/tasks' },
-		{ label: 'Support Tickets', href: '/tickets' },
-		{ label: t.displayId }
-	]}
+	crumbs={data.isPortalUser
+		? [{ label: t.orgName }, { label: t.displayId }]
+		: [
+				{ label: 'Trackr Workspace', href: '/tasks' },
+				{ label: 'Support Tickets', href: '/tickets' },
+				{ label: t.displayId }
+			]}
 />
 
 <div class="flex-1 min-h-0 overflow-auto">
@@ -202,16 +236,31 @@
 				<span class="w-1.5 h-1.5 rounded-full" style:background={t.orgColor}></span>
 				<span>{t.orgName}</span>
 			</span>
-			{#if canDelete}
+			<div class="ml-auto flex items-center gap-2">
 				<button
 					type="button"
-					onclick={deleteTicket}
-					class="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-surface text-[12px] text-text-2 hover:text-[#ef4f5e] hover:border-[#ef4f5e]/40 hover:bg-[#ef4f5e]/10 transition-colors"
+					onclick={togglePin}
+					disabled={pinPending}
+					aria-pressed={data.isPinned}
+					title={data.isPinned ? 'Unpin ticket' : 'Pin ticket'}
+					class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[12px] transition-colors disabled:opacity-50 {data.isPinned
+						? 'border-accent/40 bg-accent/10 text-accent'
+						: 'border-border bg-surface text-text-2 hover:text-text hover:border-border-strong'}"
 				>
-					<Icon name="trash" size={14} />
-					<span>Delete</span>
+					<Icon name="bookmark" size={14} />
+					<span>{data.isPinned ? 'Pinned' : 'Pin'}</span>
 				</button>
-			{/if}
+				{#if canDelete}
+					<button
+						type="button"
+						onclick={deleteTicket}
+						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-surface text-[12px] text-text-2 hover:text-[#ef4f5e] hover:border-[#ef4f5e]/40 hover:bg-[#ef4f5e]/10 transition-colors"
+					>
+						<Icon name="trash" size={14} />
+						<span>Delete</span>
+					</button>
+				{/if}
+			</div>
 		</div>
 		<h1 class="text-[22px] font-semibold tracking-[-0.012em] leading-tight text-text mb-4">
 			{t.subject}
@@ -415,11 +464,8 @@
 				<AttachmentUploader entityType="ticket" entityId={t.id} />
 			</div>
 			{#if data.attachments.length}
-				<AttachmentList
-					attachments={data.attachments}
-					canDelete={isAgent}
-					currentUserId={data.currentUserId}
-				/>
+				<!-- Deletion is agent-only; clients/members can attach but not remove. -->
+				<AttachmentList attachments={data.attachments} canDelete={isAgent} />
 			{:else}
 				<p class="text-[12.5px] text-text-3">No files attached.</p>
 			{/if}
@@ -431,7 +477,7 @@
 			<div class="relative space-y-4 pl-7">
 				<span class="absolute left-[10px] top-2 bottom-2 w-px bg-border"></span>
 				{#each events as e (e.id)}
-					{@const u = resolveUser(e.userId)}
+					{@const u = who(e.userId)}
 					<div class="relative">
 						<span
 							class="absolute -left-7 top-0.5 w-5 h-5 rounded-full grid place-items-center bg-bg-elev border border-border"
@@ -461,11 +507,7 @@
 							>{e.body}</div>
 							{#if data.messageAttachments[e.id]?.length}
 								<div class="mt-2">
-									<AttachmentList
-										attachments={data.messageAttachments[e.id]}
-										canDelete={isAgent}
-										currentUserId={data.currentUserId}
-									/>
+									<AttachmentList attachments={data.messageAttachments[e.id]} canDelete={isAgent} />
 								</div>
 							{/if}
 						{/if}

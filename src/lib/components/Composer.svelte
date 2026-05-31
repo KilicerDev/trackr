@@ -13,9 +13,9 @@
 		// tickets when composing an internal note).
 		accent?: Accent;
 		onsend: () => void;
-		// Extra trailing actions injected between the existing left-aligned
-		// attach button and the send button. Used by tickets for the
-		// internal-note toggle. Omit for plain composers.
+		// Trailing actions injected before the send button (e.g. the attach
+		// button and the internal-note toggle used by tickets). Omit for plain
+		// composers.
 		rightActions?: Snippet;
 	}
 
@@ -51,13 +51,6 @@
 		class="w-full resize-none bg-transparent border-0 px-3.5 pt-3 pb-1 text-[13px] leading-relaxed outline-none placeholder:text-text-3 disabled:opacity-60"
 	></textarea>
 	<div class="flex items-center gap-1 px-2 pb-2">
-		<button
-			type="button"
-			aria-label="Attach"
-			class="w-8 h-8 grid place-items-center rounded-lg border border-transparent bg-transparent text-text-3 hover:text-text hover:bg-surface-2 transition-colors"
-		>
-			<Icon name="paperclip" size={13} />
-		</button>
 		<div class="ml-auto flex items-center gap-1">
 			{#if rightActions}{@render rightActions()}{/if}
 			<button

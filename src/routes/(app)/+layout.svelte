@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import AppShell from '$lib/components/shell/AppShell.svelte';
+	import PortalShell from '$lib/components/shell/PortalShell.svelte';
 	import ImpersonationBanner from '$lib/components/shell/ImpersonationBanner.svelte';
 	import CommandPalette from '$lib/components/CommandPalette.svelte';
 	import CreateTaskModal from '$lib/components/tasks/CreateTaskModal.svelte';
@@ -90,34 +91,42 @@
 		/>
 	{/if}
 	<div class="flex-1 min-h-0">
-		<AppShell>
-			{@render children()}
-		</AppShell>
+		{#if data.isPortalUser}
+			<PortalShell>
+				{@render children()}
+			</PortalShell>
+		{:else}
+			<AppShell>
+				{@render children()}
+			</AppShell>
+		{/if}
 	</div>
 </div>
 
-<CommandPalette
-	open={paletteOpen}
-	onclose={() => (paletteOpen = false)}
-	onaction={handleAction}
-	hiddenIds={hiddenPaletteIds}
-/>
+{#if !data.isPortalUser}
+	<CommandPalette
+		open={paletteOpen}
+		onclose={() => (paletteOpen = false)}
+		onaction={handleAction}
+		hiddenIds={hiddenPaletteIds}
+	/>
 
-<CreateTaskModal
-	open={createTaskOpen}
-	onclose={() => (createTaskOpen = false)}
-	users={data.users}
-	projects={data.projects}
-	currentUserId={data.currentUserId}
-	memberProjectIds={Object.keys(data.memberRoles.projects)}
-	allAccess={data.isTrackrTeam}
-/>
+	<CreateTaskModal
+		open={createTaskOpen}
+		onclose={() => (createTaskOpen = false)}
+		users={data.users}
+		projects={data.projects}
+		currentUserId={data.currentUserId}
+		memberProjectIds={Object.keys(data.memberRoles.projects)}
+		allAccess={data.isTrackrTeam}
+	/>
 
-<CreateProjectModal
-	open={createProjectOpen}
-	onclose={() => (createProjectOpen = false)}
-	orgs={data.orgs}
-/>
+	<CreateProjectModal
+		open={createProjectOpen}
+		onclose={() => (createProjectOpen = false)}
+		orgs={data.orgs}
+	/>
+{/if}
 
 <form bind:this={logoutForm} method="post" action="/logout" class="hidden"></form>
 

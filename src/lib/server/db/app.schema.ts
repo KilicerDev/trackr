@@ -777,6 +777,34 @@ export const ticketMessageRelations = relations(ticketMessage, ({ one }) => ({
 	})
 }));
 
+// ─── Ticket pinning ──────────────────────────────────────────────────────────
+// Per-user pinned tickets, surfaced in the org portal sidebar. Mirrors
+// `projectFavorite`: composite (userId, ticketId), cascade on either delete.
+
+export const ticketFavorite = pgTable(
+	'ticket_favorite',
+	{
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		ticketId: text('ticket_id')
+			.notNull()
+			.references(() => ticket.id, { onDelete: 'cascade' }),
+		addedAt: timestamp('added_at').defaultNow().notNull()
+	},
+	(t) => [
+		primaryKey({ columns: [t.userId, t.ticketId] }),
+		index('ticket_favorite_ticket_idx').on(t.ticketId)
+	]
+);
+
+export type TicketFavorite = typeof ticketFavorite.$inferSelect;
+
+export const ticketFavoriteRelations = relations(ticketFavorite, ({ one }) => ({
+	user: one(user, { fields: [ticketFavorite.userId], references: [user.id] }),
+	ticket: one(ticket, { fields: [ticketFavorite.ticketId], references: [ticket.id] })
+}));
+
 // ─── Attachments ─────────────────────────────────────────────────────────────
 // One row per uploaded file. Polymorphic: a single table serves every parent
 // (tickets, tasks, wiki pages, ticket messages, task comments) via

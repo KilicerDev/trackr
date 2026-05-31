@@ -92,6 +92,11 @@ type AccessOpts = {
 	// When set, restrict to tickets where the user is customer or assignee.
 	// Used for OrgClient role (read.own).
 	ownerUserId?: string;
+	// When set, restrict to tickets this user has pinned (ticket_favorite).
+	pinnedByUserId?: string;
+	// When set, cap the number of rows (newest-first). Used for the portal
+	// "Recents" list.
+	limit?: number;
 };
 
 export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
@@ -104,8 +109,13 @@ export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 			sql`(${ticket.customerId} = ${opts.ownerUserId} OR ${ticket.assignedAgentId} = ${opts.ownerUserId})`
 		);
 	}
+	if (opts.pinnedByUserId) {
+		conditions.push(
+			sql`EXISTS (SELECT 1 FROM ticket_favorite tf WHERE tf.ticket_id = ${ticket.id} AND tf.user_id = ${opts.pinnedByUserId})`
+		);
+	}
 
-	const rows = await db
+	let q = db
 		.select({
 			t: ticket,
 			orgSlug: organization.slug,
@@ -116,7 +126,10 @@ export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 		.from(ticket)
 		.innerJoin(organization, eq(organization.id, ticket.orgId))
 		.where(conditions.length ? and(...conditions) : undefined)
-		.orderBy(desc(ticket.updatedAt));
+		.orderBy(desc(ticket.updatedAt))
+		.$dynamic();
+	if (opts.limit && opts.limit > 0) q = q.limit(opts.limit);
+	const rows = await q;
 
 	const ids = rows.map((r) => r.t.id);
 	const counts = new Map<string, { count: number; last: string | null }>();
@@ -322,7 +335,9 @@ export async function addTicketMessage(input: AddMessageInput): Promise<{ id: st
 			.limit(1);
 		if (!t) return;
 
-		const fields: Record<string, unknown> = {};
+		// Always bump updatedAt for a public reply so the portal "Recents" list
+		// reflects conversation activity, not just status transitions.
+		const fields: Record<string, unknown> = { updatedAt: new Date() };
 		if (input.authorIsAgent) {
 			if (!t.firstResponseAt) fields.firstResponseAt = new Date();
 			if (t.status === 'open') fields.status = 'in_progress';
@@ -332,9 +347,7 @@ export async function addTicketMessage(input: AddMessageInput): Promise<{ id: st
 				fields.status = 'waiting_on_agent';
 			}
 		}
-		if (Object.keys(fields).length > 0) {
-			await tx.update(ticket).set(fields).where(eq(ticket.id, input.ticketId));
-		}
+		await tx.update(ticket).set(fields).where(eq(ticket.id, input.ticketId));
 	});
 	return { id };
 }

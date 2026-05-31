@@ -1,0 +1,235 @@
+<script lang="ts">
+	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
+	import type { ActionResult } from '@sveltejs/kit';
+	import Topbar from '$lib/components/shell/Topbar.svelte';
+	import Icon from '$lib/components/Icon.svelte';
+	import Button from '$lib/components/Button.svelte';
+	import Kbd from '$lib/components/Kbd.svelte';
+	import PriorityBars from '$lib/components/PriorityBars.svelte';
+	import { clickOutside } from '$lib/actions/clickOutside';
+	import { fly } from 'svelte/transition';
+	import { POPOVER_IN } from '$lib/motion';
+	import { TICKET_CATEGORIES, TICKET_PRIORITIES } from '$lib/data';
+	import { showToast } from '$lib/toast.svelte';
+	import AttachmentDropzone from '$lib/components/attachments/AttachmentDropzone.svelte';
+	import StagedFileList from '$lib/components/attachments/StagedFileList.svelte';
+	import { selectStageable } from '$lib/attachments/config';
+
+	type Priority = (typeof TICKET_PRIORITIES)[number]['id'];
+	type Category = (typeof TICKET_CATEGORIES)[number]['id'];
+
+	let { data }: { data: { org: { id: string; name: string; color: string } } } = $props();
+
+	let subject = $state('');
+	let description = $state('');
+	let priority = $state<Priority>('medium');
+	let category = $state<Category>('general');
+	let submitting = $state(false);
+	let pop = $state<'priority' | 'category' | null>(null);
+
+	let formEl = $state<HTMLFormElement>();
+	let fileInput = $state<HTMLInputElement>();
+	let stagedFiles = $state<File[]>([]);
+
+	const priorityMeta = $derived(TICKET_PRIORITIES.find((p) => p.id === priority)!);
+	const categoryMeta = $derived(TICKET_CATEGORIES.find((c) => c.id === category)!);
+
+	function addFiles(incoming: File[]) {
+		const { accepted, errors } = selectStageable(incoming, stagedFiles.length);
+		for (const err of errors) showToast('err', err);
+		if (accepted.length) stagedFiles = [...stagedFiles, ...accepted];
+	}
+
+	function onPick(e: Event) {
+		const target = e.currentTarget as HTMLInputElement;
+		if (target.files?.length) addFiles(Array.from(target.files));
+		target.value = '';
+	}
+
+	function onKey(e: KeyboardEvent) {
+		if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+			e.preventDefault();
+			formEl?.requestSubmit();
+		}
+	}
+</script>
+
+<svelte:window onkeydown={onKey} />
+
+<Topbar crumbs={[{ label: data.org.name }, { label: 'New ticket' }]} />
+
+<div class="flex-1 min-h-0 overflow-auto">
+	<div class="max-w-[720px] mx-auto px-6 py-8">
+		<div class="flex items-center gap-2 text-[11.5px] text-text-3 mb-3">
+			<span class="inline-flex items-center gap-1.5">
+				<span class="w-1.5 h-1.5 rounded-full" style:background={data.org.color}></span>
+				<span>{data.org.name}</span>
+			</span>
+		</div>
+		<h1 class="text-[22px] font-semibold tracking-[-0.012em] mb-5">Open a new ticket</h1>
+
+		<form
+			bind:this={formEl}
+			method="POST"
+			action="/tickets?/create"
+			enctype="multipart/form-data"
+			use:enhance={({ formData }) => {
+				for (const file of stagedFiles) formData.append('attachments', file);
+				submitting = true;
+				return async ({ result }: { result: ActionResult }) => {
+					submitting = false;
+					if (result.type === 'success') {
+						const id = (result.data as { id?: string } | undefined)?.id;
+						showToast('ok', 'Ticket created');
+						if (id) await goto(`/tickets/${id}`);
+					} else if (result.type === 'failure') {
+						showToast(
+							'err',
+							(result.data as { message?: string } | undefined)?.message ?? 'Failed to create ticket.'
+						);
+					} else if (result.type === 'error') {
+						showToast('err', result.error?.message ?? 'Failed to create ticket.');
+					}
+				};
+			}}
+		>
+			<AttachmentDropzone onfiles={addFiles} disabled={submitting} label="Drop files to attach">
+				<div class="rounded-2xl border border-border bg-bg-elev p-5">
+					<input
+						type="text"
+						name="subject"
+						bind:value={subject}
+						required
+						placeholder="Subject…"
+						class="block w-full bg-transparent border-0 outline-none text-[19px] font-semibold tracking-[-0.01em] text-text placeholder:text-text-3 mb-3"
+					/>
+					<textarea
+						name="description"
+						bind:value={description}
+						placeholder="Describe the issue or request…"
+						rows="6"
+						class="w-full resize-none bg-transparent border-0 outline-none text-[14px] leading-relaxed text-text-2 placeholder:text-text-3 mb-4"
+					></textarea>
+
+					<div class="flex flex-wrap gap-2">
+						<!-- Priority -->
+						<div class="relative">
+							<button
+								type="button"
+								onclick={() => (pop = pop === 'priority' ? null : 'priority')}
+								class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
+							>
+								<PriorityBars {priority} />
+								<span>{priorityMeta.label}</span>
+								<Icon name="chevron" size={11} class="text-text-3" />
+							</button>
+							{#if pop === 'priority'}
+								<div
+									use:clickOutside={() => (pop = null)}
+									in:fly={POPOVER_IN}
+									class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[160px]"
+									style:box-shadow="var(--shadow-lg)"
+								>
+									{#each TICKET_PRIORITIES as p (p.id)}
+										<button
+											type="button"
+											onclick={() => {
+												priority = p.id as Priority;
+												pop = null;
+											}}
+											class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+										>
+											<PriorityBars priority={p.id} />
+											<span class="text-[13px]">{p.label}</span>
+											<span class="ml-auto text-accent {priority === p.id ? 'opacity-100' : 'opacity-0'}">
+												<Icon name="check" size={13} />
+											</span>
+										</button>
+									{/each}
+								</div>
+							{/if}
+						</div>
+
+						<!-- Category -->
+						<div class="relative">
+							<button
+								type="button"
+								onclick={() => (pop = pop === 'category' ? null : 'category')}
+								class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
+							>
+								<span class="w-2 h-2 rounded-full" style:background={categoryMeta.color}></span>
+								<span>{categoryMeta.label}</span>
+								<Icon name="chevron" size={11} class="text-text-3" />
+							</button>
+							{#if pop === 'category'}
+								<div
+									use:clickOutside={() => (pop = null)}
+									in:fly={POPOVER_IN}
+									class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[180px]"
+									style:box-shadow="var(--shadow-lg)"
+								>
+									{#each TICKET_CATEGORIES as c (c.id)}
+										<button
+											type="button"
+											onclick={() => {
+												category = c.id as Category;
+												pop = null;
+											}}
+											class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+										>
+											<span class="w-2 h-2 rounded-full" style:background={c.color}></span>
+											<span class="text-[13px]">{c.label}</span>
+											<span class="ml-auto text-accent {category === c.id ? 'opacity-100' : 'opacity-0'}">
+												<Icon name="check" size={13} />
+											</span>
+										</button>
+									{/each}
+								</div>
+							{/if}
+						</div>
+
+						<button
+							type="button"
+							onclick={() => fileInput?.click()}
+							class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed border-border hover:border-border-strong text-[12.5px] text-text-3 hover:text-text transition-colors"
+						>
+							<Icon name="paperclip" size={13} />
+							<span>Attach files</span>
+						</button>
+						<input bind:this={fileInput} type="file" multiple hidden onchange={onPick} />
+					</div>
+
+					{#if stagedFiles.length}
+						<div class="mt-3">
+							<StagedFileList
+								files={stagedFiles}
+								disabled={submitting}
+								onremove={(i) => (stagedFiles = stagedFiles.filter((_, idx) => idx !== i))}
+							/>
+						</div>
+					{/if}
+
+					<input type="hidden" name="orgId" value={data.org.id} />
+					<input type="hidden" name="priority" value={priority} />
+					<input type="hidden" name="category" value={category} />
+					<input type="hidden" name="channel" value="web_form" />
+				</div>
+			</AttachmentDropzone>
+
+			<div class="flex items-center gap-2 mt-4">
+				<span class="text-[11.5px] text-text-3"><Kbd>⌘↵</Kbd> to submit</span>
+				<div class="ml-auto flex items-center gap-2">
+					<Button variant="default" onclick={() => history.back()}>Cancel</Button>
+					<button
+						type="submit"
+						disabled={submitting || !subject.trim()}
+						class="inline-flex items-center gap-1.5 rounded-lg font-medium text-[13px] transition-[background,border-color,transform] duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px] px-[13px] py-[8px] bg-accent text-white border border-transparent hover:bg-accent-strong shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)]"
+					>
+						{submitting ? 'Creating…' : 'Create ticket'}
+					</button>
+				</div>
+			</div>
+		</form>
+	</div>
+</div>

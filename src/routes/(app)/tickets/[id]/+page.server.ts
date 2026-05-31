@@ -1,8 +1,27 @@
 import { error, redirect, type ServerLoad } from '@sveltejs/kit';
-import { can, isTrackrTeam } from '$lib/server/permissions';
+import { and, eq, inArray } from 'drizzle-orm';
+import { db } from '$lib/server/db';
+import { ticketFavorite } from '$lib/server/db/app.schema';
+import { user as userTable } from '$lib/server/db/auth.schema';
+import { can, isPortalUser, isTrackrTeam } from '$lib/server/permissions';
 import { getTicket, loadTicketMessages } from '$lib/server/tickets';
 import { markEntityRead } from '$lib/server/notify';
 import { listAttachments, listAttachmentsForMany } from '$lib/server/attachments';
+
+function initials(name: string): string {
+	return name
+		.split(/\s+/)
+		.map((p) => p[0])
+		.filter(Boolean)
+		.slice(0, 2)
+		.join('')
+		.toUpperCase();
+}
+function userColor(id: string): string {
+	let h = 0;
+	for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+	return `hsl(${h % 360} 55% 60%)`;
+}
 
 export const load: ServerLoad = async ({ params, locals }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
@@ -35,6 +54,38 @@ export const load: ServerLoad = async ({ params, locals }) => {
 	]);
 	const messageAttachments = Object.fromEntries(messageAttachmentMap);
 
+	const [pin] = await db
+		.select({ ticketId: ticketFavorite.ticketId })
+		.from(ticketFavorite)
+		.where(and(eq(ticketFavorite.userId, locals.user.id), eq(ticketFavorite.ticketId, id)))
+		.limit(1);
+
+	// Resolve display names for everyone involved in THIS ticket — assignee,
+	// customer, creator, and message authors. Needed because the layout's global
+	// `users` lookup is filtered to a client's own org, so an assigned internal
+	// agent would otherwise render as "Unassigned"/"Unknown". Scoped to the
+	// ticket's participants, so it doesn't leak the wider staff directory.
+	const participantIds = [
+		...new Set(
+			[
+				ticket.customerId,
+				ticket.assignedAgentId,
+				ticket.createdBy,
+				...messages.map((m) => m.authorId)
+			].filter((v): v is string => !!v)
+		)
+	];
+	const participantRows = participantIds.length
+		? await db
+				.select({ id: userTable.id, name: userTable.name, email: userTable.email })
+				.from(userTable)
+				.where(inArray(userTable.id, participantIds))
+		: [];
+	const participants = participantRows.map((u) => {
+		const name = u.name ?? u.email;
+		return { id: u.id, name, initials: initials(name), color: userColor(u.id) };
+	});
+
 	// Opening the ticket clears any unread bell items pointing at it.
 	// Fire and forget — a failed update should never break the load.
 	void markEntityRead(locals.user.id, 'ticket', id).catch(() => {});
@@ -45,6 +96,9 @@ export const load: ServerLoad = async ({ params, locals }) => {
 		isAgent,
 		attachments,
 		messageAttachments,
-		currentUserId: locals.user.id
+		currentUserId: locals.user.id,
+		isPinned: !!pin,
+		isPortalUser: isPortalUser(locals),
+		participants
 	};
 };

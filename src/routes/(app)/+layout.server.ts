@@ -14,10 +14,18 @@ import {
 import {
 	accessibleProjectIds,
 	effectivePermissions,
+	isPortalUser,
 	isTrackrTeam
 } from '$lib/server/permissions';
 import { getPreferences } from '$lib/server/preferences';
+import { loadTickets, type TicketRow } from '$lib/server/tickets';
 import type { LayoutServerLoad } from './$types';
+
+// Routes a confined portal user is allowed to reach. Everything else redirects
+// back to the new-ticket view.
+function portalPathAllowed(pathname: string): boolean {
+	return /^\/tickets(\/|$)/.test(pathname) || /^\/me(\/|$)/.test(pathname) || pathname === '/logout';
+}
 
 function initials(name: string): string {
 	return name
@@ -39,6 +47,12 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 	if (!locals.user) {
 		const next = url.pathname + url.search;
 		redirect(302, `/login?next=${encodeURIComponent(next)}`);
+	}
+
+	// Confine portal users (external org ticket-only users) to the ticket routes.
+	const portal = isPortalUser(locals);
+	if (portal && !portalPathAllowed(url.pathname)) {
+		redirect(303, '/tickets/new');
 	}
 
 	const impersonatedBy = (locals.session as { impersonatedBy?: string | null } | undefined)
@@ -220,6 +234,34 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 
 	const preferences = await getPreferences(locals.user.id);
 
+	// ── Portal context ─────────────────────────────────────────────────────────
+	// For external ticket-only users: resolve the active org (persisted in
+	// viewState.portal.activeOrgId), and load their pinned + recent tickets scoped
+	// to it. org.client sees all org tickets; org.member sees only their own.
+	let portalRole: string | null = null;
+	let activeOrgId: string | null = null;
+	let pinnedTickets: TicketRow[] = [];
+	let recentTickets: TicketRow[] = [];
+	if (portal && orgs.length > 0) {
+		const orgIds = orgs.map((o) => o.id);
+		const storedActive = (
+			preferences.viewState?.portal as { activeOrgId?: string } | undefined
+		)?.activeOrgId;
+		activeOrgId = storedActive && orgIds.includes(storedActive) ? storedActive : orgs[0].id;
+		portalRole = memberRoles.orgs[activeOrgId] ?? null;
+		const scope =
+			portalRole === 'org.client'
+				? { orgIds: [activeOrgId] }
+				: { orgIds: [activeOrgId], ownerUserId: locals.user.id };
+		const [pinned, recents] = await Promise.all([
+			loadTickets({ ...scope, pinnedByUserId: locals.user.id }),
+			loadTickets({ ...scope, limit: 20 })
+		]);
+		pinnedTickets = pinned;
+		const pinnedSet = new Set(pinned.map((t) => t.id));
+		recentTickets = recents.filter((t) => !pinnedSet.has(t.id)).slice(0, 15);
+	}
+
 	// Bell dropdown data. We surface only the 15 most recent rows; older
 	// items are reachable from the /me/notifications inbox page.
 	const [recentNotifications, unreadAgg] = await Promise.all([
@@ -274,6 +316,11 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		orgs,
 		isAdmin: !!locals.isAdmin,
 		isTrackrTeam: trackrTeamFlag,
+		isPortalUser: portal,
+		portalRole,
+		activeOrgId,
+		pinnedTickets,
+		recentTickets,
 		memberRoles,
 		effectivePermissions: await effectivePermissions(locals),
 		preferences,

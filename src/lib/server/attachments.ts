@@ -478,3 +478,30 @@ export async function authorizeAttachmentAccess(
 			return isTrackrTeam(locals);
 	}
 }
+
+/**
+ * Authorize *deletion* of an attachment — stricter than upload. External org
+ * users (member/client) may attach files but never delete them; only agents
+ * (org.tickets.edit.any) can remove ticket attachments. For internal task work
+ * the original uploader or a project editor may delete; wiki is team-only.
+ */
+export async function authorizeAttachmentDelete(
+	locals: Locals,
+	row: Pick<Attachment, 'entityType' | 'uploadedBy'>,
+	ctx: EntityContext
+): Promise<boolean> {
+	switch (row.entityType) {
+		case 'ticket':
+		case 'ticket_message':
+			return ctx.orgId ? can(locals, 'org.tickets.edit.any', { orgId: ctx.orgId }) : false;
+		case 'task':
+		case 'project_activity': {
+			if (locals.user?.id && row.uploadedBy === locals.user.id) return true;
+			return ctx.projectId
+				? can(locals, 'project.tasks.edit.any', { projectId: ctx.projectId })
+				: false;
+		}
+		case 'wiki_page':
+			return isTrackrTeam(locals);
+	}
+}
