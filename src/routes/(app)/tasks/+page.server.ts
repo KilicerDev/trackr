@@ -49,6 +49,7 @@ async function resolveTaskByDisplayId(displayId: string) {
 			title: task.title,
 			status: task.status,
 			priority: task.priority,
+			type: task.type,
 			projectId: project.id,
 			projectKey: project.key,
 			projectOrgId: project.orgId,
@@ -65,6 +66,7 @@ async function resolveTaskByDisplayId(displayId: string) {
 
 const ALLOWED_STATUS = new Set(['backlog', 'todo', 'in_progress', 'paused', 'in_review', 'done']);
 const ALLOWED_PRIORITY = new Set(['none', 'low', 'medium', 'high', 'urgent']);
+const ALLOWED_TYPE = new Set(['task', 'bug', 'improvement', 'feature', 'chore']);
 
 export const actions: Actions = {
 	create: async ({ request, locals, url }) => {
@@ -75,6 +77,7 @@ export const actions: Actions = {
 		const title = String(form.get('title') ?? '').trim();
 		const description = String(form.get('description') ?? '').trim() || null;
 		const projectKey = String(form.get('project') ?? '').trim();
+		const type = String(form.get('type') ?? 'task');
 		const status = String(form.get('status') ?? 'todo');
 		const priority = String(form.get('priority') ?? 'medium');
 		const due = String(form.get('due') ?? '').trim();
@@ -87,6 +90,7 @@ export const actions: Actions = {
 
 		if (!title) return fail(400, { message: 'Title is required.' });
 		if (!projectKey) return fail(400, { message: 'Project is required.' });
+		if (!ALLOWED_TYPE.has(type)) return fail(400, { message: `Invalid type "${type}".` });
 		if (plannedFor && !/^\d{4}-\d{2}-\d{2}$/.test(plannedFor)) {
 			return fail(400, { message: 'Invalid planned date.' });
 		}
@@ -124,7 +128,7 @@ export const actions: Actions = {
 					description,
 					status,
 					priority,
-					type: 'task',
+					type,
 					dueDate,
 					estimateMinutes: estimate,
 					tags,
@@ -227,6 +231,11 @@ export const actions: Actions = {
 			const v = String(form.get('priority'));
 			if (!ALLOWED_PRIORITY.has(v)) return fail(400, { message: `Invalid priority "${v}".` });
 			patch.priority = v;
+		}
+		if (form.has('type')) {
+			const v = String(form.get('type'));
+			if (!ALLOWED_TYPE.has(v)) return fail(400, { message: `Invalid type "${v}".` });
+			patch.type = v;
 		}
 		if (form.has('title')) {
 			const v = String(form.get('title')).trim();
@@ -372,6 +381,15 @@ export const actions: Actions = {
 				actorId: me.id,
 				type: 'task.priority',
 				meta: { ...taskMeta, from: target.priority, to: patch.priority }
+			});
+		}
+		if (typeof patch.type === 'string' && patch.type !== target.type) {
+			logActivityFF({
+				projectId,
+				taskId: target.id,
+				actorId: me.id,
+				type: 'task.type',
+				meta: { ...taskMeta, from: target.type, to: patch.type }
 			});
 		}
 		if (assigneeOut.next !== null) {

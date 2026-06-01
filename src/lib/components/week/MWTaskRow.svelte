@@ -2,6 +2,7 @@
 	import type { Task } from '$lib/types';
 	import StatusDot from '../StatusDot.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
+	import TypeBadge from '../TypeBadge.svelte';
 	import Avatar from '../Avatar.svelte';
 	import { formatEstimate } from '$lib/data';
 	import { resolveProject, resolveUser } from '$lib/lookup.svelte';
@@ -22,6 +23,7 @@
 >
 	<StatusDot status={task.status} />
 	<span class="font-mono text-[11.5px] text-text-3 w-[78px] shrink-0">{task.id}</span>
+	<span class="shrink-0"><TypeBadge type={task.type ?? 'task'} showLabel={false} /></span>
 	<span class="text-[13px] text-text truncate flex-1 {task.status === 'done' ? 'line-through text-text-3' : ''}">{task.title}</span>
 	{#if task.priority !== 'none'}
 		<PriorityBars priority={task.priority} />

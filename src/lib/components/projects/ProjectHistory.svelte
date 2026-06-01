@@ -153,6 +153,7 @@
 		'task.deleted': { icon: 'trash', color: '#ef7a6d' },
 		'task.status': { icon: 'refresh', color: '#7a9cf0' },
 		'task.priority': { icon: 'arrow-up', color: '#e0a458' },
+		'task.type': { icon: 'square', color: '#7fc8a9' },
 		'task.assignee': { icon: 'users', color: '#a98cf0' },
 		'time.logged': { icon: 'calendar', color: '#e0a458' },
 		'project.name': { icon: 'settings', color: '#9aa4b2' },
@@ -214,6 +215,10 @@
 			<span class="text-text font-medium">{humanize(e.meta?.to)}</span>
 		{:else if e.type === 'task.priority'}
 			changed priority of {@render refChip(e.meta)}
+			<span class="text-text-3">{humanize(e.meta?.from)}</span> →
+			<span class="text-text font-medium">{humanize(e.meta?.to)}</span>
+		{:else if e.type === 'task.type'}
+			changed type of {@render refChip(e.meta)}
 			<span class="text-text-3">{humanize(e.meta?.from)}</span> →
 			<span class="text-text font-medium">{humanize(e.meta?.to)}</span>
 		{:else if e.type === 'task.assignee'}

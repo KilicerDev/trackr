@@ -3,6 +3,7 @@
 	import StatusDot from '../StatusDot.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
 	import LabelChip from '../LabelChip.svelte';
+	import TypeBadge from '../TypeBadge.svelte';
 	import Avatar from '../Avatar.svelte';
 	import Icon from '../Icon.svelte';
 	import { TRACKR_PRIORITIES, formatDateShort, dueCountdown } from '$lib/data';
@@ -39,6 +40,7 @@
 	<StatusDot status={task.status} />
 	<span class="font-mono text-[12px] text-text-3 truncate">{task.id}</span>
 	<span class="flex items-center gap-2 min-w-0">
+		<span class="shrink-0"><TypeBadge type={task.type ?? 'task'} showLabel={false} /></span>
 		<span class="truncate text-[13.5px] text-text">{task.title}</span>
 		{#if task.plannedFor || task.inMyPlan}
 			<span

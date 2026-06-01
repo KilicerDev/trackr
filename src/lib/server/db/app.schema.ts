@@ -367,6 +367,7 @@ export const PROJECT_ACTIVITY_TYPES = [
 	'task.created',
 	'task.status',
 	'task.priority',
+	'task.type',
 	'task.assignee',
 	'task.deleted',
 	'time.logged'

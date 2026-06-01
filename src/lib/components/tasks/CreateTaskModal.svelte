@@ -15,6 +15,8 @@
 	import LabelChip from '../LabelChip.svelte';
 	import StatusPopover from '../popovers/StatusPopover.svelte';
 	import PriorityPopover from '../popovers/PriorityPopover.svelte';
+	import TypePopover from '../popovers/TypePopover.svelte';
+	import TypeBadge from '../TypeBadge.svelte';
 	import AssigneePopover from '../popovers/AssigneePopover.svelte';
 	import DatePopover from '../popovers/DatePopover.svelte';
 	import EstimatePopover from '../popovers/EstimatePopover.svelte';
@@ -24,17 +26,19 @@
 		TRACKR_PRIORITIES,
 		TRACKR_PROJECTS,
 		TRACKR_STATUSES,
+		TRACKR_TYPES,
 		TRACKR_USERS,
 		formatDateLong,
 		formatEstimate
 	} from '$lib/data';
-	import type { PriorityId, ProjectId, StatusId } from '$lib/types';
+	import type { PriorityId, ProjectId, StatusId, TypeId } from '$lib/types';
 	import AttachmentDropzone from '../attachments/AttachmentDropzone.svelte';
 	import StagedFileList from '../attachments/StagedFileList.svelte';
 	import { selectStageable } from '$lib/attachments/config';
 
 	interface Prefill {
 		project?: string;
+		type?: TypeId;
 		status?: StatusId;
 		priority?: PriorityId;
 		assignees?: string[];
@@ -109,6 +113,7 @@
 	let title = $state('');
 	let description = $state('');
 	let project = $state<ProjectId>('TRACKR');
+	let type = $state<TypeId>('task');
 	let status = $state<StatusId>('todo');
 	let priority = $state<PriorityId>('medium');
 	let assignees = $state<string[]>([]);
@@ -141,6 +146,7 @@
 			description = '';
 			const defaultProject = (projectList[0]?.key as ProjectId) ?? 'TRACKR';
 			project = (prefill?.project as ProjectId | undefined) ?? defaultProject;
+			type = prefill?.type ?? 'task';
 			status = prefill?.status ?? 'todo';
 			priority = prefill?.priority ?? 'medium';
 			assignees = prefill?.assignees ?? [meId];
@@ -154,6 +160,7 @@
 		}
 	});
 
+	let typeMeta = $derived(TRACKR_TYPES.find((t) => t.id === type)!);
 	let statusMeta = $derived(TRACKR_STATUSES.find((s) => s.id === status)!);
 	let prioMeta = $derived(TRACKR_PRIORITIES.find((p) => p.id === priority)!);
 	let projectMeta = $derived(
@@ -264,6 +271,20 @@
 				<div class="relative">
 					<button
 						type="button"
+						onclick={() => (pop = pop === 'type' ? null : 'type')}
+						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
+					>
+						<TypeBadge type={type} showLabel={false} />
+						<span>{typeMeta.label}</span>
+					</button>
+					{#if pop === 'type'}
+						<TypePopover value={type} onchange={(v) => (type = v)} onclose={() => (pop = null)} />
+					{/if}
+				</div>
+
+				<div class="relative">
+					<button
+						type="button"
 						onclick={() => (pop = pop === 'status' ? null : 'status')}
 						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
 					>
@@ -363,6 +384,7 @@
 
 			<!-- Hidden inputs carry state into the form submit -->
 			<input type="hidden" name="project" value={project} />
+			<input type="hidden" name="type" value={type} />
 			<input type="hidden" name="status" value={status} />
 			<input type="hidden" name="priority" value={priority} />
 			<input type="hidden" name="due" value={due ?? ''} />

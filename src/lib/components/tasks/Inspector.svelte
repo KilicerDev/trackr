@@ -5,7 +5,7 @@
 	import { showToast } from '$lib/toast.svelte';
 	import { confirm } from '$lib/components/confirm.svelte';
 	import type { ActionResult } from '@sveltejs/kit';
-	import type { PriorityId, StatusId, Task } from '$lib/types';
+	import type { PriorityId, StatusId, TypeId, Task } from '$lib/types';
 	import Drawer from '../Drawer.svelte';
 	import StatusDot from '../StatusDot.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
@@ -24,6 +24,7 @@
 	import { selectStageable } from '$lib/attachments/config';
 	import StatusPopover from '../popovers/StatusPopover.svelte';
 	import PriorityPopover from '../popovers/PriorityPopover.svelte';
+	import TypePopover from '../popovers/TypePopover.svelte';
 	import AssigneePopover from '../popovers/AssigneePopover.svelte';
 	import DatePopover from '../popovers/DatePopover.svelte';
 	import EstimatePopover from '../popovers/EstimatePopover.svelte';
@@ -32,6 +33,7 @@
 	import {
 		TRACKR_PRIORITIES,
 		TRACKR_STATUSES,
+		TRACKR_TYPES,
 		userById as mockUserById,
 		formatDateLong,
 		formatEstimate
@@ -218,6 +220,7 @@
 	});
 
 	type PopId =
+		| 'type'
 		| 'status'
 		| 'priority'
 		| 'assignees'
@@ -273,6 +276,10 @@
 	let prio = $derived.by(() => {
 		const d = draft;
 		return d ? TRACKR_PRIORITIES.find((p) => p.id === d.priority)! : null;
+	});
+	let taskType = $derived.by(() => {
+		const d = draft;
+		return d ? TRACKR_TYPES.find((t) => t.id === (d.type ?? 'task'))! : null;
 	});
 	let assigneeIds = $derived.by(() => {
 		const d = draft;
@@ -415,6 +422,31 @@
 
 			<!-- properties rail -->
 			<div class="flex flex-wrap gap-2 mb-5">
+				<!-- TYPE -->
+				{#if taskType}
+					<div class="relative">
+						<button
+							type="button"
+							onclick={() => toggle('type')}
+							disabled={!canEdit}
+							class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border text-[12.5px] transition-colors disabled:opacity-60 disabled:cursor-not-allowed {canEdit ? 'hover:border-border-strong' : ''} {openPop === 'type' ? 'ring-2 ring-accent/40' : ''}"
+						>
+							<TypeBadge type={draft.type ?? 'task'} showLabel={false} />
+							<span>{taskType.label}</span>
+						</button>
+						{#if openPop === 'type'}
+							<TypePopover
+								value={draft.type ?? 'task'}
+								onchange={(v: TypeId) => {
+									if (draft) draft.type = v;
+									void patch('type', { type: v });
+								}}
+								onclose={() => (openPop = null)}
+							/>
+						{/if}
+					</div>
+				{/if}
+
 				<!-- STATUS -->
 				<div class="relative">
 					<button
