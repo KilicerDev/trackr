@@ -309,14 +309,15 @@
 		{#if pageCount > 0}
 			<span class="wiki-count">{pageCount}</span>
 		{/if}
-		<button
-			onclick={() => (createOpen = !createOpen)}
-			class="ml-auto grid h-[26px] w-[26px] place-items-center rounded-md text-text-3 transition-colors hover:bg-surface hover:text-text"
-			aria-label="New page or folder"
-		>
-			<Icon name="plus" size={14} />
-		</button>
-		<Popover open={createOpen} onclose={() => (createOpen = false)} align="right" minWidth={180}>
+		<div class="relative ml-auto">
+			<button
+				onclick={() => (createOpen = !createOpen)}
+				class="grid h-[26px] w-[26px] place-items-center rounded-md text-text-3 transition-colors hover:bg-surface hover:text-text"
+				aria-label="New page or folder"
+			>
+				<Icon name="plus" size={14} />
+			</button>
+			<Popover open={createOpen} onclose={() => (createOpen = false)} align="right" minWidth={180}>
 			<button
 				type="button"
 				onclick={() => {
@@ -339,7 +340,8 @@
 				<span class="grid h-4 w-4 place-items-center text-text-3"><Icon name="folder" size={13} /></span>
 				<span>New folder</span>
 			</button>
-		</Popover>
+			</Popover>
+		</div>
 	</div>
 
 	<div class="px-3 pb-2">
