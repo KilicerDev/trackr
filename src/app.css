@@ -15,6 +15,7 @@
     --color-text-3: var(--text-3);
     --color-text-4: var(--text-4);
     --color-accent: var(--accent);
+    --color-accent-soft: var(--accent-soft);
     --color-accent-strong: var(--accent-strong);
 
     --color-prio-low: #7a9cf0;

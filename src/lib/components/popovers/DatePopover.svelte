@@ -129,7 +129,7 @@
 				class="aspect-square grid place-items-center rounded-md text-[12px] font-mono transition-colors
 				{c.current ? 'text-text-2' : 'text-text-4'}
 				{isVal ? 'border border-accent text-accent' : ''}
-				{isToday && !isVal ? 'bg-surface text-text' : ''}
+				{isToday && !isVal ? 'bg-accent-soft text-accent font-medium' : ''}
 				hover:bg-surface-2"
 			>
 				{c.date.getDate()}
