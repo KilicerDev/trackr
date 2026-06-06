@@ -3,7 +3,15 @@
 	import Icon from '../Icon.svelte';
 	import Popover from '../Popover.svelte';
 	import { setActiveOrg, type PortalOrg } from '$lib/portal';
-	import type { TicketRow } from '$lib/server/tickets';
+	import type { TicketRow, TicketStatus } from '$lib/server/tickets';
+	import { TICKET_STATUSES } from '$lib/data';
+
+	function statusColor(id: TicketStatus): string {
+		return TICKET_STATUSES.find((s) => s.id === id)?.dot ?? '#7c7c84';
+	}
+	function statusLabel(id: TicketStatus): string {
+		return TICKET_STATUSES.find((s) => s.id === id)?.label ?? id;
+	}
 
 	type LayoutShape = {
 		orgs?: PortalOrg[];
@@ -126,15 +134,20 @@
 
 {#snippet ticketRow(t: TicketRow)}
 	{@const active = isActiveTicket(t.id)}
+	{@const dot = statusColor(t.status)}
+	{@const filled = t.status === 'resolved' || t.status === 'closed'}
 	<a
 		href="/tickets/{t.id}"
 		title={t.subject}
 		class="relative flex items-center gap-2.5 px-3 py-[7px] rounded-[7px] mx-1 my-[1px] text-text-2 hover:bg-[var(--row-hover)] hover:text-text transition-colors text-[13.5px]
 		{active ? 'bg-[var(--row-active)] !text-text' : ''}"
 	>
-		{#if active}<span class="absolute left-[-4px] top-2 bottom-2 w-[2px] bg-accent rounded-sm"></span>{/if}
-		<span class="grid place-items-center w-4 h-4 shrink-0 {active ? 'text-accent' : 'text-text-3'}">
-			<Icon name="msg" size={14} />
+		<span class="grid place-items-center w-4 h-4 shrink-0" title={statusLabel(t.status)}>
+			<span
+				class="w-[11px] h-[11px] rounded-full border-[1.5px]"
+				style:border-color={dot}
+				style:background={filled ? dot : 'transparent'}
+			></span>
 		</span>
 		<span class="truncate">{t.subject}</span>
 	</a>
