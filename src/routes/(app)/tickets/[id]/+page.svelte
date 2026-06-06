@@ -25,6 +25,9 @@
 	import { selectStageable, type AttachmentDTO } from '$lib/attachments/config';
 	import { m } from '$lib/paraglide/messages';
 	import { ticketStatusLabel, ticketCategoryLabel, ticketChannelLabel, priorityLabel } from '$lib/labels';
+	import CreateTaskModal from '$lib/components/tasks/CreateTaskModal.svelte';
+	import StatusDot from '$lib/components/StatusDot.svelte';
+	import type { TypeId } from '$lib/types';
 
 	type PageData = {
 		ticket: TicketRow;
@@ -37,6 +40,8 @@
 		isPortalUser: boolean;
 		participants: { id: string; name: string; initials: string; color: string }[];
 		users?: { id: string; name: string; initials: string; color: string }[];
+		canCreateTask: boolean;
+		linkedTasks: { id: string; displayId: string; title: string; status: string }[];
 	};
 	let { data }: { data: PageData } = $props();
 
@@ -213,6 +218,22 @@
 			showToast('err', err instanceof Error ? err.message : m.tickets_delete_failed());
 		}
 	}
+
+	// ─── Convert ticket → task (team-only) ────────────────────────────────────
+	let creatingTask = $state(false);
+
+	// Map ticket category onto a sensible default task type for the prefill.
+	function taskTypeForCategory(category: string): TypeId {
+		if (category === 'feature_request') return 'feature';
+		if (category === 'technical_issue') return 'bug';
+		return 'task';
+	}
+	const taskPrefill = $derived({
+		title: t.subject,
+		description: t.description,
+		priority: t.priority,
+		type: taskTypeForCategory(t.category)
+	});
 </script>
 
 <svelte:head>
@@ -252,6 +273,16 @@
 					<Icon name="bookmark" size={14} />
 					<span>{data.isPinned ? m.tickets_pinned() : m.tickets_pin_short()}</span>
 				</button>
+				{#if data.canCreateTask}
+					<button
+						type="button"
+						onclick={() => (creatingTask = true)}
+						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-surface text-[12px] text-text-2 hover:text-text hover:border-border-strong transition-colors"
+					>
+						<Icon name="plus" size={14} />
+						<span>{m.tickets_create_task()}</span>
+					</button>
+				{/if}
 				{#if canDelete}
 					<button
 						type="button"
@@ -473,6 +504,35 @@
 			{/if}
 		</div>
 
+		<!-- Linked tasks (team-only) -->
+		{#if data.canCreateTask}
+			<div class="mb-6">
+				<div class="flex items-center justify-between mb-2">
+					<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">
+						{m.tickets_linked_tasks()}{#if data.linkedTasks.length}<span class="ml-1.5 text-text-3">{data.linkedTasks.length}</span>{/if}
+					</div>
+				</div>
+				{#if data.linkedTasks.length}
+					<ul class="flex flex-col gap-1">
+						{#each data.linkedTasks as lt (lt.id)}
+							<li>
+								<a
+									href="/tasks?task={lt.displayId}"
+									class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg border border-border bg-surface hover:border-border-strong transition-colors group"
+								>
+									<StatusDot status={lt.status as import('$lib/types').StatusId} size={13} />
+									<span class="font-mono text-[11.5px] text-text-4">{lt.displayId}</span>
+									<span class="text-[13px] text-text-2 group-hover:text-text truncate">{lt.title}</span>
+								</a>
+							</li>
+						{/each}
+					</ul>
+				{:else}
+					<p class="text-[12.5px] text-text-3">{m.tickets_linked_tasks_empty()}</p>
+				{/if}
+			</div>
+		{/if}
+
 		<!-- Activity timeline -->
 		<div class="mt-2">
 			<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-3">{m.tickets_activity()}</div>
@@ -592,3 +652,19 @@
 		</AttachmentDropzone>
 	</div>
 </div>
+
+{#if data.canCreateTask}
+	<CreateTaskModal
+		open={creatingTask}
+		action="/tickets/{t.id}?/createTask"
+		sourceTicketId={t.id}
+		prefill={taskPrefill}
+		onclose={() => (creatingTask = false)}
+		users={page.data.users}
+		projects={page.data.projects}
+		currentUserId={page.data.currentUserId}
+		memberProjectIds={Object.keys(page.data.memberRoles?.projects ?? {})}
+		allAccess={page.data.isTrackrTeam}
+		oncreated={(displayId) => showToast('ok', m.tickets_create_task_toast({ ref: displayId }))}
+	/>
+{/if}

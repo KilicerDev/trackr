@@ -45,6 +45,7 @@
 		due?: string | null;
 		estimate?: number;
 		title?: string;
+		description?: string | null;
 		plannedFor?: string | null;
 	}
 
@@ -79,6 +80,12 @@
 		allAccess?: boolean;
 		oncreated?: (displayId: string) => void;
 		onerror?: (msg: string) => void;
+		// Form action override. Defaults to the global tasks create action; the
+		// ticket → task flow points it at the ticket's own `createTask` action.
+		action?: string;
+		// When set, the new task is linked back to this ticket (carried as a
+		// hidden field) and the action above handles the link + ticket sync.
+		sourceTicketId?: string;
 	}
 
 	let {
@@ -91,7 +98,9 @@
 		memberProjectIds = [],
 		allAccess = false,
 		oncreated,
-		onerror
+		onerror,
+		action = '/tasks?/create',
+		sourceTicketId
 	}: Props = $props();
 
 	// Fall back to mock data if real lists weren't provided — keeps the
@@ -143,7 +152,7 @@
 	$effect(() => {
 		if (open) {
 			title = prefill?.title ?? '';
-			description = '';
+			description = prefill?.description ?? '';
 			const defaultProject = (projectList[0]?.key as ProjectId) ?? 'TRACKR';
 			project = (prefill?.project as ProjectId | undefined) ?? defaultProject;
 			type = prefill?.type ?? 'task';
@@ -182,7 +191,7 @@
 	<form
 		bind:this={formEl}
 		method="POST"
-		action="/tasks?/create"
+		{action}
 		enctype="multipart/form-data"
 		use:enhance={({ formData }) => {
 			// Staged files ride along with the form; the create action attaches
@@ -381,6 +390,9 @@
 			</div>
 
 			<!-- Hidden inputs carry state into the form submit -->
+			{#if sourceTicketId}
+				<input type="hidden" name="sourceTicketId" value={sourceTicketId} />
+			{/if}
 			<input type="hidden" name="project" value={project} />
 			<input type="hidden" name="type" value={type} />
 			<input type="hidden" name="status" value={status} />

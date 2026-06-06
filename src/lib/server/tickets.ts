@@ -1,6 +1,6 @@
-import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { db } from './db';
-import { organization, ticket, ticketMessage } from './db/app.schema';
+import { organization, task, ticket, ticketMessage } from './db/app.schema';
 
 export const TICKET_STATUSES = [
 	'open',
@@ -79,11 +79,13 @@ function toIso(v: unknown): string | null {
 	return null;
 }
 
-function displayId(slug: string | null, isInternal: boolean, n: number): string {
+export function ticketDisplayId(slug: string | null, isInternal: boolean, n: number): string {
 	if (isInternal) return `T-${n}`;
 	const upper = (slug ?? 'ORG').toUpperCase().replace(/[^A-Z0-9]/g, '');
 	return `${upper}-T-${n}`;
 }
+// Local alias kept so existing call sites in this module read unchanged.
+const displayId = ticketDisplayId;
 
 type AccessOpts = {
 	// When set, restrict to these org ids. Null/undefined means no org filter
@@ -360,6 +362,59 @@ export async function softDeleteTicket(ticketId: string): Promise<void> {
 		.update(ticket)
 		.set({ deletedAt: new Date() })
 		.where(and(eq(ticket.id, ticketId), isNull(ticket.deletedAt)));
+}
+
+// Keeps a ticket in step with the tasks spun up from it (the convert flow):
+// - when a task is marked done, resolve the ticket once EVERY linked,
+//   non-deleted task is done (and the ticket isn't already resolved/closed);
+// - when a done task is reopened, leave the ticket status alone but drop an
+//   internal note so agents see the regression.
+// Caller invokes this fire-and-forget; it never throws into the task save.
+export async function syncTicketForLinkedTaskStatus(input: {
+	ticketId: string;
+	actorId: string;
+	prevStatus: string;
+	newStatus: string;
+	// Pre-localized note body for the reopen case (built by the caller, which
+	// has the request locale + the task ref). Falls back to a plain string.
+	reopenNote?: string;
+}): Promise<void> {
+	const { ticketId, actorId, prevStatus, newStatus } = input;
+
+	if (newStatus === 'done') {
+		const [remaining] = await db
+			.select({ n: sql<number>`count(*)::int` })
+			.from(task)
+			.where(
+				and(eq(task.sourceTicketId, ticketId), isNull(task.deletedAt), ne(task.status, 'done'))
+			);
+		if (Number(remaining?.n ?? 0) > 0) return;
+
+		const [t] = await db
+			.select({ status: ticket.status })
+			.from(ticket)
+			.where(and(eq(ticket.id, ticketId), isNull(ticket.deletedAt)))
+			.limit(1);
+		if (!t || t.status === 'resolved' || t.status === 'closed') return;
+		await updateTicket(ticketId, { status: 'resolved' });
+		return;
+	}
+
+	if (prevStatus === 'done' && newStatus !== 'done') {
+		const [t] = await db
+			.select({ status: ticket.status })
+			.from(ticket)
+			.where(and(eq(ticket.id, ticketId), isNull(ticket.deletedAt)))
+			.limit(1);
+		if (!t || t.status !== 'resolved') return;
+		await addTicketMessage({
+			ticketId,
+			authorId: actorId,
+			body: input.reopenNote ?? 'A linked task was reopened.',
+			isInternalNote: true,
+			authorIsAgent: true
+		});
+	}
 }
 
 export async function getTicket(ticketId: string): Promise<TicketRow | null> {

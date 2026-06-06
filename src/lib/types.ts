@@ -82,6 +82,8 @@ export interface Task {
 	}[];
 	plannedFor?: string | null;
 	inMyPlan?: boolean;
+	/** Set when the task was spun up from a support ticket. */
+	sourceTicket?: { id: string; displayId: string } | null;
 }
 
 export interface WikiPage {

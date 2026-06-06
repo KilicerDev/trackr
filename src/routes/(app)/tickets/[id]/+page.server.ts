@@ -1,13 +1,23 @@
-import { error, redirect, type ServerLoad } from '@sveltejs/kit';
-import { and, eq, inArray } from 'drizzle-orm';
+import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { ticketFavorite } from '$lib/server/db/app.schema';
+import { project, task, ticketFavorite } from '$lib/server/db/app.schema';
 import { user as userTable } from '$lib/server/db/auth.schema';
-import { can, isPortalUser, isTrackrTeam } from '$lib/server/permissions';
-import { getTicket, loadTicketMessages } from '$lib/server/tickets';
-import { markEntityRead } from '$lib/server/notify';
+import { assertCan, can, isPortalUser, isTrackrTeam } from '$lib/server/permissions';
+import {
+	addTicketMessage,
+	getTicket,
+	loadTicketMessages,
+	updateTicket
+} from '$lib/server/tickets';
+import { createTask } from '$lib/server/tasks';
+import { markEntityRead, notify } from '$lib/server/notify';
 import { listAttachments, listAttachmentsForMany } from '$lib/server/attachments';
 import { m } from '$lib/paraglide/messages';
+
+const ALLOWED_TASK_TYPE = new Set(['task', 'bug', 'improvement', 'feature', 'chore']);
+const ALLOWED_TASK_STATUS = new Set(['backlog', 'todo', 'in_progress', 'paused', 'in_review', 'done']);
+const ALLOWED_TASK_PRIORITY = new Set(['none', 'low', 'medium', 'high', 'urgent']);
 
 function initials(name: string): string {
 	return name
@@ -87,6 +97,28 @@ export const load: ServerLoad = async ({ params, locals }) => {
 		return { id: u.id, name, initials: initials(name), color: userColor(u.id) };
 	});
 
+	// Tasks spun up from this ticket — surfaced so agents see existing links
+	// (and don't blindly create duplicates). Team-only feature, so only query
+	// when the user can actually convert.
+	const canCreateTask = isTrackrTeam(locals);
+	const linkedTaskRows = await db
+		.select({
+			id: task.id,
+			number: task.number,
+			title: task.title,
+			status: task.status,
+			projectKey: project.key
+		})
+		.from(task)
+		.innerJoin(project, eq(project.id, task.projectId))
+		.where(and(eq(task.sourceTicketId, id), isNull(task.deletedAt)));
+	const linkedTasks = linkedTaskRows.map((r) => ({
+		id: r.id,
+		displayId: `${r.projectKey}-${r.number}`,
+		title: r.title,
+		status: r.status
+	}));
+
 	// Opening the ticket clears any unread bell items pointing at it.
 	// Fire and forget — a failed update should never break the load.
 	void markEntityRead(locals.user.id, 'ticket', id).catch(() => {});
@@ -100,6 +132,106 @@ export const load: ServerLoad = async ({ params, locals }) => {
 		currentUserId: locals.user.id,
 		isPinned: !!pin,
 		isPortalUser: isPortalUser(locals),
-		participants
+		participants,
+		canCreateTask,
+		linkedTasks
 	};
+};
+
+export const actions: Actions = {
+	// Convert a ticket into a linked project task. Team-only: org members and
+	// portal clients never see the entry point and are rejected here too. The
+	// ticket is never deleted — it's flipped out of triage and linked.
+	createTask: async ({ request, params, locals, url }) => {
+		if (!locals.user) throw error(401, m.tickets_not_authenticated());
+		const me = locals.user;
+		const ticketId = params.id;
+		if (!ticketId) return fail(404, { message: m.tickets_not_found() });
+		if (!isTrackrTeam(locals)) throw error(403, m.tickets_no_access());
+
+		const t = await getTicket(ticketId);
+		if (!t) return fail(404, { message: m.tickets_not_found() });
+
+		const form = await request.formData();
+		const title = String(form.get('title') ?? '').trim();
+		const description = String(form.get('description') ?? '').trim() || null;
+		const projectKey = String(form.get('project') ?? '').trim();
+		const typeRaw = String(form.get('type') ?? 'task');
+		const statusRaw = String(form.get('status') ?? 'todo');
+		const priorityRaw = String(form.get('priority') ?? 'medium');
+		const due = String(form.get('due') ?? '').trim();
+		const estimateRaw = String(form.get('estimate') ?? '').trim();
+		const assigneeIds = form.getAll('assignees').map((v) => String(v)).filter(Boolean);
+
+		if (!title) return fail(400, { message: m.tasks_err_title_required() });
+		if (!projectKey) return fail(400, { message: m.tasks_err_project_required() });
+
+		// Clamp enums to defaults rather than failing — the modal sends valid
+		// values, this just guards against tampering / drift.
+		const type = ALLOWED_TASK_TYPE.has(typeRaw) ? typeRaw : 'task';
+		const status = ALLOWED_TASK_STATUS.has(statusRaw) ? statusRaw : 'todo';
+		const priority = ALLOWED_TASK_PRIORITY.has(priorityRaw) ? priorityRaw : 'medium';
+
+		const [p] = await db
+			.select({ id: project.id, key: project.key, orgId: project.orgId })
+			.from(project)
+			.where(eq(project.key, projectKey))
+			.limit(1);
+		if (!p) return fail(400, { message: m.tasks_err_project_not_found({ key: projectKey }) });
+
+		await assertCan(locals, 'project.tasks.create', { projectId: p.id });
+
+		let created: Awaited<ReturnType<typeof createTask>>;
+		try {
+			created = await createTask({
+				projectId: p.id,
+				projectKey: p.key,
+				title,
+				description,
+				status,
+				priority,
+				type,
+				dueDate: due ? new Date(due) : null,
+				estimateMinutes: estimateRaw ? Number(estimateRaw) : null,
+				assigneeIds,
+				createdBy: me.id,
+				sourceTicketId: ticketId
+			});
+		} catch (err) {
+			console.error('ticket→task create failed', err);
+			return fail(500, { message: m.tickets_create_task_failed() });
+		}
+
+		// Move the ticket out of triage and leave an agents-only breadcrumb.
+		// Best-effort: the task already exists, so a failure here is logged, not
+		// surfaced as a failed conversion.
+		try {
+			if (t.status === 'open') await updateTicket(ticketId, { status: 'in_progress' });
+			await addTicketMessage({
+				ticketId,
+				authorId: me.id,
+				body: m.tickets_note_linked_task({ ref: created.displayId }),
+				isInternalNote: true,
+				authorIsAgent: true
+			});
+		} catch (err) {
+			console.error('ticket post-convert update failed', err);
+		}
+
+		// Notify newly-assigned users (mirrors the /tasks create action).
+		void notify({
+			kind: 'taskAssigned',
+			recipients: created.assignedIds,
+			actorId: me.id,
+			orgId: p.orgId,
+			render: (locale) => ({
+				title: m.notify_task_assigned({ ref: created.displayId, title }, { locale })
+			}),
+			url: `/tasks?task=${created.displayId}`,
+			entity: { type: 'task', id: created.id },
+			baseUrl: url.origin
+		}).catch((err) => console.error('ticket→task notify failed', err));
+
+		return { ok: true, displayId: created.displayId };
+	}
 };

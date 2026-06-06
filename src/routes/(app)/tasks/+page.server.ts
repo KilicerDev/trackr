@@ -1,5 +1,5 @@
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
 	project,
@@ -10,9 +10,10 @@ import {
 	taskTimeLog
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
-import { loadTasks } from '$lib/server/tasks';
+import { createTask, loadTasks } from '$lib/server/tasks';
 import { normalizeTag } from '$lib/labelMeta';
-import { logActivity, logActivityFF } from '$lib/server/activity';
+import { logActivityFF } from '$lib/server/activity';
+import { syncTicketForLinkedTaskStatus } from '$lib/server/tickets';
 import { notify } from '$lib/server/notify';
 import { taskRecipients } from '$lib/server/notify-recipients';
 import { accessibleProjectIds, assertCan, can } from '$lib/server/permissions';
@@ -55,7 +56,8 @@ async function resolveTaskByDisplayId(displayId: string) {
 			projectId: project.id,
 			projectKey: project.key,
 			projectOrgId: project.orgId,
-			createdBy: task.createdBy
+			createdBy: task.createdBy,
+			sourceTicketId: task.sourceTicketId
 		})
 		.from(task)
 		.innerJoin(project, eq(project.id, task.projectId))
@@ -108,72 +110,30 @@ export const actions: Actions = {
 
 		const dueDate = due ? new Date(due) : null;
 		const estimate = estimateRaw ? Number(estimateRaw) : null;
-		const finalAssignees = assigneeIds.length > 0 ? assigneeIds : [me.id];
 
-		const newId = crypto.randomUUID();
-		let displayId = '';
-		let assignedIds: string[] = [];
+		let created: Awaited<ReturnType<typeof createTask>>;
 		try {
-			await db.transaction(async (tx) => {
-				const [bumped] = await tx
-					.update(project)
-					.set({ nextTaskNumber: sql`${project.nextTaskNumber} + 1` })
-					.where(eq(project.id, p.id))
-					.returning({ next: project.nextTaskNumber });
-				const number = bumped.next - 1;
-
-				await tx.insert(task).values({
-					id: newId,
-					projectId: p.id,
-					number,
-					title,
-					description,
-					status,
-					priority,
-					type,
-					dueDate,
-					estimateMinutes: estimate,
-					tags,
-					createdBy: me.id
-				});
-
-				const validAssignees: string[] = [];
-				if (finalAssignees.length) {
-					const usersFound = await tx
-						.select({ id: user.id })
-						.from(user)
-						.where(inArray(user.id, finalAssignees));
-					for (const u of usersFound) validAssignees.push(u.id);
-				}
-				if (validAssignees.length === 0) validAssignees.push(me.id);
-
-				await tx.insert(taskAssignee).values(
-					validAssignees.map((userId) => ({ taskId: newId, userId }))
-				);
-
-				if (plannedFor) {
-					await tx.insert(taskPlanning).values({
-						taskId: newId,
-						userId: me.id,
-						plannedFor
-					});
-				}
-
-				displayId = `${p.key}-${number}`;
-				assignedIds = validAssignees;
-
-				await logActivity(tx, {
-					projectId: p.id,
-					taskId: newId,
-					actorId: me.id,
-					type: 'task.created',
-					meta: { taskRef: displayId, taskTitle: title }
-				});
+			created = await createTask({
+				projectId: p.id,
+				projectKey: p.key,
+				title,
+				description,
+				status,
+				priority,
+				type,
+				dueDate,
+				estimateMinutes: estimate,
+				tags,
+				assigneeIds,
+				createdBy: me.id,
+				plannedForUserId: me.id,
+				plannedFor: plannedFor || null
 			});
 		} catch (err) {
 			console.error('task create failed', err);
 			return fail(500, { message: m.tasks_err_failed_create() });
 		}
+		const { id: newId, displayId, assignedIds } = created;
 
 		// Notify each newly-assigned user (notify() drops the actor itself, so
 		// self-assignment is silent). Fire-and-forget: a failed notification
@@ -385,6 +345,18 @@ export const actions: Actions = {
 				type: 'task.status',
 				meta: { ...taskMeta, from: priorStatus, to: patch.status }
 			});
+			// Keep a linked source ticket in step: resolve it once all its tasks
+			// are done; note (don't reopen) when a done task is reopened.
+			// Fire-and-forget — a failed sync must never undo the task save.
+			if (target.sourceTicketId) {
+				void syncTicketForLinkedTaskStatus({
+					ticketId: target.sourceTicketId,
+					actorId: me.id,
+					prevStatus: priorStatus,
+					newStatus: patch.status,
+					reopenNote: m.tickets_note_task_reopened({ ref: displayId })
+				}).catch((err) => console.error('ticket sync failed', err));
+			}
 		}
 		if (typeof patch.priority === 'string' && patch.priority !== target.priority) {
 			logActivityFF({

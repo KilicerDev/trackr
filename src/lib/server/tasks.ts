@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, ne } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { db } from './db';
 import {
 	project,
@@ -6,8 +6,13 @@ import {
 	task,
 	taskAssignee,
 	taskPlanning,
-	taskTimeLog
+	taskTimeLog,
+	ticket,
+	organization
 } from './db/app.schema';
+import { user } from './db/auth.schema';
+import { logActivity } from './activity';
+import { ticketDisplayId } from './tickets';
 import type { Task } from '$lib/types';
 import { listAttachmentsForMany } from './attachments';
 
@@ -62,6 +67,7 @@ export async function loadTasks(opts?: {
 			createdBy: task.createdBy,
 			createdAt: task.createdAt,
 			updatedAt: task.updatedAt,
+			sourceTicketId: task.sourceTicketId,
 			projectKey: project.key
 		})
 		.from(task)
@@ -178,6 +184,31 @@ export async function loadTasks(opts?: {
 		}
 	}
 
+	// Resolve display info for any linked source tickets so the Inspector can
+	// render a "Source ticket" chip. One small query keyed by the distinct set.
+	const sourceTicketIds = [
+		...new Set(taskRows.map((t) => t.sourceTicketId).filter((v): v is string => !!v))
+	];
+	const sourceTicketById = new Map<string, { id: string; displayId: string }>();
+	if (sourceTicketIds.length) {
+		const ticketRows = await db
+			.select({
+				id: ticket.id,
+				number: ticket.number,
+				slug: organization.slug,
+				isInternal: organization.isInternal
+			})
+			.from(ticket)
+			.innerJoin(organization, eq(organization.id, ticket.orgId))
+			.where(inArray(ticket.id, sourceTicketIds));
+		for (const r of ticketRows) {
+			sourceTicketById.set(r.id, {
+				id: r.id,
+				displayId: ticketDisplayId(r.slug, r.isInternal, r.number)
+			});
+		}
+	}
+
 	const displayById = new Map<string, string>();
 	for (const t of taskRows) displayById.set(t.id, `${t.projectKey}-${t.number}`);
 
@@ -208,7 +239,104 @@ export async function loadTasks(opts?: {
 			files: attachmentsByTask.get(t.id) ?? [],
 			timeLogs: logsByTask.get(t.id) ?? [],
 			plannedFor: planByTask.has(t.id) ? planByTask.get(t.id) || null : null,
-			inMyPlan: planByTask.has(t.id)
+			inMyPlan: planByTask.has(t.id),
+			sourceTicket: t.sourceTicketId ? sourceTicketById.get(t.sourceTicketId) ?? null : null
 		};
 	});
+}
+
+export type CreateTaskInput = {
+	projectId: string;
+	projectKey: string;
+	title: string;
+	description: string | null;
+	status: string;
+	priority: string;
+	type: string;
+	dueDate?: Date | null;
+	estimateMinutes?: number | null;
+	tags?: string[];
+	assigneeIds?: string[];
+	createdBy: string;
+	/** When set, plan the task into this user's week. */
+	plannedForUserId?: string;
+	plannedFor?: string | null;
+	/** Set when the task is spun up from a support ticket. */
+	sourceTicketId?: string | null;
+};
+
+/**
+ * Single insert path for tasks: allocates the per-project number under row
+ * lock, inserts the task + assignees (+ optional planning row), and logs the
+ * `task.created` activity — all in one transaction. Shared by the /tasks create
+ * action and the ticket → task conversion. Assignees are validated against the
+ * user table; an empty/invalid set falls back to the creator.
+ */
+export async function createTask(
+	input: CreateTaskInput
+): Promise<{ id: string; number: number; displayId: string; assignedIds: string[] }> {
+	const id = crypto.randomUUID();
+	const requested = input.assigneeIds?.length ? input.assigneeIds : [input.createdBy];
+	let number = 0;
+	let displayId = '';
+	let assignedIds: string[] = [];
+
+	await db.transaction(async (tx) => {
+		const [bumped] = await tx
+			.update(project)
+			.set({ nextTaskNumber: sql`${project.nextTaskNumber} + 1` })
+			.where(eq(project.id, input.projectId))
+			.returning({ next: project.nextTaskNumber });
+		if (!bumped) throw new Error('Project not found');
+		number = bumped.next - 1;
+
+		await tx.insert(task).values({
+			id,
+			projectId: input.projectId,
+			number,
+			title: input.title,
+			description: input.description,
+			status: input.status,
+			priority: input.priority,
+			type: input.type,
+			dueDate: input.dueDate ?? null,
+			estimateMinutes: input.estimateMinutes ?? null,
+			tags: input.tags ?? [],
+			createdBy: input.createdBy,
+			sourceTicketId: input.sourceTicketId ?? null
+		});
+
+		const validAssignees: string[] = [];
+		const usersFound = await tx
+			.select({ id: user.id })
+			.from(user)
+			.where(inArray(user.id, requested));
+		for (const u of usersFound) validAssignees.push(u.id);
+		if (validAssignees.length === 0) validAssignees.push(input.createdBy);
+
+		await tx
+			.insert(taskAssignee)
+			.values(validAssignees.map((userId) => ({ taskId: id, userId })));
+
+		if (input.plannedForUserId && input.plannedFor) {
+			await tx.insert(taskPlanning).values({
+				taskId: id,
+				userId: input.plannedForUserId,
+				plannedFor: input.plannedFor
+			});
+		}
+
+		displayId = `${input.projectKey}-${number}`;
+		assignedIds = validAssignees;
+
+		await logActivity(tx, {
+			projectId: input.projectId,
+			taskId: id,
+			actorId: input.createdBy,
+			type: 'task.created',
+			meta: { taskRef: displayId, taskTitle: input.title }
+		});
+	});
+
+	return { id, number, displayId, assignedIds };
 }

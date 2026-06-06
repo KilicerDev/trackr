@@ -637,12 +637,22 @@
 				class="w-full resize-none bg-transparent border-0 outline-none text-[13.5px] leading-relaxed text-text-2 mb-5 placeholder:text-text-4 min-h-[60px]"
 			></textarea>
 
-			{#if draft.parent || (draft.labels && draft.labels.length > 0) || canEdit}
+			{#if draft.parent || draft.sourceTicket || (draft.labels && draft.labels.length > 0) || canEdit}
 				<div class="flex flex-wrap items-center gap-2 mb-6">
 					{#if draft.parent}
 						<span class="inline-flex items-center gap-1.5 text-[11.5px] font-mono px-2 py-1 rounded border border-border bg-surface text-text-3">
 							<Icon name="chevron-r" size={11} /> {draft.parent}
 						</span>
+					{/if}
+					{#if draft.sourceTicket}
+						<a
+							href="/tickets/{draft.sourceTicket.id}"
+							title={m.tasks_source_ticket()}
+							class="inline-flex items-center gap-1.5 text-[11.5px] px-2 py-1 rounded border border-border bg-surface text-text-3 hover:text-text hover:border-border-strong transition-colors"
+						>
+							<Icon name="link" size={11} />
+							<span class="font-mono">{draft.sourceTicket.displayId}</span>
+						</a>
 					{/if}
 					{#each draft.labels as l (l)}<LabelChip id={l} />{/each}
 					{#if canEdit}

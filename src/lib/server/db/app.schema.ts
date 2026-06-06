@@ -271,6 +271,13 @@ export const task = pgTable(
 		priority: text('priority').notNull().default('none'),
 		type: text('type').notNull().default('task'),
 		parentId: text('parent_id').references((): AnyPgColumn => task.id, { onDelete: 'set null' }),
+		// Set when this task was spun up from a support ticket (admin/team
+		// "convert ticket → task" flow). Nullable; one ticket may seed many
+		// tasks. `set null` keeps the FK clean if a ticket is ever hard-deleted
+		// (normal ticket delete is soft, so the link otherwise survives).
+		sourceTicketId: text('source_ticket_id').references((): AnyPgColumn => ticket.id, {
+			onDelete: 'set null'
+		}),
 		dueDate: timestamp('due_date'),
 		startDate: timestamp('start_date'),
 		endDate: timestamp('end_date'),
@@ -288,7 +295,8 @@ export const task = pgTable(
 	(t) => [
 		uniqueIndex('task_project_number_idx').on(t.projectId, t.number),
 		index('task_project_status_idx').on(t.projectId, t.status),
-		index('task_parent_idx').on(t.parentId)
+		index('task_parent_idx').on(t.parentId),
+		index('task_source_ticket_idx').on(t.sourceTicketId)
 	]
 );
 
