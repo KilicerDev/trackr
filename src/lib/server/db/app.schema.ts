@@ -970,3 +970,39 @@ export const feedbackRelations = relations(feedback, ({ one }) => ({
 		references: [user.id]
 	})
 }));
+
+// ─── Audit log ───────────────────────────────────────────────────────────────
+// Workspace-wide security/admin trail: one row per meaningful action (auth,
+// membership, project/task/ticket lifecycle, settings). Written via
+// `recordAudit` in $lib/server/audit. `actorId` is `set null` on user delete so
+// history survives — `actorLabel` snapshots the name/email at write time and
+// also names anonymous actors (e.g. a failed login). `kind` is the filter
+// bucket (auth|member|project|task|ticket|settings); `meta` carries the rich
+// payload shown in the detail drawer.
+
+export const auditLog = pgTable(
+	'audit_log',
+	{
+		id: text('id').primaryKey(),
+		type: text('type').notNull(),
+		kind: text('kind').notNull(),
+		actorId: text('actor_id').references(() => user.id, { onDelete: 'set null' }),
+		actorLabel: text('actor_label'),
+		targetType: text('target_type'),
+		targetId: text('target_id'),
+		targetLabel: text('target_label'),
+		orgId: text('org_id'),
+		ipAddress: text('ip_address'),
+		userAgent: text('user_agent'),
+		meta: jsonb('meta').$type<Record<string, unknown>>(),
+		createdAt: timestamp('created_at').defaultNow().notNull()
+	},
+	(t) => [
+		index('audit_log_created_idx').on(t.createdAt),
+		index('audit_log_kind_created_idx').on(t.kind, t.createdAt),
+		index('audit_log_type_idx').on(t.type),
+		index('audit_log_actor_idx').on(t.actorId)
+	]
+);
+
+export type AuditLog = typeof auditLog.$inferSelect;

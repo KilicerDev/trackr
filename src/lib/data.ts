@@ -1,12 +1,4 @@
-import type {
-	LogEvent,
-	Project,
-	ProjectId,
-	RoleId,
-	Task,
-	User,
-	WikiPage
-} from './types';
+import type { Project, ProjectId, RoleId, Task, User, WikiPage } from './types';
 import { m } from '$lib/paraglide/messages';
 import { getLocale } from '$lib/paraglide/runtime';
 
@@ -330,14 +322,31 @@ export const LOG_EVENT_TYPES: Record<
 	string,
 	{ label: string; icon: string; color: string; kind: string }
 > = {
-	'user.invite': { label: 'User invited', icon: 'plus', color: '#7a9cf0', kind: 'member' },
-	'user.role_change': { label: 'Role changed', icon: 'shield', color: '#c08bd6', kind: 'member' },
-	'user.disable': { label: 'User disabled', icon: 'x', color: '#ef7a6d', kind: 'member' },
+	// auth
 	'login.success': { label: 'Signed in', icon: 'check', color: '#7fc8a9', kind: 'auth' },
 	'login.fail': { label: 'Sign-in failed', icon: 'x', color: '#ef4f5e', kind: 'auth' },
+	'user.password_reset': { label: 'Password reset sent', icon: 'refresh', color: '#e9c46a', kind: 'auth' },
+	// members
+	'user.create': { label: 'User created', icon: 'plus', color: '#7fc8a9', kind: 'member' },
+	'user.invite': { label: 'User invited', icon: 'plus', color: '#7a9cf0', kind: 'member' },
+	'user.invite_revoke': { label: 'Invite revoked', icon: 'x', color: '#9aa4b2', kind: 'member' },
+	'user.role_change': { label: 'Role changed', icon: 'shield', color: '#c08bd6', kind: 'member' },
+	'user.disable': { label: 'User disabled', icon: 'x', color: '#ef7a6d', kind: 'member' },
+	'user.delete': { label: 'User deleted', icon: 'trash', color: '#ef4f5e', kind: 'member' },
+	'user.impersonate': { label: 'Impersonation started', icon: 'users', color: '#c08bd6', kind: 'member' },
+	// projects
 	'project.create': { label: 'Project created', icon: 'folder', color: '#7fc8a9', kind: 'project' },
+	'project.update': { label: 'Project updated', icon: 'settings', color: '#7a9cf0', kind: 'project' },
 	'project.archive': { label: 'Project archived', icon: 'folder', color: '#9aa4b2', kind: 'project' },
+	'project.delete': { label: 'Project deleted', icon: 'trash', color: '#ef4f5e', kind: 'project' },
+	'project.member': { label: 'Project membership changed', icon: 'users', color: '#7a9cf0', kind: 'project' },
+	// tasks
 	'task.delete': { label: 'Task deleted', icon: 'x', color: '#ef7a6d', kind: 'task' },
+	// tickets
+	'ticket.create': { label: 'Ticket created', icon: 'ticket', color: '#7fc8a9', kind: 'ticket' },
+	'ticket.delete': { label: 'Ticket deleted', icon: 'trash', color: '#ef7a6d', kind: 'ticket' },
+	'ticket.convert': { label: 'Ticket converted to task', icon: 'arrow-up', color: '#7a9cf0', kind: 'ticket' },
+	// settings
 	'settings.update': { label: 'Settings changed', icon: 'settings', color: '#e9c46a', kind: 'settings' },
 	'api.token': { label: 'API token created', icon: 'shield', color: '#7a9cf0', kind: 'settings' }
 };
@@ -348,22 +357,8 @@ export const LOG_KINDS = [
 	{ id: 'auth', label: 'Auth' },
 	{ id: 'project', label: 'Projects' },
 	{ id: 'task', label: 'Tasks' },
+	{ id: 'ticket', label: 'Tickets' },
 	{ id: 'settings', label: 'Settings' }
-];
-
-export const LOG_EVENTS: LogEvent[] = [
-	{ id: 'e1', type: 'user.invite', actor: 'u6', target: 'pieter.janssen@trackr.dev', at: '2026-05-12 16:42', ip: '85.10.21.4', device: 'Chrome · macOS' },
-	{ id: 'e2', type: 'user.role_change', actor: 'u6', target: 'Maja Schmidt → Admin', at: '2026-05-12 14:18', ip: '85.10.21.4', device: 'Chrome · macOS' },
-	{ id: 'e3', type: 'login.success', actor: 'u2', target: 'leon.vogel@trackr.dev', at: '2026-05-12 09:02', ip: '94.137.55.18', device: 'Firefox · Linux' },
-	{ id: 'e4', type: 'login.fail', actor: '?', target: 'old.account@trackr.dev', at: '2026-05-12 02:14', ip: '203.0.113.7', device: 'Unknown' },
-	{ id: 'e5', type: 'project.create', actor: 'u6', target: 'Webim Campaign', at: '2026-05-11 17:30', ip: '85.10.21.4', device: 'Chrome · macOS' },
-	{ id: 'e6', type: 'task.delete', actor: 'u2', target: 'SIWEB-44 · Export to CSV', at: '2026-05-11 11:05', ip: '94.137.55.18', device: 'Firefox · Linux' },
-	{ id: 'e7', type: 'settings.update', actor: 'u6', target: 'Workspace name → Trackr', at: '2026-05-10 19:50', ip: '85.10.21.4', device: 'Chrome · macOS' },
-	{ id: 'e8', type: 'api.token', actor: 'u6', target: 'CI bot · scopes: read', at: '2026-05-10 12:11', ip: '85.10.21.4', device: 'Chrome · macOS' },
-	{ id: 'e9', type: 'user.disable', actor: 'u6', target: 'Old Account', at: '2026-05-09 21:00', ip: '85.10.21.4', device: 'Chrome · macOS' },
-	{ id: 'e10', type: 'login.success', actor: 'u3', target: 'ines.krueger@trackr.dev', at: '2026-05-09 08:44', ip: '212.45.13.99', device: 'Safari · iOS' },
-	{ id: 'e11', type: 'project.archive', actor: 'u4', target: 'Legacy Catalog', at: '2026-05-08 15:28', ip: '94.137.55.18', device: 'Chrome · Windows' },
-	{ id: 'e12', type: 'login.fail', actor: '?', target: 'yusuf.aydin@trackr.dev', at: '2026-05-08 03:09', ip: '45.95.168.2', device: 'curl/8' }
 ];
 
 const MONTHS_SHORT: Record<string, string[]> = {

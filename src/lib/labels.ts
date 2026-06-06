@@ -148,6 +148,7 @@ export function logKindLabel(id: string): string {
 			auth: m.log_kind_auth,
 			project: m.log_kind_project,
 			task: m.log_kind_task,
+			ticket: m.log_kind_ticket,
 			settings: m.log_kind_settings
 		},
 		id
@@ -157,14 +158,25 @@ export function logKindLabel(id: string): string {
 export function logEventLabel(type: string): string {
 	return pick(
 		{
-			'user.invite': m.log_event_user_invite,
-			'user.role_change': m.log_event_user_role_change,
-			'user.disable': m.log_event_user_disable,
 			'login.success': m.log_event_login_success,
 			'login.fail': m.log_event_login_fail,
+			'user.password_reset': m.log_event_user_password_reset,
+			'user.create': m.log_event_user_create,
+			'user.invite': m.log_event_user_invite,
+			'user.invite_revoke': m.log_event_user_invite_revoke,
+			'user.role_change': m.log_event_user_role_change,
+			'user.disable': m.log_event_user_disable,
+			'user.delete': m.log_event_user_delete,
+			'user.impersonate': m.log_event_user_impersonate,
 			'project.create': m.log_event_project_create,
+			'project.update': m.log_event_project_update,
 			'project.archive': m.log_event_project_archive,
+			'project.delete': m.log_event_project_delete,
+			'project.member': m.log_event_project_member,
 			'task.delete': m.log_event_task_delete,
+			'ticket.create': m.log_event_ticket_create,
+			'ticket.delete': m.log_event_ticket_delete,
+			'ticket.convert': m.log_event_ticket_convert,
 			'settings.update': m.log_event_settings_update,
 			'api.token': m.log_event_api_token
 		},
