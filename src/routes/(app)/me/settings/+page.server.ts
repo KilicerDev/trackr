@@ -40,7 +40,16 @@ export const actions: Actions = {
 
 		// Carry the new locale to the next request so SSR renders in the chosen
 		// language immediately (the layout reload picks it up via the cookie).
-		cookies.set(cookieName, locale, { path: '/', maxAge: 60 * 60 * 24 * 400 });
+		// httpOnly:false is REQUIRED — Paraglide's client runtime reads this
+		// cookie via document.cookie to resolve the locale after hydration; an
+		// httpOnly cookie would be invisible to it, so the client would fall back
+		// to the browser language and the UI would silently revert on navigation.
+		cookies.set(cookieName, locale, {
+			path: '/',
+			maxAge: 60 * 60 * 24 * 400,
+			httpOnly: false,
+			sameSite: 'lax'
+		});
 
 		return { success: true };
 	}

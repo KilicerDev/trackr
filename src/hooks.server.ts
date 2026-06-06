@@ -36,7 +36,15 @@ const handleLocale: Handle = async ({ event, resolve }) => {
 		if (current !== desired) {
 			// Rewrite the incoming request's cookie so paraglideMiddleware (next hook)
 			// resolves the DB locale on *this* request, and persist it for the next one.
-			event.cookies.set(cookieName, desired, { path: '/', maxAge: 60 * 60 * 24 * 400 });
+			// httpOnly:false so Paraglide's client runtime can read it after
+			// hydration (matches the settings action; an httpOnly cookie would make
+			// the client fall back to the browser language).
+			event.cookies.set(cookieName, desired, {
+				path: '/',
+				maxAge: 60 * 60 * 24 * 400,
+				httpOnly: false,
+				sameSite: 'lax'
+			});
 			const headers = new Headers(event.request.headers);
 			const others = (headers.get('cookie') ?? '')
 				.split(';')

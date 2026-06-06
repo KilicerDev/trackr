@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import Select from '$lib/components/Select.svelte';
 	import { showToast } from '$lib/toast.svelte';
 	import { m } from '$lib/paraglide/messages';
 
@@ -147,32 +148,16 @@
 				{/each}
 			</div>
 
-			<label for="locale" class="text-text-3">{m.settings_language()}</label>
-			<select
-				id="locale"
-				bind:value={locale}
-				class="bg-surface border border-border rounded-lg px-3 py-2 outline-none focus:border-border-strong w-full max-w-[260px]"
-			>
-				{#each localeOptions as o (o.value)}
-					<option value={o.value}>{o.label}</option>
-				{/each}
-			</select>
+			<span class="text-text-3">{m.settings_language()}</span>
+			<Select bind:value={locale} options={localeOptions} ariaLabel={m.settings_language()} />
 		</div>
 	</section>
 
 	<section class="bg-bg-elev border border-border rounded-2xl p-5">
 		<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-4">{m.settings_defaults()}</div>
 		<div class="grid grid-cols-[140px_1fr] items-center gap-y-4 gap-x-4 text-[13px]">
-			<label for="land" class="text-text-3">{m.settings_landing_page()}</label>
-			<select
-				id="land"
-				bind:value={defaultLanding}
-				class="bg-surface border border-border rounded-lg px-3 py-2 outline-none focus:border-border-strong w-full max-w-[260px]"
-			>
-				{#each landings as l (l.value)}
-					<option value={l.value}>{l.label}</option>
-				{/each}
-			</select>
+			<span class="text-text-3">{m.settings_landing_page()}</span>
+			<Select bind:value={defaultLanding} options={landings} ariaLabel={m.settings_landing_page()} />
 
 			<div class="text-text-3">{m.settings_week_starts_on()}</div>
 			<div class="inline-flex items-center h-8 bg-surface border border-border rounded-lg p-0.5">
