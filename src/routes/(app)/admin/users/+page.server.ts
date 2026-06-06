@@ -174,7 +174,8 @@ export const actions: Actions = {
 				role,
 				orgId: resolved.orgId,
 				orgRole: resolved.orgRole,
-				invitedBy: event.locals.user?.id ?? null
+				invitedBy: event.locals.user?.id ?? null,
+				origin: event.url.origin
 			});
 			await sendEmail(
 				invitationEmail({
@@ -216,7 +217,8 @@ export const actions: Actions = {
 				role: (existing.role as InvitationRole) ?? 'user',
 				orgId: existing.orgId,
 				orgRole: existing.orgRole,
-				invitedBy: event.locals.user?.id ?? existing.invitedBy
+				invitedBy: event.locals.user?.id ?? existing.invitedBy,
+				origin: event.url.origin
 			});
 			await sendEmail(
 				invitationEmail({

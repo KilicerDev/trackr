@@ -19,9 +19,13 @@ function generateToken(): string {
 	return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function acceptUrl(token: string): string {
-	const origin = env.ORIGIN?.replace(/\/$/, '') ?? '';
-	return `${origin}/accept-invite?token=${encodeURIComponent(token)}`;
+// Builds the absolute accept-invite link. Prefer the caller-supplied request
+// origin (event.url.origin) — under host-based routing `env.ORIGIN` is unset, so
+// relying on it alone yields a relative link with no domain. Falls back to
+// env.ORIGIN for single-host deploys, then to a relative path as a last resort.
+function acceptUrl(token: string, origin?: string | null): string {
+	const base = (origin ?? env.ORIGIN ?? '').replace(/\/$/, '');
+	return `${base}/accept-invite?token=${encodeURIComponent(token)}`;
 }
 
 export type CreatedInvitation = {
@@ -36,6 +40,8 @@ export async function createOrRefreshInvitation(opts: {
 	orgId: string | null;
 	orgRole: string | null;
 	invitedBy?: string | null;
+	// Request origin (event.url.origin) used to build an absolute accept link.
+	origin?: string | null;
 }): Promise<CreatedInvitation> {
 	const email = opts.email.trim().toLowerCase();
 	const name = opts.name.trim();
@@ -59,7 +65,7 @@ export async function createOrRefreshInvitation(opts: {
 			})
 			.where(eq(invitation.id, existing.id))
 			.returning();
-		return { invitation: updated, acceptUrl: acceptUrl(token) };
+		return { invitation: updated, acceptUrl: acceptUrl(token, opts.origin) };
 	}
 
 	const [created] = await db
@@ -76,7 +82,7 @@ export async function createOrRefreshInvitation(opts: {
 			invitedBy: opts.invitedBy ?? null
 		})
 		.returning();
-	return { invitation: created, acceptUrl: acceptUrl(created.token) };
+	return { invitation: created, acceptUrl: acceptUrl(created.token, opts.origin) };
 }
 
 export async function findInvitationByToken(token: string): Promise<Invitation | null> {
