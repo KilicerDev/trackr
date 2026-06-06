@@ -3,11 +3,20 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { admin } from 'better-auth/plugins/admin';
 import { adminAc, defaultAc, userAc } from 'better-auth/plugins/admin/access';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
 import { sendEmailFireAndForget } from '$lib/server/email';
 import { passwordResetEmail } from '$lib/server/email/templates';
+import { recordAudit } from '$lib/server/audit';
+
+function ipFromHeaders(headers: Headers | undefined): string | null {
+	if (!headers) return null;
+	const fwd = headers.get('x-forwarded-for');
+	if (fwd) return fwd.split(',')[0]?.trim() ?? null;
+	return headers.get('x-real-ip');
+}
 
 // Force the current request's origin onto a better-auth-generated link. Under
 // host-based routing `baseURL` (env.ORIGIN) is unset, so the link better-auth
@@ -39,6 +48,48 @@ export const auth = betterAuth({
 		}
 	},
 	trustedOrigins: env.ORIGIN ? [env.ORIGIN] : [],
+	// Audit: record successful sign-ins as sessions are created (skip
+	// impersonation sessions — those are logged from the admin action instead).
+	databaseHooks: {
+		session: {
+			create: {
+				after: async (session) => {
+					if (session.impersonatedBy) return;
+					void recordAudit({
+						type: 'login.success',
+						actorId: session.userId,
+						targetType: 'user',
+						targetId: session.userId,
+						ipAddress: session.ipAddress ?? null,
+						userAgent: session.userAgent ?? null
+					});
+				}
+			}
+		}
+	},
+	// Audit: record failed email sign-ins. The endpoint returns an APIError on
+	// bad credentials; the actor is anonymous (we only know the email tried).
+	hooks: {
+		after: createAuthMiddleware(async (ctx) => {
+			if (ctx.path !== '/sign-in/email') return;
+			const returned = ctx.context.returned;
+			if (!(returned instanceof APIError)) return;
+			const email =
+				typeof (ctx.body as { email?: unknown } | undefined)?.email === 'string'
+					? (ctx.body as { email: string }).email
+					: null;
+			void recordAudit({
+				type: 'login.fail',
+				actorId: null,
+				actorLabel: email,
+				targetType: 'user',
+				targetLabel: email,
+				ipAddress: ipFromHeaders(ctx.headers),
+				userAgent: ctx.headers?.get('user-agent') ?? null,
+				meta: { status: returned.status }
+			});
+		})
+	},
 	plugins: [
 		admin({
 			defaultRole: 'user',

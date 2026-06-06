@@ -10,6 +10,7 @@ import {
 import { user } from '$lib/server/db/auth.schema';
 import { accessibleProjectIds, assertCan } from '$lib/server/permissions';
 import { getPreferences } from '$lib/server/preferences';
+import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
 
 interface MemberSummary {
@@ -228,6 +229,16 @@ export const actions: Actions = {
 					role: userId === leadId ? 'project.manager' : 'project.member'
 				}))
 			);
+		});
+
+		void recordAudit({
+			type: 'project.create',
+			actorId: me.id,
+			targetType: 'project',
+			targetId: id,
+			targetLabel: name,
+			orgId,
+			meta: { key }
 		});
 
 		return { success: true, id };

@@ -2,6 +2,7 @@ import { fail, type Actions } from '@sveltejs/kit';
 import { count, eq, ne } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { organization, project } from '$lib/server/db/app.schema';
+import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
 import type { PageServerLoad } from './$types';
 
@@ -89,6 +90,16 @@ export const actions: Actions = {
 			description,
 			color,
 			createdBy: locals.user.id
+		});
+
+		void recordAudit({
+			type: 'settings.update',
+			actorId: locals.user.id,
+			targetType: 'org',
+			targetId: id,
+			targetLabel: name,
+			orgId: id,
+			meta: { action: 'org.create', slug }
 		});
 
 		return { success: true, id, slug };

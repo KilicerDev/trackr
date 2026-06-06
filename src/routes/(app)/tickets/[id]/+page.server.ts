@@ -11,6 +11,7 @@ import {
 	updateTicket
 } from '$lib/server/tickets';
 import { createTask } from '$lib/server/tasks';
+import { recordAudit } from '$lib/server/audit';
 import { markEntityRead, notify } from '$lib/server/notify';
 import { listAttachments, listAttachmentsForMany } from '$lib/server/attachments';
 import { m } from '$lib/paraglide/messages';
@@ -231,6 +232,16 @@ export const actions: Actions = {
 			entity: { type: 'task', id: created.id },
 			baseUrl: url.origin
 		}).catch((err) => console.error('ticket→task notify failed', err));
+
+		void recordAudit({
+			type: 'ticket.convert',
+			actorId: me.id,
+			targetType: 'ticket',
+			targetId: ticketId,
+			targetLabel: `${t.displayId} · ${t.subject}`,
+			orgId: t.orgId,
+			meta: { taskRef: created.displayId, taskId: created.id, projectId: p.id }
+		});
 
 		return { ok: true, displayId: created.displayId };
 	}

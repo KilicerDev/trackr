@@ -1,5 +1,5 @@
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
 	project,
@@ -12,8 +12,20 @@ import { user } from '$lib/server/db/auth.schema';
 import { loadTasks } from '$lib/server/tasks';
 import { loadProjectActivity } from '$lib/server/activity-feed';
 import { logActivityFF } from '$lib/server/activity';
+import { recordAudit } from '$lib/server/audit';
 import { assertCan } from '$lib/server/permissions';
 import { m } from '$lib/paraglide/messages';
+
+// "KEY · Name" for the audit log's target column. Best-effort; returns the id
+// if the project can't be read.
+async function projectLabel(id: string): Promise<string> {
+	const [p] = await db
+		.select({ name: project.name, key: project.key })
+		.from(project)
+		.where(eq(project.id, id))
+		.limit(1);
+	return p ? `${p.key} · ${p.name}` : id;
+}
 
 const ALLOWED_MEMBER_ROLES = new Set(['project.manager', 'project.member', 'project.viewer']);
 const ALLOWED_STATUSES = new Set([
@@ -196,6 +208,14 @@ export const actions: Actions = {
 				meta: { from: prior.color, to: color }
 			});
 		}
+		void recordAudit({
+			type: 'project.update',
+			actorId,
+			targetType: 'project',
+			targetId: params.id,
+			targetLabel: name,
+			meta: { status, statusFrom: prior.status }
+		});
 		return { success: true };
 	},
 
@@ -215,6 +235,13 @@ export const actions: Actions = {
 			actorId: locals.user.id,
 			type: 'project.status',
 			meta: { to: 'archived' }
+		});
+		void recordAudit({
+			type: 'project.archive',
+			actorId: locals.user.id,
+			targetType: 'project',
+			targetId: params.id,
+			targetLabel: await projectLabel(params.id)
 		});
 		return { success: true };
 	},
@@ -267,8 +294,16 @@ export const actions: Actions = {
 		// strictly more destructive but we don't model a separate perm yet.
 		// Restrict to managers and Trackr admins via project.archive.
 		await assertCan(locals, 'project.archive', { projectId: params.id });
+		const label = await projectLabel(params.id);
 		// FK cascades take care of project_member, tasks, task_assignee, etc.
 		await db.delete(project).where(eq(project.id, params.id));
+		void recordAudit({
+			type: 'project.delete',
+			actorId: locals.user.id,
+			targetType: 'project',
+			targetId: params.id,
+			targetLabel: label
+		});
 		return { success: true };
 	},
 
@@ -303,6 +338,14 @@ export const actions: Actions = {
 			actorId: locals.user.id,
 			type: 'member.added',
 			meta: { userId, role }
+		});
+		void recordAudit({
+			type: 'project.member',
+			actorId: locals.user.id,
+			targetType: 'project',
+			targetId: params.id,
+			targetLabel: await projectLabel(params.id),
+			meta: { action: 'add', userId, role }
 		});
 		return { success: true };
 	},
@@ -378,6 +421,14 @@ export const actions: Actions = {
 			type: 'member.role',
 			meta: { userId, role }
 		});
+		void recordAudit({
+			type: 'project.member',
+			actorId: locals.user.id,
+			targetType: 'project',
+			targetId: params.id,
+			targetLabel: await projectLabel(params.id),
+			meta: { action: 'role', userId, role }
+		});
 		return { success: true };
 	},
 
@@ -422,6 +473,14 @@ export const actions: Actions = {
 			actorId: locals.user.id,
 			type: 'member.removed',
 			meta: { userId }
+		});
+		void recordAudit({
+			type: 'project.member',
+			actorId: locals.user.id,
+			targetType: 'project',
+			targetId: params.id,
+			targetLabel: await projectLabel(params.id),
+			meta: { action: 'remove', userId }
 		});
 		return { success: true };
 	},

@@ -22,6 +22,7 @@ import {
 	type TicketStatus
 } from '$lib/server/tickets';
 import { notify } from '$lib/server/notify';
+import { recordAudit } from '$lib/server/audit';
 import { ticketRecipients } from '$lib/server/notify-recipients';
 import { getPreferences } from '$lib/server/preferences';
 import { m } from '$lib/paraglide/messages';
@@ -184,6 +185,16 @@ export const actions: Actions = {
 				uploadedBy: me.id
 			});
 
+			void recordAudit({
+				type: 'ticket.create',
+				actorId: me.id,
+				targetType: 'ticket',
+				targetId: id,
+				targetLabel: `${displayId} · ${subject}`,
+				orgId,
+				meta: { priority, category, channel }
+			});
+
 			return { ok: true, id, displayId, attachmentsFailed: failed };
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : m.tickets_create_failed_server();
@@ -279,8 +290,19 @@ export const actions: Actions = {
 		// Administrational: only the internal admin roles hold this grant.
 		await assertCan(locals, 'org.tickets.delete.any', { orgId });
 
+		// Snapshot for the audit label before the ticket drops out of read paths.
+		const snapshot = await getTicket(id);
+
 		try {
 			await softDeleteTicket(id);
+			void recordAudit({
+				type: 'ticket.delete',
+				actorId: locals.user.id,
+				targetType: 'ticket',
+				targetId: id,
+				targetLabel: snapshot ? `${snapshot.displayId} · ${snapshot.subject}` : id,
+				orgId
+			});
 			// The ticket's read paths are now closed, so its attachments are
 			// already unreachable; remove their files (ticket-level + per-message)
 			// to reclaim disk.

@@ -12,6 +12,7 @@ import {
 	type InvitationRole
 } from '$lib/server/invitations';
 import { db } from '$lib/server/db';
+import { recordAudit } from '$lib/server/audit';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import { organization, organizationMember } from '$lib/server/db/app.schema';
 import { asc, desc } from 'drizzle-orm';
@@ -135,6 +136,17 @@ export const actions: Actions = {
 					target: [organizationMember.orgId, organizationMember.userId],
 					set: { role: resolved.orgRole }
 				});
+			void recordAudit(
+				{
+					type: 'user.create',
+					actorId: event.locals.user?.id ?? null,
+					targetType: 'user',
+					targetId: created.user.id,
+					targetLabel: email,
+					meta: { role, orgRole: resolved.orgRole }
+				},
+				event
+			);
 		} catch (err) {
 			if (err instanceof APIError) {
 				return fail(400, { message: err.message || m.admin_users_create_failed() });
@@ -186,6 +198,16 @@ export const actions: Actions = {
 					expiresAt: invitation.expiresAt
 				})
 			);
+			void recordAudit(
+				{
+					type: 'user.invite',
+					actorId: event.locals.user?.id ?? null,
+					targetType: 'user',
+					targetLabel: invitation.email,
+					meta: { role, orgRole: resolved.orgRole }
+				},
+				event
+			);
 		} catch (err) {
 			console.error('inviteUser failed', err);
 			return fail(500, { message: m.admin_users_invite_failed() });
@@ -229,6 +251,16 @@ export const actions: Actions = {
 					expiresAt: invitation.expiresAt
 				})
 			);
+			void recordAudit(
+				{
+					type: 'user.invite',
+					actorId: event.locals.user?.id ?? null,
+					targetType: 'user',
+					targetLabel: invitation.email,
+					meta: { resend: true }
+				},
+				event
+			);
 		} catch (err) {
 			console.error('resendInvitation failed', err);
 			return fail(500, { message: m.admin_err_resend_failed() });
@@ -254,6 +286,16 @@ export const actions: Actions = {
 		}
 
 		await revokeInvitation(id);
+		void recordAudit(
+			{
+				type: 'user.invite_revoke',
+				actorId: event.locals.user?.id ?? null,
+				targetType: 'user',
+				targetLabel: existing.email,
+				meta: { invitationId: id }
+			},
+			event
+		);
 		return { ok: true };
 	},
 
@@ -290,6 +332,16 @@ export const actions: Actions = {
 			return fail(500, { message: m.admin_err_generic() });
 		}
 
+		void recordAudit(
+			{
+				type: 'user.impersonate',
+				actorId: event.locals.user?.id ?? null,
+				targetType: 'user',
+				targetId: target.id,
+				targetLabel: target.email
+			},
+			event
+		);
 		return { ok: true };
 	},
 
@@ -323,6 +375,16 @@ export const actions: Actions = {
 			return fail(500, { message: m.admin_err_password_reset_failed() });
 		}
 
+		void recordAudit(
+			{
+				type: 'user.password_reset',
+				actorId: event.locals.user?.id ?? null,
+				targetType: 'user',
+				targetId: target.id,
+				targetLabel: target.email
+			},
+			event
+		);
 		return { ok: true };
 	},
 
@@ -366,6 +428,17 @@ export const actions: Actions = {
 			return fail(500, { message: m.admin_err_generic() });
 		}
 
+		void recordAudit(
+			{
+				type: 'user.delete',
+				actorId: event.locals.user?.id ?? null,
+				targetType: 'user',
+				targetId: target.id,
+				targetLabel: target.name ?? target.email,
+				meta: { email: target.email }
+			},
+			event
+		);
 		return { ok: true };
 	}
 };

@@ -13,6 +13,7 @@ import { user } from '$lib/server/db/auth.schema';
 import { createTask, loadTasks } from '$lib/server/tasks';
 import { normalizeTag } from '$lib/labelMeta';
 import { logActivityFF } from '$lib/server/activity';
+import { recordAudit } from '$lib/server/audit';
 import { syncTicketForLinkedTaskStatus } from '$lib/server/tickets';
 import { notify } from '$lib/server/notify';
 import { taskRecipients } from '$lib/server/notify-recipients';
@@ -614,6 +615,15 @@ export const actions: Actions = {
 			actorId: locals.user.id,
 			type: 'task.deleted',
 			meta: { taskRef: displayId, taskTitle: target.title }
+		});
+		void recordAudit({
+			type: 'task.delete',
+			actorId: locals.user.id,
+			targetType: 'task',
+			targetId: target.id,
+			targetLabel: `${displayId} · ${target.title}`,
+			orgId: target.projectOrgId,
+			meta: { projectId: target.projectId, taskRef: displayId }
 		});
 
 		return { success: true };

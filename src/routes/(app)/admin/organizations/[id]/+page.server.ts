@@ -1,11 +1,22 @@
-import { error, fail, redirect, type Actions } from '@sveltejs/kit';
+import { error, fail, type Actions } from '@sveltejs/kit';
 import { and, count, desc, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { organization, organizationMember, project } from '$lib/server/db/app.schema';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import { allowedOrgRoles } from '$lib/roles';
+import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
 import type { PageServerLoad } from './$types';
+
+// Display labels for the audit log. Best-effort; fall back to the id.
+async function orgName(id: string): Promise<string> {
+	const [o] = await db.select({ name: organization.name }).from(organization).where(eq(organization.id, id)).limit(1);
+	return o?.name ?? id;
+}
+async function userLabel(id: string): Promise<string> {
+	const [u] = await db.select({ name: userTable.name, email: userTable.email }).from(userTable).where(eq(userTable.id, id)).limit(1);
+	return u ? (u.name ?? u.email) : id;
+}
 
 // Role IDs assignable on each org type come from the shared helper. Internal-
 // only roles (superadmin / admin / staff) belong exclusively to the Trackr
@@ -123,7 +134,7 @@ async function countTopRoleHolders(orgId: string, isInternal: boolean): Promise<
 }
 
 export const actions: Actions = {
-	update: async ({ request, params }) => {
+	update: async ({ request, params, locals }) => {
 		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
 
 		const form = await request.formData();
@@ -159,6 +170,15 @@ export const actions: Actions = {
 		}
 
 		await db.update(organization).set(patch).where(eq(organization.id, params.id));
+		void recordAudit({
+			type: 'settings.update',
+			actorId: locals.user?.id ?? null,
+			targetType: 'org',
+			targetId: params.id,
+			targetLabel: (patch.name as string | undefined) ?? (await orgName(params.id)),
+			orgId: params.id,
+			meta: { action: 'org.update', fields: Object.keys(patch) }
+		});
 		return { success: true };
 	},
 
@@ -180,7 +200,7 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	memberAdd: async ({ request, params }) => {
+	memberAdd: async ({ request, params, locals }) => {
 		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
 
 		const org = await loadOrgOrFail(params.id);
@@ -218,10 +238,19 @@ export const actions: Actions = {
 			console.error('memberAdd failed', err);
 			return fail(500, { message: m.admin_err_add_member_failed() });
 		}
+		void recordAudit({
+			type: 'user.role_change',
+			actorId: locals.user?.id ?? null,
+			targetType: 'user',
+			targetId: userId,
+			targetLabel: await userLabel(userId),
+			orgId: params.id,
+			meta: { action: 'org.member_add', orgId: params.id, role: requestedRole }
+		});
 		return { success: true };
 	},
 
-	memberSetRole: async ({ request, params }) => {
+	memberSetRole: async ({ request, params, locals }) => {
 		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
 
 		const org = await loadOrgOrFail(params.id);
@@ -267,10 +296,19 @@ export const actions: Actions = {
 			.where(
 				and(eq(organizationMember.orgId, params.id), eq(organizationMember.userId, userId))
 			);
+		void recordAudit({
+			type: 'user.role_change',
+			actorId: locals.user?.id ?? null,
+			targetType: 'user',
+			targetId: userId,
+			targetLabel: await userLabel(userId),
+			orgId: params.id,
+			meta: { action: 'org.member_role', orgId: params.id, role }
+		});
 		return { success: true };
 	},
 
-	memberRemove: async ({ request, params }) => {
+	memberRemove: async ({ request, params, locals }) => {
 		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
 
 		const org = await loadOrgOrFail(params.id);
@@ -303,6 +341,15 @@ export const actions: Actions = {
 			.where(
 				and(eq(organizationMember.orgId, params.id), eq(organizationMember.userId, userId))
 			);
+		void recordAudit({
+			type: 'user.role_change',
+			actorId: locals.user?.id ?? null,
+			targetType: 'user',
+			targetId: userId,
+			targetLabel: await userLabel(userId),
+			orgId: params.id,
+			meta: { action: 'org.member_remove', orgId: params.id, role: current.role }
+		});
 		return { success: true };
 	}
 };
