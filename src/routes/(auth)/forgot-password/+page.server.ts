@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { auth } from '$lib/server/auth';
+import { m } from '$lib/paraglide/messages';
 import type { Actions } from './$types';
 
 export const actions: Actions = {
@@ -8,7 +9,7 @@ export const actions: Actions = {
 		const email = form.get('email')?.toString().trim().toLowerCase() ?? '';
 
 		if (!email) {
-			return fail(400, { message: 'Email is required.', email });
+			return fail(400, { message: m.auth_email_required(), email });
 		}
 
 		try {

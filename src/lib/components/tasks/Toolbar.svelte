@@ -12,6 +12,8 @@
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES, TRACKR_LABELS } from '$lib/data';
 	import { labelMeta } from '$lib/labelMeta';
 	import { page } from '$app/state';
+	import { statusLabel, priorityLabel } from '$lib/labels';
+	import { m } from '$lib/paraglide/messages';
 
 	type LayoutData = {
 		users?: { id: string; name: string; initials: string; color: string; status: string }[];
@@ -72,38 +74,38 @@
 		canCreate = true
 	}: Props = $props();
 
-	const GROUP_OPTIONS: { id: GroupBy; label: string }[] = [
-		{ id: 'status', label: 'Status' },
-		{ id: 'priority', label: 'Priority' },
-		{ id: 'assignee', label: 'Assignee' },
-		{ id: 'project', label: 'Project' },
-		{ id: 'none', label: 'None' }
+	const GROUP_OPTIONS: { id: GroupBy; label: () => string }[] = [
+		{ id: 'status', label: m.tasks_group_status },
+		{ id: 'priority', label: m.tasks_group_priority },
+		{ id: 'assignee', label: m.tasks_group_assignee },
+		{ id: 'project', label: m.tasks_group_project },
+		{ id: 'none', label: m.common_none }
 	];
-	const SUB_OPTIONS: { id: SubBy; label: string }[] = [
-		{ id: 'status', label: 'Status' },
-		{ id: 'priority', label: 'Priority' },
-		{ id: 'assignee', label: 'Assignee' },
-		{ id: 'none', label: 'None' }
-	];
-
-	const TIME_OPTIONS: { id: TimeWindow; label: string }[] = [
-		{ id: '7d', label: 'Next 7 days' },
-		{ id: '14d', label: 'Next 2 weeks' },
-		{ id: '30d', label: 'Next month' },
-		{ id: '90d', label: 'Next 3 months' },
-		{ id: 'all', label: 'All' }
+	const SUB_OPTIONS: { id: SubBy; label: () => string }[] = [
+		{ id: 'status', label: m.tasks_group_status },
+		{ id: 'priority', label: m.tasks_group_priority },
+		{ id: 'assignee', label: m.tasks_group_assignee },
+		{ id: 'none', label: m.common_none }
 	];
 
-	const groupLabel = (id: GroupBy) => GROUP_OPTIONS.find((g) => g.id === id)?.label ?? '';
-	const subLabel = (id: SubBy) => SUB_OPTIONS.find((s) => s.id === id)?.label ?? '';
-	const timeLabel = (id: TimeWindow) => TIME_OPTIONS.find((t) => t.id === id)?.label ?? '';
+	const TIME_OPTIONS: { id: TimeWindow; label: () => string }[] = [
+		{ id: '7d', label: m.tasks_time_next_7_days },
+		{ id: '14d', label: m.tasks_time_next_2_weeks },
+		{ id: '30d', label: m.tasks_time_next_month },
+		{ id: '90d', label: m.tasks_time_next_3_months },
+		{ id: 'all', label: m.common_all }
+	];
+
+	const groupLabel = (id: GroupBy) => GROUP_OPTIONS.find((g) => g.id === id)?.label() ?? '';
+	const subLabel = (id: SubBy) => SUB_OPTIONS.find((s) => s.id === id)?.label() ?? '';
+	const timeLabel = (id: TimeWindow) => TIME_OPTIONS.find((t) => t.id === id)?.label() ?? '';
 
 	const FIELDS: FilterField[] = [
-		{ id: 'status', label: 'Status', icon: 'check' },
-		{ id: 'priority', label: 'Priority', icon: 'filter' },
-		{ id: 'assignee', label: 'Assignee', icon: 'users' },
-		{ id: 'project', label: 'Project', icon: 'folder' },
-		{ id: 'tags', label: 'Tags', icon: 'bookmark' }
+		{ id: 'status', label: m.tasks_group_status(), icon: 'check' },
+		{ id: 'priority', label: m.tasks_group_priority(), icon: 'filter' },
+		{ id: 'assignee', label: m.tasks_group_assignee(), icon: 'users' },
+		{ id: 'project', label: m.tasks_group_project(), icon: 'folder' },
+		{ id: 'tags', label: m.tasks_tags(), icon: 'bookmark' }
 	];
 
 	// Group/Sub popovers live outside the FilterBar's scroll area, so they
@@ -122,8 +124,8 @@
 	// human label shown in the chip. Falls back to the raw value if no match —
 	// better to surface a stale id than to blank the chip out.
 	function valueLabel(field: string, value: string): string {
-		if (field === 'status') return TRACKR_STATUSES.find((s) => s.id === value)?.label ?? value;
-		if (field === 'priority') return TRACKR_PRIORITIES.find((p) => p.id === value)?.label ?? value;
+		if (field === 'status') return TRACKR_STATUSES.find((s) => s.id === value) ? statusLabel(value) : value;
+		if (field === 'priority') return TRACKR_PRIORITIES.find((p) => p.id === value) ? priorityLabel(value) : value;
 		if (field === 'assignee') {
 			const u = ((page.data as LayoutData).users ?? []).find((x) => x.id === value);
 			return u?.name ?? value;
@@ -147,7 +149,7 @@
 				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 			>
 				<StatusDot status={s.id} />
-				<span class="text-[13px]">{s.label}</span>
+				<span class="text-[13px]">{statusLabel(s.id)}</span>
 				<span class="ml-auto text-accent {values.includes(s.id) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
 				</span>
@@ -161,7 +163,7 @@
 				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 			>
 				<PriorityBars priority={p.id} />
-				<span class="text-[13px]">{p.label}</span>
+				<span class="text-[13px]">{priorityLabel(p.id)}</span>
 				<span class="ml-auto text-accent {values.includes(p.id) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
 				</span>
@@ -222,14 +224,14 @@
 			onclick={() => setView('list')}
 			class="inline-flex items-center gap-1.5 px-2 h-full rounded-md transition-colors {view === 'list' ? 'bg-bg-elev text-text' : 'text-text-3 hover:text-text'}"
 		>
-			<Icon name="list" size={13} /> List
+			<Icon name="list" size={13} /> {m.tasks_view_list()}
 		</button>
 		<button
 			type="button"
 			onclick={() => setView('board')}
 			class="inline-flex items-center gap-1.5 px-2 h-full rounded-md transition-colors {view === 'board' ? 'bg-bg-elev text-text' : 'text-text-3 hover:text-text'}"
 		>
-			<Icon name="board" size={13} /> Board
+			<Icon name="board" size={13} /> {m.tasks_view_board()}
 		</button>
 	</div>
 
@@ -242,7 +244,7 @@
 			onclick={() => (pop = pop === 'group' ? null : 'group')}
 			class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] transition-colors"
 		>
-			<span class="text-text-3">Group</span>
+			<span class="text-text-3">{m.tasks_group_by()}</span>
 			<span class="text-text font-medium">{groupLabel(group)}</span>
 			<Icon name="chevron" size={10} class="text-text-3" />
 		</button>
@@ -262,7 +264,7 @@
 						}}
 						class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text text-[13px]"
 					>
-						<span>{o.label}</span>
+						<span>{o.label()}</span>
 						<span class="ml-auto text-accent {group === o.id ? 'opacity-100' : 'opacity-0'}">
 							<Icon name="check" size={12} />
 						</span>
@@ -280,7 +282,7 @@
 				onclick={() => (pop = pop === 'sub' ? null : 'sub')}
 				class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] transition-colors"
 			>
-				<span class="text-text-3">Sub</span>
+				<span class="text-text-3">{m.tasks_sub_group()}</span>
 				<span class="text-text font-medium">{subLabel(sub)}</span>
 				<Icon name="chevron" size={10} class="text-text-3" />
 			</button>
@@ -299,7 +301,7 @@
 							}}
 							class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text text-[13px]"
 						>
-							<span>{o.label}</span>
+							<span>{o.label()}</span>
 							<span class="ml-auto text-accent {sub === o.id ? 'opacity-100' : 'opacity-0'}">
 								<Icon name="check" size={12} />
 							</span>
@@ -320,7 +322,7 @@
 			class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] transition-colors"
 		>
 			<Icon name="calendar" size={13} class="text-text-3" />
-			<span class="text-text-3">Time</span>
+			<span class="text-text-3">{m.tasks_time()}</span>
 			<span class="text-text font-medium">{timeLabel(time)}</span>
 			<Icon name="chevron" size={10} class="text-text-3" />
 		</button>
@@ -340,7 +342,7 @@
 						}}
 						class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text text-[13px]"
 					>
-						<span>{o.label}</span>
+						<span>{o.label()}</span>
 						<span class="ml-auto text-accent {time === o.id ? 'opacity-100' : 'opacity-0'}">
 							<Icon name="check" size={12} />
 						</span>
@@ -361,7 +363,7 @@
 			</span>
 			<input
 				type="text"
-				placeholder="Search…"
+				placeholder={m.common_search()}
 				value={search}
 				oninput={(e) => setSearch((e.target as HTMLInputElement).value)}
 				class="h-7 pl-7 pr-2.5 rounded-lg bg-surface border border-border text-[12.5px] text-text placeholder:text-text-3 outline-none focus:border-border-strong w-44"
@@ -369,7 +371,7 @@
 		</div>
 		{#if canCreate}
 			<Button variant="primary" size="sm" onclick={onNewTask}>
-				<Icon name="plus" size={13} /> New task
+				<Icon name="plus" size={13} /> {m.tasks_new_task()}
 			</Button>
 		{/if}
 	</div>

@@ -8,6 +8,7 @@
 	import { page } from '$app/state';
 	import { readView, saveView } from '$lib/viewState';
 	import type { TicketRow } from '$lib/server/tickets';
+	import { m } from '$lib/paraglide/messages';
 
 	type PageData = {
 		tickets: TicketRow[];
@@ -69,9 +70,9 @@
 	});
 </script>
 
-<svelte:head><title>Trackr · Support Tickets</title></svelte:head>
+<svelte:head><title>{m.tickets_page_title()}</title></svelte:head>
 
-<Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: 'Support Tickets' }]} />
+<Topbar crumbs={[{ label: m.tickets_breadcrumb_workspace(), href: '/tasks' }, { label: m.tickets_breadcrumb_support() }]} />
 
 <Toolbar
 	{search}
@@ -89,10 +90,10 @@
 	<div class="flex-1 min-h-0 grid place-items-center">
 		<EmptyState
 			icon="ticket"
-			title="No tickets yet"
+			title={m.tickets_empty_title()}
 			hint={data.canCreateTicket
-				? 'Open your first ticket to start a support thread.'
-				: 'When tickets are filed in your organization they will appear here.'}
+				? m.tickets_empty_hint_can_create()
+				: m.tickets_empty_hint_readonly()}
 		/>
 	</div>
 {:else}

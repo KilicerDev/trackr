@@ -24,6 +24,7 @@ import {
 import { notify } from '$lib/server/notify';
 import { ticketRecipients } from '$lib/server/notify-recipients';
 import { getPreferences } from '$lib/server/preferences';
+import { m } from '$lib/paraglide/messages';
 
 export const load: ServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
@@ -81,7 +82,7 @@ async function anyCreatePerm(
 
 export const actions: Actions = {
 	create: async ({ request, locals, url }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!locals.user) throw error(401, m.tickets_not_authenticated());
 		const me = locals.user;
 
 		const form = await request.formData();
@@ -98,11 +99,11 @@ export const actions: Actions = {
 			.map((v) => String(v))
 			.filter(Boolean);
 
-		if (!orgId) return fail(400, { message: 'Organization is required.' });
-		if (!subject) return fail(400, { message: 'Subject is required.' });
-		if (!TICKET_PRIORITY_SET.has(priority)) return fail(400, { message: 'Invalid priority.' });
-		if (!TICKET_CATEGORY_SET.has(category)) return fail(400, { message: 'Invalid category.' });
-		if (!TICKET_CHANNEL_SET.has(channel)) return fail(400, { message: 'Invalid channel.' });
+		if (!orgId) return fail(400, { message: m.tickets_org_required() });
+		if (!subject) return fail(400, { message: m.tickets_subject_required() });
+		if (!TICKET_PRIORITY_SET.has(priority)) return fail(400, { message: m.tickets_invalid_priority() });
+		if (!TICKET_CATEGORY_SET.has(category)) return fail(400, { message: m.tickets_invalid_category() });
+		if (!TICKET_CHANNEL_SET.has(channel)) return fail(400, { message: m.tickets_invalid_channel() });
 
 		await assertCan(locals, 'org.tickets.create', { orgId });
 
@@ -113,7 +114,7 @@ export const actions: Actions = {
 			.from(organization)
 			.where(eq(organization.id, orgId))
 			.limit(1);
-		if (!orgRow) return fail(400, { message: 'Organization not found.' });
+		if (!orgRow) return fail(400, { message: m.tickets_org_not_found() });
 
 		// Agents may set customer + assignee; clients always get customerId=self
 		// and no assignee.
@@ -181,20 +182,20 @@ export const actions: Actions = {
 
 			return { ok: true, id, displayId, attachmentsFailed: failed };
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : 'Failed to create ticket';
+			const msg = err instanceof Error ? err.message : m.tickets_create_failed_server();
 			return fail(500, { message: msg });
 		}
 	},
 
 	update: async ({ request, locals, url }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!locals.user) throw error(401, m.tickets_not_authenticated());
 
 		const form = await request.formData();
 		const id = String(form.get('id') ?? '').trim();
-		if (!id) return fail(400, { message: 'Ticket id required.' });
+		if (!id) return fail(400, { message: m.tickets_id_required() });
 
 		const orgId = await getTicketOrgId(id);
-		if (!orgId) return fail(404, { message: 'Ticket not found.' });
+		if (!orgId) return fail(404, { message: m.tickets_not_found() });
 
 		// Only agents can edit any. (read.own users could only edit own fields
 		// before first response; v1 omits self-edit to keep scope tight.)
@@ -251,20 +252,20 @@ export const actions: Actions = {
 			}
 			return { ok: true };
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : 'Failed to update ticket';
+			const msg = err instanceof Error ? err.message : m.tickets_update_failed_server();
 			return fail(500, { message: msg });
 		}
 	},
 
 	delete: async ({ request, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!locals.user) throw error(401, m.tickets_not_authenticated());
 
 		const form = await request.formData();
 		const id = String(form.get('id') ?? '').trim();
-		if (!id) return fail(400, { message: 'Ticket id required.' });
+		if (!id) return fail(400, { message: m.tickets_id_required() });
 
 		const orgId = await getTicketOrgId(id);
-		if (!orgId) return fail(404, { message: 'Ticket not found.' });
+		if (!orgId) return fail(404, { message: m.tickets_not_found() });
 
 		// Administrational: only the internal admin roles hold this grant.
 		await assertCan(locals, 'org.tickets.delete.any', { orgId });
@@ -282,13 +283,13 @@ export const actions: Actions = {
 			for (const m of msgs) await deleteAttachmentsFor('ticket_message', m.id);
 			return { ok: true };
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : 'Failed to delete ticket';
+			const msg = err instanceof Error ? err.message : m.tickets_delete_failed_server();
 			return fail(500, { message: msg });
 		}
 	},
 
 	message: async ({ request, locals, url }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!locals.user) throw error(401, m.tickets_not_authenticated());
 		const me = locals.user;
 
 		const form = await request.formData();
@@ -296,11 +297,11 @@ export const actions: Actions = {
 		const body = String(form.get('body') ?? '').trim();
 		const internal = form.get('internal') === '1';
 
-		if (!id) return fail(400, { message: 'Ticket id required.' });
-		if (!body) return fail(400, { message: 'Message is required.' });
+		if (!id) return fail(400, { message: m.tickets_id_required() });
+		if (!body) return fail(400, { message: m.tickets_message_required() });
 
 		const orgId = await getTicketOrgId(id);
-		if (!orgId) return fail(404, { message: 'Ticket not found.' });
+		if (!orgId) return fail(404, { message: m.tickets_not_found() });
 
 		if (internal) {
 			// Internal notes are agents-only.
@@ -357,23 +358,23 @@ export const actions: Actions = {
 
 			return { ok: true };
 		} catch (err) {
-			const msg = err instanceof Error ? err.message : 'Failed to post message';
+			const msg = err instanceof Error ? err.message : m.tickets_post_message_failed();
 			return fail(500, { message: msg });
 		}
 	},
 
 	pinAdd: async ({ request, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!locals.user) throw error(401, m.tickets_not_authenticated());
 		const form = await request.formData();
 		const id = String(form.get('id') ?? '').trim();
-		if (!id) return fail(400, { message: 'Ticket id required.' });
+		if (!id) return fail(400, { message: m.tickets_id_required() });
 		// Only pin tickets the user can actually see.
 		const orgId = await getTicketOrgId(id);
-		if (!orgId) return fail(404, { message: 'Ticket not found.' });
+		if (!orgId) return fail(404, { message: m.tickets_not_found() });
 		const allowed =
 			(await can(locals, 'org.tickets.read.any', { orgId })) ||
 			(await can(locals, 'org.tickets.read.own', { orgId }));
-		if (!allowed) return fail(403, { message: 'You cannot pin this ticket.' });
+		if (!allowed) return fail(403, { message: m.tickets_cannot_pin() });
 		await db
 			.insert(ticketFavorite)
 			.values({ userId: locals.user.id, ticketId: id })
@@ -382,10 +383,10 @@ export const actions: Actions = {
 	},
 
 	pinRemove: async ({ request, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!locals.user) throw error(401, m.tickets_not_authenticated());
 		const form = await request.formData();
 		const id = String(form.get('id') ?? '').trim();
-		if (!id) return fail(400, { message: 'Ticket id required.' });
+		if (!id) return fail(400, { message: m.tickets_id_required() });
 		await db
 			.delete(ticketFavorite)
 			.where(and(eq(ticketFavorite.userId, locals.user.id), eq(ticketFavorite.ticketId, id)));

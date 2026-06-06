@@ -7,6 +7,8 @@
 	import { resolveUser } from '$lib/lookup.svelte';
 	import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from '$lib/data';
 	import type { TicketRow } from '$lib/server/tickets';
+	import { m as mm } from '$lib/paraglide/messages';
+	import { ticketStatusLabel, ticketCategoryLabel, priorityLabel } from '$lib/labels';
 
 	type GroupBy = 'status' | 'priority' | 'category' | 'org' | 'none';
 
@@ -30,7 +32,7 @@
 		if (group === 'status') {
 			return TICKET_STATUSES.map((s) => ({
 				id: s.id,
-				label: s.label,
+				label: ticketStatusLabel(s.id),
 				dot: s.dot,
 				tickets: tickets.filter((t) => t.status === s.id)
 			})).filter((g) => g.tickets.length > 0);
@@ -40,7 +42,7 @@
 				.reverse()
 				.map((p) => ({
 					id: p.id,
-					label: p.label,
+					label: priorityLabel(p.id),
 					dot: p.color,
 					tickets: tickets.filter((t) => t.priority === p.id)
 				}))
@@ -49,7 +51,7 @@
 		if (group === 'category') {
 			return TICKET_CATEGORIES.map((c) => ({
 				id: c.id,
-				label: c.label,
+				label: ticketCategoryLabel(c.id),
 				dot: c.color,
 				tickets: tickets.filter((t) => t.category === c.id)
 			})).filter((g) => g.tickets.length > 0);
@@ -74,12 +76,12 @@
 		const t = new Date(iso).getTime();
 		const diff = Date.now() - t;
 		const m = Math.floor(diff / 60_000);
-		if (m < 1) return 'just now';
-		if (m < 60) return `${m}m ago`;
+		if (m < 1) return mm.tickets_just_now();
+		if (m < 60) return mm.tickets_min_ago({ m });
 		const h = Math.floor(m / 60);
-		if (h < 24) return `${h}h ago`;
+		if (h < 24) return mm.tickets_hour_ago({ h });
 		const d = Math.floor(h / 24);
-		if (d < 7) return `${d}d ago`;
+		if (d < 7) return mm.tickets_day_ago({ d });
 		return new Date(iso).toLocaleDateString();
 	}
 
@@ -152,7 +154,7 @@
 	{/each}
 	{#if tickets.length === 0}
 		<div class="flex-1 grid place-items-center text-text-3 text-[13px]">
-			No tickets match the current filters.
+			{mm.tickets_none_match()}
 		</div>
 	{/if}
 </div>

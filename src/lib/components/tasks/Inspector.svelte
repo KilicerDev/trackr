@@ -39,6 +39,8 @@
 		formatEstimate
 	} from '$lib/data';
 	import { resolveProject } from '$lib/lookup.svelte';
+	import { statusLabel, priorityLabel, typeLabel } from '$lib/labels';
+	import { m } from '$lib/paraglide/messages';
 
 	type AssignableUser = {
 		id: string;
@@ -118,14 +120,14 @@
 			if (result.type === 'failure') {
 				showToast(
 					'err',
-					(result.data as { message?: string } | undefined)?.message ?? 'Save failed.'
+					(result.data as { message?: string } | undefined)?.message ?? m.tasks_save_failed()
 				);
 				// Revert optimistic local mutations by re-fetching server state.
 				await invalidateAll();
 				return false;
 			}
 			if (result.type === 'error') {
-				showToast('err', result.error?.message ?? 'Save failed.');
+				showToast('err', result.error?.message ?? m.tasks_save_failed());
 				await invalidateAll();
 				return false;
 			}
@@ -135,7 +137,7 @@
 			}
 			return false;
 		} catch {
-			showToast('err', 'Network error while saving.');
+			showToast('err', m.tasks_network_error_saving());
 			await invalidateAll();
 			return false;
 		} finally {
@@ -257,10 +259,10 @@
 	async function deleteTask() {
 		if (!draft) return;
 		const confirmed = await confirm({
-			title: `Delete ${draft.id}?`,
-			message: 'This task will be permanently deleted.',
-			confirmLabel: 'Delete',
-			cancelLabel: 'Cancel',
+			title: m.tasks_delete_confirm_title({ id: draft.id }),
+			message: m.tasks_delete_confirm_message(),
+			confirmLabel: m.common_delete(),
+			cancelLabel: m.common_cancel(),
 			tone: 'danger',
 			icon: 'trash'
 		});
@@ -368,13 +370,13 @@
 			{#if savingField}
 				<span class="text-[11px] text-text-3 inline-flex items-center gap-1.5">
 					<span class="w-2.5 h-2.5 rounded-full border border-text-3 border-t-transparent animate-spin"></span>
-					Saving…
+					{m.common_saving()}
 				</span>
 			{/if}
 			<div class="ml-auto flex items-center gap-1">
-				<IconButton size={28} ariaLabel="Copy link"><Icon name="link" size={14} /></IconButton>
+				<IconButton size={28} ariaLabel={m.tasks_copy_link()}><Icon name="link" size={14} /></IconButton>
 				<div class="relative">
-					<IconButton size={28} ariaLabel="More" onclick={() => toggle('menu')}>
+					<IconButton size={28} ariaLabel={m.tasks_more()} onclick={() => toggle('menu')}>
 						<Icon name="settings" size={14} />
 					</IconButton>
 					{#if openPop === 'menu'}
@@ -385,7 +387,7 @@
 						/>
 					{/if}
 				</div>
-				<IconButton size={28} ariaLabel="Close" onclick={onclose}><Icon name="x" size={14} /></IconButton>
+				<IconButton size={28} ariaLabel={m.common_close()} onclick={onclose}><Icon name="x" size={14} /></IconButton>
 			</div>
 		</div>
 		<div class="flex-1 min-h-0 overflow-y-auto px-5 pt-4 pb-24">
@@ -393,7 +395,7 @@
 				use:autosize={draft.title}
 				value={draft.title}
 				rows="1"
-				placeholder="Untitled"
+				placeholder={m.tasks_untitled()}
 				readonly={!canEdit}
 				oninput={(e) => {
 					const el = e.currentTarget;
@@ -432,7 +434,7 @@
 							class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border text-[12.5px] transition-colors disabled:opacity-60 disabled:cursor-not-allowed {canEdit ? 'hover:border-border-strong' : ''} {openPop === 'type' ? 'ring-2 ring-accent/40' : ''}"
 						>
 							<TypeBadge type={draft.type ?? 'task'} showLabel={false} />
-							<span>{taskType.label}</span>
+							<span>{typeLabel(draft.type ?? 'task')}</span>
 						</button>
 						{#if openPop === 'type'}
 							<TypePopover
@@ -456,7 +458,7 @@
 						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border text-[12.5px] transition-colors disabled:opacity-60 disabled:cursor-not-allowed {canEdit ? 'hover:border-border-strong' : ''} {openPop === 'status' ? 'ring-2 ring-accent/40' : ''}"
 					>
 						<StatusDot status={draft.status} />
-						<span>{status.label}</span>
+						<span>{statusLabel(draft.status)}</span>
 					</button>
 					{#if openPop === 'status'}
 						<StatusPopover
@@ -481,7 +483,7 @@
 						{#if prio.bars > 0}
 							<PriorityBars priority={draft.priority} />
 						{/if}
-						<span>{prio.label}</span>
+						<span>{priorityLabel(draft.priority)}</span>
 					</button>
 					{#if openPop === 'priority'}
 						<PriorityPopover
@@ -507,10 +509,10 @@
 							<Avatar user={assignees[0]} size={18} />
 							<span>{assignees[0]?.name}</span>
 						{:else if assignees.length === 0}
-							<span class="text-text-3">Unassigned</span>
+							<span class="text-text-3">{m.common_unassigned()}</span>
 						{:else}
 							<AvatarStack users={assignees} size={18} max={3} overlap={5} />
-							<span>{assignees.length} assignees</span>
+							<span>{m.tasks_n_assignees({ n: assignees.length })}</span>
 						{/if}
 					</button>
 					{#if openPop === 'assignees'}
@@ -542,7 +544,7 @@
 						{#if draft.due}
 							<span class="font-mono">{formatDateLong(draft.due)}</span>
 						{:else}
-							<span>Due date</span>
+							<span>{m.tasks_due_date()}</span>
 						{/if}
 					</button>
 					{#if openPop === 'due'}
@@ -569,9 +571,9 @@
 						{#if draft.plannedFor}
 							<span class="font-mono">{formatDateLong(draft.plannedFor)}</span>
 						{:else if draft.inMyPlan}
-							<span>In my week</span>
+							<span>{m.tasks_in_my_week()}</span>
 						{:else}
-							<span>Plan for…</span>
+							<span>{m.tasks_plan_for()}</span>
 						{/if}
 					</button>
 					{#if openPop === 'plan'}
@@ -579,7 +581,7 @@
 							value={draft.plannedFor ?? null}
 							onchange={(v) => setPlan(v)}
 							onclose={() => (openPop = null)}
-							undatedLabel="Add to my week without a date"
+							undatedLabel={m.tasks_add_to_week_no_date()}
 							onundated={setPlanUndated}
 							undatedActive={!!draft.inMyPlan && !draft.plannedFor}
 						/>
@@ -595,10 +597,10 @@
 						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] transition-colors disabled:opacity-60 disabled:cursor-not-allowed {draft.estimate ? 'bg-surface border border-border' : 'border border-dashed border-border text-text-3'} {canEdit ? (draft.estimate ? 'hover:border-border-strong' : 'hover:text-text hover:border-border-strong') : ''} {openPop === 'estimate' ? 'ring-2 ring-accent/40' : ''}"
 					>
 						{#if draft.estimate}
-							<span class="text-text-3">Est</span>
+							<span class="text-text-3">{m.tasks_est()}</span>
 							<span class="font-mono">{formatEstimate(draft.estimate)}</span>
 						{:else}
-							<span>Estimate</span>
+							<span>{m.tasks_estimate()}</span>
 						{/if}
 					</button>
 					{#if openPop === 'estimate'}
@@ -618,7 +620,7 @@
 				use:autosize={draft.description ?? ''}
 				value={draft.description ?? ''}
 				rows="3"
-				placeholder="Add a description…"
+				placeholder={m.tasks_description_placeholder()}
 				readonly={!canEdit}
 				oninput={(e) => {
 					const el = e.currentTarget;
@@ -651,7 +653,7 @@
 								class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-dashed border-border text-[12px] text-text-3 hover:text-text hover:border-border-strong transition-colors {openPop === 'tags' ? 'ring-2 ring-accent/40' : ''}"
 							>
 								<Icon name="bookmark" size={12} />
-								<span>{draft.labels.length > 0 ? 'Add tag' : 'Add tags'}</span>
+								<span>{draft.labels.length > 0 ? m.tasks_add_tag() : m.tasks_add_tags()}</span>
 							</button>
 							{#if openPop === 'tags'}
 								<TagsPopover
@@ -673,7 +675,7 @@
 				<div class="mb-6">
 					<div class="flex items-center justify-between mb-2">
 						<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">
-							Attachments{#if draft.files?.length}<span class="ml-1.5 text-text-3">{draft.files.length}</span>{/if}
+							{m.tasks_attachments()}{#if draft.files?.length}<span class="ml-1.5 text-text-3">{draft.files.length}</span>{/if}
 						</div>
 						<AttachmentUploader entityType="task" entityId={draft.uuid} />
 					</div>
@@ -684,13 +686,13 @@
 							currentUserId={(page.data as { currentUserId?: string }).currentUserId ?? null}
 						/>
 					{:else}
-						<p class="text-[12.5px] text-text-3">No files attached.</p>
+						<p class="text-[12.5px] text-text-3">{m.tasks_no_files_attached()}</p>
 					{/if}
 				</div>
 			{/if}
 
 			<div class="mt-4">
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-3">Activity</div>
+				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-3">{m.tasks_activity()}</div>
 				<div class="mb-4">
 					<TimeLogger task={draft} onlog={logTime} />
 				</div>
@@ -710,9 +712,9 @@
 							</span>
 							<div class="text-[12.5px] text-text-2">
 								<span class="text-text font-medium">{u?.name ?? e.user}</span>
-								{#if e.kind === 'comment'}commented
-								{:else if e.kind === 'time'}logged <span class="text-text font-medium">{formatEstimate(e.data.minutes)}</span>
-								{:else if e.kind === 'created'}created this task
+								{#if e.kind === 'comment'}{m.tasks_event_commented()}
+								{:else if e.kind === 'time'}{m.tasks_event_logged()} <span class="text-text font-medium">{formatEstimate(e.data.minutes)}</span>
+								{:else if e.kind === 'created'}{m.tasks_event_created()}
 								{/if}
 								<span class="font-mono text-text-4">· {e.date}</span>
 							</div>
@@ -738,14 +740,14 @@
 			</div>
 
 			<div class="mt-8 text-[11px] text-text-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-4">
-				{#if draft.createdBy}<span>Created by <span class="text-text-2">{resolveUser(draft.createdBy)?.name ?? '—'}</span></span>{/if}
-				{#if draft.createdAt}<span>Created <span class="font-mono text-text-3">{draft.createdAt}</span></span>{/if}
-				<span>Updated <span class="font-mono text-text-3">{draft.updated}</span></span>
+				{#if draft.createdBy}<span>{m.tasks_created_by()} <span class="text-text-2">{resolveUser(draft.createdBy)?.name ?? '—'}</span></span>{/if}
+				{#if draft.createdAt}<span>{m.tasks_created()} <span class="font-mono text-text-3">{draft.createdAt}</span></span>{/if}
+				<span>{m.tasks_updated()} <span class="font-mono text-text-3">{draft.updated}</span></span>
 			</div>
 		</div>
 
 		<div class="p-3">
-			<AttachmentDropzone onfiles={addCommentFiles} disabled={commentSending} label="Drop files to attach to your comment">
+			<AttachmentDropzone onfiles={addCommentFiles} disabled={commentSending} label={m.tasks_drop_files_to_comment()}>
 				{#if commentFiles.length}
 					<div class="mb-2">
 						<StagedFileList
@@ -757,15 +759,15 @@
 				{/if}
 				<Composer
 					bind:value={commentBody}
-					placeholder="Write a comment…"
+					placeholder={m.tasks_write_a_comment()}
 					sending={commentSending}
 					onsend={sendComment}
 				>
 					{#snippet rightActions()}
 						<button
 							type="button"
-							aria-label="Attach files"
-							title="Attach files"
+							aria-label={m.tasks_attach_files()}
+							title={m.tasks_attach_files()}
 							onclick={() => commentFileInput?.click()}
 							class="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-transparent text-text-3 hover:text-text hover:bg-surface-2 transition-colors"
 						>

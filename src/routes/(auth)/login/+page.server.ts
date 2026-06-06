@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
 import { auth } from '$lib/server/auth';
+import { m } from '$lib/paraglide/messages';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ locals, url }) => {
@@ -25,9 +26,9 @@ export const actions: Actions = {
 			});
 		} catch (error) {
 			if (error instanceof APIError) {
-				return fail(400, { message: error.message || 'Sign-in failed.', email });
+				return fail(400, { message: error.message || m.auth_login_failed(), email });
 			}
-			return fail(500, { message: 'Something went wrong. Please try again.', email });
+			return fail(500, { message: m.auth_generic_error(), email });
 		}
 
 		redirect(302, next && next.startsWith('/') ? next : '/');

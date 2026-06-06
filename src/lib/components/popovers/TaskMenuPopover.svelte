@@ -4,6 +4,7 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/motion';
 	import Icon from '../Icon.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		canDelete: boolean;
@@ -31,6 +32,6 @@
 		style:color="#ef4f5e"
 	>
 		<span class="grid place-items-center w-4 h-4 shrink-0"><Icon name="trash" size={14} /></span>
-		<span>Delete task</span>
+		<span>{m.tasks_delete_task()}</span>
 	</button>
 </div>

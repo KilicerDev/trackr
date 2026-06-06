@@ -1,11 +1,12 @@
 <script lang="ts">
 	import Icon from '$lib/components/Icon.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
-	const firstName = $derived((data.user?.name ?? '').trim().split(/\s+/)[0] || 'there');
+	const firstName = $derived((data.user?.name ?? '').trim().split(/\s+/)[0] || m.wiki_someone());
 
 	// Folder path of a page, built by walking parentId up the tree the layout
 	// already loaded. Empty for root-level pages.
@@ -26,12 +27,12 @@
 <div class="h-full flex justify-center px-6">
 	<div class="w-full max-w-[640px] pt-[14vh]">
 		<h1 class="text-[28px] font-semibold tracking-[-0.02em] text-text mb-6">
-			Welcome back, {firstName}
+			{m.wiki_welcome_back({ name: firstName })}
 		</h1>
 
 		{#if data.recent.length > 0}
 			<div class="mb-3 px-0.5 font-mono text-[10.5px] uppercase tracking-[0.14em] text-text-4">
-				Recent
+				{m.wiki_recent()}
 			</div>
 			<div class="grid gap-2">
 				{#each data.recent as p (p.id)}
@@ -64,8 +65,8 @@
 		{:else}
 			<EmptyState
 				icon="file"
-				title="No pages yet"
-				hint="Create your first wiki page from the sidebar to get started."
+				title={m.wiki_no_pages_title()}
+				hint={m.wiki_no_pages_hint()}
 			/>
 		{/if}
 	</div>

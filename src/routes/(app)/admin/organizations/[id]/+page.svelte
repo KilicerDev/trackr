@@ -15,6 +15,8 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/motion';
 	import { showToast } from '$lib/toast.svelte';
+	import { m } from '$lib/paraglide/messages';
+	import { orgRoleLabel, projectStatusLabel } from '$lib/labels';
 	import type { PageData } from './$types';
 
 	type LayoutShape = {
@@ -119,13 +121,13 @@
 			}
 			const msg =
 				result.type === 'failure'
-					? (result.data as { message?: string } | undefined)?.message ?? 'Action failed.'
+					? (result.data as { message?: string } | undefined)?.message ?? m.admin_action_failed()
 					: result.type === 'error'
-						? result.error?.message ?? 'Action failed.'
-						: 'Action failed.';
+						? result.error?.message ?? m.admin_action_failed()
+						: m.admin_action_failed();
 			showToast('err', msg);
 		} catch {
-			showToast('err', 'Network error.');
+			showToast('err', m.admin_network_error());
 		} finally {
 			busyMember = null;
 		}
@@ -147,9 +149,9 @@
 
 	async function removeMember(userId: string, name: string) {
 		const ok = await uiConfirm({
-			title: 'Remove from organization',
-			message: `${name} will no longer be a member of ${data.org.name}.`,
-			confirmLabel: 'Remove',
+			title: m.admin_member_remove_title(),
+			message: m.admin_member_remove_message({ name, org: data.org.name }),
+			confirmLabel: m.common_remove(),
 			tone: 'danger'
 		});
 		if (!ok) return;
@@ -158,11 +160,11 @@
 
 	async function onArchive() {
 		const ok = await uiConfirm({
-			title: data.org.archivedAt ? 'Unarchive organization' : 'Archive organization',
+			title: data.org.archivedAt ? m.admin_org_unarchive_title() : m.admin_org_archive_title(),
 			message: data.org.archivedAt
-				? `Make "${data.org.name}" active again. Projects linked to it stay where they are.`
-				: `"${data.org.name}" will be hidden from active lists. Its projects keep their org link.`,
-			confirmLabel: data.org.archivedAt ? 'Unarchive' : 'Archive',
+				? m.admin_org_unarchive_message({ org: data.org.name })
+				: m.admin_org_archive_message({ org: data.org.name }),
+			confirmLabel: data.org.archivedAt ? m.admin_org_unarchive_confirm() : m.common_archive(),
 			tone: data.org.archivedAt ? 'default' : 'warn'
 		});
 		if (!ok) return;
@@ -183,12 +185,12 @@
 	}
 </script>
 
-<svelte:head><title>Trackr · {data.org.name}</title></svelte:head>
+<svelte:head><title>{m.admin_org_detail_page_title({ name: data.org.name })}</title></svelte:head>
 
 <Topbar
 	crumbs={[
-		{ label: 'Trackr Workspace', href: '/tasks' },
-		{ label: 'Organizations', href: '/admin/organizations' },
+		{ label: m.admin_crumb_workspace(), href: '/tasks' },
+		{ label: m.admin_organizations_title(), href: '/admin/organizations' },
 		{ label: data.org.name }
 	]}
 />
@@ -199,7 +201,7 @@
 			href="/admin/organizations"
 			class="inline-flex items-center gap-1.5 text-[12.5px] text-text-3 hover:text-text mb-5"
 		>
-			<Icon name="chevron-r" size={11} class="rotate-180" /> Organizations
+			<Icon name="chevron-r" size={11} class="rotate-180" /> {m.admin_organizations_title()}
 		</a>
 
 		<!-- hero -->
@@ -218,7 +220,7 @@
 							class="text-[10.5px] uppercase tracking-[0.06em] px-1.5 py-0.5 rounded text-text-3"
 							style:background="rgba(154,164,178,0.16)"
 						>
-							Archived
+							{m.admin_org_archived_badge()}
 						</span>
 					{/if}
 				</div>
@@ -227,12 +229,12 @@
 			<div class="flex items-center gap-2">
 				{#if !editing}
 					<Button variant="default" size="sm" onclick={() => (editing = true)}>
-						<Icon name="settings" size={13} /> Edit
+						<Icon name="settings" size={13} /> {m.common_edit()}
 					</Button>
 				{/if}
 				<Button variant="default" size="sm" onclick={onArchive}>
 					<Icon name={data.org.archivedAt ? 'refresh' : 'x'} size={13} />
-					{data.org.archivedAt ? 'Unarchive' : 'Archive'}
+					{data.org.archivedAt ? m.admin_org_unarchive_confirm() : m.common_archive()}
 				</Button>
 			</div>
 		</div>
@@ -251,9 +253,9 @@
 							await update();
 						} else if (result.type === 'failure') {
 							serverError =
-								(result.data as { message?: string } | undefined)?.message ?? 'Save failed.';
+								(result.data as { message?: string } | undefined)?.message ?? m.admin_save_failed();
 						} else if (result.type === 'error') {
-							serverError = result.error?.message ?? 'Save failed.';
+							serverError = result.error?.message ?? m.admin_save_failed();
 						}
 					};
 				}}
@@ -264,7 +266,7 @@
 						for="o-name"
 						class="text-[11px] uppercase tracking-[0.08em] text-text-4 block mb-1.5"
 					>
-						Name
+						{m.admin_name()}
 					</label>
 					<input
 						id="o-name"
@@ -279,7 +281,7 @@
 						for="o-slug"
 						class="text-[11px] uppercase tracking-[0.08em] text-text-4 block mb-1.5"
 					>
-						Slug
+						{m.admin_slug()}
 					</label>
 					<input
 						id="o-slug"
@@ -293,7 +295,7 @@
 						for="o-desc"
 						class="text-[11px] uppercase tracking-[0.08em] text-text-4 block mb-1.5"
 					>
-						Description
+						{m.admin_org_description_label()}
 					</label>
 					<textarea
 						id="o-desc"
@@ -304,13 +306,13 @@
 					></textarea>
 				</div>
 				<div>
-					<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-2">Color</div>
+					<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-2">{m.admin_color()}</div>
 					<div class="flex flex-wrap gap-1.5">
 						{#each PALETTE as c (c)}
 							<button
 								type="button"
 								onclick={() => (color = c)}
-								aria-label="Pick color {c}"
+								aria-label={m.admin_pick_color({ color: c })}
 								class="relative w-7 h-7 rounded-lg"
 								style:background="linear-gradient(140deg, {c}, color-mix(in oklch, {c} 70%, #000) 85%)"
 								style:box-shadow={color === c
@@ -339,20 +341,20 @@
 							serverError = null;
 						}}
 					>
-						Cancel
+						{m.common_cancel()}
 					</Button>
 					<button
 						type="submit"
 						disabled={saving || !name.trim()}
 						class="inline-flex items-center gap-1.5 rounded-lg font-medium text-[13px] disabled:opacity-50 disabled:cursor-not-allowed px-[11px] py-[7px] bg-accent text-white border border-transparent hover:bg-accent-strong"
 					>
-						{saving ? 'Saving…' : 'Save changes'}
+						{saving ? m.common_saving() : m.common_save_changes()}
 					</button>
 				</div>
 			</form>
 		{:else if data.org.description}
 			<div class="bg-bg-elev border border-border rounded-2xl p-4 mb-6">
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-1.5">About</div>
+				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-1.5">{m.admin_org_about()}</div>
 				<p class="text-[13.5px] text-text-2 leading-relaxed">{data.org.description}</p>
 			</div>
 		{/if}
@@ -360,7 +362,7 @@
 		<!-- members -->
 		<div class="bg-bg-elev border border-border rounded-2xl mb-5 relative">
 			<div class="flex items-center gap-2.5 px-4 py-3 border-b border-border">
-				<span class="text-[14px] font-semibold">Members</span>
+				<span class="text-[14px] font-semibold">{m.admin_members()}</span>
 				<span class="font-mono text-[11px] text-text-3">{data.members.length}</span>
 				<div class="ml-auto relative">
 					<Button
@@ -371,7 +373,7 @@
 							memberSearch = '';
 						}}
 					>
-						<Icon name="plus" size={13} /> Add member
+						<Icon name="plus" size={13} /> {m.admin_org_add_member()}
 					</Button>
 					{#if addingMember}
 						<div
@@ -386,7 +388,7 @@
 								<input
 									type="text"
 									bind:value={memberSearch}
-									placeholder="Add a user…"
+									placeholder={m.admin_org_add_user_placeholder()}
 									class="flex-1 bg-transparent border-0 outline-none text-[13px] placeholder:text-text-3"
 								/>
 							</div>
@@ -407,7 +409,7 @@
 								{/each}
 								{#if candidates.length === 0}
 									<div class="px-2 py-3 text-center text-[12px] text-text-3">
-										{memberSearch ? 'No matches.' : 'Everyone is already a member.'}
+										{memberSearch ? m.admin_org_no_matches() : m.admin_org_everyone_member()}
 									</div>
 								{/if}
 							</div>
@@ -418,33 +420,33 @@
 
 			{#if data.members.length === 0}
 				<div class="px-5 py-8 text-center text-[12.5px] text-text-3">
-					No members yet — add someone above.
+					{m.admin_org_no_members()}
 				</div>
 			{:else}
-				{#each data.members as m (m.id)}
-					{@const role = (ROLES.includes(m.role as OrgRole) ? m.role : DEFAULT_ROLE) as OrgRole}
-					{@const meta = ROLE_META[role] ?? { label: role, color: '#7c7c84' }}
+				{#each data.members as member (member.id)}
+					{@const role = (ROLES.includes(member.role as OrgRole) ? member.role : DEFAULT_ROLE) as OrgRole}
+					{@const meta = ROLE_META[role] ?? { label: orgRoleLabel(role), color: '#7c7c84' }}
 					<div
 						class="flex items-center gap-3 px-5 py-2.5 border-b border-border/40 last:border-b-0 text-[13px]"
 					>
-						<Avatar user={m} size={28} />
+						<Avatar user={member} size={28} />
 						<div class="min-w-0 flex-1">
-							<div class="font-medium text-text truncate">{m.name}</div>
-							<div class="text-[11.5px] text-text-3 truncate font-mono">{m.email}</div>
+							<div class="font-medium text-text truncate">{member.name}</div>
+							<div class="text-[11.5px] text-text-3 truncate font-mono">{member.email}</div>
 						</div>
 						<div class="relative">
 							<button
 								type="button"
-								onclick={() => (openRoleMenu = openRoleMenu === m.id ? null : m.id)}
+								onclick={() => (openRoleMenu = openRoleMenu === member.id ? null : member.id)}
 								class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11.5px] font-medium hover:bg-surface"
 								style:color={meta.color}
 								style:background={meta.color + '22'}
 							>
 								<span class="w-1.5 h-1.5 rounded-full" style:background={meta.color}></span>
-								{meta.label}
+								{orgRoleLabel(role)}
 								<Icon name="chevron" size={10} />
 							</button>
-							{#if openRoleMenu === m.id}
+							{#if openRoleMenu === member.id}
 								<div
 									use:clickOutside={() => (openRoleMenu = null)}
 									use:autoPlace
@@ -455,14 +457,14 @@
 									{#each ROLES as r (r)}
 										<button
 											type="button"
-											onclick={() => setRole(m.id, r)}
+											onclick={() => setRole(member.id, r)}
 											class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 										>
 											<span
 												class="w-1.5 h-1.5 rounded-full"
 												style:background={ROLE_META[r].color}
 											></span>
-											<span class="text-[12.5px]">{ROLE_META[r].label}</span>
+											<span class="text-[12.5px]">{orgRoleLabel(r)}</span>
 											{#if r === role}
 												<span class="ml-auto text-accent"><Icon name="check" size={12} /></span>
 											{/if}
@@ -473,10 +475,10 @@
 						</div>
 						<IconButton
 							size={28}
-							ariaLabel="Remove member"
-							onclick={() => removeMember(m.id, m.name)}
+							ariaLabel={m.admin_org_remove_member()}
+							onclick={() => removeMember(member.id, member.name)}
 						>
-							{#if busyMember === `memberRemove:${m.id}`}
+							{#if busyMember === `memberRemove:${member.id}`}
 								<span
 									class="w-3 h-3 rounded-full border-2 border-text-3 border-t-transparent animate-spin"
 								></span>
@@ -492,14 +494,14 @@
 		<!-- projects -->
 		<div class="bg-bg-elev border border-border rounded-2xl overflow-hidden">
 			<div class="flex items-center gap-2.5 px-4 py-3 border-b border-border">
-				<span class="text-[14px] font-semibold">Projects</span>
+				<span class="text-[14px] font-semibold">{m.admin_projects()}</span>
 				<span class="font-mono text-[11px] text-text-3">{data.projects.length}</span>
 			</div>
 			{#if data.projects.length === 0}
 				<EmptyState
 					icon="folder"
-					title="No projects linked to this organization yet"
-					hint="Create a project from /projects and assign it to this org."
+					title={m.admin_org_no_projects_title()}
+					hint={m.admin_org_no_projects_hint()}
 				/>
 			{:else}
 				{#each data.projects as p (p.id)}
@@ -515,7 +517,7 @@
 							<span class="block font-medium text-text truncate">{p.name}</span>
 							<span class="block text-[11.5px] text-text-3 font-mono">{p.key}</span>
 						</span>
-						<span class="text-text-2 capitalize text-[12.5px]">{p.status.replace('_', ' ')}</span>
+						<span class="text-text-2 text-[12.5px]">{projectStatusLabel(p.status)}</span>
 						<span class="text-text-3 grid place-items-center"
 							><Icon name="chevron-r" size={12} /></span
 						>

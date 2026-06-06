@@ -6,6 +6,7 @@
 	import Icon from '../Icon.svelte';
 	import { TRACKR_PROJECTS } from '$lib/data';
 	import type { ProjectId } from '$lib/types';
+	import { m } from '$lib/paraglide/messages';
 
 	type PickableProject = { id: string; key: string; name: string; color: string; status: string };
 
@@ -111,7 +112,7 @@
 			type="text"
 			bind:value={q}
 			autofocus
-			placeholder="Search projects…"
+			placeholder={m.tasks_search_projects_placeholder()}
 			class="flex-1 bg-transparent border-0 outline-none text-[13px] placeholder:text-text-3"
 		/>
 	</div>
@@ -122,7 +123,7 @@
 				{@render row(p)}
 			{/each}
 			{#if searchResults.length === 0}
-				<div class="px-2 py-3 text-[12.5px] text-text-3 text-center">No projects match “{q}”.</div>
+				<div class="px-2 py-3 text-[12.5px] text-text-3 text-center">{m.tasks_no_projects_match({ q })}</div>
 			{/if}
 		{:else}
 			{#each live as p (p.key)}
@@ -142,7 +143,7 @@
 						class="w-full flex items-center gap-1.5 px-2 py-1.5 text-[12px] text-text-3 hover:text-text-2 rounded-md hover:bg-surface-2"
 					>
 						<Icon name="chevron" size={11} />
-						Show {dormant.length} inactive
+						{m.tasks_show_n_inactive({ n: dormant.length })}
 					</button>
 				{/if}
 			{/if}
@@ -155,7 +156,7 @@
 						class="w-full flex items-center gap-1.5 px-2 py-1.5 text-[12px] text-text-3 hover:text-text-2 rounded-md hover:bg-surface-2"
 					>
 						<Icon name="chevron" size={11} />
-						{expandedAll ? 'Show only my projects' : 'Show all projects'}
+						{expandedAll ? m.tasks_show_only_my_projects() : m.tasks_show_all_projects()}
 					</button>
 				</div>
 			{/if}

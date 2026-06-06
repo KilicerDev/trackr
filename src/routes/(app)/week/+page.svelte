@@ -16,6 +16,7 @@
 	import { readView, saveView } from '$lib/viewState';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
+	import { m } from '$lib/paraglide/messages';
 	import type { ActionResult } from '@sveltejs/kit';
 	import type { Task } from '$lib/types';
 	import type { PageData } from './$types';
@@ -38,6 +39,15 @@
 	};
 
 	const WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+	const WEEK_DAY_LABELS = [
+		m.week_day_monday,
+		m.week_day_tuesday,
+		m.week_day_wednesday,
+		m.week_day_thursday,
+		m.week_day_friday,
+		m.week_day_saturday,
+		m.week_day_sunday
+	];
 	const DEFAULT_ESTIMATE = 60;
 	const CAPACITY = 8 * 60;
 	const WEEK_CAPACITY = 5 * 8 * 60;
@@ -106,14 +116,14 @@
 				await invalidateAll();
 			} else if (result.type === 'failure') {
 				const msg =
-					(result.data as { message?: string } | undefined)?.message ?? 'Failed to create task.';
+					(result.data as { message?: string } | undefined)?.message ?? m.week_create_failed();
 				showToast('err', msg);
 			} else if (result.type === 'error') {
-				showToast('err', result.error?.message ?? 'Failed to create task.');
+				showToast('err', result.error?.message ?? m.week_create_failed());
 			}
 		} catch (err) {
 			console.error('week composer submit failed', err);
-			showToast('err', 'Failed to create task.');
+			showToast('err', m.week_create_failed());
 		}
 	}
 
@@ -238,19 +248,19 @@
 	}
 </script>
 
-<svelte:head><title>Trackr · My Week</title></svelte:head>
+<svelte:head><title>Trackr · {m.week_title()}</title></svelte:head>
 
-<Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: 'My Week' }]} />
+<Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: m.week_title() }]} />
 
 <div class="flex-1 min-h-0 overflow-y-auto">
 	<div class="flex items-center gap-3 px-6 py-3 border-b border-border">
 		<Button size="sm" variant="default" onclick={() => gotoWeek(null)} disabled={weekDelta === 0}>
-			Today
+			{m.common_today()}
 		</Button>
 		<div class="inline-flex bg-surface border border-border rounded-lg overflow-hidden">
 			<button
 				type="button"
-				aria-label="Previous week"
+				aria-label={m.week_previous_week()}
 				onclick={() => gotoWeek(addDays(data.weekStartIso, -7))}
 				class="w-7 h-7 grid place-items-center text-text-3 hover:text-text hover:bg-surface-2"
 			>
@@ -258,7 +268,7 @@
 			</button>
 			<button
 				type="button"
-				aria-label="Next week"
+				aria-label={m.week_next_week()}
 				onclick={() => gotoWeek(addDays(data.weekStartIso, 7))}
 				class="w-7 h-7 grid place-items-center text-text-3 hover:text-text hover:bg-surface-2"
 			>
@@ -270,7 +280,7 @@
 			{#if weekDelta === 0}
 				<span
 					class="px-1.5 py-0.5 text-[10px] uppercase tracking-[0.06em] font-medium rounded-full text-accent"
-					style:background="rgba(239,122,109,0.14)">Now</span
+					style:background="rgba(239,122,109,0.14)">{m.week_now()}</span
 				>
 			{/if}
 			<span class="text-text-4">·</span>
@@ -278,7 +288,7 @@
 		</div>
 		<div class="ml-auto flex items-center gap-3 bg-bg-elev border border-border rounded-xl px-3.5 py-2">
 			<div class="text-right">
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">Capacity</div>
+				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{m.week_capacity()}</div>
 				<div class="font-mono text-[13px] text-text">{Math.round(weekMinutes / 60)}h / 40h</div>
 			</div>
 			<div class="w-24 h-1.5 rounded-full bg-surface overflow-hidden">
@@ -313,12 +323,12 @@
 						<span class="transition-transform text-text-3 {isCollapsed ? '-rotate-90' : ''}">
 							<Icon name="chevron" size={12} />
 						</span>
-						<span class="text-[14px] font-semibold text-text">{day}</span>
+						<span class="text-[14px] font-semibold text-text">{WEEK_DAY_LABELS[i]()}</span>
 						<span class="text-text-4 font-mono text-[12px]">{dayLabels[i].dayOfMonth}</span>
 						{#if isToday}
 							<span
 								class="px-2 py-0.5 text-[10.5px] uppercase tracking-[0.06em] font-medium rounded-full text-accent"
-								style:background="rgba(239,122,109,0.14)">Today</span
+								style:background="rgba(239,122,109,0.14)">{m.common_today()}</span
 							>
 						{/if}
 						<span class="font-mono text-[11px] text-text-3">{tasks.length}</span>
@@ -362,7 +372,7 @@
 										onclick={() => (composerDay = i)}
 										class="flex items-center gap-1.5 text-[12px] text-text-3 hover:text-text px-2 py-1 rounded-md hover:bg-surface transition-colors"
 									>
-										<Icon name="plus" size={12} /> Add task
+										<Icon name="plus" size={12} /> {m.week_add_task()}
 									</button>
 								</div>
 							{/if}
@@ -375,16 +385,16 @@
 		<aside class="bg-bg-elev border border-border rounded-2xl flex flex-col self-start">
 			<div class="px-4 pt-4 pb-2">
 				<div class="flex items-center gap-2">
-					<span class="text-[13px] font-semibold text-text">Unscheduled</span>
+					<span class="text-[13px] font-semibold text-text">{m.week_unscheduled()}</span>
 					<span class="font-mono text-[11px] text-text-3">{unscheduled.length}</span>
 				</div>
-				<p class="text-[11.5px] text-text-4 mt-1">Open a task and pick a date to plan it.</p>
+				<p class="text-[11.5px] text-text-4 mt-1">{m.week_unscheduled_hint()}</p>
 			</div>
 			<div class="px-4 pb-2">
 				<div
 					class="inline-flex items-center h-7 bg-surface border border-border rounded-lg p-0.5 text-[11.5px] w-full"
 				>
-					{#each [['planned', 'In my week'], ['unplanned', 'Others'], ['all', 'All']] as [k, lbl] (k)}
+					{#each [['planned', m.week_tab_in_my_week()], ['unplanned', m.week_tab_others()], ['all', m.common_all()]] as [k, lbl] (k)}
 						<button
 							type="button"
 							onclick={() => setUnscheduledTab(k as 'planned' | 'unplanned' | 'all')}
@@ -407,7 +417,7 @@
 					>
 						<span class="inline-flex items-center justify-center w-3 h-3 shrink-0">
 							{#if t.inMyPlan}
-								<span class="text-accent inline-flex" title="In your week">
+								<span class="text-accent inline-flex" title={m.week_in_your_week()}>
 									<Icon name="bookmark" size={11} />
 								</span>
 							{:else}
@@ -432,7 +442,7 @@
 						>
 							<Icon name="check" size={15} />
 						</div>
-						<div class="text-[12px] text-text-2">Inbox zero. Plan something new.</div>
+						<div class="text-[12px] text-text-2">{m.week_inbox_zero()}</div>
 					</div>
 				{/if}
 			</div>

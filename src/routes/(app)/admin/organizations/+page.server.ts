@@ -2,6 +2,7 @@ import { fail, type Actions } from '@sveltejs/kit';
 import { count, eq, ne } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { organization, project } from '$lib/server/db/app.schema';
+import { m } from '$lib/paraglide/messages';
 import type { PageServerLoad } from './$types';
 
 function slugify(input: string): string {
@@ -61,7 +62,7 @@ export const actions: Actions = {
 		// /admin/+layout.server.ts already enforced admin.access. New orgs
 		// start empty — Trackr-team users have access via their internal-org
 		// role, so we no longer auto-add the creator as a member.
-		if (!locals.user) return fail(401, { message: 'Not authenticated' });
+		if (!locals.user) return fail(401, { message: m.admin_err_not_authenticated() });
 
 		const form = await request.formData();
 		const name = String(form.get('name') ?? '').trim();
@@ -69,16 +70,16 @@ export const actions: Actions = {
 		const description = String(form.get('description') ?? '').trim() || null;
 		const color = String(form.get('color') ?? '#7a9cf0');
 
-		if (!name) return fail(400, { message: 'Name is required.' });
+		if (!name) return fail(400, { message: m.admin_err_name_required() });
 		if (!slug) slug = slugify(name);
-		if (!slug) return fail(400, { message: 'Slug could not be derived from the name.' });
+		if (!slug) return fail(400, { message: m.admin_err_slug_underivable() });
 
 		const [existing] = await db
 			.select({ id: organization.id })
 			.from(organization)
 			.where(eq(organization.slug, slug))
 			.limit(1);
-		if (existing) return fail(409, { message: `Slug "${slug}" is already in use.` });
+		if (existing) return fail(409, { message: m.admin_err_slug_in_use({ slug }) });
 
 		const id = crypto.randomUUID();
 		await db.insert(organization).values({

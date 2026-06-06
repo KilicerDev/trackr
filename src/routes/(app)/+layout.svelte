@@ -7,6 +7,7 @@
 	import CreateTaskModal from '$lib/components/tasks/CreateTaskModal.svelte';
 	import CreateProjectModal from '$lib/components/projects/CreateProjectModal.svelte';
 	import Toast from '$lib/components/Toast.svelte';
+	import { getLocale, setLocale, isLocale } from '$lib/paraglide/runtime';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
@@ -18,6 +19,10 @@
 		root.dataset.theme = p.theme === 'system' ? 'dark' : p.theme;
 		root.dataset.density = p.density;
 		root.style.setProperty('--accent', p.accent);
+		// Align the client locale store with the saved preference (cookie is
+		// authoritative and already reconciled server-side; this is a no-op in
+		// the common case but keeps the runtime consistent without a reload).
+		if (isLocale(p.locale) && getLocale() !== p.locale) setLocale(p.locale, { reload: false });
 	});
 
 	let paletteOpen = $state(false);

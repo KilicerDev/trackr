@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
 import { auth } from '$lib/server/auth';
+import { m } from '$lib/paraglide/messages';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ url }) => {
@@ -15,9 +16,9 @@ export const actions: Actions = {
 		const token = form.get('token')?.toString() ?? '';
 		const password = form.get('password')?.toString() ?? '';
 
-		if (!token) return fail(400, { message: 'Missing or invalid reset token.' });
+		if (!token) return fail(400, { message: m.auth_reset_missing_token() });
 		if (password.length < 8) {
-			return fail(400, { message: 'Password must be at least 8 characters.' });
+			return fail(400, { message: m.auth_password_min_chars({ min: 8 }) });
 		}
 
 		try {
@@ -27,9 +28,9 @@ export const actions: Actions = {
 			});
 		} catch (err) {
 			if (err instanceof APIError) {
-				return fail(400, { message: err.message || 'Password reset failed.' });
+				return fail(400, { message: err.message || m.auth_reset_failed() });
 			}
-			return fail(500, { message: 'Something went wrong. Please try again.' });
+			return fail(500, { message: m.auth_generic_error() });
 		}
 
 		redirect(303, '/login?reset=1');

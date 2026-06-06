@@ -2,6 +2,7 @@ import { fail } from '@sveltejs/kit';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { user as userTable } from '$lib/server/db/auth.schema';
+import { m } from '$lib/paraglide/messages';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals }) => {
@@ -22,12 +23,12 @@ export const load: PageServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	update: async ({ request, locals }) => {
-		if (!locals.user) return fail(401, { message: 'Not authenticated' });
+		if (!locals.user) return fail(401, { message: m.profile_err_not_authenticated() });
 		const form = await request.formData();
 		const name = String(form.get('name') ?? '').trim();
 		const image = String(form.get('image') ?? '').trim() || null;
-		if (!name) return fail(400, { message: 'Name is required.' });
-		if (name.length > 80) return fail(400, { message: 'Name is too long.' });
+		if (!name) return fail(400, { message: m.profile_err_name_required() });
+		if (name.length > 80) return fail(400, { message: m.profile_err_name_too_long() });
 
 		await db
 			.update(userTable)

@@ -12,6 +12,8 @@
 		onSelect: (index: number) => void;
 	};
 
+	import { m } from '$lib/paraglide/messages';
+
 	let { state }: { state: State } = $props();
 
 	const styleStr = $derived.by(() => {
@@ -27,7 +29,7 @@
 	role="listbox"
 >
 	{#if state.items.length === 0}
-		<div class="px-3 py-2 text-[12px] text-text-4">No matches</div>
+		<div class="px-3 py-2 text-[12px] text-text-4">{m.wiki_slash_no_matches()}</div>
 	{:else}
 		{#each state.items as item, i (item.id)}
 			{@const active = i === state.activeIndex}

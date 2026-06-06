@@ -3,6 +3,7 @@
 	import Button from '../Button.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { formatEstimate } from '$lib/data';
+	import { m } from '$lib/paraglide/messages';
 
 	function todayIso(): string {
 		const d = new Date();
@@ -20,7 +21,7 @@
 
 	let open = $state(false);
 	let h = $state(0);
-	let m = $state(0);
+	let min = $state(0);
 	let date = $state(todayIso());
 	let note = $state('');
 
@@ -28,21 +29,21 @@
 		(task.timeLogs ?? []).reduce((s, t) => s + t.minutes, 0)
 	);
 	let summary = $derived.by(() => {
-		if (totalLogged === 0 && !task.estimate) return 'None logged';
+		if (totalLogged === 0 && !task.estimate) return m.tasks_none_logged();
 		if (totalLogged === 0) return `0 / ${formatEstimate(task.estimate)}`;
-		if (!task.estimate) return `${formatEstimate(totalLogged)} logged`;
+		if (!task.estimate) return m.tasks_estimate_logged({ value: formatEstimate(totalLogged) });
 		return `${formatEstimate(totalLogged)} / ${formatEstimate(task.estimate)}`;
 	});
 
 	function cancel() {
 		open = false;
 		h = 0;
-		m = 0;
+		min = 0;
 		note = '';
 	}
 	function submit() {
-		if (h === 0 && m === 0) return;
-		onlog?.({ h, m, date, note });
+		if (h === 0 && min === 0) return;
+		onlog?.({ h, m: min, date, note });
 		cancel();
 	}
 </script>
@@ -57,7 +58,7 @@
 		<span class="w-7 h-7 rounded-md grid place-items-center bg-bg-elev border border-border text-text-3">
 			<Icon name="calendar" size={13} />
 		</span>
-		<span class="text-[13px] font-medium text-text">Log time</span>
+		<span class="text-[13px] font-medium text-text">{m.tasks_log_time()}</span>
 		<span class="ml-auto text-[11.5px] text-text-3 font-mono">{summary}</span>
 		<span class="text-text-3">
 			<Icon name="chevron" size={11} />
@@ -79,7 +80,7 @@
 				<span class="w-7 h-7 rounded-md grid place-items-center bg-surface border border-border text-text-3">
 					<Icon name="calendar" size={13} />
 				</span>
-				<span class="text-[13px] font-medium text-text">Log time</span>
+				<span class="text-[13px] font-medium text-text">{m.tasks_log_time()}</span>
 				<span class="ml-auto text-[11.5px] text-text-3 font-mono">{summary}</span>
 				<span class="text-text-3 rotate-180">
 					<Icon name="chevron" size={11} />
@@ -101,7 +102,7 @@
 							type="number"
 							min="0"
 							max="59"
-							bind:value={m}
+							bind:value={min}
 							class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-[13px] font-mono outline-none focus:border-border-strong pr-7"
 						/>
 						<span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11.5px] text-text-3 font-mono pointer-events-none">m</span>
@@ -114,13 +115,13 @@
 				</div>
 				<textarea
 					bind:value={note}
-					placeholder="What did you work on?"
+					placeholder={m.tasks_what_did_you_work_on()}
 					rows="2"
 					class="w-full resize-none bg-surface border border-border rounded-lg px-3 py-2 text-[13px] placeholder:text-text-3 outline-none focus:border-border-strong"
 				></textarea>
 				<div class="flex items-center justify-end gap-2">
-					<Button size="sm" variant="default" onclick={cancel}>Cancel</Button>
-					<Button size="sm" variant="primary" onclick={submit}>Log time</Button>
+					<Button size="sm" variant="default" onclick={cancel}>{m.common_cancel()}</Button>
+					<Button size="sm" variant="primary" onclick={submit}>{m.tasks_log_time()}</Button>
 				</div>
 			</div>
 		</div>

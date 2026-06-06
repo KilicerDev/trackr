@@ -7,6 +7,7 @@
 	import FeedbackModal from '../FeedbackModal.svelte';
 	import { page } from '$app/state';
 	import { setActiveOrg, type PortalOrg } from '$lib/portal';
+	import { m } from '$lib/paraglide/messages';
 	import type { Snippet } from 'svelte';
 
 	interface Crumb {
@@ -92,7 +93,7 @@
 		{#if actions}{@render actions()}{/if}
 		<div class="relative">
 			<IconButton
-				ariaLabel="Notifications"
+				ariaLabel={m.shell_notifications()}
 				dot={notifications.unreadCount > 0}
 				onclick={() => (bellOpen = !bellOpen)}
 			>
@@ -100,16 +101,16 @@
 			</IconButton>
 			<Popover open={bellOpen} onclose={() => (bellOpen = false)} align="right" minWidth={340}>
 				<div class="flex items-center justify-between px-2 pt-1 pb-2">
-					<span class="text-[12px] font-medium">Notifications</span>
+					<span class="text-[12px] font-medium">{m.shell_notifications()}</span>
 					{#if notifications.unreadCount > 0}
 						<span class="text-[10.5px] uppercase tracking-[0.08em] text-text-3">
-							{notifications.unreadCount} unread
+							{m.shell_notifications_unread({ n: notifications.unreadCount })}
 						</span>
 					{/if}
 				</div>
 				<div class="h-px bg-border -mx-0.5 mb-1"></div>
 				{#if notifications.items.length === 0}
-					<div class="px-2 py-6 text-center text-[12px] text-text-3">You're all caught up.</div>
+					<div class="px-2 py-6 text-center text-[12px] text-text-3">{m.shell_notifications_empty()}</div>
 				{:else}
 					<div class="max-h-[360px] overflow-y-auto -mx-0.5">
 						{#each notifications.items as n (n.id)}
@@ -141,7 +142,7 @@
 						onclick={() => (bellOpen = false)}
 						class="block text-center text-[11.5px] text-text-3 hover:text-text px-2 py-1.5"
 					>
-						View all
+						{m.shell_notifications_view_all()}
 					</a>
 				{/if}
 			</Popover>
@@ -152,7 +153,7 @@
 				type="button"
 				onclick={() => (acctOpen = !acctOpen)}
 				class="w-8 h-8 rounded-full grid place-items-center hover:shadow-[0_0_0_2px_var(--border-strong)] transition-shadow"
-				aria-label="Account"
+				aria-label={m.shell_account()}
 			>
 				<Avatar user={me} size={28} />
 			</button>
@@ -173,7 +174,7 @@
 					class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
 				>
 					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="user" size={14} /></span>
-					<span>Profile</span>
+					<span>{m.shell_account_profile()}</span>
 				</a>
 				<a
 					href="/me/settings"
@@ -181,7 +182,7 @@
 					class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
 				>
 					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="settings" size={14} /></span>
-					<span>Account settings</span>
+					<span>{m.shell_account_settings()}</span>
 				</a>
 				<a
 					href="/me/notifications"
@@ -189,7 +190,7 @@
 					class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
 				>
 					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="bell" size={14} /></span>
-					<span>Notifications</span>
+					<span>{m.shell_notifications()}</span>
 				</a>
 				<div class="h-px bg-border -mx-0.5 my-1"></div>
 				{#if showOrgSwitcher}
@@ -199,7 +200,7 @@
 						class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
 					>
 						<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="org" size={14} /></span>
-						<span>Switch organization</span>
+						<span>{m.shell_switch_organization()}</span>
 						<span class="ml-auto text-text-3"><Icon name={orgListOpen ? 'chevron' : 'chevron-r'} size={12} /></span>
 					</button>
 					{#if orgListOpen}
@@ -225,7 +226,7 @@
 				{:else if !page.data?.isPortalUser}
 					<button class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none">
 						<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="home" size={14} /></span>
-						<span>Switch workspace</span>
+						<span>{m.shell_switch_workspace()}</span>
 						<span class="ml-auto"><Kbd>⌘O</Kbd></span>
 					</button>
 				{/if}
@@ -238,7 +239,7 @@
 					class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
 				>
 					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="send" size={14} /></span>
-					<span>Send feedback</span>
+					<span>{m.shell_send_feedback()}</span>
 				</button>
 				<div class="h-px bg-border -mx-0.5 my-1"></div>
 				<form method="post" action="/logout" class="contents">
@@ -248,7 +249,7 @@
 						style:color="#ef4f5e"
 					>
 						<span class="grid place-items-center w-4 h-4 shrink-0"><Icon name="logout" size={14} /></span>
-						<span>Sign out</span>
+						<span>{m.shell_sign_out()}</span>
 					</button>
 				</form>
 			</Popover>

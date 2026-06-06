@@ -7,6 +7,7 @@ import { can, isPortalUser, isTrackrTeam } from '$lib/server/permissions';
 import { getTicket, loadTicketMessages } from '$lib/server/tickets';
 import { markEntityRead } from '$lib/server/notify';
 import { listAttachments, listAttachmentsForMany } from '$lib/server/attachments';
+import { m } from '$lib/paraglide/messages';
 
 function initials(name: string): string {
 	return name
@@ -26,10 +27,10 @@ function userColor(id: string): string {
 export const load: ServerLoad = async ({ params, locals }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
 	const id = params.id;
-	if (!id) throw error(404, 'Ticket not found');
+	if (!id) throw error(404, m.tickets_not_found_404());
 
 	const ticket = await getTicket(id);
-	if (!ticket) throw error(404, 'Ticket not found');
+	if (!ticket) throw error(404, m.tickets_not_found_404());
 
 	const isAgent = await can(locals, 'org.tickets.edit.any', { orgId: ticket.orgId });
 	const canReadAny = isTrackrTeam(locals) || isAgent
@@ -39,7 +40,7 @@ export const load: ServerLoad = async ({ params, locals }) => {
 		const ownAllowed =
 			(await can(locals, 'org.tickets.read.own', { orgId: ticket.orgId })) &&
 			(ticket.customerId === locals.user.id || ticket.assignedAgentId === locals.user.id);
-		if (!ownAllowed) throw error(403, 'You do not have access to this ticket.');
+		if (!ownAllowed) throw error(403, m.tickets_no_access());
 	}
 
 	const messages = await loadTicketMessages(id, { includeInternal: isAgent });

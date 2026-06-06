@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { PROJECT_STATUS } from '$lib/data';
+	import { projectStatusLabel } from '$lib/labels';
+	import { m } from '$lib/paraglide/messages';
 	import AvatarStack from '../AvatarStack.svelte';
 	import type { ProjectListItem } from '../../../routes/(app)/projects/+page.server';
 
@@ -14,13 +16,13 @@
 
 	function relative(d: Date): string {
 		const ms = Date.now() - d.getTime();
-		const m = Math.round(ms / 60_000);
-		if (m < 1) return 'just now';
-		if (m < 60) return `${m} min ago`;
-		const h = Math.round(m / 60);
-		if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`;
+		const mins = Math.round(ms / 60_000);
+		if (mins < 1) return m.projects_just_now();
+		if (mins < 60) return m.projects_min_ago({ n: mins });
+		const h = Math.round(mins / 60);
+		if (h < 24) return h === 1 ? m.projects_hour_ago_one({ n: h }) : m.projects_hours_ago_other({ n: h });
 		const days = Math.round(h / 24);
-		if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
+		if (days < 7) return days === 1 ? m.projects_day_ago_one({ n: days }) : m.projects_days_ago_other({ n: days });
 		return d.toISOString().slice(0, 10);
 	}
 </script>
@@ -55,12 +57,12 @@
 		</div>
 		<div class="flex items-center gap-1.5 text-[12px] text-text-2 shrink-0">
 			<span class="w-2 h-2 rounded-full" style:background={st.color}></span>
-			{st.label}
+			{projectStatusLabel(project.status)}
 		</div>
 	</div>
 
 	<p class="text-[12.5px] text-text-3 leading-snug mb-5 line-clamp-2 min-h-[2.4em]">
-		{project.description ?? 'No description yet.'}
+		{project.description ?? m.projects_no_description()}
 	</p>
 
 	<div class="h-1 rounded-full mb-4" style:background={project.color}></div>
@@ -69,10 +71,10 @@
 		<AvatarStack users={project.members} size={22} max={4} />
 		<div class="ml-auto text-[11px] text-text-3 text-right">
 			{#if project.lead}
-				Lead <span class="text-text-2 font-medium">{project.lead.name.split(' ')[0]}</span>
+				{m.projects_lead_label()} <span class="text-text-2 font-medium">{project.lead.name.split(' ')[0]}</span>
 				<span class="text-text-4 mx-1">·</span>
 			{/if}
-			Updated {relative(project.updatedAt)}
+			{m.projects_updated_relative({ time: relative(project.updatedAt) })}
 		</div>
 	</div>
 </a>

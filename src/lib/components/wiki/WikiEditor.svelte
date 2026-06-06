@@ -7,6 +7,7 @@
 	import TaskList from '@tiptap/extension-task-list';
 	import TaskItem from '@tiptap/extension-task-item';
 	import { SlashCommand } from './slash-command.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import './wiki-editor.css';
 
 	interface Props {
@@ -19,7 +20,7 @@
 	let {
 		content,
 		editable = false,
-		placeholder = "Type '/' for commands…",
+		placeholder = m.wiki_editor_placeholder_commands(),
 		onUpdate,
 		onReady
 	}: Props = $props();

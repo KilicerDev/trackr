@@ -4,6 +4,7 @@
 	import { confirm } from '../confirm.svelte';
 	import { showToast } from '$lib/toast.svelte';
 	import { formatBytes, type AttachmentDTO } from '$lib/attachments/config';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		attachments: AttachmentDTO[];
@@ -24,9 +25,9 @@
 
 	async function remove(att: AttachmentDTO) {
 		const ok = await confirm({
-			title: 'Delete attachment?',
-			message: `"${att.filename}" will be permanently removed.`,
-			confirmLabel: 'Delete',
+			title: m.attach_delete_title(),
+			message: m.attach_delete_message({ filename: att.filename }),
+			confirmLabel: m.common_delete(),
 			tone: 'danger',
 			icon: 'trash'
 		});
@@ -36,10 +37,10 @@
 			const res = await fetch(`/api/attachments/${att.id}`, { method: 'DELETE' });
 			if (!res.ok) {
 				const body = (await res.json().catch(() => null)) as { message?: string } | null;
-				showToast('err', body?.message ?? 'Failed to delete attachment.');
+				showToast('err', body?.message ?? m.attach_delete_failed());
 				return;
 			}
-			showToast('ok', 'Attachment deleted');
+			showToast('ok', m.attach_deleted());
 			if (ondeleted) ondeleted(att.id);
 			else await invalidateAll();
 		} finally {
@@ -58,7 +59,7 @@
 						target="_blank"
 						rel="noopener"
 						class="shrink-0"
-						aria-label="Open {att.filename}"
+						aria-label={m.attach_open({ filename: att.filename })}
 					>
 						<img
 							src={`/api/attachments/${att.id}?thumb`}
@@ -79,7 +80,7 @@
 				<a
 					href={`/api/attachments/${att.id}/download`}
 					class="w-7 h-7 grid place-items-center rounded-md text-text-3 hover:text-text hover:bg-surface-2 transition-colors"
-					aria-label="Download {att.filename}"
+					aria-label={m.attach_download({ filename: att.filename })}
 				>
 					<Icon name="download" size={14} />
 				</a>
@@ -88,7 +89,7 @@
 						type="button"
 						disabled={deleting === att.id}
 						onclick={() => remove(att)}
-						aria-label="Delete {att.filename}"
+						aria-label={m.attach_delete_file({ filename: att.filename })}
 						class="w-7 h-7 grid place-items-center rounded-md text-text-3 hover:text-red-500 hover:bg-surface-2 transition-colors disabled:opacity-50"
 					>
 						<Icon name="trash" size={14} />

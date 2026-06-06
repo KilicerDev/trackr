@@ -9,6 +9,7 @@
 	import { collabSchemaExtensions, COLLAB_FIELD } from '$lib/collab/extensions';
 	import { SlashCommand } from './slash-command.svelte';
 	import { WikiImageUpload } from './image-upload';
+	import { m } from '$lib/paraglide/messages';
 	import './wiki-editor.css';
 
 	export type PresenceUser = { clientId: number; isSelf: boolean; name: string; color: string };
@@ -33,7 +34,7 @@
 		pageId,
 		user,
 		editable = true,
-		placeholder = "Type '/' for commands…",
+		placeholder = m.wiki_editor_placeholder_commands(),
 		onUpdate,
 		onReady,
 		onStatus,
@@ -55,7 +56,7 @@
 	// provider re-fetch on every (re)connect, so expiry is handled transparently.
 	async function fetchToken(): Promise<string> {
 		const res = await fetch('/collab-token');
-		if (!res.ok) throw new Error('Could not obtain collaboration token');
+		if (!res.ok) throw new Error(m.wiki_collab_token_error());
 		return (await res.json()).token as string;
 	}
 
@@ -81,7 +82,7 @@
 					users.push({
 						clientId,
 						isSelf: clientId === self,
-						name: u.name ?? 'Someone',
+						name: u.name ?? m.wiki_presence_someone(),
 						color: u.color ?? '#888'
 					});
 				});

@@ -9,6 +9,7 @@
 	import type { PageData } from './$types';
 	import { page } from '$app/state';
 	import { readView, saveView } from '$lib/viewState';
+	import { m } from '$lib/paraglide/messages';
 
 	let { data }: { data: PageData } = $props();
 
@@ -138,9 +139,9 @@
 	);
 </script>
 
-<svelte:head><title>Trackr · Tasks</title></svelte:head>
+<svelte:head><title>Trackr · {m.tasks_title()}</title></svelte:head>
 
-<Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: 'Tasks' }]} />
+<Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: m.tasks_title() }]} />
 <Toolbar
 	{view}
 	{setView}

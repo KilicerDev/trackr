@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { Task, ProjectId, StatusId, PriorityId } from '$lib/types';
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/data';
+	import { statusLabel, priorityLabel } from '$lib/labels';
+	import { m } from '$lib/paraglide/messages';
 	import { resolveProject, resolveUser } from '$lib/lookup.svelte';
 	import { page } from '$app/state';
 	import BoardCard from './BoardCard.svelte';
@@ -64,7 +66,7 @@
 		if (group === 'status') {
 			return TRACKR_STATUSES.map((s) => ({
 				key: s.id,
-				label: s.label,
+				label: statusLabel(s.id),
 				color: s.dot,
 				statusId: s.id as StatusId,
 				tasks: tasks.filter((t) => t.status === s.id)
@@ -73,7 +75,7 @@
 		if (group === 'priority') {
 			return [...TRACKR_PRIORITIES].reverse().map((p) => ({
 				key: p.id,
-				label: p.label,
+				label: priorityLabel(p.id),
 				color: p.color,
 				priorityId: p.id as PriorityId,
 				tasks: tasks.filter((t) => t.priority === p.id)
@@ -94,7 +96,7 @@
 				})
 				.sort((a, b) => a.label.localeCompare(b.label));
 		}
-		return [{ key: 'all', label: 'All tasks', color: 'transparent', tasks }];
+		return [{ key: 'all', label: m.tasks_all_tasks(), color: 'transparent', tasks }];
 	});
 
 	let collapsed = $state(new Set<string>());
@@ -128,7 +130,7 @@
 		if (sub === 'status') {
 			return TRACKR_STATUSES.map((s) => ({
 				key: `${col.key}:${s.id}`,
-				label: s.label,
+				label: statusLabel(s.id),
 				color: s.dot,
 				statusId: s.id as StatusId,
 				tasks: items
@@ -141,7 +143,7 @@
 				.reverse()
 				.map((p) => ({
 					key: `${col.key}:${p.id}`,
-					label: p.label,
+					label: priorityLabel(p.id),
 					color: p.color,
 					priorityId: p.id as PriorityId,
 					tasks: items.filter((t) => t.priority === p.id)
@@ -187,7 +189,7 @@
 					<span class="ml-auto">
 						<IconButton
 							size={24}
-							ariaLabel="Add task"
+							ariaLabel={m.tasks_add_task()}
 							onclick={() => onAddInProject?.(col.project ?? ('TRACKR' as ProjectId), col.statusId)}
 						>
 							<Icon name="plus" size={13} />
@@ -235,7 +237,7 @@
 						onclick={() => onAddInProject?.(col.project ?? ('TRACKR' as ProjectId), col.statusId)}
 						class="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-border text-text-3 hover:text-text hover:border-border-strong transition-colors text-[12px]"
 					>
-						<Icon name="plus" size={12} /> New task
+						<Icon name="plus" size={12} /> {m.tasks_new_task()}
 					</button>
 				</div>
 			</div>

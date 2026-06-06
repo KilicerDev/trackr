@@ -5,6 +5,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { showToast } from '$lib/toast.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	type Prefs = {
 		theme: string;
@@ -12,6 +13,7 @@
 		density: string;
 		defaultLanding: string;
 		weekStartsOn: number;
+		locale: string;
 	};
 	const prefs = $derived((page.data as { preferences: Prefs }).preferences);
 
@@ -20,17 +22,29 @@
 	let density = $state(prefs.density);
 	let defaultLanding = $state(prefs.defaultLanding);
 	let weekStartsOn = $state(prefs.weekStartsOn);
+	let locale = $state(prefs.locale);
 	let saving = $state(false);
 
-	const themes = ['dark', 'light', 'system'] as const;
-	const densities = ['comfortable', 'compact'] as const;
+	const themes = [
+		{ value: 'dark', label: m.settings_theme_dark() },
+		{ value: 'light', label: m.settings_theme_light() },
+		{ value: 'system', label: m.settings_theme_system() }
+	];
+	const densities = [
+		{ value: 'comfortable', label: m.settings_density_comfortable() },
+		{ value: 'compact', label: m.settings_density_compact() }
+	];
+	const localeOptions = [
+		{ value: 'en', label: 'English' },
+		{ value: 'de', label: 'Deutsch' }
+	];
 	const accents = ['#ef7a6d', '#7a9cf0', '#7fc8a9', '#c08bd6', '#f0a85c', '#9aa4b2'];
 	const landings = [
-		{ value: '/week', label: 'My week' },
-		{ value: '/tasks', label: 'Tasks' },
-		{ value: '/projects', label: 'Projects' },
-		{ value: '/tickets', label: 'Tickets' },
-		{ value: '/wiki', label: 'Wiki' }
+		{ value: '/week', label: m.settings_landing_week() },
+		{ value: '/tasks', label: m.settings_landing_tasks() },
+		{ value: '/projects', label: m.settings_landing_projects() },
+		{ value: '/tickets', label: m.settings_landing_tickets() },
+		{ value: '/wiki', label: m.settings_landing_wiki() }
 	];
 
 	function applyLive() {
@@ -48,72 +62,81 @@
 			accent !== prefs.accent ||
 			density !== prefs.density ||
 			defaultLanding !== prefs.defaultLanding ||
-			weekStartsOn !== prefs.weekStartsOn
+			weekStartsOn !== prefs.weekStartsOn ||
+			locale !== prefs.locale
 	);
 </script>
 
 <header class="mb-6">
-	<h1 class="text-[22px] font-semibold tracking-[-0.014em]">Account settings</h1>
-	<p class="text-[12.5px] text-text-3 mt-1">Personal appearance and default behavior across the app.</p>
+	<h1 class="text-[22px] font-semibold tracking-[-0.014em]">{m.settings_title()}</h1>
+	<p class="text-[12.5px] text-text-3 mt-1">{m.settings_subtitle()}</p>
 </header>
 
 <form
 	method="post"
 	action="?/update"
 	use:enhance={() => {
+		const localeChanged = locale !== prefs.locale;
 		saving = true;
 		return async ({ result }) => {
 			saving = false;
 			if (result.type === 'success') {
-				showToast('ok', 'Settings saved');
+				// A language change must re-render every static message call, so
+				// reload the page (the cookie is already set by the action → SSR
+				// renders in the new language). Other prefs apply live.
+				if (localeChanged) {
+					location.reload();
+					return;
+				}
+				showToast('ok', m.settings_toast_saved());
 				await invalidateAll();
 			} else if (result.type === 'failure') {
-				showToast('err', (result.data as { message?: string } | undefined)?.message ?? 'Could not save');
+				showToast('err', (result.data as { message?: string } | undefined)?.message ?? m.settings_toast_could_not_save());
 			}
 		};
 	}}
 	class="space-y-5"
 >
 	<section class="bg-bg-elev border border-border rounded-2xl p-5">
-		<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-4">Appearance</div>
+		<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-4">{m.settings_appearance()}</div>
 		<div class="grid grid-cols-[140px_1fr] items-center gap-y-4 gap-x-4 text-[13px]">
-			<div class="text-text-3">Theme</div>
+			<div class="text-text-3">{m.settings_theme()}</div>
 			<div class="inline-flex items-center h-8 bg-surface border border-border rounded-lg p-0.5">
-				{#each themes as t (t)}
+				{#each themes as t (t.value)}
 					<button
 						type="button"
-						onclick={() => (theme = t)}
-						class="px-3 h-full rounded-md text-[12.5px] capitalize {theme === t
+						onclick={() => (theme = t.value)}
+						class="px-3 h-full rounded-md text-[12.5px] {theme === t.value
 							? 'bg-bg-elev text-text shadow-sm'
 							: 'text-text-3 hover:text-text'}"
 					>
-						{t}
+						{t.label}
 					</button>
 				{/each}
 			</div>
 
-			<div class="text-text-3">Density</div>
+			<div class="text-text-3">{m.settings_density()}</div>
 			<div class="inline-flex items-center h-8 bg-surface border border-border rounded-lg p-0.5">
-				{#each densities as d (d)}
+				{#each densities as d (d.value)}
 					<button
 						type="button"
-						onclick={() => (density = d)}
-						class="px-3 h-full rounded-md text-[12.5px] capitalize {density === d
+						onclick={() => (density = d.value)}
+						class="px-3 h-full rounded-md text-[12.5px] {density === d.value
 							? 'bg-bg-elev text-text shadow-sm'
 							: 'text-text-3 hover:text-text'}"
 					>
-						{d}
+						{d.label}
 					</button>
 				{/each}
 			</div>
 
-			<div class="text-text-3">Accent</div>
+			<div class="text-text-3">{m.settings_accent()}</div>
 			<div class="flex items-center gap-2">
 				{#each accents as c (c)}
 					<button
 						type="button"
 						onclick={() => (accent = c)}
-						aria-label="Accent color"
+						aria-label={m.settings_accent_color()}
 						class="w-7 h-7 rounded-md grid place-items-center transition-transform hover:scale-110 {accent === c
 							? 'ring-2 ring-text/20'
 							: ''}"
@@ -123,13 +146,24 @@
 					</button>
 				{/each}
 			</div>
+
+			<label for="locale" class="text-text-3">{m.settings_language()}</label>
+			<select
+				id="locale"
+				bind:value={locale}
+				class="bg-surface border border-border rounded-lg px-3 py-2 outline-none focus:border-border-strong w-full max-w-[260px]"
+			>
+				{#each localeOptions as o (o.value)}
+					<option value={o.value}>{o.label}</option>
+				{/each}
+			</select>
 		</div>
 	</section>
 
 	<section class="bg-bg-elev border border-border rounded-2xl p-5">
-		<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-4">Defaults</div>
+		<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-4">{m.settings_defaults()}</div>
 		<div class="grid grid-cols-[140px_1fr] items-center gap-y-4 gap-x-4 text-[13px]">
-			<label for="land" class="text-text-3">Landing page</label>
+			<label for="land" class="text-text-3">{m.settings_landing_page()}</label>
 			<select
 				id="land"
 				bind:value={defaultLanding}
@@ -140,9 +174,9 @@
 				{/each}
 			</select>
 
-			<div class="text-text-3">Week starts on</div>
+			<div class="text-text-3">{m.settings_week_starts_on()}</div>
 			<div class="inline-flex items-center h-8 bg-surface border border-border rounded-lg p-0.5">
-				{#each [{ v: 1, l: 'Monday' }, { v: 0, l: 'Sunday' }] as opt (opt.v)}
+				{#each [{ v: 1, l: m.settings_week_monday() }, { v: 0, l: m.settings_week_sunday() }] as opt (opt.v)}
 					<button
 						type="button"
 						onclick={() => (weekStartsOn = opt.v)}
@@ -162,10 +196,11 @@
 	<input type="hidden" name="density" value={density} />
 	<input type="hidden" name="defaultLanding" value={defaultLanding} />
 	<input type="hidden" name="weekStartsOn" value={weekStartsOn} />
+	<input type="hidden" name="locale" value={locale} />
 
 	<div class="flex items-center justify-end gap-2">
 		<Button type="submit" variant="primary" disabled={!dirty || saving}>
-			{saving ? 'Saving…' : 'Save changes'}
+			{saving ? m.common_saving() : m.common_save_changes()}
 		</Button>
 	</div>
 </form>

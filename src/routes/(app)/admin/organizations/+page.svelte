@@ -4,6 +4,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import CreateOrganizationModal from '$lib/components/admin/CreateOrganizationModal.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -44,18 +45,17 @@
 	}
 </script>
 
-<svelte:head><title>Trackr · Organizations</title></svelte:head>
+<svelte:head><title>{m.admin_organizations_page_title()}</title></svelte:head>
 
-<Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: 'Organizations' }]} />
+<Topbar crumbs={[{ label: m.admin_crumb_workspace(), href: '/tasks' }, { label: m.admin_organizations_title() }]} />
 
 <div class="flex-1 min-h-0 overflow-y-auto">
 	<div class="px-6 py-6">
 		<div class="flex items-end gap-4 mb-6">
 			<div>
-				<h1 class="text-[26px] font-semibold tracking-[-0.014em] text-text">Organizations</h1>
+				<h1 class="text-[26px] font-semibold tracking-[-0.014em] text-text">{m.admin_organizations_title()}</h1>
 				<p class="text-[12.5px] text-text-3 mt-1">
-					{data.orgs.length} organization{data.orgs.length === 1 ? '' : 's'} · projects can either
-					belong to one or stay internal
+					{m.admin_organizations_subtitle({ count: data.orgs.length })}
 				</p>
 			</div>
 			<div class="ml-auto flex items-center gap-2">
@@ -66,12 +66,12 @@
 					<input
 						type="text"
 						bind:value={search}
-						placeholder="Search…"
+						placeholder={m.common_search()}
 						class="h-8 pl-8 pr-3 rounded-lg bg-surface border border-border text-[12.5px] outline-none focus:border-border-strong w-56"
 					/>
 				</div>
 				<Button variant="primary" size="sm" onclick={() => (createOpen = true)}>
-					<Icon name="plus" size={13} /> New organization
+					<Icon name="plus" size={13} /> {m.admin_org_new()}
 				</Button>
 			</div>
 		</div>
@@ -79,8 +79,8 @@
 		{#if data.orgs.length === 0}
 			<EmptyState
 				icon="org"
-				title="No organizations yet"
-				hint="Create one to group projects by client. Internal projects can stay org-less."
+				title={m.admin_org_empty_title()}
+				hint={m.admin_org_empty_hint()}
 			/>
 		{:else}
 			<div class="bg-bg-elev border border-border rounded-2xl overflow-hidden">
@@ -88,15 +88,15 @@
 					class="grid items-center gap-3 px-5 h-9 text-[11px] uppercase tracking-[0.08em] text-text-4 border-b border-border"
 					style:grid-template-columns="1.6fr 1fr 80px 1fr 36px"
 				>
-					<span>Organization</span>
-					<span>Slug</span>
-					<span class="text-right">Projects</span>
-					<span>Created</span>
+					<span>{m.admin_organization()}</span>
+					<span>{m.admin_slug()}</span>
+					<span class="text-right">{m.admin_projects()}</span>
+					<span>{m.admin_created()}</span>
 					<span></span>
 				</div>
 				{#if visible.length === 0}
 					<div class="px-5 py-10 text-center text-[12.5px] text-text-3">
-						No organizations match your search.
+						{m.admin_org_no_search_match()}
 					</div>
 				{/if}
 				{#each visible as o (o.id)}
@@ -147,6 +147,6 @@
 <CreateOrganizationModal
 	open={createOpen}
 	onclose={() => (createOpen = false)}
-	oncreated={(n) => showToast('ok', `Created ${n}.`)}
+	oncreated={(n) => showToast('ok', m.admin_org_created_toast({ name: n }))}
 	onerror={(m) => showToast('err', m)}
 />

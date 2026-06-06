@@ -8,6 +8,7 @@
 		type AttachmentDTO,
 		type AttachmentEntityType
 	} from '$lib/attachments/config';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		entityType: AttachmentEntityType;
@@ -17,7 +18,7 @@
 		label?: string;
 	}
 
-	let { entityType, entityId, onuploaded, label = 'Attach files' }: Props = $props();
+	let { entityType, entityId, onuploaded, label = m.attach_attach_files() }: Props = $props();
 
 	let uploading = $state(false);
 	let input = $state<HTMLInputElement>();
@@ -30,7 +31,7 @@
 		const res = await fetch('/api/attachments', { method: 'POST', body: form });
 		if (!res.ok) {
 			const body = (await res.json().catch(() => null)) as { message?: string } | null;
-			showToast('err', body?.message ?? `Failed to upload "${file.name}".`);
+			showToast('err', body?.message ?? m.attach_upload_failed({ filename: file.name }));
 			return false;
 		}
 		const body = (await res.json()) as { attachment: AttachmentDTO };
@@ -70,7 +71,7 @@
 		class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-dashed border-border hover:border-border-strong text-[12.5px] text-text-2 hover:text-text transition-colors disabled:opacity-60"
 	>
 		<Icon name={uploading ? 'refresh' : 'paperclip'} size={13} class={uploading ? 'animate-spin' : ''} />
-		<span>{uploading ? 'Uploading…' : label}</span>
+		<span>{uploading ? m.attach_uploading() : label}</span>
 	</button>
 	<input bind:this={input} type="file" multiple hidden onchange={onPick} />
 </AttachmentDropzone>

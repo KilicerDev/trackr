@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import Icon from '../Icon.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		/** Called with the dropped files. The parent decides what to stage. */
@@ -10,7 +11,7 @@
 		label?: string;
 	}
 
-	let { onfiles, children, disabled = false, label = 'Drop files to attach' }: Props = $props();
+	let { onfiles, children, disabled = false, label = m.attach_drop_files() }: Props = $props();
 
 	// dragenter/dragleave fire for every descendant the pointer crosses, so a
 	// naive boolean flickers. Counting enters minus leaves tracks "is the pointer

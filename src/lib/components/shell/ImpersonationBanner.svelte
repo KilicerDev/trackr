@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { alert as uiAlert } from '$lib/components/confirm.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	type Props = {
 		targetName: string | null;
@@ -20,8 +21,8 @@
 			if (!res.ok) {
 				const data = (await res.json().catch(() => ({}))) as { message?: string };
 				await uiAlert({
-					title: 'Could not stop impersonation',
-					message: data.message ?? 'Please try again in a moment.',
+					title: m.shell_impersonation_stop_error_title(),
+					message: data.message ?? m.shell_impersonation_try_again(),
 					tone: 'danger'
 				});
 				stopping = false;
@@ -31,8 +32,8 @@
 			await goto('/admin/users', { invalidateAll: true });
 		} catch {
 			await uiAlert({
-				title: 'Could not stop impersonation',
-				message: 'Please try again in a moment.',
+				title: m.shell_impersonation_stop_error_title(),
+				message: m.shell_impersonation_try_again(),
 				tone: 'danger'
 			});
 			stopping = false;
@@ -61,9 +62,9 @@
 		<path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
 	</svg>
 	<span class="text-text">
-		Impersonating <span class="font-semibold">{targetName ?? targetEmail}</span>
+		{m.shell_impersonation_label()} <span class="font-semibold">{targetName ?? targetEmail}</span>
 		<span class="text-text-3"> · </span>
-		<span class="text-text-3">signed in as {impersonatorName ?? impersonatorEmail}</span>
+		<span class="text-text-3">{m.shell_impersonation_signed_in_as({ name: impersonatorName ?? impersonatorEmail })}</span>
 	</span>
 	<button
 		type="button"
@@ -73,6 +74,6 @@
 		style:background="rgba(240,168,92,0.22)"
 		style:color="#f0a85c"
 	>
-		{stopping ? 'Stopping…' : 'Stop impersonating'}
+		{stopping ? m.shell_impersonation_stopping() : m.shell_impersonation_stop()}
 	</button>
 </div>

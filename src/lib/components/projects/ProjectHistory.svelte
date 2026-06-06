@@ -7,6 +7,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import { showToast } from '$lib/toast.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import type { ActionResult } from '@sveltejs/kit';
 
 	type Actor = { id: string; name: string; initials: string; color: string } | null;
@@ -67,7 +68,7 @@
 				extra = [...extra, ...next];
 			}
 		} catch {
-			showToast('err', 'Failed to load more activity.');
+			showToast('err', m.projects_load_more_failed());
 		} finally {
 			loadingMore = false;
 		}
@@ -95,12 +96,12 @@
 			} else {
 				const msg =
 					result.type === 'failure'
-						? (result.data as { message?: string } | undefined)?.message ?? 'Failed to comment.'
-						: 'Failed to comment.';
+						? (result.data as { message?: string } | undefined)?.message ?? m.projects_comment_failed()
+						: m.projects_comment_failed();
 				showToast('err', msg);
 			}
 		} catch {
-			showToast('err', 'Network error.');
+			showToast('err', m.projects_network_error());
 		} finally {
 			sending = false;
 		}
@@ -126,7 +127,7 @@
 		return h ? (m ? `${h}h ${m}m` : `${h}h`) : `${m}m`;
 	}
 	function taskRef(meta: Record<string, unknown> | null): string {
-		return meta && typeof meta.taskRef === 'string' ? meta.taskRef : 'a task';
+		return meta && typeof meta.taskRef === 'string' ? meta.taskRef : m.projects_history_a_task();
 	}
 
 	function dayLabel(iso: string): string {
@@ -138,8 +139,8 @@
 			a.getDate() === b.getDate();
 		const yesterday = new Date(today);
 		yesterday.setDate(today.getDate() - 1);
-		if (isSameDay(d, today)) return 'Today';
-		if (isSameDay(d, yesterday)) return 'Yesterday';
+		if (isSameDay(d, today)) return m.projects_history_day_today();
+		if (isSameDay(d, yesterday)) return m.projects_history_day_yesterday();
 		return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 	}
 	function timeLabel(iso: string): string {
@@ -202,49 +203,57 @@
 
 {#snippet line(e: ActivityItem)}
 	<div class="flex-1 min-w-0 text-[12.5px] text-text-2 leading-relaxed">
-		<span class="text-text font-medium">{e.actor?.name ?? 'Someone'}</span>
+		<span class="text-text font-medium">{e.actor?.name ?? m.projects_history_someone()}</span>
 		{#if e.type === 'comment'}
-			commented{#if e.taskId} on {@render refChip(e.meta)}{/if}
+			{m.projects_history_commented()}{#if e.taskId} {m.projects_history_commented_on()} {@render refChip(e.meta)}{/if}
 		{:else if e.type === 'task.created'}
-			created {@render refChip(e.meta)}
+			{m.projects_history_created()} {@render refChip(e.meta)}
 		{:else if e.type === 'task.deleted'}
-			deleted {@render refChip(e.meta)}
+			{m.projects_history_deleted()} {@render refChip(e.meta)}
 		{:else if e.type === 'task.status'}
-			changed status of {@render refChip(e.meta)}
+			{m.projects_history_changed_status_of()} {@render refChip(e.meta)}
 			<span class="text-text-3">{humanize(e.meta?.from)}</span> →
 			<span class="text-text font-medium">{humanize(e.meta?.to)}</span>
 		{:else if e.type === 'task.priority'}
-			changed priority of {@render refChip(e.meta)}
+			{m.projects_history_changed_priority_of()} {@render refChip(e.meta)}
 			<span class="text-text-3">{humanize(e.meta?.from)}</span> →
 			<span class="text-text font-medium">{humanize(e.meta?.to)}</span>
 		{:else if e.type === 'task.type'}
-			changed type of {@render refChip(e.meta)}
+			{m.projects_history_changed_type_of()} {@render refChip(e.meta)}
 			<span class="text-text-3">{humanize(e.meta?.from)}</span> →
 			<span class="text-text font-medium">{humanize(e.meta?.to)}</span>
 		{:else if e.type === 'task.assignee'}
-			updated assignees of {@render refChip(e.meta)}
+			{m.projects_history_updated_assignees_of()} {@render refChip(e.meta)}
 		{:else if e.type === 'time.logged'}
-			logged <span class="text-text font-medium">{fmtMinutes(e.meta?.minutes)}</span>
-			on {@render refChip(e.meta)}
+			{m.projects_history_logged()} <span class="text-text font-medium">{fmtMinutes(e.meta?.minutes)}</span>
+			{m.projects_history_on()} {@render refChip(e.meta)}
 		{:else if e.type === 'project.name'}
-			renamed the project to <span class="text-text">{humanize(e.meta?.to)}</span>
+			{m.projects_history_renamed_to()} <span class="text-text">{humanize(e.meta?.to)}</span>
 		{:else if e.type === 'project.description'}
-			updated the project description
+			{m.projects_history_updated_description()}
 		{:else if e.type === 'project.status'}
-			changed the project status{#if e.meta?.from} from {humanize(e.meta.from)}{/if}
-			to <span class="text-text font-medium">{humanize(e.meta?.to)}</span>
+			{m.projects_history_changed_status()}{#if e.meta?.from} {m.projects_history_from()} {humanize(e.meta.from)}{/if}
+			{m.projects_history_to()} <span class="text-text font-medium">{humanize(e.meta?.to)}</span>
 		{:else if e.type === 'project.color'}
-			changed the project color
+			{m.projects_history_changed_color()}
 		{:else if e.type === 'member.added'}
-			added <span class="text-text">{userName(e.meta?.userId)}</span> as {roleLabel(e.meta?.role)}
+			{m.projects_history_added_as({
+				user: userName(e.meta?.userId),
+				role: roleLabel(e.meta?.role)
+			})}
 		{:else if e.type === 'member.removed'}
-			removed <span class="text-text">{userName(e.meta?.userId)}</span>
+			{m.projects_history_removed()} <span class="text-text">{userName(e.meta?.userId)}</span>
 		{:else if e.type === 'member.role'}
-			changed <span class="text-text">{userName(e.meta?.userId)}</span>'s role to {roleLabel(e.meta?.role)}
+			{m.projects_history_changed_role_to({
+				user: userName(e.meta?.userId),
+				role: roleLabel(e.meta?.role)
+			})}
 		{:else if e.type === 'lead.set'}
-			set <span class="text-text">{userName(e.meta?.userId)}</span> as project lead
+			{m.projects_history_set_as_lead({
+				user: userName(e.meta?.userId)
+			})}
 		{:else if e.type === 'lead.cleared'}
-			cleared the project lead
+			{m.projects_history_cleared_lead()}
 		{:else}
 			{humanize(e.type)}
 		{/if}
@@ -254,11 +263,11 @@
 <Drawer {open} {onclose} width={460}>
 	<div class="flex items-center justify-between px-4 h-14 border-b border-border shrink-0">
 		<div class="flex items-center gap-2 text-[13.5px] font-medium text-text">
-			<Icon name="logs" size={15} /> Project history
+			<Icon name="logs" size={15} /> {m.projects_history_title()}
 		</div>
 		<button
 			type="button"
-			aria-label="Close"
+			aria-label={m.common_close()}
 			onclick={onclose}
 			class="w-7 h-7 grid place-items-center rounded-md hover:bg-surface-2 text-text-3 hover:text-text"
 		>
@@ -268,7 +277,7 @@
 
 	<div class="flex-1 overflow-y-auto px-4 py-4">
 		{#if items.length === 0}
-			<div class="text-[13px] text-text-3 text-center py-10">No activity yet.</div>
+			<div class="text-[13px] text-text-3 text-center py-10">{m.projects_no_activity()}</div>
 		{:else}
 			{#each grouped as g (g.day)}
 				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-3 mt-4 first:mt-0">
@@ -305,7 +314,7 @@
 									<button
 										type="button"
 										onclick={() => openTask(ref)}
-										title="Open {ref}"
+										title={m.projects_open_ref({ ref })}
 										class="w-full text-left flex items-start gap-3 py-0.5 rounded-lg hover:bg-surface-2 cursor-pointer transition-colors"
 									>
 										{@render line(e)}
@@ -357,7 +366,7 @@
 					disabled={loadingMore}
 					class="mt-5 w-full py-2 rounded-lg border border-border text-[12.5px] text-text-2 hover:bg-surface-2 disabled:opacity-50"
 				>
-					{loadingMore ? 'Loading…' : 'Load more'}
+					{loadingMore ? m.common_loading() : m.projects_load_more()}
 				</button>
 			{/if}
 		{/if}
@@ -366,7 +375,7 @@
 	<div class="p-3 border-t border-border shrink-0">
 		<Composer
 			bind:value={commentBody}
-			placeholder="Add a comment to this project…"
+			placeholder={m.projects_comment_placeholder()}
 			{sending}
 			onsend={sendComment}
 		/>

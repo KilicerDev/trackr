@@ -18,6 +18,7 @@
 	import type { PageData } from './$types';
 	import type { Editor } from '@tiptap/core';
 	import type { WebSocketStatus } from '@hocuspocus/provider';
+	import { m } from '$lib/paraglide/messages';
 
 	type TreeNode = {
 		id: string;
@@ -73,7 +74,7 @@
 			: undefined
 	);
 	const collabUser = $derived(
-		me ? { name: me.name, color: userColor(me.id) } : { name: 'Someone', color: '#888' }
+		me ? { name: me.name, color: userColor(me.id) } : { name: m.wiki_someone(), color: '#888' }
 	);
 
 	// Live collaborators other than me, de-duplicated by name (one person, many tabs).
@@ -89,10 +90,10 @@
 	function relativeTime(d: Date | string): string {
 		const dt = typeof d === 'string' ? new Date(d) : d;
 		const diff = (Date.now() - dt.getTime()) / 1000;
-		if (diff < 60) return 'just now';
-		if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
-		if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`;
-		if (diff < 86400 * 7) return `${Math.floor(diff / 86400)} days ago`;
+		if (diff < 60) return m.wiki_relative_just_now();
+		if (diff < 3600) return m.wiki_relative_min_ago({ n: Math.floor(diff / 60) });
+		if (diff < 86400) return m.wiki_relative_hours_ago({ n: Math.floor(diff / 3600) });
+		if (diff < 86400 * 7) return m.wiki_relative_days_ago({ n: Math.floor(diff / 86400) });
 		return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 	}
 	function fmtDate(d: Date | string): string {
@@ -178,13 +179,13 @@
 				{ message?: string }
 			>;
 			if (result.type === 'failure') {
-				showToast('err', result.data?.message ?? 'Could not rename');
+				showToast('err', result.data?.message ?? m.wiki_toast_could_not_rename());
 				titleDraft = pg.title;
 			} else if (result.type === 'success') {
 				await invalidateAll();
 			}
 		} catch {
-			showToast('err', 'Network error');
+			showToast('err', m.wiki_toast_network_error());
 		} finally {
 			titleSaving = false;
 		}
@@ -209,8 +210,8 @@
 	function copyLink() {
 		if (!browser) return;
 		navigator.clipboard?.writeText(location.href).then(
-			() => showToast('ok', 'Link copied'),
-			() => showToast('err', 'Could not copy')
+			() => showToast('ok', m.wiki_toast_link_copied()),
+			() => showToast('err', m.wiki_toast_could_not_copy())
 		);
 	}
 
@@ -219,14 +220,14 @@
 		if (!browser || !editor || exporting) return;
 		menuOpen = false;
 		exporting = true;
-		const title = pg.title || 'Untitled';
+		const title = pg.title || m.wiki_untitled();
 		const doc = editor.getJSON();
 		try {
 			const { exportWikiPageToPdf } = await import('$lib/wiki/pdf-export');
 			await exportWikiPageToPdf(title, doc);
 		} catch (e) {
 			console.error('PDF export failed', e);
-			showToast('err', 'Could not export PDF');
+			showToast('err', m.wiki_toast_could_not_export());
 		} finally {
 			exporting = false;
 		}
@@ -234,11 +235,11 @@
 
 	async function onDelete() {
 		const ok = await confirm({
-			title: pg.isFolder ? 'Delete folder?' : 'Delete page?',
+			title: pg.isFolder ? m.wiki_confirm_delete_folder_title() : m.wiki_confirm_delete_page_title(),
 			message: pg.isFolder
-				? 'All pages inside this folder will also be deleted. This cannot be undone.'
-				: 'This page will be permanently removed.',
-			confirmLabel: 'Delete',
+				? m.wiki_confirm_delete_folder_message()
+				: m.wiki_confirm_delete_page_message(),
+			confirmLabel: m.common_delete(),
 			tone: 'danger'
 		});
 		if (!ok) return;
@@ -253,30 +254,30 @@
 			{ message?: string }
 		>;
 		if (result.type === 'redirect') {
-			showToast('ok', 'Deleted');
+			showToast('ok', m.wiki_toast_deleted());
 			window.location.href = result.location;
 		} else if (result.type === 'success') {
-			showToast('ok', 'Deleted');
+			showToast('ok', m.wiki_toast_deleted());
 			window.location.href = '/wiki';
 		} else if (result.type === 'failure') {
-			showToast('err', result.data?.message ?? 'Could not delete');
+			showToast('err', result.data?.message ?? m.wiki_toast_could_not_delete());
 		} else {
-			showToast('err', 'Could not delete');
+			showToast('err', m.wiki_toast_could_not_delete());
 		}
 	}
 
 	const statusLabel = $derived(
 		collabStatus === 'connected'
-			? 'Live'
+			? m.wiki_status_live()
 			: collabStatus === 'connecting'
-				? 'Connecting'
+				? m.wiki_status_connecting()
 				: collabStatus === 'disconnected'
-					? 'Offline'
+					? m.wiki_status_offline()
 					: ''
 	);
 </script>
 
-<svelte:head><title>Trackr · {pg.title}</title></svelte:head>
+<svelte:head><title>{m.wiki_page_title({ title: pg.title })}</title></svelte:head>
 
 <div class="wiki-doc relative min-h-full">
 	<!-- Ambient warmth behind the header so the page reads as a crafted document. -->
@@ -286,7 +287,7 @@
 		class="sticky top-0 z-20 flex items-center gap-3 px-8 h-[52px] border-b border-border/70 bg-bg/80 backdrop-blur-md"
 	>
 		<nav class="flex items-center gap-1.5 text-[12.5px] min-w-0">
-			<a href="/wiki" class="text-text-3 hover:text-text transition-colors">Wiki</a>
+			<a href="/wiki" class="text-text-3 hover:text-text transition-colors">{m.wiki_breadcrumb_root()}</a>
 			{#each breadcrumbs as crumb, i (crumb.id)}
 				<span class="text-text-4 select-none">/</span>
 				{#if i === breadcrumbs.length - 1}
@@ -313,7 +314,7 @@
 							style:height="22px"
 							style:background={u.color}
 							style:box-shadow="0 0 0 2px var(--bg), 0 0 0 3.5px {u.color}55"
-							title="{u.name} · editing now"
+							title={m.wiki_collaborators_now({ name: u.name })}
 						>
 							{initialsOf(u.name)}
 						</span>
@@ -332,7 +333,7 @@
 			{/if}
 
 			{#if statusLabel}
-				<span class="wiki-status" data-state={collabStatus} title="Real-time sync status">
+				<span class="wiki-status" data-state={collabStatus} title={m.wiki_sync_status_title()}>
 					<span class="wiki-status__dot"></span>
 					{statusLabel}
 				</span>
@@ -340,9 +341,9 @@
 
 			<div class="h-4 w-px bg-border"></div>
 
-			<IconButton ariaLabel="Copy link" onclick={copyLink}><Icon name="link" size={14} /></IconButton>
+			<IconButton ariaLabel={m.wiki_aria_copy_link()} onclick={copyLink}><Icon name="link" size={14} /></IconButton>
 			<div class="relative">
-				<IconButton ariaLabel="More" onclick={() => (menuOpen = !menuOpen)}>
+				<IconButton ariaLabel={m.wiki_aria_more()} onclick={() => (menuOpen = !menuOpen)}>
 					<Icon name="settings" size={14} />
 				</IconButton>
 				<Popover open={menuOpen} onclose={() => (menuOpen = false)} align="right" minWidth={160}>
@@ -354,7 +355,7 @@
 							class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 text-left text-[13px] leading-none disabled:opacity-50"
 						>
 							<span class="grid place-items-center w-4 h-4"><Icon name="download" size={13} /></span>
-							<span>{exporting ? 'Exporting…' : 'Export as PDF'}</span>
+							<span>{exporting ? m.wiki_exporting() : m.wiki_export_pdf()}</span>
 						</button>
 					{/if}
 					<button
@@ -366,7 +367,7 @@
 						class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-accent text-left text-[13px] leading-none"
 					>
 						<span class="grid place-items-center w-4 h-4"><Icon name="x" size={13} /></span>
-						<span>Delete {pg.isFolder ? 'folder' : 'page'}</span>
+						<span>{pg.isFolder ? m.wiki_delete_folder() : m.wiki_delete_page()}</span>
 					</button>
 				</Popover>
 			</div>
@@ -385,7 +386,7 @@
 				<input
 					bind:value={titleDraft}
 					maxlength="120"
-					placeholder="Untitled"
+					placeholder={m.wiki_untitled()}
 					oninput={onTitleInput}
 					onblur={onTitleBlur}
 					onkeydown={onTitleKeydown}
@@ -398,11 +399,11 @@
 				{#if updaterAvatar}
 					<span class="flex items-center gap-2">
 						<Avatar user={updaterAvatar} size={20} />
-						<span>Edited by <span class="text-text-2 font-medium">{updatedBy?.name}</span></span>
+						<span>{m.wiki_byline_edited_by()} <span class="text-text-2 font-medium">{updatedBy?.name}</span></span>
 					</span>
 					<span class="text-text-4 select-none">·</span>
 				{/if}
-				<span>Updated {relativeTime(pg.updatedAt)}</span>
+				<span>{m.wiki_byline_updated({ time: relativeTime(pg.updatedAt) })}</span>
 			</div>
 
 			<div class="h-px bg-gradient-to-r from-border to-transparent mb-8"></div>
@@ -413,7 +414,7 @@
 						documentId={pg.documentId}
 						pageId={pg.id}
 						user={collabUser}
-						placeholder={pg.isFolder ? 'Add a description…' : "Write, or type '/' for commands…"}
+						placeholder={pg.isFolder ? m.wiki_placeholder_description() : m.wiki_placeholder_write_or_commands()}
 						onUpdate={onEditorUpdate}
 						onReady={onEditorReady}
 						onStatus={(s) => (collabStatus = s)}
@@ -427,7 +428,7 @@
 			{#if pg.isFolder}
 				{#if children.length > 0}
 					<div class="mt-10">
-						<div class="wiki-rail__label mb-3">In this folder</div>
+						<div class="wiki-rail__label mb-3">{m.wiki_in_this_folder()}</div>
 						<div class="grid gap-1.5">
 							{#each children as child (child.id)}
 								<a
@@ -455,8 +456,8 @@
 					<div class="mt-8">
 						<EmptyState
 							icon="folder"
-							title="This folder is empty"
-							hint="Add a page or subfolder using the + next to it in the sidebar."
+							title={m.wiki_folder_empty_title()}
+							hint={m.wiki_folder_empty_hint()}
 						/>
 					</div>
 				{/if}
@@ -468,7 +469,7 @@
 			<div class="sticky top-[76px] space-y-7">
 				{#if outline.items.length > 0}
 					<nav>
-						<div class="wiki-rail__label mb-3">On this page</div>
+						<div class="wiki-rail__label mb-3">{m.wiki_on_this_page()}</div>
 						<ul class="space-y-0.5 border-l border-border">
 							{#each outline.items as h, i (i + h.text)}
 								<li>
@@ -487,21 +488,21 @@
 				{/if}
 
 				<div>
-					<div class="wiki-rail__label mb-3">Details</div>
+					<div class="wiki-rail__label mb-3">{m.wiki_details()}</div>
 					<dl class="space-y-2.5 text-[12.5px]">
 						<div class="flex items-center justify-between gap-2">
-							<dt class="text-text-4">Type</dt>
+							<dt class="text-text-4">{m.wiki_detail_type()}</dt>
 							<dd class="flex items-center gap-1.5 text-text-2">
 								<Icon name={pg.isFolder ? 'folder' : 'file'} size={12} />
-								{pg.isFolder ? 'Folder' : 'Page'}
+								{pg.isFolder ? m.wiki_type_folder() : m.wiki_type_page()}
 							</dd>
 						</div>
 						<div class="flex items-center justify-between gap-2">
-							<dt class="text-text-4">Created</dt>
+							<dt class="text-text-4">{m.wiki_detail_created()}</dt>
 							<dd class="text-text-2">{fmtDate(pg.createdAt)}</dd>
 						</div>
 						<div class="flex items-center justify-between gap-2">
-							<dt class="text-text-4">Updated</dt>
+							<dt class="text-text-4">{m.wiki_detail_updated()}</dt>
 							<dd class="text-text-2">{fmtDate(pg.updatedAt)}</dd>
 						</div>
 					</dl>

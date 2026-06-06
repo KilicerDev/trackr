@@ -2,6 +2,7 @@
 	import { SvelteMap } from 'svelte/reactivity';
 	import Icon from '../Icon.svelte';
 	import { formatBytes } from '$lib/attachments/config';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		files: File[];
@@ -63,7 +64,7 @@
 					type="button"
 					{disabled}
 					onclick={() => onremove(i)}
-					aria-label="Remove {file.name}"
+					aria-label={m.attach_remove_file({ filename: file.name })}
 					class="w-7 h-7 grid place-items-center rounded-md text-text-3 hover:text-text hover:bg-surface-2 transition-colors disabled:opacity-50"
 				>
 					<Icon name="x" size={13} />

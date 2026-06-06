@@ -1,5 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { defineConfig, type Plugin } from 'vite';
 
 // Mounts the in-process Hocuspocus server onto Vite's dev HTTP server so
@@ -22,7 +23,18 @@ function collabDev(): Plugin {
 }
 
 export default defineConfig({
-	plugins: [tailwindcss(), sveltekit(), collabDev()],
+	plugins: [
+		tailwindcss(),
+		sveltekit(),
+		collabDev(),
+		paraglideVitePlugin({
+			project: './project.inlang',
+			outdir: './src/lib/paraglide',
+			// No URL-based locale: cookie is the runtime carrier, then browser
+			// Accept-Language for new visitors, then the base locale (en).
+			strategy: ['cookie', 'preferredLanguage', 'baseLocale']
+		})
+	],
 	// Yjs and its bindings MUST be single instances in the browser bundle —
 	// duplicate copies silently break the CRDT (the editor connects but never
 	// syncs and remote cursors never appear). Dedupe + pre-bundle them together.

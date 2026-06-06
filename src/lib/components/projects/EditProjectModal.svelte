@@ -11,6 +11,8 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/motion';
 	import { PROJECT_STATUS } from '$lib/data';
+	import { projectStatusLabel } from '$lib/labels';
+	import { m } from '$lib/paraglide/messages';
 	import type { Project } from '$lib/types';
 
 	interface Props {
@@ -96,29 +98,29 @@
 			return async ({ result }: { result: ActionResult }) => {
 				submitting = false;
 				if (result.type === 'success') {
-					showToast('ok', 'Project updated.');
+					showToast('ok', m.projects_updated_toast());
 					await invalidateAll();
 					onclose();
 				} else if (result.type === 'failure') {
 					showToast(
 						'err',
-						(result.data as { message?: string } | undefined)?.message ?? 'Failed to update project.'
+						(result.data as { message?: string } | undefined)?.message ?? m.projects_update_failed()
 					);
 				} else if (result.type === 'error') {
-					showToast('err', result.error?.message ?? 'Failed to update project.');
+					showToast('err', result.error?.message ?? m.projects_update_failed());
 				}
 			};
 		}}
 	>
 		<div class="flex items-center px-5 pt-4 pb-3 border-b border-border">
 			<div>
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">Project settings</div>
-				<div class="text-[15px] font-semibold">Edit project</div>
+				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{m.projects_settings_eyebrow()}</div>
+				<div class="text-[15px] font-semibold">{m.projects_edit_title()}</div>
 			</div>
 			<button
 				type="button"
 				onclick={onclose}
-				aria-label="Close"
+				aria-label={m.common_close()}
 				class="ml-auto w-8 h-8 grid place-items-center rounded-lg text-text-3 hover:text-text hover:bg-surface transition-colors"
 			>
 				<Icon name="x" size={14} />
@@ -144,14 +146,14 @@
 						name="name"
 						bind:value={name}
 						required
-						placeholder="Project name…"
+						placeholder={m.projects_name_placeholder()}
 						class="block w-full bg-transparent border-0 outline-none text-[19px] font-semibold tracking-[-0.01em] text-text placeholder:text-text-3"
 					/>
 					<div class="flex items-center gap-1.5 mt-1">
-						<span class="text-[10.5px] uppercase tracking-[0.08em] text-text-4">Key</span>
+						<span class="text-[10.5px] uppercase tracking-[0.08em] text-text-4">{m.projects_key_label()}</span>
 						<span class="font-mono text-[11.5px] text-text-2">{project.key}</span>
 						<span class="text-text-4 text-[11.5px]">·</span>
-						<span class="text-[11.5px] text-text-3">key can't be changed</span>
+						<span class="text-[11.5px] text-text-3">{m.projects_key_cannot_change()}</span>
 					</div>
 				</div>
 			</div>
@@ -159,19 +161,19 @@
 			<textarea
 				name="description"
 				bind:value={description}
-				placeholder="What is this project about?"
+				placeholder={m.projects_description_placeholder()}
 				rows="2"
 				class="w-full resize-none bg-transparent border-0 outline-none text-[13.5px] leading-relaxed text-text-2 placeholder:text-text-3 mb-4"
 			></textarea>
 
 			<div class="mb-4">
-				<div class="text-[10.5px] uppercase tracking-[0.08em] text-text-4 mb-2">Color</div>
+				<div class="text-[10.5px] uppercase tracking-[0.08em] text-text-4 mb-2">{m.projects_color_label()}</div>
 				<div class="flex flex-wrap gap-1.5">
 					{#each PALETTE as c (c)}
 						<button
 							type="button"
 							onclick={() => (color = c)}
-							aria-label="Pick color {c}"
+							aria-label={m.projects_pick_color({ color: c })}
 							class="relative w-7 h-7 rounded-lg grid place-items-center transition-transform hover:scale-105 active:scale-95"
 							style:background="linear-gradient(140deg, {c}, color-mix(in oklch, {c} 70%, #000) 85%)"
 							style:box-shadow={color === c
@@ -205,7 +207,7 @@
 					class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
 				>
 					<span class="w-2 h-2 rounded-full" style:background={statusMeta.color}></span>
-					<span>{statusMeta.label}</span>
+					<span>{projectStatusLabel(status)}</span>
 					<Icon name="chevron" size={11} class="text-text-3" />
 				</button>
 				{#if pop}
@@ -226,7 +228,7 @@
 								class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 							>
 								<span class="w-2 h-2 rounded-full" style:background={meta.color}></span>
-								<span class="text-[13px]">{meta.label}</span>
+								<span class="text-[13px]">{projectStatusLabel(s)}</span>
 								<span class="ml-auto text-accent {status === s ? 'opacity-100' : 'opacity-0'}">
 									<Icon name="check" size={13} />
 								</span>
@@ -242,16 +244,16 @@
 
 		<div class="flex items-center gap-2 px-5 py-3 border-t border-border bg-bg/40 rounded-b-2xl">
 			<span class="text-[11.5px] text-text-3">
-				<Kbd>⌘↵</Kbd> to save
+				<Kbd>⌘↵</Kbd> {m.projects_kbd_to_save()}
 			</span>
 			<div class="ml-auto flex items-center gap-2">
-				<Button variant="default" onclick={onclose}>Cancel</Button>
+				<Button variant="default" onclick={onclose}>{m.common_cancel()}</Button>
 				<button
 					type="submit"
 					disabled={submitting || !name.trim()}
 					class="inline-flex items-center gap-1.5 rounded-lg font-medium text-[13px] transition-[background,border-color,transform] duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px] px-[11px] py-[7px] bg-accent text-white border border-transparent hover:bg-accent-strong shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)]"
 				>
-					{submitting ? 'Saving…' : 'Save changes'}
+					{submitting ? m.common_saving() : m.common_save_changes()}
 				</button>
 			</div>
 		</div>

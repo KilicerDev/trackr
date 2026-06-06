@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { TypeId } from '$lib/types';
 	import { TRACKR_TYPES } from '$lib/data';
+	import { typeLabel } from '$lib/labels';
 	interface Props {
 		type: TypeId;
 		idText?: string;
@@ -34,6 +35,6 @@
 			{/if}
 		</svg>
 	</span>
-	{#if showLabel}<span class="font-sans">{meta.label}</span>{/if}
+	{#if showLabel}<span class="font-sans">{typeLabel(type)}</span>{/if}
 	{#if idText}<span>{idText}</span>{/if}
 </span>

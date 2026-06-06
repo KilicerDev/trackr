@@ -2,22 +2,25 @@
 	import { page } from '$app/state';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	let { children }: { children: import('svelte').Snippet } = $props();
 
-	const items = [
-		{ href: '/me/profile', label: 'Profile', icon: 'user' as const },
-		{ href: '/me/settings', label: 'Account settings', icon: 'settings' as const },
-		{ href: '/me/notifications', label: 'Notifications', icon: 'bell' as const }
-	];
+	const items = $derived([
+		{ href: '/me/profile', label: m.settings_nav_profile(), icon: 'user' as const },
+		{ href: '/me/settings', label: m.settings_nav_account(), icon: 'settings' as const },
+		{ href: '/me/notifications', label: m.settings_nav_notifications(), icon: 'bell' as const }
+	]);
 
 	const current = $derived(page.url.pathname);
-	const currentLabel = $derived(items.find((i) => current.startsWith(i.href))?.label ?? 'Account');
+	const currentLabel = $derived(
+		items.find((i) => current.startsWith(i.href))?.label ?? m.settings_nav_account_short()
+	);
 </script>
 
 <svelte:head><title>Trackr · {currentLabel}</title></svelte:head>
 
-<Topbar crumbs={[{ label: 'Account', href: '/me/profile' }, { label: currentLabel }]} />
+<Topbar crumbs={[{ label: m.settings_nav_account_short(), href: '/me/profile' }, { label: currentLabel }]} />
 
 <div class="flex-1 min-h-0 overflow-y-auto">
 	<div class="px-6 py-6 mx-auto max-w-[960px] grid grid-cols-[200px_1fr] gap-8">

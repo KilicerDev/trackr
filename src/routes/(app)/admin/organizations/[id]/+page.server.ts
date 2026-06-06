@@ -4,6 +4,7 @@ import { db } from '$lib/server/db';
 import { organization, organizationMember, project } from '$lib/server/db/app.schema';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import { allowedOrgRoles } from '$lib/roles';
+import { m } from '$lib/paraglide/messages';
 import type { PageServerLoad } from './$types';
 
 // Role IDs assignable on each org type come from the shared helper. Internal-
@@ -38,10 +39,10 @@ function userColor(id: string): string {
 
 export const load: PageServerLoad = async ({ params }) => {
 	const id = params.id;
-	if (!id) throw error(404, 'Organization not found');
+	if (!id) throw error(404, m.admin_err_org_not_found());
 
 	const [org] = await db.select().from(organization).where(eq(organization.id, id)).limit(1);
-	if (!org) throw error(404, 'Organization not found');
+	if (!org) throw error(404, m.admin_err_org_not_found());
 
 	const projects = await db
 		.select({
@@ -104,7 +105,7 @@ async function loadOrgOrFail(orgId: string) {
 		.from(organization)
 		.where(eq(organization.id, orgId))
 		.limit(1);
-	if (!row) throw error(404, 'Organization not found');
+	if (!row) throw error(404, m.admin_err_org_not_found());
 	return row;
 }
 
@@ -123,13 +124,13 @@ async function countTopRoleHolders(orgId: string, isInternal: boolean): Promise<
 
 export const actions: Actions = {
 	update: async ({ request, params }) => {
-		if (!params.id) return fail(400, { message: 'Missing org id.' });
+		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
 
 		const form = await request.formData();
 		const patch: Record<string, unknown> = {};
 		if (form.has('name')) {
 			const v = String(form.get('name')).trim();
-			if (!v) return fail(400, { message: 'Name cannot be empty.' });
+			if (!v) return fail(400, { message: m.admin_err_name_empty() });
 			patch.name = v;
 		}
 		if (form.has('description')) {
@@ -141,20 +142,20 @@ export const actions: Actions = {
 		}
 		if (form.has('slug')) {
 			const v = String(form.get('slug')).trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
-			if (!v) return fail(400, { message: 'Slug cannot be empty.' });
+			if (!v) return fail(400, { message: m.admin_err_slug_empty() });
 			const [clash] = await db
 				.select({ id: organization.id })
 				.from(organization)
 				.where(eq(organization.slug, v))
 				.limit(1);
 			if (clash && clash.id !== params.id) {
-				return fail(409, { message: `Slug "${v}" is already in use.` });
+				return fail(409, { message: m.admin_err_slug_in_use({ slug: v }) });
 			}
 			patch.slug = v;
 		}
 
 		if (Object.keys(patch).length === 0) {
-			return fail(400, { message: 'Nothing to update.' });
+			return fail(400, { message: m.admin_err_nothing_to_update() });
 		}
 
 		await db.update(organization).set(patch).where(eq(organization.id, params.id));
@@ -162,7 +163,7 @@ export const actions: Actions = {
 	},
 
 	archive: async ({ params }) => {
-		if (!params.id) return fail(400, { message: 'Missing org id.' });
+		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
 		await db
 			.update(organization)
 			.set({ archivedAt: new Date() })
@@ -171,7 +172,7 @@ export const actions: Actions = {
 	},
 
 	unarchive: async ({ params }) => {
-		if (!params.id) return fail(400, { message: 'Missing org id.' });
+		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
 		await db
 			.update(organization)
 			.set({ archivedAt: null })
@@ -180,7 +181,7 @@ export const actions: Actions = {
 	},
 
 	memberAdd: async ({ request, params }) => {
-		if (!params.id) return fail(400, { message: 'Missing org id.' });
+		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
 
 		const org = await loadOrgOrFail(params.id);
 		const allowed = allowedRoles(org.isInternal);
@@ -191,10 +192,10 @@ export const actions: Actions = {
 		const requestedRole = String(
 			form.get('role') ?? (org.isInternal ? 'org.staff' : 'org.member')
 		);
-		if (!userId) return fail(400, { message: 'Missing user.' });
+		if (!userId) return fail(400, { message: m.admin_err_missing_user() });
 		if (!allowed.has(requestedRole)) {
 			return fail(400, {
-				message: `Role "${requestedRole}" is not valid on this organization.`
+				message: m.admin_err_role_invalid({ role: requestedRole })
 			});
 		}
 
@@ -203,7 +204,7 @@ export const actions: Actions = {
 			.from(userTable)
 			.where(eq(userTable.id, userId))
 			.limit(1);
-		if (!u) return fail(404, { message: 'User not found.' });
+		if (!u) return fail(404, { message: m.admin_err_user_not_found() });
 
 		try {
 			await db
@@ -215,13 +216,13 @@ export const actions: Actions = {
 				});
 		} catch (err) {
 			console.error('memberAdd failed', err);
-			return fail(500, { message: 'Failed to add member.' });
+			return fail(500, { message: m.admin_err_add_member_failed() });
 		}
 		return { success: true };
 	},
 
 	memberSetRole: async ({ request, params }) => {
-		if (!params.id) return fail(400, { message: 'Missing org id.' });
+		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
 
 		const org = await loadOrgOrFail(params.id);
 		const allowed = allowedRoles(org.isInternal);
@@ -229,10 +230,10 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const userId = String(form.get('userId') ?? '').trim();
 		const role = String(form.get('role') ?? '');
-		if (!userId) return fail(400, { message: 'Missing user.' });
+		if (!userId) return fail(400, { message: m.admin_err_missing_user() });
 		if (!allowed.has(role)) {
 			return fail(400, {
-				message: `Role "${role}" is not valid on this organization.`
+				message: m.admin_err_role_invalid({ role })
 			});
 		}
 
@@ -254,7 +255,7 @@ export const actions: Actions = {
 				const remaining = await countTopRoleHolders(params.id, org.isInternal);
 				if (remaining <= 1) {
 					return fail(409, {
-						message: 'This is the last top-role holder — promote someone else first.'
+						message: m.admin_err_last_top_role_demote()
 					});
 				}
 			}
@@ -270,14 +271,14 @@ export const actions: Actions = {
 	},
 
 	memberRemove: async ({ request, params }) => {
-		if (!params.id) return fail(400, { message: 'Missing org id.' });
+		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
 
 		const org = await loadOrgOrFail(params.id);
 		const tops = org.isInternal ? TOP_ROLE_FOR_INTERNAL : TOP_ROLE_FOR_CLIENT;
 
 		const form = await request.formData();
 		const userId = String(form.get('userId') ?? '').trim();
-		if (!userId) return fail(400, { message: 'Missing user.' });
+		if (!userId) return fail(400, { message: m.admin_err_missing_user() });
 
 		const [current] = await db
 			.select({ role: organizationMember.role })
@@ -286,13 +287,13 @@ export const actions: Actions = {
 				and(eq(organizationMember.orgId, params.id), eq(organizationMember.userId, userId))
 			)
 			.limit(1);
-		if (!current) return fail(404, { message: 'Member not found.' });
+		if (!current) return fail(404, { message: m.admin_err_member_not_found() });
 
 		if (tops.includes(current.role)) {
 			const remaining = await countTopRoleHolders(params.id, org.isInternal);
 			if (remaining <= 1) {
 				return fail(409, {
-					message: 'Cannot remove the last top-role holder. Promote another member first.'
+					message: m.admin_err_last_top_role_remove()
 				});
 			}
 		}

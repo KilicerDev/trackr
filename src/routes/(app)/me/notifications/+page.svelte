@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import Button from '$lib/components/Button.svelte';
 	import { showToast } from '$lib/toast.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	type ChannelPrefs = { email: boolean; inApp: boolean };
 	type NotifPrefs = Record<string, ChannelPrefs>;
@@ -11,32 +12,32 @@
 
 	const prefs = $derived((page.data as { preferences: Prefs }).preferences);
 
-	const groups = [
+	const groups = $derived([
 		{
-			title: 'Tasks',
+			title: m.notif_group_tasks(),
 			items: [
-				{ key: 'taskAssigned', label: 'Assigned to me', desc: 'When a task is assigned to you.' },
-				{ key: 'taskMentioned', label: 'Mentions', desc: 'When someone @mentions you in a task.' },
-				{ key: 'taskCommented', label: 'New comments', desc: 'On tasks you watch or are assigned to.' },
-				{ key: 'taskStatusChanged', label: 'Status changes', desc: 'When the status of one of your tasks changes.' },
-				{ key: 'taskDueSoon', label: 'Due soon', desc: 'A task you own is due in the next 24 hours.' }
+				{ key: 'taskAssigned', label: m.notif_task_assigned(), desc: m.notif_task_assigned_desc() },
+				{ key: 'taskMentioned', label: m.notif_task_mentioned(), desc: m.notif_task_mentioned_desc() },
+				{ key: 'taskCommented', label: m.notif_task_commented(), desc: m.notif_task_commented_desc() },
+				{ key: 'taskStatusChanged', label: m.notif_task_status_changed(), desc: m.notif_task_status_changed_desc() },
+				{ key: 'taskDueSoon', label: m.notif_task_due_soon(), desc: m.notif_task_due_soon_desc() }
 			]
 		},
 		{
-			title: 'Tickets',
+			title: m.notif_group_tickets(),
 			items: [
-				{ key: 'ticketCreated', label: 'New tickets', desc: 'When a ticket is opened in an organization you support.' },
-				{ key: 'ticketAssigned', label: 'Assigned to me', desc: 'When a ticket is routed to you.' },
-				{ key: 'ticketMessage', label: 'New messages', desc: 'On tickets you handle.' }
+				{ key: 'ticketCreated', label: m.notif_ticket_created(), desc: m.notif_ticket_created_desc() },
+				{ key: 'ticketAssigned', label: m.notif_ticket_assigned(), desc: m.notif_ticket_assigned_desc() },
+				{ key: 'ticketMessage', label: m.notif_ticket_message(), desc: m.notif_ticket_message_desc() }
 			]
 		},
 		{
-			title: 'Wiki',
+			title: m.notif_group_wiki(),
 			items: [
-				{ key: 'wikiUpdated', label: 'Page updates', desc: 'When a page you watch is edited.' }
+				{ key: 'wikiUpdated', label: m.notif_wiki_updated(), desc: m.notif_wiki_updated_desc() }
 			]
 		}
-	];
+	]);
 
 	let local = $state<NotifPrefs>(structuredClone(prefs.notifications));
 	let saving = $state(false);
@@ -54,17 +55,17 @@
 
 <header class="mb-6 flex items-end justify-between gap-4">
 	<div>
-		<h1 class="text-[22px] font-semibold tracking-[-0.014em]">Notifications</h1>
-		<p class="text-[12.5px] text-text-3 mt-1">Choose how you want to be notified for each kind of event.</p>
+		<h1 class="text-[22px] font-semibold tracking-[-0.014em]">{m.notif_title()}</h1>
+		<p class="text-[12.5px] text-text-3 mt-1">{m.notif_subtitle()}</p>
 	</div>
 	<div class="flex items-center gap-1.5 text-[11.5px] text-text-3">
-		<button type="button" class="hover:text-text" onclick={() => toggleAll('email', true)}>All email on</button>
+		<button type="button" class="hover:text-text" onclick={() => toggleAll('email', true)}>{m.notif_all_email_on()}</button>
 		<span>·</span>
-		<button type="button" class="hover:text-text" onclick={() => toggleAll('email', false)}>off</button>
+		<button type="button" class="hover:text-text" onclick={() => toggleAll('email', false)}>{m.notif_off()}</button>
 		<span class="px-1">|</span>
-		<button type="button" class="hover:text-text" onclick={() => toggleAll('inApp', true)}>All in-app on</button>
+		<button type="button" class="hover:text-text" onclick={() => toggleAll('inApp', true)}>{m.notif_all_inapp_on()}</button>
 		<span>·</span>
-		<button type="button" class="hover:text-text" onclick={() => toggleAll('inApp', false)}>off</button>
+		<button type="button" class="hover:text-text" onclick={() => toggleAll('inApp', false)}>{m.notif_off()}</button>
 	</div>
 </header>
 
@@ -76,10 +77,10 @@
 		return async ({ result }) => {
 			saving = false;
 			if (result.type === 'success') {
-				showToast('ok', 'Notification preferences saved');
+				showToast('ok', m.notif_toast_saved());
 				await invalidateAll();
 			} else if (result.type === 'failure') {
-				showToast('err', (result.data as { message?: string } | undefined)?.message ?? 'Could not save');
+				showToast('err', (result.data as { message?: string } | undefined)?.message ?? m.notif_toast_could_not_save());
 			}
 		};
 	}}
@@ -90,8 +91,8 @@
 			<div class="flex items-center justify-between px-5 pt-4 pb-2">
 				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{group.title}</div>
 				<div class="grid grid-cols-2 gap-x-8 text-[10.5px] uppercase tracking-[0.08em] text-text-4 pr-1">
-					<span class="text-center w-12">Email</span>
-					<span class="text-center w-12">In-app</span>
+					<span class="text-center w-12">{m.notif_col_email()}</span>
+					<span class="text-center w-12">{m.notif_col_inapp()}</span>
 				</div>
 			</div>
 			<div class="divide-y divide-border">
@@ -138,7 +139,7 @@
 
 	<div class="flex items-center justify-end gap-2">
 		<Button type="submit" variant="primary" disabled={!dirty || saving}>
-			{saving ? 'Saving…' : 'Save changes'}
+			{saving ? m.common_saving() : m.common_save_changes()}
 		</Button>
 	</div>
 </form>

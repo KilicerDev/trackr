@@ -11,6 +11,8 @@
 	import ProjectHistory from '$lib/components/projects/ProjectHistory.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { PROJECT_STATUS, TRACKR_STATUSES } from '$lib/data';
+	import { projectStatusLabel, statusLabel } from '$lib/labels';
+	import { m } from '$lib/paraglide/messages';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { autoPlace } from '$lib/actions/autoPlace';
@@ -55,13 +57,13 @@
 
 	function relativeTime(d: Date): string {
 		const ms = Date.now() - d.getTime();
-		const m = Math.round(ms / 60_000);
-		if (m < 1) return 'just now';
-		if (m < 60) return `${m} min ago`;
-		const h = Math.round(m / 60);
-		if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`;
+		const mins = Math.round(ms / 60_000);
+		if (mins < 1) return m.projects_just_now();
+		if (mins < 60) return m.projects_min_ago({ n: mins });
+		const h = Math.round(mins / 60);
+		if (h < 24) return h === 1 ? m.projects_hour_ago_one({ n: h }) : m.projects_hours_ago_other({ n: h });
 		const days = Math.round(h / 24);
-		if (days < 7) return `${days} day${days === 1 ? '' : 's'} ago`;
+		if (days < 7) return days === 1 ? m.projects_day_ago_one({ n: days }) : m.projects_days_ago_other({ n: days });
 		return d.toISOString().slice(0, 10);
 	}
 
@@ -112,9 +114,9 @@
 	async function archiveProject() {
 		settingsOpen = false;
 		const ok = await uiConfirm({
-			title: 'Archive project',
-			message: `"${p.name}" will be hidden from active lists. Its tasks stay where they are.`,
-			confirmLabel: 'Archive',
+			title: m.projects_archive_confirm_title(),
+			message: m.projects_archive_confirm_message({ name: p.name }),
+			confirmLabel: m.projects_archive_confirm_label(),
 			tone: 'warn'
 		});
 		if (!ok) return;
@@ -131,9 +133,9 @@
 	async function deleteProject() {
 		settingsOpen = false;
 		const ok = await uiConfirm({
-			title: 'Delete project',
-			message: `"${p.name}" and all its tasks, comments, time logs, and assignments will be permanently removed. This cannot be undone.`,
-			confirmLabel: 'Delete project',
+			title: m.projects_delete_confirm_title(),
+			message: m.projects_delete_confirm_message({ name: p.name }),
+			confirmLabel: m.projects_delete_project(),
 			tone: 'danger'
 		});
 		if (!ok) return;
@@ -175,13 +177,13 @@
 			}
 			const msg =
 				result.type === 'failure'
-					? (result.data as { message?: string } | undefined)?.message ?? 'Action failed.'
+					? (result.data as { message?: string } | undefined)?.message ?? m.projects_action_failed()
 					: result.type === 'error'
-						? result.error?.message ?? 'Action failed.'
-						: 'Action failed.';
+						? result.error?.message ?? m.projects_action_failed()
+						: m.projects_action_failed();
 			showToast('err', msg);
 		} catch {
-			showToast('err', 'Network error.');
+			showToast('err', m.projects_network_error());
 		} finally {
 			busy = null;
 		}
@@ -206,11 +208,11 @@
 		await postMember('leadSet', '');
 	}
 
-	const PROJECT_ROLES = [
-		{ id: 'project.manager', label: 'Manager', color: '#ef7a6d' },
-		{ id: 'project.member', label: 'Member', color: '#7a9cf0' },
-		{ id: 'project.viewer', label: 'Viewer', color: '#9aa4b2' }
-	] as const;
+	const PROJECT_ROLES = $derived([
+		{ id: 'project.manager', label: m.projects_role_manager(), color: '#ef7a6d' },
+		{ id: 'project.member', label: m.projects_role_member(), color: '#7a9cf0' },
+		{ id: 'project.viewer', label: m.projects_role_viewer(), color: '#9aa4b2' }
+	] as const);
 
 	async function setRole(userId: string, role: string) {
 		openMemberMenu = null;
@@ -221,11 +223,11 @@
 		openMemberMenu = null;
 		const isLead = userId === p.leadId;
 		const ok = await uiConfirm({
-			title: 'Remove member',
+			title: m.projects_remove_member_title(),
 			message: isLead
-				? `${name} is currently the project lead. Removing them will also clear the lead.`
-				: `${name} will no longer be a member of ${p.name}.`,
-			confirmLabel: 'Remove',
+				? m.projects_remove_member_lead_message({ name })
+				: m.projects_remove_member_message({ name, project: p.name }),
+			confirmLabel: m.common_remove(),
 			tone: isLead ? 'warn' : 'danger'
 		});
 		if (!ok) return;
@@ -233,12 +235,12 @@
 	}
 </script>
 
-<svelte:head><title>Trackr · {p.name}</title></svelte:head>
+<svelte:head><title>{m.projects_detail_title({ name: p.name })}</title></svelte:head>
 
 <Topbar
 	crumbs={[
-		{ label: 'Trackr Workspace', href: '/tasks' },
-		{ label: 'Projects', href: '/projects' },
+		{ label: m.projects_breadcrumb_workspace(), href: '/tasks' },
+		{ label: m.projects_breadcrumb_projects(), href: '/projects' },
 		{ label: p.name }
 	]}
 />
@@ -249,7 +251,7 @@
 			href="/projects"
 			class="inline-flex items-center gap-1.5 text-[12.5px] text-text-3 hover:text-text mb-5"
 		>
-			<Icon name="chevron-r" size={11} class="rotate-180" /> Projects
+			<Icon name="chevron-r" size={11} class="rotate-180" /> {m.projects_back_to_projects()}
 		</a>
 
 		<!-- hero -->
@@ -270,7 +272,7 @@
 						style:color={st.color}
 					>
 						<span class="w-1.5 h-1.5 rounded-full" style:background={st.color}></span>
-						{st.label}
+						{projectStatusLabel(p.status)}
 					</span>
 					<span class="text-text-4">·</span>
 					<span class="font-mono">{p.key}</span>
@@ -279,17 +281,17 @@
 						<span>{data.org.name}</span>
 					{/if}
 					<span class="text-text-4">·</span>
-					<span>Updated {relativeTime(p.updatedAt)}</span>
+					<span>{m.projects_updated_relative({ time: relativeTime(p.updatedAt) })}</span>
 				</div>
 			</div>
 			<div class="flex items-center gap-2">
-				<IconButton ariaLabel="History" onclick={() => (historyOpen = true)}>
+				<IconButton ariaLabel={m.projects_aria_history()} onclick={() => (historyOpen = true)}>
 					<Icon name="logs" size={14} />
 				</IconButton>
-				<IconButton ariaLabel="Share"><Icon name="link" size={14} /></IconButton>
+				<IconButton ariaLabel={m.projects_aria_share()}><Icon name="link" size={14} /></IconButton>
 				<div class="relative">
 					<IconButton
-						ariaLabel="Settings"
+						ariaLabel={m.projects_aria_settings()}
 						onclick={() => (settingsOpen = !settingsOpen)}
 					>
 						<Icon name="settings" size={14} />
@@ -310,7 +312,7 @@
 								}}
 								class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text"
 							>
-								<Icon name="settings" size={12} /> Edit details
+								<Icon name="settings" size={12} /> {m.projects_edit_details()}
 							</button>
 							<div class="my-1 border-t border-border/60"></div>
 							<button
@@ -323,11 +325,11 @@
 									<Icon name="star" size={12} />
 								</span>
 								{#if projectBusy === 'favoriteAdd' || projectBusy === 'favoriteRemove'}
-									Saving…
+									{m.common_saving()}
 								{:else if isFavorite}
-									Remove from favorites
+									{m.projects_remove_from_favorites()}
 								{:else}
-									Add to favorites
+									{m.projects_add_to_favorites()}
 								{/if}
 							</button>
 							<div class="my-1 border-t border-border/60"></div>
@@ -339,7 +341,7 @@
 									class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text disabled:opacity-50"
 								>
 									<Icon name="refresh" size={12} />
-									{projectBusy === 'unarchive' ? 'Unarchiving…' : 'Unarchive project'}
+									{projectBusy === 'unarchive' ? m.projects_unarchiving() : m.projects_unarchive_project()}
 								</button>
 							{:else}
 								<button
@@ -349,7 +351,7 @@
 									class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text disabled:opacity-50"
 								>
 									<Icon name="bookmark" size={12} />
-									{projectBusy === 'archive' ? 'Archiving…' : 'Archive project'}
+									{projectBusy === 'archive' ? m.projects_archiving() : m.projects_archive_project()}
 								</button>
 							{/if}
 							<div class="my-1 border-t border-border/60"></div>
@@ -361,13 +363,13 @@
 								style:color="#ef7a6d"
 							>
 								<Icon name="x" size={12} />
-								{projectBusy === 'delete' ? 'Deleting…' : 'Delete project'}
+								{projectBusy === 'delete' ? m.common_deleting() : m.projects_delete_project()}
 							</button>
 						</div>
 					{/if}
 				</div>
 				<Button variant="primary" size="sm" onclick={() => (creating = true)}>
-					<Icon name="plus" size={13} /> New task
+					<Icon name="plus" size={13} /> {m.projects_new_task()}
 				</Button>
 			</div>
 		</div>
@@ -375,35 +377,35 @@
 		<!-- summary + members -->
 		<div class="grid gap-5 mb-6" style:grid-template-columns="1fr 1fr">
 			<div class="bg-bg-elev border border-border rounded-2xl p-4">
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-1.5">About</div>
+				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-1.5">{m.projects_about()}</div>
 				<p class="text-[13.5px] text-text-2 leading-relaxed">
-					{p.description ?? 'No description yet.'}
+					{p.description ?? m.projects_no_description()}
 				</p>
 			</div>
 			<div class="bg-bg-elev border border-border rounded-2xl p-4 relative">
 				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-2.5">
-					Members · {data.members.length}
+					{m.projects_members_label()} · {data.members.length}
 				</div>
 				<div class="flex flex-wrap gap-1.5">
-					{#each data.members as m (m.id)}
+					{#each data.members as mem (mem.id)}
 						<div class="relative">
 							<button
 								type="button"
-								onclick={() => (openMemberMenu = openMemberMenu === m.id ? null : m.id)}
+								onclick={() => (openMemberMenu = openMemberMenu === mem.id ? null : mem.id)}
 								class="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-surface border border-border text-[12px] hover:border-border-strong transition-colors"
 							>
-								<Avatar user={m} size={18} />
-								<span class="text-text">{m.name.split(' ')[0]}</span>
-								{#if m.id === p.leadId}
+								<Avatar user={mem} size={18} />
+								<span class="text-text">{mem.name.split(' ')[0]}</span>
+								{#if mem.id === p.leadId}
 									<span
 										class="text-[10px] uppercase tracking-[0.06em] px-1.5 py-0.5 rounded text-accent"
 										style:background="rgba(239,122,109,0.14)"
 									>
-										Lead
+										{m.projects_lead_badge()}
 									</span>
 								{/if}
 							</button>
-							{#if openMemberMenu === m.id}
+							{#if openMemberMenu === mem.id}
 								<div
 									use:clickOutside={() => (openMemberMenu = null)}
 									use:autoPlace
@@ -412,14 +414,14 @@
 									style:box-shadow="var(--shadow-lg)"
 								>
 									<div class="px-2 pt-1 pb-1 text-[10.5px] uppercase tracking-[0.08em] text-text-4">
-										Role
+										{m.projects_role_label()}
 									</div>
 									{#each PROJECT_ROLES as r (r.id)}
-										{@const active = m.role === r.id}
+										{@const active = mem.role === r.id}
 										<button
 											type="button"
-											onclick={() => setRole(m.id, r.id)}
-											disabled={busy === `memberSetRole:${m.id}` || active}
+											onclick={() => setRole(mem.id, r.id)}
+											disabled={busy === `memberSetRole:${mem.id}` || active}
 											class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text disabled:opacity-100 disabled:cursor-default"
 										>
 											<span class="w-1.5 h-1.5 rounded-full" style:background={r.color}></span>
@@ -430,33 +432,33 @@
 										</button>
 									{/each}
 									<div class="my-1 border-t border-border/60"></div>
-									{#if m.id === p.leadId}
+									{#if mem.id === p.leadId}
 										<button
 											type="button"
 											onclick={clearLead}
 											disabled={busy === 'leadSet:'}
 											class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text disabled:opacity-50"
 										>
-											<Icon name="star" size={12} /> Remove as lead
+											<Icon name="star" size={12} /> {m.projects_remove_as_lead()}
 										</button>
 									{:else}
 										<button
 											type="button"
-											onclick={() => setLead(m.id)}
-											disabled={busy === `leadSet:${m.id}`}
+											onclick={() => setLead(mem.id)}
+											disabled={busy === `leadSet:${mem.id}`}
 											class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text disabled:opacity-50"
 										>
-											<Icon name="star" size={12} /> Set as lead
+											<Icon name="star" size={12} /> {m.projects_set_as_lead()}
 										</button>
 									{/if}
 									<div class="my-1 border-t border-border/60"></div>
 									<button
 										type="button"
-										onclick={() => removeMember(m.id, m.name)}
-										disabled={busy === `memberRemove:${m.id}`}
+										onclick={() => removeMember(mem.id, mem.name)}
+										disabled={busy === `memberRemove:${mem.id}`}
 										class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text disabled:opacity-50"
 									>
-										<Icon name="x" size={12} /> Remove
+										<Icon name="x" size={12} /> {m.common_remove()}
 									</button>
 								</div>
 							{/if}
@@ -472,7 +474,7 @@
 							}}
 							class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-dashed border-border text-[12px] text-text-3 hover:text-text hover:border-border-strong transition-colors"
 						>
-							<Icon name="plus" size={11} /> Add
+							<Icon name="plus" size={11} /> {m.common_add()}
 						</button>
 						{#if addingMember}
 							<div
@@ -487,7 +489,7 @@
 									<input
 										type="text"
 										bind:value={memberSearch}
-										placeholder="Add a teammate…"
+										placeholder={m.projects_add_teammate_placeholder()}
 										class="flex-1 bg-transparent border-0 outline-none text-[13px] placeholder:text-text-3"
 									/>
 								</div>
@@ -510,7 +512,7 @@
 									{/each}
 									{#if candidates.length === 0}
 										<div class="px-2 py-3 text-center text-[12px] text-text-3">
-											{memberSearch ? 'No matches.' : 'Everyone is already a member.'}
+											{memberSearch ? m.projects_no_matches() : m.projects_everyone_member()}
 										</div>
 									{/if}
 								</div>
@@ -525,19 +527,19 @@
 		<!-- stats -->
 		<div class="grid grid-cols-4 gap-3 mb-7">
 			<div class="bg-bg-elev border border-border rounded-2xl p-4">
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">Total tasks</div>
+				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{m.projects_total_tasks()}</div>
 				<div class="font-mono text-[24px] font-semibold mt-1.5">{total}</div>
 			</div>
 			<div class="bg-bg-elev border border-border rounded-2xl p-4">
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">In progress</div>
+				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{m.projects_in_progress()}</div>
 				<div class="font-mono text-[24px] font-semibold mt-1.5 text-[#f0a85c]">{active}</div>
 			</div>
 			<div class="bg-bg-elev border border-border rounded-2xl p-4">
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">Completed</div>
+				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{m.projects_completed()}</div>
 				<div class="font-mono text-[24px] font-semibold mt-1.5 text-[#7fc8a9]">{done}</div>
 			</div>
 			<div class="bg-bg-elev border border-border rounded-2xl p-4">
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-1.5">Progress</div>
+				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-1.5">{m.projects_progress()}</div>
 				<div class="font-mono text-[24px] font-semibold mb-2">
 					{pct}<span class="text-text-3 text-[14px]">%</span>
 				</div>
@@ -550,20 +552,20 @@
 		<!-- tasks -->
 		<div class="bg-bg-elev border border-border rounded-2xl overflow-hidden">
 			<div class="flex items-center gap-2.5 px-4 py-3 border-b border-border">
-				<span class="text-[14px] font-semibold">Tasks</span>
+				<span class="text-[14px] font-semibold">{m.projects_tasks()}</span>
 				<span class="font-mono text-[11px] text-text-3">{tasks.length}</span>
 			</div>
 			{#if tasks.length === 0}
 				<EmptyState
 					icon="check-square"
-					title="No tasks yet"
-					hint="Click New task to get started — tasks created here will show up on the /tasks page."
+					title={m.projects_no_tasks_title()}
+					hint={m.projects_no_tasks_hint()}
 				/>
 			{:else}
 				{#each groups as g (g.id)}
 					<div class="flex items-center gap-2 px-4 py-2 bg-surface/30 border-b border-border">
 						<span class="w-2 h-2 rounded-full" style:background={g.dot}></span>
-						<span class="text-[12px] font-semibold text-text">{g.label}</span>
+						<span class="text-[12px] font-semibold text-text">{statusLabel(g.id)}</span>
 						<span class="font-mono text-[11px] text-text-3">{g.tasks.length}</span>
 					</div>
 					{#each g.tasks as t (t.id)}

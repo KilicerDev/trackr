@@ -2,6 +2,8 @@
 	import AvatarStack from '../AvatarStack.svelte';
 	import type { ProjectListItem } from '../../../routes/(app)/projects/+page.server';
 	import { PROJECT_STATUS } from '$lib/data';
+	import { projectStatusLabel } from '$lib/labels';
+	import { m } from '$lib/paraglide/messages';
 
 	export interface BoardColumn {
 		key: string;
@@ -17,13 +19,13 @@
 
 	function relative(d: Date): string {
 		const ms = Date.now() - d.getTime();
-		const m = Math.round(ms / 60_000);
-		if (m < 1) return 'just now';
-		if (m < 60) return `${m}m ago`;
-		const h = Math.round(m / 60);
-		if (h < 24) return `${h}h ago`;
+		const mins = Math.round(ms / 60_000);
+		if (mins < 1) return m.projects_just_now();
+		if (mins < 60) return m.projects_min_ago({ n: mins });
+		const h = Math.round(mins / 60);
+		if (h < 24) return m.projects_hours_ago({ n: h });
 		const days = Math.round(h / 24);
-		if (days < 7) return `${days}d ago`;
+		if (days < 7) return m.projects_days_ago({ n: days });
 		return d.toISOString().slice(0, 10);
 	}
 </script>
@@ -76,14 +78,14 @@
 									style:color={st.color}
 								>
 									<span class="w-1.5 h-1.5 rounded-full" style:background={st.color}></span>
-									{st.label}
+									{projectStatusLabel(p.status)}
 								</span>
 							</div>
-							<div class="text-[10px] text-text-4 mt-1.5">Updated {relative(p.updatedAt)}</div>
+							<div class="text-[10px] text-text-4 mt-1.5">{m.projects_updated_relative({ time: relative(p.updatedAt) })}</div>
 						</a>
 					{/each}
 					{#if col.projects.length === 0}
-						<div class="text-center text-[11.5px] text-text-4 py-6">No projects</div>
+						<div class="text-center text-[11.5px] text-text-4 py-6">{m.projects_no_projects()}</div>
 					{/if}
 				</div>
 			</div>

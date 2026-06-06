@@ -2,6 +2,7 @@
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import WikiTree from '$lib/components/wiki/WikiTree.svelte';
 	import CreateWikiModal from '$lib/components/wiki/CreateWikiModal.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	let { children } = $props();
 
@@ -16,7 +17,7 @@
 	}
 </script>
 
-<Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: 'Wiki' }]} />
+<Topbar crumbs={[{ label: m.wiki_breadcrumb_workspace(), href: '/tasks' }, { label: m.wiki_breadcrumb_root() }]} />
 
 <div class="flex flex-1 min-h-0 overflow-hidden">
 	<WikiTree oncreate={openCreate} />

@@ -7,6 +7,7 @@
 	import Icon from '../Icon.svelte';
 	import { TRACKR_STATUSES } from '$lib/data';
 	import type { StatusId } from '$lib/types';
+	import { statusLabel } from '$lib/labels';
 
 	interface Props {
 		value: StatusId;
@@ -30,7 +31,7 @@
 			class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 		>
 			<StatusDot status={s.id} />
-			<span class="text-[13px]">{s.label}</span>
+			<span class="text-[13px]">{statusLabel(s.id)}</span>
 			<span class="ml-auto text-accent {value === s.id ? 'opacity-100' : 'opacity-0'}">
 				<Icon name="check" size={13} />
 			</span>

@@ -575,6 +575,7 @@ export const userPreferences = pgTable('user_preferences', {
 	density: text('density').notNull().default('comfortable'),
 	defaultLanding: text('default_landing').notNull().default('/week'),
 	weekStartsOn: integer('week_starts_on').notNull().default(1),
+	locale: text('locale').notNull().default('en'),
 	notifications: jsonb('notifications').$type<NotificationPrefs>().notNull().default({}),
 	viewState: jsonb('view_state').$type<Record<string, unknown>>().notNull().default({}),
 	createdAt: timestamp('created_at').defaultNow().notNull(),

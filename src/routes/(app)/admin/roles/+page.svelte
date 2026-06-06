@@ -2,6 +2,7 @@
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -24,9 +25,9 @@
 		}
 		for (const k of Object.keys(buckets)) buckets[k].sort();
 		const LABEL: Record<string, string> = {
-			admin: 'Admin',
-			org: 'Organization',
-			project: 'Project'
+			admin: m.admin_roles_group_admin(),
+			org: m.admin_roles_group_org(),
+			project: m.admin_roles_group_project()
 		};
 		const ORDER = ['admin', 'org', 'project'];
 		return ORDER.filter((k) => buckets[k]).map((k) => ({
@@ -71,23 +72,22 @@
 	const minRowWidth = $derived(300 + allCols.length * 100 + dividerCount * 13);
 </script>
 
-<svelte:head><title>Trackr · Roles & Permissions</title></svelte:head>
+<svelte:head><title>{m.admin_roles_page_title()}</title></svelte:head>
 
-<Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: 'Roles' }]} />
+<Topbar crumbs={[{ label: m.admin_crumb_workspace(), href: '/tasks' }, { label: m.admin_roles_crumb() }]} />
 
 <div class="flex-1 min-h-0 overflow-y-auto">
 	<div class="px-6 py-6 max-w-[1280px]">
 		<div class="flex items-end gap-4 mb-6">
 			<div>
-				<h1 class="text-[26px] font-semibold tracking-[-0.014em]">Roles & Permissions</h1>
+				<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.admin_roles_title()}</h1>
 				<p class="text-[12.5px] text-text-3 mt-1 max-w-2xl leading-relaxed">
-					Built-in roles seeded from the database. Editing the matrix and creating
-					custom roles is on the roadmap — for now this view is read-only.
+					{m.admin_roles_subtitle()}
 				</p>
 			</div>
-			<div class="ml-auto" title="Custom roles are coming in a future release.">
+			<div class="ml-auto" title={m.admin_roles_custom_soon()}>
 				<Button variant="default" size="sm" disabled>
-					<Icon name="plus" size={13} /> New role
+					<Icon name="plus" size={13} /> {m.admin_roles_new()}
 				</Button>
 			</div>
 		</div>
@@ -96,11 +96,11 @@
 		<div class="flex items-center gap-3 mb-3 text-[11.5px] text-text-3">
 			<span class="inline-flex items-center gap-1.5">
 				<span class="w-1.5 h-1.5 rounded-full bg-accent"></span>
-				Organization roles ({orgRoles.length})
+				{m.admin_roles_legend_org({ count: orgRoles.length })}
 			</span>
 			<span class="inline-flex items-center gap-1.5">
 				<span class="w-1.5 h-1.5 rounded-full bg-[#7a9cf0]"></span>
-				Project roles ({projectRoles.length})
+				{m.admin_roles_legend_project({ count: projectRoles.length })}
 			</span>
 		</div>
 
@@ -130,7 +130,7 @@
 							: 'text-text-4 border border-border bg-surface'}"
 						style:background={on ? (r.color ?? 'var(--accent)') : ''}
 						style:border-color={on ? 'transparent' : ''}
-						aria-label={on ? 'granted' : 'not granted'}
+						aria-label={on ? m.admin_roles_granted() : m.admin_roles_not_granted()}
 					>
 						{#if on}
 							<Icon name="check" size={12} />
@@ -146,7 +146,7 @@
 				class="grid items-end gap-3 px-5 py-3 text-[11px] uppercase tracking-[0.08em] text-text-4 border-b border-border bg-surface/30"
 				style:grid-template-columns={gridTemplate}
 			>
-				<span>Permission</span>
+				<span>{m.admin_roles_col_permission()}</span>
 				{#each internalOrgRoles as r (r.id)}
 					{@render headerCell(r)}
 				{/each}
@@ -209,8 +209,7 @@
 		</div>
 
 		<p class="mt-4 text-[11.5px] text-text-4 max-w-2xl">
-			Roles marked with <Icon name="shield" size={11} /> are valid only on the internal Trackr
-			organization. Members of any other organization can only hold the non-internal roles.
+			{m.admin_roles_internal_note_before()}<Icon name="shield" size={11} />{m.admin_roles_internal_note_after()}
 		</p>
 	</div>
 </div>

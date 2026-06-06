@@ -7,6 +7,7 @@
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { readView, saveView } from '$lib/viewState';
+	import { m } from '$lib/paraglide/messages';
 
 	type Node = {
 		id: string;
@@ -158,12 +159,12 @@
 			});
 			if (!res.ok) {
 				const data = await res.json().catch(() => null);
-				showToast('err', data?.message ?? 'Could not move item.');
+				showToast('err', data?.message ?? m.wiki_toast_could_not_move());
 				return;
 			}
 			await invalidateAll();
 		} catch {
-			showToast('err', 'Could not move item.');
+			showToast('err', m.wiki_toast_could_not_move());
 		}
 	}
 
@@ -224,7 +225,7 @@
 							class="tree-chevron grid h-[18px] w-[18px] place-items-center rounded-md text-text-4 transition-transform duration-150 {isExpanded
 								? ''
 								: '-rotate-90'}"
-							aria-label="Toggle"
+							aria-label={m.wiki_tree_toggle()}
 						>
 							<Icon name="chevron" size={11} />
 						</button>
@@ -250,7 +251,7 @@
 							p.id
 								? 'opacity-100'
 								: ''}"
-							aria-label="Add inside this folder"
+							aria-label={m.wiki_tree_add_inside_folder()}
 						>
 							<Icon name="plus" size={13} />
 						</button>
@@ -272,7 +273,7 @@
 								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 							>
 								<span class="grid h-4 w-4 place-items-center text-text-3"><Icon name="file" size={13} /></span>
-								<span>New page</span>
+								<span>{m.wiki_new_page()}</span>
 							</button>
 							<button
 								type="button"
@@ -286,7 +287,7 @@
 								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 							>
 								<span class="grid h-4 w-4 place-items-center text-text-3"><Icon name="folder" size={13} /></span>
-								<span>New folder</span>
+								<span>{m.wiki_new_folder()}</span>
 							</button>
 						</Popover>
 					</span>
@@ -305,7 +306,7 @@
 
 <aside class="flex min-h-0 flex-col border-r border-border bg-bg-elev" style:width="260px">
 	<div class="flex items-center gap-2 px-4 pb-2.5 pt-4">
-		<span class="wiki-eyebrow">Wiki</span>
+		<span class="wiki-eyebrow">{m.wiki_breadcrumb_root()}</span>
 		{#if pageCount > 0}
 			<span class="wiki-count">{pageCount}</span>
 		{/if}
@@ -313,7 +314,7 @@
 			<button
 				onclick={() => (createOpen = !createOpen)}
 				class="grid h-[26px] w-[26px] place-items-center rounded-md text-text-3 transition-colors hover:bg-surface hover:text-text"
-				aria-label="New page or folder"
+				aria-label={m.wiki_tree_new_page_or_folder()}
 			>
 				<Icon name="plus" size={14} />
 			</button>
@@ -327,7 +328,7 @@
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<span class="grid h-4 w-4 place-items-center text-text-3"><Icon name="file" size={13} /></span>
-				<span>New page</span>
+				<span>{m.wiki_new_page()}</span>
 			</button>
 			<button
 				type="button"
@@ -338,7 +339,7 @@
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<span class="grid h-4 w-4 place-items-center text-text-3"><Icon name="folder" size={13} /></span>
-				<span>New folder</span>
+				<span>{m.wiki_new_folder()}</span>
 			</button>
 			</Popover>
 		</div>
@@ -350,7 +351,7 @@
 			<input
 				type="text"
 				bind:value={search}
-				placeholder="Search pages…"
+				placeholder={m.wiki_tree_search_placeholder()}
 				class="min-w-0 flex-1 border-0 bg-transparent outline-none placeholder:text-text-4"
 			/>
 		</div>
@@ -358,7 +359,7 @@
 
 	<div class="min-h-0 flex-1 overflow-y-auto px-2 pb-4 pt-1">
 		{#if topLevel.length === 0}
-			<div class="px-3 py-6 text-center text-[12.5px] text-text-4">No pages yet.</div>
+			<div class="px-3 py-6 text-center text-[12.5px] text-text-4">{m.wiki_tree_no_pages()}</div>
 		{:else}
 			{#each topLevel as p (p.id)}
 				{@render row(p, 0, filtered)}

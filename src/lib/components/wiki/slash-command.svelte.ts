@@ -2,94 +2,141 @@ import { Extension, type Editor, type Range } from '@tiptap/core';
 import Suggestion, { type SuggestionProps } from '@tiptap/suggestion';
 import { mount, unmount } from 'svelte';
 import SlashMenu, { type SlashItem } from './SlashMenu.svelte';
+import { m } from '$lib/paraglide/messages';
 
 type RunArgs = { editor: Editor; range: Range };
 
+// Labels/hints are getters so they re-evaluate per active locale every time the
+// menu reads them (item list build + per-item render).
 const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 	{
 		id: 'h1',
-		label: 'Heading 1',
-		hint: 'Big section heading',
+		get label() {
+			return m.wiki_slash_h1_label();
+		},
+		get hint() {
+			return m.wiki_slash_h1_hint();
+		},
 		icon: 'H1',
 		run: ({ editor, range }) =>
 			editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run()
 	},
 	{
 		id: 'h2',
-		label: 'Heading 2',
-		hint: 'Medium section heading',
+		get label() {
+			return m.wiki_slash_h2_label();
+		},
+		get hint() {
+			return m.wiki_slash_h2_hint();
+		},
 		icon: 'H2',
 		run: ({ editor, range }) =>
 			editor.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run()
 	},
 	{
 		id: 'h3',
-		label: 'Heading 3',
-		hint: 'Small section heading',
+		get label() {
+			return m.wiki_slash_h3_label();
+		},
+		get hint() {
+			return m.wiki_slash_h3_hint();
+		},
 		icon: 'H3',
 		run: ({ editor, range }) =>
 			editor.chain().focus().deleteRange(range).setNode('heading', { level: 3 }).run()
 	},
 	{
 		id: 'p',
-		label: 'Text',
-		hint: 'Plain paragraph',
+		get label() {
+			return m.wiki_slash_text_label();
+		},
+		get hint() {
+			return m.wiki_slash_text_hint();
+		},
 		icon: '¶',
 		run: ({ editor, range }) =>
 			editor.chain().focus().deleteRange(range).setParagraph().run()
 	},
 	{
 		id: 'ul',
-		label: 'Bullet list',
-		hint: 'Simple bulleted list',
+		get label() {
+			return m.wiki_slash_ul_label();
+		},
+		get hint() {
+			return m.wiki_slash_ul_hint();
+		},
 		icon: '•',
 		run: ({ editor, range }) =>
 			editor.chain().focus().deleteRange(range).toggleBulletList().run()
 	},
 	{
 		id: 'ol',
-		label: 'Numbered list',
-		hint: 'Ordered list',
+		get label() {
+			return m.wiki_slash_ol_label();
+		},
+		get hint() {
+			return m.wiki_slash_ol_hint();
+		},
 		icon: '1.',
 		run: ({ editor, range }) =>
 			editor.chain().focus().deleteRange(range).toggleOrderedList().run()
 	},
 	{
 		id: 'task',
-		label: 'To-do list',
-		hint: 'Track tasks with checkboxes',
+		get label() {
+			return m.wiki_slash_task_label();
+		},
+		get hint() {
+			return m.wiki_slash_task_hint();
+		},
 		icon: '☐',
 		run: ({ editor, range }) =>
 			editor.chain().focus().deleteRange(range).toggleTaskList().run()
 	},
 	{
 		id: 'quote',
-		label: 'Quote',
-		hint: 'Set apart a block of text',
+		get label() {
+			return m.wiki_slash_quote_label();
+		},
+		get hint() {
+			return m.wiki_slash_quote_hint();
+		},
 		icon: '“',
 		run: ({ editor, range }) =>
 			editor.chain().focus().deleteRange(range).setBlockquote().run()
 	},
 	{
 		id: 'code',
-		label: 'Code block',
-		hint: 'Multi-line code with monospace',
+		get label() {
+			return m.wiki_slash_code_label();
+		},
+		get hint() {
+			return m.wiki_slash_code_hint();
+		},
 		icon: '</>',
 		run: ({ editor, range }) =>
 			editor.chain().focus().deleteRange(range).setCodeBlock().run()
 	},
 	{
 		id: 'hr',
-		label: 'Divider',
-		hint: 'Horizontal rule',
+		get label() {
+			return m.wiki_slash_hr_label();
+		},
+		get hint() {
+			return m.wiki_slash_hr_hint();
+		},
 		icon: '—',
 		run: ({ editor, range }) =>
 			editor.chain().focus().deleteRange(range).setHorizontalRule().run()
 	},
 	{
 		id: 'image',
-		label: 'Image',
-		hint: 'Upload and embed an image',
+		get label() {
+			return m.wiki_slash_image_label();
+		},
+		get hint() {
+			return m.wiki_slash_image_hint();
+		},
 		icon: '🖼',
 		run: ({ editor, range }) => {
 			// Drop the "/image" text, then open the file picker (async upload +

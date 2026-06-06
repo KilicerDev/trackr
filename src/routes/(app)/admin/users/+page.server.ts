@@ -23,6 +23,7 @@ import {
 	isAllowedOrgRole,
 	isSuperadmin
 } from '$lib/roles';
+import { m } from '$lib/paraglide/messages';
 import type { Actions, PageServerLoad } from './$types';
 
 function roleOf(u: unknown): string | null | undefined {
@@ -43,16 +44,16 @@ async function resolveOrgRole(form: FormData): Promise<ResolvedOrg> {
 	const orgId = s(form.get('orgId'));
 	const orgRole = s(form.get('orgRole'));
 	if (!orgId || !orgRole) {
-		return { ok: false, status: 400, message: 'Pick an organization and a role.' };
+		return { ok: false, status: 400, message: m.admin_users_pick_org_role() };
 	}
 	const [org] = await db
 		.select({ id: organization.id, isInternal: organization.isInternal })
 		.from(organization)
 		.where(eq(organization.id, orgId))
 		.limit(1);
-	if (!org) return { ok: false, status: 404, message: 'Organization not found.' };
+	if (!org) return { ok: false, status: 404, message: m.admin_err_org_not_found() };
 	if (!isAllowedOrgRole(orgRole, org.isInternal)) {
-		return { ok: false, status: 400, message: `Role "${orgRole}" is not valid on this organization.` };
+		return { ok: false, status: 400, message: m.admin_err_role_invalid({ role: orgRole }) };
 	}
 	return { ok: true, orgId, orgRole, isInternal: org.isInternal };
 }
@@ -99,7 +100,7 @@ export const actions: Actions = {
 	createUser: async (event) => {
 		const callerRole = roleOf(event.locals.user);
 		if (!isAdminLike(callerRole)) {
-			return fail(403, { message: 'Admin access required.' });
+			return fail(403, { message: m.admin_err_admin_required() });
 		}
 
 		const form = await event.request.formData();
@@ -109,7 +110,7 @@ export const actions: Actions = {
 
 		if (!name || !email || password.length < 8) {
 			return fail(400, {
-				message: 'Name, email, and a password of at least 8 characters are required.'
+				message: m.admin_err_create_user_fields()
 			});
 		}
 
@@ -118,7 +119,7 @@ export const actions: Actions = {
 
 		const role = deriveUserRole(resolved.orgRole, resolved.isInternal);
 		if (!canAssignRole(callerRole, role)) {
-			return fail(403, { message: 'You cannot assign that role.' });
+			return fail(403, { message: m.admin_err_cannot_assign_role() });
 		}
 
 		try {
@@ -136,9 +137,9 @@ export const actions: Actions = {
 				});
 		} catch (err) {
 			if (err instanceof APIError) {
-				return fail(400, { message: err.message || 'Failed to create user.' });
+				return fail(400, { message: err.message || m.admin_users_create_failed() });
 			}
-			return fail(500, { message: 'Something went wrong. Please try again.' });
+			return fail(500, { message: m.admin_err_generic() });
 		}
 
 		return { ok: true };
@@ -147,7 +148,7 @@ export const actions: Actions = {
 	inviteUser: async (event) => {
 		const callerRole = roleOf(event.locals.user);
 		if (!isAdminLike(callerRole)) {
-			return fail(403, { message: 'Admin access required.' });
+			return fail(403, { message: m.admin_err_admin_required() });
 		}
 
 		const form = await event.request.formData();
@@ -155,7 +156,7 @@ export const actions: Actions = {
 		const email = s(form.get('email')).toLowerCase();
 
 		if (!name || !email) {
-			return fail(400, { message: 'Name and email are required.' });
+			return fail(400, { message: m.admin_err_name_email_required() });
 		}
 
 		const resolved = await resolveOrgRole(form);
@@ -163,7 +164,7 @@ export const actions: Actions = {
 
 		const role = deriveUserRole(resolved.orgRole, resolved.isInternal);
 		if (!canAssignRole(callerRole, role)) {
-			return fail(403, { message: 'You cannot invite at that role.' });
+			return fail(403, { message: m.admin_err_cannot_invite_role() });
 		}
 
 		try {
@@ -186,7 +187,7 @@ export const actions: Actions = {
 			);
 		} catch (err) {
 			console.error('inviteUser failed', err);
-			return fail(500, { message: 'Failed to send invitation.' });
+			return fail(500, { message: m.admin_users_invite_failed() });
 		}
 
 		return { ok: true };
@@ -195,17 +196,17 @@ export const actions: Actions = {
 	resendInvitation: async (event) => {
 		const callerRole = roleOf(event.locals.user);
 		if (!isAdminLike(callerRole)) {
-			return fail(403, { message: 'Admin access required.' });
+			return fail(403, { message: m.admin_err_admin_required() });
 		}
 
 		const form = await event.request.formData();
 		const id = s(form.get('id'));
-		if (!id) return fail(400, { message: 'Missing invitation id.' });
+		if (!id) return fail(400, { message: m.admin_err_missing_invitation_id() });
 
 		const existing = await getInvitationById(id);
-		if (!existing) return fail(404, { message: 'Invitation no longer exists.' });
+		if (!existing) return fail(404, { message: m.admin_err_invitation_gone() });
 		if (!canAssignRole(callerRole, existing.role)) {
-			return fail(403, { message: 'Invitation not found.' });
+			return fail(403, { message: m.admin_err_invitation_not_found() });
 		}
 
 		try {
@@ -228,7 +229,7 @@ export const actions: Actions = {
 			);
 		} catch (err) {
 			console.error('resendInvitation failed', err);
-			return fail(500, { message: 'Failed to resend invitation.' });
+			return fail(500, { message: m.admin_err_resend_failed() });
 		}
 
 		return { ok: true };
@@ -237,17 +238,17 @@ export const actions: Actions = {
 	revokeInvitation: async (event) => {
 		const callerRole = roleOf(event.locals.user);
 		if (!isAdminLike(callerRole)) {
-			return fail(403, { message: 'Admin access required.' });
+			return fail(403, { message: m.admin_err_admin_required() });
 		}
 
 		const form = await event.request.formData();
 		const id = s(form.get('id'));
-		if (!id) return fail(400, { message: 'Missing invitation id.' });
+		if (!id) return fail(400, { message: m.admin_err_missing_invitation_id() });
 
 		const existing = await getInvitationById(id);
 		if (!existing) return { ok: true };
 		if (!canAssignRole(callerRole, existing.role)) {
-			return fail(403, { message: 'Invitation not found.' });
+			return fail(403, { message: m.admin_err_invitation_not_found() });
 		}
 
 		await revokeInvitation(id);
@@ -257,14 +258,14 @@ export const actions: Actions = {
 	impersonateUser: async (event) => {
 		const callerRole = roleOf(event.locals.user);
 		if (!isSuperadmin(callerRole)) {
-			return fail(403, { message: 'Superadmin access required.' });
+			return fail(403, { message: m.admin_err_superadmin_required() });
 		}
 
 		const form = await event.request.formData();
 		const userId = s(form.get('userId'));
-		if (!userId) return fail(400, { message: 'Missing user id.' });
+		if (!userId) return fail(400, { message: m.admin_err_missing_user_id() });
 		if (userId === event.locals.user?.id) {
-			return fail(400, { message: 'You cannot impersonate yourself.' });
+			return fail(400, { message: m.admin_err_impersonate_self() });
 		}
 
 		const [target] = await db
@@ -272,7 +273,7 @@ export const actions: Actions = {
 			.from(userTable)
 			.where(eq(userTable.id, userId))
 			.limit(1);
-		if (!target) return fail(404, { message: 'User not found.' });
+		if (!target) return fail(404, { message: m.admin_err_user_not_found() });
 
 		try {
 			await auth.api.impersonateUser({
@@ -281,10 +282,10 @@ export const actions: Actions = {
 			});
 		} catch (err) {
 			if (err instanceof APIError) {
-				return fail(400, { message: err.message || 'Failed to start impersonation.' });
+				return fail(400, { message: err.message || m.admin_err_impersonate_failed() });
 			}
 			console.error('impersonateUser failed', err);
-			return fail(500, { message: 'Something went wrong. Please try again.' });
+			return fail(500, { message: m.admin_err_generic() });
 		}
 
 		return { ok: true };
@@ -293,21 +294,21 @@ export const actions: Actions = {
 	sendPasswordReset: async (event) => {
 		const callerRole = roleOf(event.locals.user);
 		if (!isAdminLike(callerRole)) {
-			return fail(403, { message: 'Admin access required.' });
+			return fail(403, { message: m.admin_err_admin_required() });
 		}
 
 		const form = await event.request.formData();
 		const userId = s(form.get('userId'));
-		if (!userId) return fail(400, { message: 'Missing user id.' });
+		if (!userId) return fail(400, { message: m.admin_err_missing_user_id() });
 
 		const [target] = await db
 			.select({ id: userTable.id, email: userTable.email, role: userTable.role })
 			.from(userTable)
 			.where(eq(userTable.id, userId))
 			.limit(1);
-		if (!target) return fail(404, { message: 'User not found.' });
+		if (!target) return fail(404, { message: m.admin_err_user_not_found() });
 		if (!canManageTarget(callerRole, target.role)) {
-			return fail(404, { message: 'User not found.' });
+			return fail(404, { message: m.admin_err_user_not_found() });
 		}
 
 		try {
@@ -317,7 +318,7 @@ export const actions: Actions = {
 			});
 		} catch (err) {
 			console.error('sendPasswordReset failed', err);
-			return fail(500, { message: 'Failed to send password reset email.' });
+			return fail(500, { message: m.admin_err_password_reset_failed() });
 		}
 
 		return { ok: true };
@@ -326,14 +327,14 @@ export const actions: Actions = {
 	deleteUser: async (event) => {
 		const callerRole = roleOf(event.locals.user);
 		if (!isAdminLike(callerRole)) {
-			return fail(403, { message: 'Admin access required.' });
+			return fail(403, { message: m.admin_err_admin_required() });
 		}
 
 		const form = await event.request.formData();
 		const userId = s(form.get('userId'));
-		if (!userId) return fail(400, { message: 'Missing user id.' });
+		if (!userId) return fail(400, { message: m.admin_err_missing_user_id() });
 		if (userId === event.locals.user?.id) {
-			return fail(400, { message: 'You cannot delete yourself.' });
+			return fail(400, { message: m.admin_err_delete_self() });
 		}
 
 		const [target] = await db
@@ -346,9 +347,9 @@ export const actions: Actions = {
 			.from(userTable)
 			.where(eq(userTable.id, userId))
 			.limit(1);
-		if (!target) return fail(404, { message: 'User not found.' });
+		if (!target) return fail(404, { message: m.admin_err_user_not_found() });
 		if (!canManageTarget(callerRole, target.role)) {
-			return fail(404, { message: 'User not found.' });
+			return fail(404, { message: m.admin_err_user_not_found() });
 		}
 
 		try {
@@ -358,9 +359,9 @@ export const actions: Actions = {
 			});
 		} catch (err) {
 			if (err instanceof APIError) {
-				return fail(400, { message: err.message || 'Failed to delete user.' });
+				return fail(400, { message: err.message || m.admin_err_delete_user_failed() });
 			}
-			return fail(500, { message: 'Something went wrong. Please try again.' });
+			return fail(500, { message: m.admin_err_generic() });
 		}
 
 		return { ok: true };

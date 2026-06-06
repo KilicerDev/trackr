@@ -6,6 +6,7 @@
 	import Icon from '../Icon.svelte';
 	import { TRACKR_LABELS } from '$lib/data';
 	import { labelMeta, normalizeTag } from '$lib/labelMeta';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		value: string[];
@@ -75,7 +76,7 @@
 		type="text"
 		bind:value={entry}
 		{onkeydown}
-		placeholder="Add or search tags…"
+		placeholder={m.tasks_add_or_search_tags()}
 		class="w-full mb-1.5 px-2 py-1.5 rounded-md bg-surface border border-border text-[12.5px] text-text placeholder:text-text-3 outline-none focus:border-border-strong"
 	/>
 	<div class="max-h-[240px] overflow-y-auto">
@@ -100,10 +101,10 @@
 				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 			>
 				<Icon name="plus" size={13} class="text-text-3" />
-				<span class="text-[13px] truncate">Create “{normalizedEntry}”</span>
+				<span class="text-[13px] truncate">{m.tasks_create_tag({ tag: normalizedEntry })}</span>
 			</button>
 		{:else if filtered.length === 0}
-			<div class="px-2 py-1.5 text-[12.5px] text-text-3">No tags</div>
+			<div class="px-2 py-1.5 text-[12.5px] text-text-3">{m.tasks_no_tags()}</div>
 		{/if}
 	</div>
 </div>

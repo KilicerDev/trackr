@@ -7,6 +7,7 @@
 	import Icon from '../Icon.svelte';
 	import { TRACKR_TYPES } from '$lib/data';
 	import type { TypeId } from '$lib/types';
+	import { typeLabel } from '$lib/labels';
 
 	interface Props {
 		value: TypeId;
@@ -30,7 +31,7 @@
 			class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 		>
 			<TypeBadge type={t.id} showLabel={false} />
-			<span class="text-[13px]">{t.label}</span>
+			<span class="text-[13px]">{typeLabel(t.id)}</span>
 			<span class="ml-auto text-accent {value === t.id ? 'opacity-100' : 'opacity-0'}">
 				<Icon name="check" size={13} />
 			</span>

@@ -6,6 +6,7 @@
 	import Avatar from '../Avatar.svelte';
 	import Icon from '../Icon.svelte';
 	import { TRACKR_USERS } from '$lib/data';
+	import { m } from '$lib/paraglide/messages';
 
 	type AssignableUser = {
 		id: string;
@@ -54,7 +55,7 @@
 		<input
 			type="text"
 			bind:value={q}
-			placeholder="Assign to…"
+			placeholder={m.tasks_assign_to_placeholder()}
 			class="flex-1 bg-transparent border-0 outline-none text-[13px] placeholder:text-text-3"
 		/>
 	</div>

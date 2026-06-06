@@ -9,6 +9,8 @@
 	import type { ProjectView, ProjectGroup } from '$lib/components/projects/ProjectsToolbar.svelte';
 	import CreateProjectModal from '$lib/components/projects/CreateProjectModal.svelte';
 	import { PROJECT_STATUS } from '$lib/data';
+	import { projectStatusLabel } from '$lib/labels';
+	import { m } from '$lib/paraglide/messages';
 	import { showToast } from '$lib/toast.svelte';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
@@ -89,7 +91,7 @@
 		if (group === 'status') {
 			return Object.entries(PROJECT_STATUS).map(([id, meta]) => ({
 				key: id,
-				label: meta.label,
+				label: projectStatusLabel(id),
 				color: meta.color,
 				projects: visibleProjects.filter((p) => p.status === id)
 			}));
@@ -103,13 +105,13 @@
 			}));
 			cols.push({
 				key: INTERNAL,
-				label: 'Internal',
+				label: m.projects_internal(),
 				color: '#9aa4b2',
 				projects: visibleProjects.filter((p) => !p.org)
 			});
 			return cols;
 		}
-		return [{ key: 'all', label: 'All projects', color: '#7a9cf0', projects: visibleProjects }];
+		return [{ key: 'all', label: m.projects_all_projects(), color: '#7a9cf0', projects: visibleProjects }];
 	});
 
 	// Board shows every column (incl. empty) for stable layout; list hides empties.
@@ -126,9 +128,9 @@
 	}
 </script>
 
-<svelte:head><title>Trackr · Projects</title></svelte:head>
+<svelte:head><title>{m.projects_page_title()}</title></svelte:head>
 
-<Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: 'Projects' }]} />
+<Topbar crumbs={[{ label: m.projects_breadcrumb_workspace(), href: '/tasks' }, { label: m.projects_breadcrumb_projects() }]} />
 
 <ProjectsToolbar
 	{view}
@@ -151,13 +153,13 @@
 				<div class="w-12 h-12 grid place-items-center rounded-xl bg-surface border border-border text-text-3">
 					<Icon name="folder" size={20} />
 				</div>
-				<div class="text-[15px] font-semibold text-text">No projects yet</div>
+				<div class="text-[15px] font-semibold text-text">{m.projects_empty_title()}</div>
 				<div class="text-[12.5px] text-text-3 max-w-[320px] text-center">
-					Projects group related tasks and tickets. Create your first one to get started.
+					{m.projects_empty_hint()}
 				</div>
 				{#if canCreate}
 					<Button variant="primary" size="sm" onclick={() => (createOpen = true)}>
-						<Icon name="plus" size={13} /> Create a project
+						<Icon name="plus" size={13} /> {m.projects_create_project()}
 					</Button>
 				{/if}
 			</div>
@@ -166,8 +168,8 @@
 				<div class="w-10 h-10 grid place-items-center rounded-xl bg-surface border border-border">
 					<Icon name="folder" size={16} />
 				</div>
-				<div class="text-[13.5px] font-medium text-text">No matching projects</div>
-				<div class="text-[11.5px] text-text-4">Try clearing filters or search.</div>
+				<div class="text-[13.5px] font-medium text-text">{m.projects_no_matching_title()}</div>
+				<div class="text-[11.5px] text-text-4">{m.projects_no_matching_hint()}</div>
 			</div>
 		{/if}
 	</div>
@@ -189,8 +191,8 @@
 						<div class="w-10 h-10 grid place-items-center rounded-xl bg-surface border border-border">
 							<Icon name="plus" size={16} />
 						</div>
-						<div class="text-[13.5px] font-medium">New project</div>
-						<div class="text-[11.5px] text-text-4">Start a workspace from scratch</div>
+						<div class="text-[13.5px] font-medium">{m.projects_new_project()}</div>
+						<div class="text-[11.5px] text-text-4">{m.projects_new_project_card_hint()}</div>
 					</button>
 				{/if}
 			</div>
@@ -231,11 +233,11 @@
 				class="grid items-center gap-3 px-5 py-2.5 text-[11px] uppercase tracking-[0.08em] text-text-4 border-b border-border"
 				style:grid-template-columns="1.5fr 1fr 1fr 0.6fr 1fr"
 			>
-				<span>Project</span>
-				<span>Lead</span>
-				<span>Status</span>
-				<span>Key</span>
-				<span>Updated</span>
+				<span>{m.projects_col_project()}</span>
+				<span>{m.projects_col_lead()}</span>
+				<span>{m.projects_col_status()}</span>
+				<span>{m.projects_col_key()}</span>
+				<span>{m.projects_col_updated()}</span>
 			</div>
 			{#each (group === 'none' ? [{ key: 'all', label: '', color: '', projects: visibleProjects }] : listColumns) as col (col.key)}
 				{@const isCollapsed = collapsed.has(col.key)}
@@ -272,7 +274,7 @@
 								<span class="text-text-2 truncate">{p.lead?.name ?? '—'}</span>
 								<span class="inline-flex items-center gap-1.5 text-text-2">
 									<span class="w-1.5 h-1.5 rounded-full" style:background={st.color}></span>
-									{st.label}
+									{projectStatusLabel(p.status)}
 								</span>
 								<span class="font-mono text-text-3">{p.key}</span>
 								<span class="text-text-3">{p.updatedAt.toISOString().slice(0, 10)}</span>
@@ -289,6 +291,6 @@
 	open={createOpen}
 	onclose={() => (createOpen = false)}
 	orgs={data.orgs}
-	oncreated={(name) => showToast('ok', `Created ${name}.`)}
+	oncreated={(name) => showToast('ok', m.projects_created_toast({ name }))}
 	onerror={(msg) => showToast('err', msg)}
 />

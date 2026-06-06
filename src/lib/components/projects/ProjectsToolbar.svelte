@@ -8,6 +8,8 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/motion';
 	import { PROJECT_STATUS } from '$lib/data';
+	import { projectStatusLabel } from '$lib/labels';
+	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
 
 	type LayoutUser = { id: string; name: string; initials: string; color: string; status: string };
@@ -46,26 +48,26 @@
 	// Sentinel value for projects with no organization (internal work).
 	const INTERNAL = '__internal__';
 
-	const GROUP_OPTIONS: { id: ProjectGroup; label: string }[] = [
-		{ id: 'status', label: 'Status' },
-		{ id: 'org', label: 'Organization' },
-		{ id: 'none', label: 'None' }
-	];
+	const GROUP_OPTIONS: { id: ProjectGroup; label: string }[] = $derived([
+		{ id: 'status', label: m.projects_group_status() },
+		{ id: 'org', label: m.projects_group_org() },
+		{ id: 'none', label: m.projects_group_none() }
+	]);
 	const groupLabel = (id: ProjectGroup) => GROUP_OPTIONS.find((g) => g.id === id)?.label ?? '';
 
-	const FIELDS: FilterField[] = [
-		{ id: 'status', label: 'Status', icon: 'check' },
-		{ id: 'org', label: 'Organization', icon: 'org' },
-		{ id: 'assignee', label: 'Assignee', icon: 'users' }
-	];
+	const FIELDS: FilterField[] = $derived([
+		{ id: 'status', label: m.projects_filter_status(), icon: 'check' },
+		{ id: 'org', label: m.projects_filter_org(), icon: 'org' },
+		{ id: 'assignee', label: m.projects_filter_assignee(), icon: 'users' }
+	]);
 
 	const users = $derived((page.data as { users?: LayoutUser[] }).users ?? []);
 
-	const VIEWS: { id: ProjectView; label: string; icon: string }[] = [
-		{ id: 'grid', label: 'Grid', icon: 'grid' },
-		{ id: 'list', label: 'List', icon: 'list' },
-		{ id: 'board', label: 'Board', icon: 'board' }
-	];
+	const VIEWS: { id: ProjectView; label: string; icon: string }[] = $derived([
+		{ id: 'grid', label: m.projects_view_grid(), icon: 'grid' },
+		{ id: 'list', label: m.projects_view_list(), icon: 'list' },
+		{ id: 'board', label: m.projects_view_board(), icon: 'board' }
+	]);
 
 	let pop = $state<'group' | null>(null);
 
@@ -79,9 +81,9 @@
 
 	function valueLabel(field: string, value: string): string {
 		if (field === 'status')
-			return PROJECT_STATUS[value as keyof typeof PROJECT_STATUS]?.label ?? value;
+			return PROJECT_STATUS[value as keyof typeof PROJECT_STATUS] ? projectStatusLabel(value) : value;
 		if (field === 'org') {
-			if (value === INTERNAL) return 'Internal';
+			if (value === INTERNAL) return m.projects_internal();
 			return orgs.find((o) => o.id === value)?.name ?? value;
 		}
 		if (field === 'assignee') return users.find((u) => u.id === value)?.name ?? value;
@@ -99,7 +101,7 @@
 				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 			>
 				<span class="w-2 h-2 rounded-full" style:background={meta.color}></span>
-				<span class="text-[13px]">{meta.label}</span>
+				<span class="text-[13px]">{projectStatusLabel(id)}</span>
 				<span class="ml-auto text-accent {values.includes(id) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
 				</span>
@@ -112,7 +114,7 @@
 			class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 		>
 			<span class="text-text-3"><Icon name="org" size={13} /></span>
-			<span class="text-[13px]">Internal</span>
+			<span class="text-[13px]">{m.projects_internal()}</span>
 			<span class="ml-auto text-accent {values.includes(INTERNAL) ? 'opacity-100' : 'opacity-0'}">
 				<Icon name="check" size={13} />
 			</span>
@@ -169,7 +171,7 @@
 			onclick={() => (pop = pop === 'group' ? null : 'group')}
 			class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] transition-colors"
 		>
-			<span class="text-text-3">Group</span>
+			<span class="text-text-3">{m.projects_group_label()}</span>
 			<span class="text-text font-medium">{groupLabel(group)}</span>
 			<Icon name="chevron" size={10} class="text-text-3" />
 		</button>
@@ -210,7 +212,7 @@
 			</span>
 			<input
 				type="text"
-				placeholder="Search…"
+				placeholder={m.projects_search_placeholder()}
 				value={search}
 				oninput={(e) => setSearch((e.target as HTMLInputElement).value)}
 				class="h-7 pl-7 pr-2.5 rounded-lg bg-surface border border-border text-[12.5px] text-text placeholder:text-text-3 outline-none focus:border-border-strong w-44"
@@ -218,7 +220,7 @@
 		</div>
 		{#if canCreate}
 			<Button variant="primary" size="sm" onclick={onNew}>
-				<Icon name="plus" size={13} /> New project
+				<Icon name="plus" size={13} /> {m.projects_new_project()}
 			</Button>
 		{/if}
 	</div>

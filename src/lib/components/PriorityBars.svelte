@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PriorityId } from '$lib/types';
 	import { TRACKR_PRIORITIES } from '$lib/data';
+	import { priorityLabel } from '$lib/labels';
 	interface Props {
 		priority: PriorityId;
 	}
@@ -13,8 +14,8 @@
 <span
 	class="inline-flex items-end gap-[2px] shrink-0"
 	style:height="12px"
-	aria-label={meta.label}
-	title={meta.label}
+	aria-label={priorityLabel(priority)}
+	title={priorityLabel(priority)}
 >
 	<span
 		class="block w-[3px] rounded-[1px]"

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { StatusId } from '$lib/types';
 	import { TRACKR_STATUSES } from '$lib/data';
+	import { statusLabel } from '$lib/labels';
 	interface Props {
 		status: StatusId;
 		size?: number;
@@ -13,8 +14,8 @@
 	class="inline-block relative shrink-0"
 	style:width="{size}px"
 	style:height="{size}px"
-	aria-label={meta.label}
-	title={meta.label}
+	aria-label={statusLabel(status)}
+	title={statusLabel(status)}
 >
 	{#if status === 'backlog'}
 		<span

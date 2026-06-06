@@ -5,12 +5,11 @@
 	import { setActiveOrg, type PortalOrg } from '$lib/portal';
 	import type { TicketRow, TicketStatus } from '$lib/server/tickets';
 	import { TICKET_STATUSES } from '$lib/data';
+	import { m } from '$lib/paraglide/messages';
+	import { ticketStatusLabel } from '$lib/labels';
 
 	function statusColor(id: TicketStatus): string {
 		return TICKET_STATUSES.find((s) => s.id === id)?.dot ?? '#7c7c84';
-	}
-	function statusLabel(id: TicketStatus): string {
-		return TICKET_STATUSES.find((s) => s.id === id)?.label ?? id;
 	}
 
 	type LayoutShape = {
@@ -60,15 +59,15 @@
 					{(activeOrg?.name ?? '?').slice(0, 1).toUpperCase()}
 				</span>
 				<span class="min-w-0 flex-1">
-					<span class="block text-[13.5px] font-semibold truncate">{activeOrg?.name ?? 'Support'}</span>
-					<span class="block text-[11px] text-text-3 leading-tight">Support portal</span>
+					<span class="block text-[13.5px] font-semibold truncate">{activeOrg?.name ?? m.shell_portal_support()}</span>
+					<span class="block text-[11px] text-text-3 leading-tight">{m.shell_portal_support_portal()}</span>
 				</span>
 				{#if orgs.length > 1}<Icon name="chevron" size={12} class="text-text-3 shrink-0" />{/if}
 			</button>
 			{#if orgs.length > 1}
 				<Popover open={switcherOpen} onclose={() => (switcherOpen = false)} align="left" minWidth={232}>
 					<div class="px-2 pt-1 pb-1.5 text-[10.5px] uppercase tracking-[0.08em] text-text-4">
-						Switch organization
+						{m.shell_switch_organization()}
 					</div>
 					{#each orgs as o (o.id)}
 						<button
@@ -98,7 +97,7 @@
 				: ''}"
 		>
 			<Icon name="plus" size={15} class="text-text-3" />
-			<span>New ticket</span>
+			<span>{m.shell_portal_new_ticket()}</span>
 		</a>
 	</div>
 
@@ -107,7 +106,7 @@
 		{#if pinned.length}
 			<div class="py-1.5">
 				<div class="px-3 pt-1.5 pb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-text-4">
-					Pinned
+					{m.shell_portal_pinned()}
 				</div>
 				{#each pinned as t (t.id)}
 					{@render ticketRow(t)}
@@ -118,14 +117,14 @@
 		<!-- Recents -->
 		<div class="py-1.5">
 			<div class="px-3 pt-1.5 pb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-text-4">
-				Recents
+				{m.shell_portal_recents()}
 			</div>
 			{#each recents as t (t.id)}
 				{@render ticketRow(t)}
 			{/each}
 			{#if recents.length === 0}
 				<div class="px-3 py-1.5 text-[12px] text-text-4 leading-snug">
-					Your tickets will appear here.
+					{m.shell_portal_recents_empty()}
 				</div>
 			{/if}
 		</div>
@@ -142,7 +141,7 @@
 		class="relative flex items-center gap-2.5 px-3 py-[7px] rounded-[7px] mx-1 my-[1px] text-text-2 hover:bg-[var(--row-hover)] hover:text-text transition-colors text-[13.5px]
 		{active ? 'bg-[var(--row-active)] !text-text' : ''}"
 	>
-		<span class="grid place-items-center w-4 h-4 shrink-0" title={statusLabel(t.status)}>
+		<span class="grid place-items-center w-4 h-4 shrink-0" title={ticketStatusLabel(t.status)}>
 			<span
 				class="w-[11px] h-[11px] rounded-full border-[1.5px]"
 				style:border-color={dot}

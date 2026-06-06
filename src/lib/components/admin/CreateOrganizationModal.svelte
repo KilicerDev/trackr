@@ -6,6 +6,7 @@
 	import Icon from '../Icon.svelte';
 	import Button from '../Button.svelte';
 	import Kbd from '../Kbd.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		open: boolean;
@@ -101,11 +102,11 @@
 				} else if (result.type === 'failure') {
 					const msg =
 						(result.data as { message?: string } | undefined)?.message ??
-						'Failed to create organization.';
+						m.admin_org_create_failed();
 					serverError = msg;
 					onerror?.(msg);
 				} else if (result.type === 'error') {
-					const msg = result.error?.message ?? 'Failed to create organization.';
+					const msg = result.error?.message ?? m.admin_org_create_failed();
 					serverError = msg;
 					onerror?.(msg);
 				}
@@ -114,13 +115,13 @@
 	>
 		<div class="flex items-center px-5 pt-4 pb-3 border-b border-border">
 			<div>
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">Workspace</div>
-				<div class="text-[15px] font-semibold">New organization</div>
+				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{m.admin_workspace()}</div>
+				<div class="text-[15px] font-semibold">{m.admin_org_new()}</div>
 			</div>
 			<button
 				type="button"
 				onclick={onclose}
-				aria-label="Close"
+				aria-label={m.common_close()}
 				class="ml-auto w-8 h-8 grid place-items-center rounded-lg text-text-3 hover:text-text hover:bg-surface transition-colors"
 			>
 				<Icon name="x" size={14} />
@@ -146,11 +147,11 @@
 						name="name"
 						bind:value={name}
 						required
-						placeholder="Organization name…"
+						placeholder={m.admin_org_name_placeholder()}
 						class="block w-full bg-transparent border-0 outline-none text-[19px] font-semibold tracking-[-0.01em] text-text placeholder:text-text-3"
 					/>
 					<div class="flex items-center gap-1.5 mt-1">
-						<span class="text-[10.5px] uppercase tracking-[0.08em] text-text-4">Slug</span>
+						<span class="text-[10.5px] uppercase tracking-[0.08em] text-text-4">{m.admin_slug()}</span>
 						<input
 							type="text"
 							name="slug"
@@ -173,19 +174,19 @@
 			<textarea
 				name="description"
 				bind:value={description}
-				placeholder="What does this organization cover?"
+				placeholder={m.admin_org_description_placeholder()}
 				rows="2"
 				class="w-full resize-none bg-transparent border-0 outline-none text-[13.5px] leading-relaxed text-text-2 placeholder:text-text-3 mb-4"
 			></textarea>
 
 			<div>
-				<div class="text-[10.5px] uppercase tracking-[0.08em] text-text-4 mb-2">Color</div>
+				<div class="text-[10.5px] uppercase tracking-[0.08em] text-text-4 mb-2">{m.admin_color()}</div>
 				<div class="flex flex-wrap gap-1.5">
 					{#each PALETTE as c (c)}
 						<button
 							type="button"
 							onclick={() => (color = c)}
-							aria-label="Pick color {c}"
+							aria-label={m.admin_pick_color({ color: c })}
 							class="relative w-7 h-7 rounded-lg grid place-items-center transition-transform hover:scale-105 active:scale-95"
 							style:background="linear-gradient(140deg, {c}, color-mix(in oklch, {c} 70%, #000) 85%)"
 							style:box-shadow={color === c
@@ -228,16 +229,16 @@
 
 		<div class="flex items-center gap-2 px-5 py-3 border-t border-border bg-bg/40 rounded-b-2xl">
 			<span class="text-[11.5px] text-text-3">
-				<Kbd>⌘↵</Kbd> to create
+				<Kbd>⌘↵</Kbd> {m.admin_to_create()}
 			</span>
 			<div class="ml-auto flex items-center gap-2">
-				<Button variant="default" onclick={onclose}>Cancel</Button>
+				<Button variant="default" onclick={onclose}>{m.common_cancel()}</Button>
 				<button
 					type="submit"
 					disabled={submitting || !name.trim() || !effectiveSlug}
 					class="inline-flex items-center gap-1.5 rounded-lg font-medium text-[13px] transition-[background,border-color,transform] duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px] px-[11px] py-[7px] bg-accent text-white border border-transparent hover:bg-accent-strong shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)]"
 				>
-					{submitting ? 'Creating…' : 'Create organization'}
+					{submitting ? m.common_creating() : m.admin_org_create()}
 				</button>
 			</div>
 		</div>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Task } from '$lib/types';
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/data';
+	import { statusLabel, priorityLabel } from '$lib/labels';
 	import { resolveProject, resolveUser } from '$lib/lookup.svelte';
 	import { page } from '$app/state';
 	import TaskRow from './TaskRow.svelte';
@@ -33,7 +34,7 @@
 		if (group === 'status') {
 			return TRACKR_STATUSES.map((s) => ({
 				id: s.id,
-				label: s.label,
+				label: statusLabel(s.id),
 				dot: s.dot,
 				tasks: tasks.filter((t) => t.status === s.id)
 			})).filter((g) => g.tasks.length > 0);
@@ -43,7 +44,7 @@
 				.reverse()
 				.map((p) => ({
 					id: p.id,
-					label: p.label,
+					label: priorityLabel(p.id),
 					dot: p.color,
 					tasks: tasks.filter((t) => t.priority === p.id)
 				}))

@@ -7,7 +7,9 @@
 	import ProjectPopover from '../popovers/ProjectPopover.svelte';
 	import EstimatePopover from '../popovers/EstimatePopover.svelte';
 	import AssigneePopover from '../popovers/AssigneePopover.svelte';
-	import { TRACKR_PRIORITIES, formatEstimate } from '$lib/data';
+	import { formatEstimate } from '$lib/data';
+	import { priorityLabel } from '$lib/labels';
+	import { m } from '$lib/paraglide/messages';
 	import type { PriorityId } from '$lib/types';
 
 	type AssignableUser = {
@@ -235,14 +237,14 @@
 			onkeydown={handleKey}
 			onfocus={() => (focused = true)}
 			onblur={() => (focused = false)}
-			placeholder="Type a task… use +PROJ !prio @user ~2h"
+			placeholder={m.week_composer_placeholder()}
 			class="flex-1 bg-transparent border-0 outline-none text-[13.5px] placeholder:text-text-3"
 		/>
 		<Kbd>⌘↵</Kbd>
-		<IconButton size={26} ariaLabel="Open in modal" onclick={expand}>
+		<IconButton size={26} ariaLabel={m.week_open_in_modal()} onclick={expand}>
 			<Icon name="arrow-up" size={12} class="rotate-45" />
 		</IconButton>
-		<IconButton size={26} ariaLabel="Cancel" onclick={oncancel}>
+		<IconButton size={26} ariaLabel={m.common_cancel()} onclick={oncancel}>
 			<Icon name="x" size={12} />
 		</IconButton>
 	</div>
@@ -280,7 +282,7 @@
 				class={chipClass(priorityActive)}
 				style:background={priorityActive ? 'rgba(239,122,109,0.14)' : undefined}
 			>
-				{TRACKR_PRIORITIES.find((p) => p.id === priority)!.label}
+				{priorityLabel(priority)}
 			</button>
 			{#if pop === 'priority'}
 				<PriorityPopover
@@ -304,7 +306,7 @@
 					<Avatar user={assigneeUser} size={14} />
 					{assigneeUser.name}
 				{:else}
-					<span class="text-text-3">Unassigned</span>
+					<span class="text-text-3">{m.common_unassigned()}</span>
 				{/if}
 			</button>
 			{#if pop === 'assignee'}
@@ -338,7 +340,7 @@
 		</div>
 
 		<span class="ml-auto text-[10.5px] text-text-4">
-			Tokens: <span class="font-mono">+PROJ</span>
+			{m.week_tokens_label()} <span class="font-mono">+PROJ</span>
 			<span class="font-mono">!prio</span>
 			<span class="font-mono">@user</span>
 			<span class="font-mono">~2h</span>

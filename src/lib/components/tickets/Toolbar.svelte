@@ -9,6 +9,8 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/motion';
 	import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from '$lib/data';
+	import { m } from '$lib/paraglide/messages';
+	import { ticketStatusLabel, ticketCategoryLabel, priorityLabel } from '$lib/labels';
 
 	type GroupBy = 'status' | 'priority' | 'category' | 'org' | 'none';
 
@@ -36,18 +38,18 @@
 	}: Props = $props();
 
 	const GROUP_OPTIONS: { id: GroupBy; label: string }[] = [
-		{ id: 'status', label: 'Status' },
-		{ id: 'priority', label: 'Priority' },
-		{ id: 'category', label: 'Category' },
-		{ id: 'org', label: 'Org' },
-		{ id: 'none', label: 'None' }
+		{ id: 'status', label: m.tickets_group_status() },
+		{ id: 'priority', label: m.tickets_group_priority() },
+		{ id: 'category', label: m.tickets_group_category() },
+		{ id: 'org', label: m.tickets_group_org() },
+		{ id: 'none', label: m.tickets_group_none() }
 	];
 
 	const FIELDS: FilterField[] = [
-		{ id: 'status', label: 'Status', icon: 'check' },
-		{ id: 'priority', label: 'Priority', icon: 'filter' },
-		{ id: 'category', label: 'Category', icon: 'bookmark' },
-		{ id: 'org', label: 'Org', icon: 'org' }
+		{ id: 'status', label: m.tickets_field_status(), icon: 'check' },
+		{ id: 'priority', label: m.tickets_field_priority(), icon: 'filter' },
+		{ id: 'category', label: m.tickets_field_category(), icon: 'bookmark' },
+		{ id: 'org', label: m.tickets_field_org(), icon: 'org' }
 	];
 
 	let pop = $state<'group' | null>(null);
@@ -63,9 +65,9 @@
 	const groupLabel = (id: GroupBy) => GROUP_OPTIONS.find((g) => g.id === id)?.label ?? '';
 
 	function valueLabel(field: string, v: string) {
-		if (field === 'status') return TICKET_STATUSES.find((s) => s.id === v)?.label ?? v;
-		if (field === 'priority') return TICKET_PRIORITIES.find((p) => p.id === v)?.label ?? v;
-		if (field === 'category') return TICKET_CATEGORIES.find((c) => c.id === v)?.label ?? v;
+		if (field === 'status') return TICKET_STATUSES.some((s) => s.id === v) ? ticketStatusLabel(v) : v;
+		if (field === 'priority') return TICKET_PRIORITIES.some((p) => p.id === v) ? priorityLabel(v) : v;
+		if (field === 'category') return TICKET_CATEGORIES.some((c) => c.id === v) ? ticketCategoryLabel(v) : v;
 		if (field === 'org') return orgs.find((o) => o.id === v)?.name ?? v;
 		return v;
 	}
@@ -81,7 +83,7 @@
 				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 			>
 				<span class="w-2 h-2 rounded-full" style:background={s.dot}></span>
-				<span class="text-[13px]">{s.label}</span>
+				<span class="text-[13px]">{ticketStatusLabel(s.id)}</span>
 				<span class="ml-auto text-accent {values.includes(s.id) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
 				</span>
@@ -95,7 +97,7 @@
 				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 			>
 				<PriorityBars priority={p.id} />
-				<span class="text-[13px]">{p.label}</span>
+				<span class="text-[13px]">{priorityLabel(p.id)}</span>
 				<span class="ml-auto text-accent {values.includes(p.id) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
 				</span>
@@ -109,7 +111,7 @@
 				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 			>
 				<span class="w-2 h-2 rounded-full" style:background={c.color}></span>
-				<span class="text-[13px]">{c.label}</span>
+				<span class="text-[13px]">{ticketCategoryLabel(c.id)}</span>
 				<span class="ml-auto text-accent {values.includes(c.id) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
 				</span>
@@ -130,7 +132,7 @@
 			</button>
 		{/each}
 		{#if orgs.length === 0}
-			<div class="px-2 py-2 text-[11.5px] text-text-3">No organizations.</div>
+			<div class="px-2 py-2 text-[11.5px] text-text-3">{m.tickets_no_orgs()}</div>
 		{/if}
 	{/if}
 {/snippet}
@@ -143,7 +145,7 @@
 			onclick={() => (pop = pop === 'group' ? null : 'group')}
 			class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] transition-colors"
 		>
-			<span class="text-text-3">Group</span>
+			<span class="text-text-3">{m.tickets_group()}</span>
 			<span class="text-text font-medium">{groupLabel(group)}</span>
 			<Icon name="chevron" size={10} class="text-text-3" />
 		</button>
@@ -185,7 +187,7 @@
 			</span>
 			<input
 				type="text"
-				placeholder="Search tickets…"
+				placeholder={m.tickets_search_placeholder()}
 				value={search}
 				oninput={(e) => setSearch((e.target as HTMLInputElement).value)}
 				class="h-7 pl-7 pr-2.5 rounded-lg bg-surface border border-border text-[12.5px] text-text placeholder:text-text-3 outline-none focus:border-border-strong w-56"
@@ -193,7 +195,7 @@
 		</div>
 		{#if canCreate}
 			<Button variant="primary" size="sm" onclick={() => onNew?.()}>
-				<Icon name="plus" size={13} /> New ticket
+				<Icon name="plus" size={13} /> {m.tickets_new_title()}
 			</Button>
 		{/if}
 	</div>

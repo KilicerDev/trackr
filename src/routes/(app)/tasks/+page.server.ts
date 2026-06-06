@@ -18,6 +18,7 @@ import { taskRecipients } from '$lib/server/notify-recipients';
 import { accessibleProjectIds, assertCan, can } from '$lib/server/permissions';
 import { attachFormFiles, deleteAttachmentsFor } from '$lib/server/attachments';
 import { getPreferences } from '$lib/server/preferences';
+import { m } from '$lib/paraglide/messages';
 
 export const load: ServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
@@ -70,7 +71,7 @@ const ALLOWED_TYPE = new Set(['task', 'bug', 'improvement', 'feature', 'chore'])
 
 export const actions: Actions = {
 	create: async ({ request, locals, url }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!locals.user) throw error(401, m.tasks_err_not_authenticated());
 		const me = locals.user;
 
 		const form = await request.formData();
@@ -88,11 +89,11 @@ export const actions: Actions = {
 		const assigneeIds = form.getAll('assignees').map((v) => String(v)).filter(Boolean);
 		const plannedFor = String(form.get('plannedFor') ?? '').trim();
 
-		if (!title) return fail(400, { message: 'Title is required.' });
-		if (!projectKey) return fail(400, { message: 'Project is required.' });
-		if (!ALLOWED_TYPE.has(type)) return fail(400, { message: `Invalid type "${type}".` });
+		if (!title) return fail(400, { message: m.tasks_err_title_required() });
+		if (!projectKey) return fail(400, { message: m.tasks_err_project_required() });
+		if (!ALLOWED_TYPE.has(type)) return fail(400, { message: m.tasks_err_invalid_type({ type }) });
 		if (plannedFor && !/^\d{4}-\d{2}-\d{2}$/.test(plannedFor)) {
-			return fail(400, { message: 'Invalid planned date.' });
+			return fail(400, { message: m.tasks_err_invalid_planned_date() });
 		}
 
 		const [p] = await db
@@ -100,7 +101,7 @@ export const actions: Actions = {
 			.from(project)
 			.where(eq(project.key, projectKey))
 			.limit(1);
-		if (!p) return fail(400, { message: `Project "${projectKey}" was not found.` });
+		if (!p) return fail(400, { message: m.tasks_err_project_not_found({ key: projectKey }) });
 
 		await assertCan(locals, 'project.tasks.create', { projectId: p.id });
 
@@ -170,7 +171,7 @@ export const actions: Actions = {
 			});
 		} catch (err) {
 			console.error('task create failed', err);
-			return fail(500, { message: 'Failed to create task.' });
+			return fail(500, { message: m.tasks_err_failed_create() });
 		}
 
 		// Notify each newly-assigned user (notify() drops the actor itself, so
@@ -202,14 +203,14 @@ export const actions: Actions = {
 	},
 
 	update: async ({ request, locals, url }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!locals.user) throw error(401, m.tasks_err_not_authenticated());
 
 		const form = await request.formData();
 		const displayId = String(form.get('id') ?? '').trim();
-		if (!displayId) return fail(400, { message: 'Missing task id.' });
+		if (!displayId) return fail(400, { message: m.tasks_err_missing_task_id() });
 
 		const target = await resolveTaskByDisplayId(displayId);
-		if (!target) return fail(404, { message: 'Task not found.' });
+		if (!target) return fail(404, { message: m.tasks_err_task_not_found() });
 
 		// Editing is allowed if the user has project.tasks.edit.any on the
 		// task's project, OR they're the creator and have edit.own.
@@ -218,28 +219,28 @@ export const actions: Actions = {
 		const allowed =
 			(await can(locals, 'project.tasks.edit.any', { projectId })) ||
 			(isCreator && (await can(locals, 'project.tasks.edit.own', { projectId })));
-		if (!allowed) error(403, 'You cannot edit this task.');
+		if (!allowed) error(403, m.tasks_err_cannot_edit());
 
 		const patch: Record<string, unknown> = {};
 
 		if (form.has('status')) {
 			const v = String(form.get('status'));
-			if (!ALLOWED_STATUS.has(v)) return fail(400, { message: `Invalid status "${v}".` });
+			if (!ALLOWED_STATUS.has(v)) return fail(400, { message: m.tasks_err_invalid_status({ value: v }) });
 			patch.status = v;
 		}
 		if (form.has('priority')) {
 			const v = String(form.get('priority'));
-			if (!ALLOWED_PRIORITY.has(v)) return fail(400, { message: `Invalid priority "${v}".` });
+			if (!ALLOWED_PRIORITY.has(v)) return fail(400, { message: m.tasks_err_invalid_priority({ value: v }) });
 			patch.priority = v;
 		}
 		if (form.has('type')) {
 			const v = String(form.get('type'));
-			if (!ALLOWED_TYPE.has(v)) return fail(400, { message: `Invalid type "${v}".` });
+			if (!ALLOWED_TYPE.has(v)) return fail(400, { message: m.tasks_err_invalid_type({ type: v }) });
 			patch.type = v;
 		}
 		if (form.has('title')) {
 			const v = String(form.get('title')).trim();
-			if (!v) return fail(400, { message: 'Title cannot be empty.' });
+			if (!v) return fail(400, { message: m.tasks_err_title_empty() });
 			patch.title = v;
 		}
 		if (form.has('description')) {
@@ -318,7 +319,7 @@ export const actions: Actions = {
 			});
 		} catch (err) {
 			console.error('task update failed', err);
-			return fail(500, { message: 'Failed to save changes.' });
+			return fail(500, { message: m.tasks_err_failed_save() });
 		}
 
 		const me = locals.user;
@@ -411,21 +412,21 @@ export const actions: Actions = {
 	},
 
 	commentAdd: async ({ request, locals, url }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!locals.user) throw error(401, m.tasks_err_not_authenticated());
 		const me = locals.user;
 
 		const form = await request.formData();
 		const displayId = String(form.get('id') ?? '').trim();
 		const body = String(form.get('body') ?? '').trim();
 		const stagedFiles = form.getAll('attachments');
-		if (!displayId) return fail(400, { message: 'Missing task id.' });
+		if (!displayId) return fail(400, { message: m.tasks_err_missing_task_id() });
 		// Allow a files-only comment (attachment with no text).
 		if (!body && !stagedFiles.some((f) => f instanceof File && f.size > 0)) {
-			return fail(400, { message: 'Comment cannot be empty.' });
+			return fail(400, { message: m.tasks_err_comment_empty() });
 		}
 
 		const target = await resolveTaskByDisplayId(displayId);
-		if (!target) return fail(404, { message: 'Task not found.' });
+		if (!target) return fail(404, { message: m.tasks_err_task_not_found() });
 
 		await assertCan(locals, 'project.tasks.comment', { projectId: target.projectId });
 
@@ -452,7 +453,7 @@ export const actions: Actions = {
 			});
 		} catch (err) {
 			console.error('comment add failed', err);
-			return fail(500, { message: 'Failed to add comment.' });
+			return fail(500, { message: m.tasks_err_failed_comment() });
 		}
 
 		// Notify assignees + creator + anyone else who commented on the task.
@@ -493,17 +494,17 @@ export const actions: Actions = {
 	},
 
 	planSet: async ({ request, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!locals.user) throw error(401, m.tasks_err_not_authenticated());
 		const me = locals.user;
 
 		const form = await request.formData();
 		const displayId = String(form.get('id') ?? '').trim();
 		const plannedFor = String(form.get('plannedFor') ?? '').trim();
 		const mode = String(form.get('mode') ?? '').trim();
-		if (!displayId) return fail(400, { message: 'Missing task id.' });
+		if (!displayId) return fail(400, { message: m.tasks_err_missing_task_id() });
 
 		const target = await resolveTaskByDisplayId(displayId);
-		if (!target) return fail(404, { message: 'Task not found.' });
+		if (!target) return fail(404, { message: m.tasks_err_task_not_found() });
 
 		await assertCan(locals, 'project.tasks.read', { projectId: target.projectId });
 
@@ -524,7 +525,7 @@ export const actions: Actions = {
 					.where(and(eq(taskPlanning.taskId, target.id), eq(taskPlanning.userId, me.id)));
 			} else {
 				if (!/^\d{4}-\d{2}-\d{2}$/.test(plannedFor)) {
-					return fail(400, { message: 'Invalid date.' });
+					return fail(400, { message: m.tasks_err_invalid_date() });
 				}
 				await db
 					.insert(taskPlanning)
@@ -536,14 +537,14 @@ export const actions: Actions = {
 			}
 		} catch (err) {
 			console.error('plan set failed', err);
-			return fail(500, { message: 'Failed to update plan.' });
+			return fail(500, { message: m.tasks_err_failed_plan() });
 		}
 
 		return { success: true };
 	},
 
 	timeLogAdd: async ({ request, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!locals.user) throw error(401, m.tasks_err_not_authenticated());
 		const me = locals.user;
 
 		const form = await request.formData();
@@ -553,16 +554,16 @@ export const actions: Actions = {
 		const date = String(form.get('date') ?? '').trim();
 		const note = String(form.get('note') ?? '').trim() || null;
 
-		if (!displayId) return fail(400, { message: 'Missing task id.' });
-		if (!date) return fail(400, { message: 'Missing date.' });
+		if (!displayId) return fail(400, { message: m.tasks_err_missing_task_id() });
+		if (!date) return fail(400, { message: m.tasks_err_missing_date() });
 
 		const total = Math.round(hours * 60) + Math.round(minutes);
 		if (!Number.isFinite(total) || total <= 0) {
-			return fail(400, { message: 'Time must be greater than zero.' });
+			return fail(400, { message: m.tasks_err_time_positive() });
 		}
 
 		const target = await resolveTaskByDisplayId(displayId);
-		if (!target) return fail(404, { message: 'Task not found.' });
+		if (!target) return fail(404, { message: m.tasks_err_task_not_found() });
 
 		await assertCan(locals, 'project.tasks.read', { projectId: target.projectId });
 
@@ -578,7 +579,7 @@ export const actions: Actions = {
 			await db.update(task).set({ updatedAt: new Date() }).where(eq(task.id, target.id));
 		} catch (err) {
 			console.error('time log add failed', err);
-			return fail(500, { message: 'Failed to log time.' });
+			return fail(500, { message: m.tasks_err_failed_log_time() });
 		}
 
 		logActivityFF({
@@ -593,14 +594,14 @@ export const actions: Actions = {
 	},
 
 	delete: async ({ request, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!locals.user) throw error(401, m.tasks_err_not_authenticated());
 
 		const form = await request.formData();
 		const displayId = String(form.get('id') ?? '').trim();
-		if (!displayId) return fail(400, { message: 'Missing task id.' });
+		if (!displayId) return fail(400, { message: m.tasks_err_missing_task_id() });
 
 		const target = await resolveTaskByDisplayId(displayId);
-		if (!target) return fail(404, { message: 'Task not found.' });
+		if (!target) return fail(404, { message: m.tasks_err_task_not_found() });
 
 		await assertCan(locals, 'project.tasks.delete.any', { projectId: target.projectId });
 
@@ -619,7 +620,7 @@ export const actions: Actions = {
 			for (const c of comments) await deleteAttachmentsFor('project_activity', c.id);
 		} catch (err) {
 			console.error('task delete failed', err);
-			return fail(500, { message: 'Failed to delete task.' });
+			return fail(500, { message: m.tasks_err_failed_delete() });
 		}
 
 		logActivityFF({

@@ -25,13 +25,13 @@
 	import {
 		TRACKR_PRIORITIES,
 		TRACKR_PROJECTS,
-		TRACKR_STATUSES,
-		TRACKR_TYPES,
 		TRACKR_USERS,
 		formatDateLong,
 		formatEstimate
 	} from '$lib/data';
 	import type { PriorityId, ProjectId, StatusId, TypeId } from '$lib/types';
+	import { statusLabel, priorityLabel, typeLabel } from '$lib/labels';
+	import { m } from '$lib/paraglide/messages';
 	import AttachmentDropzone from '../attachments/AttachmentDropzone.svelte';
 	import StagedFileList from '../attachments/StagedFileList.svelte';
 	import { selectStageable } from '$lib/attachments/config';
@@ -160,8 +160,6 @@
 		}
 	});
 
-	let typeMeta = $derived(TRACKR_TYPES.find((t) => t.id === type)!);
-	let statusMeta = $derived(TRACKR_STATUSES.find((s) => s.id === status)!);
 	let prioMeta = $derived(TRACKR_PRIORITIES.find((p) => p.id === priority)!);
 	let projectMeta = $derived(
 		projectList.find((p) => p.key === project) ?? projectList[0] ?? { key: '', name: '—', color: '#7c7c84', icon: '?' }
@@ -200,20 +198,20 @@
 					onclose();
 				} else if (result.type === 'failure') {
 					const msg =
-						(result.data as { message?: string } | undefined)?.message ?? 'Failed to create task.';
+						(result.data as { message?: string } | undefined)?.message ?? m.tasks_failed_to_create();
 					showToast('err', msg);
 					onerror?.(msg);
 				} else if (result.type === 'error') {
-					const msg = result.error?.message ?? 'Failed to create task.';
+					const msg = result.error?.message ?? m.tasks_failed_to_create();
 					showToast('err', msg);
 					onerror?.(msg);
 				}
 			};
 		}}
-		aria-label="Create task"
+		aria-label={m.tasks_create_task()}
 		class="relative"
 	>
-		<AttachmentDropzone onfiles={addFiles} disabled={submitting} label="Drop files to attach to this task">
+		<AttachmentDropzone onfiles={addFiles} disabled={submitting} label={m.tasks_drop_files_to_attach()}>
 		<!-- Head -->
 		<div class="flex items-center gap-2 px-5 pt-4 pb-3 border-b border-border">
 			<div class="relative">
@@ -237,12 +235,12 @@
 					/>
 				{/if}
 			</div>
-			<div class="text-[10.5px] uppercase tracking-[0.08em] text-text-4 ml-1">New task</div>
+			<div class="text-[10.5px] uppercase tracking-[0.08em] text-text-4 ml-1">{m.tasks_new_task()}</div>
 			<button
 				type="button"
 				onclick={onclose}
 				class="ml-auto w-8 h-8 grid place-items-center rounded-lg text-text-3 hover:text-text hover:bg-surface transition-colors"
-				aria-label="Close"
+				aria-label={m.common_close()}
 			>
 				<Icon name="x" size={14} />
 			</button>
@@ -255,13 +253,13 @@
 				name="title"
 				bind:value={title}
 				required
-				placeholder="Task title…"
+				placeholder={m.tasks_title_placeholder()}
 				class="w-full bg-transparent border-0 outline-none text-[19px] font-semibold tracking-[-0.01em] text-text placeholder:text-text-3 mb-2"
 			/>
 			<textarea
 				name="description"
 				bind:value={description}
-				placeholder="Add a description…"
+				placeholder={m.tasks_description_placeholder()}
 				rows="3"
 				class="w-full resize-none bg-transparent border-0 outline-none text-[13.5px] leading-relaxed text-text-2 placeholder:text-text-3"
 			></textarea>
@@ -275,7 +273,7 @@
 						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
 					>
 						<TypeBadge type={type} showLabel={false} />
-						<span>{typeMeta.label}</span>
+						<span>{typeLabel(type)}</span>
 					</button>
 					{#if pop === 'type'}
 						<TypePopover value={type} onchange={(v) => (type = v)} onclose={() => (pop = null)} />
@@ -289,7 +287,7 @@
 						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
 					>
 						<StatusDot {status} />
-						<span>{statusMeta.label}</span>
+						<span>{statusLabel(status)}</span>
 					</button>
 					{#if pop === 'status'}
 						<StatusPopover value={status} onchange={(v) => (status = v)} onclose={() => (pop = null)} />
@@ -303,7 +301,7 @@
 						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
 					>
 						{#if prioMeta.bars > 0}<PriorityBars {priority} />{/if}
-						<span>{prioMeta.label}</span>
+						<span>{priorityLabel(priority)}</span>
 					</button>
 					{#if pop === 'priority'}
 						<PriorityPopover value={priority} onchange={(v) => (priority = v)} onclose={() => (pop = null)} />
@@ -320,10 +318,10 @@
 							<Avatar user={assigneeUsers[0]} size={18} />
 							<span>{assigneeUsers[0].name}</span>
 						{:else if assignees.length === 0}
-							<span class="text-text-3">Unassigned</span>
+							<span class="text-text-3">{m.common_unassigned()}</span>
 						{:else}
 							<AvatarStack users={assigneeUsers} size={18} max={3} overlap={5} />
-							<span>{assignees.length} assignees</span>
+							<span>{m.tasks_n_assignees({ n: assignees.length })}</span>
 						{/if}
 					</button>
 					{#if pop === 'assignees'}
@@ -343,7 +341,7 @@
 						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] transition-colors {due ? 'bg-surface border border-border hover:border-border-strong' : 'border border-dashed border-border text-text-3 hover:text-text hover:border-border-strong'}"
 					>
 						<Icon name="calendar" size={13} />
-						{#if due}<span class="font-mono">{formatDateLong(due)}</span>{:else}<span>Due date</span>{/if}
+						{#if due}<span class="font-mono">{formatDateLong(due)}</span>{:else}<span>{m.tasks_due_date()}</span>{/if}
 					</button>
 					{#if pop === 'due'}
 						<DatePopover value={due} onchange={(v) => (due = v)} onclose={() => (pop = null)} />
@@ -356,7 +354,7 @@
 						onclick={() => (pop = pop === 'estimate' ? null : 'estimate')}
 						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] transition-colors {estimate ? 'bg-surface border border-border hover:border-border-strong' : 'border border-dashed border-border text-text-3 hover:text-text hover:border-border-strong'}"
 					>
-						{#if estimate}<span class="text-text-3">Est</span><span class="font-mono">{formatEstimate(estimate)}</span>{:else}<span>Estimate</span>{/if}
+						{#if estimate}<span class="text-text-3">{m.tasks_est()}</span><span class="font-mono">{formatEstimate(estimate)}</span>{:else}<span>{m.tasks_estimate()}</span>{/if}
 					</button>
 					{#if pop === 'estimate'}
 						<EstimatePopover value={estimate} onchange={(v) => (estimate = v)} onclose={() => (pop = null)} />
@@ -373,7 +371,7 @@
 							{#each tags.slice(0, 2) as t (t)}<LabelChip id={t} />{/each}
 							{#if tags.length > 2}<span class="text-text-3">+{tags.length - 2}</span>{/if}
 						{:else}
-							<Icon name="bookmark" size={12} /> Tags
+							<Icon name="bookmark" size={12} /> {m.tasks_tags()}
 						{/if}
 					</button>
 					{#if pop === 'tags'}
@@ -412,7 +410,7 @@
 					class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed border-border hover:border-border-strong text-[12.5px] text-text-3 hover:text-text transition-colors"
 				>
 					<Icon name="paperclip" size={13} />
-					<span>Attach files</span>
+					<span>{m.tasks_attach_files()}</span>
 				</button>
 				<input bind:this={fileInput} type="file" multiple hidden onchange={onPick} />
 			</div>
@@ -421,16 +419,16 @@
 		<!-- Foot -->
 		<div class="flex items-center gap-2 px-5 py-3 border-t border-border bg-bg/40 rounded-b-2xl">
 			<span class="text-[11.5px] text-text-3">
-				<Kbd>⌘↵</Kbd> to create
+				<Kbd>⌘↵</Kbd> {m.tasks_to_create()}
 			</span>
 			<div class="ml-auto flex items-center gap-2">
-				<Button size="sm" variant="default" onclick={onclose}>Cancel</Button>
+				<Button size="sm" variant="default" onclick={onclose}>{m.common_cancel()}</Button>
 				<button
 					type="submit"
 					disabled={submitting || !title.trim()}
 					class="inline-flex items-center gap-1.5 rounded-lg font-medium text-[13px] transition-[background,border-color,transform] duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px] px-[11px] py-[7px] bg-accent text-white border border-transparent hover:bg-accent-strong shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)]"
 				>
-					{submitting ? 'Creating…' : 'Create task'}
+					{submitting ? m.common_creating() : m.tasks_create_task()}
 				</button>
 			</div>
 		</div>

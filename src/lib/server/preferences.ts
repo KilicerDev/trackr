@@ -11,7 +11,8 @@ export const PREF_DEFAULTS = {
 	accent: '#ef7a6d',
 	density: 'comfortable' as const,
 	defaultLanding: '/week',
-	weekStartsOn: 1
+	weekStartsOn: 1,
+	locale: 'en'
 };
 
 export const NOTIFICATION_DEFAULTS: Required<NotificationPrefs> = {
@@ -53,6 +54,7 @@ export async function getPreferences(userId: string): Promise<ResolvedPreference
 		density: row.density,
 		defaultLanding: row.defaultLanding,
 		weekStartsOn: row.weekStartsOn,
+		locale: row.locale,
 		notifications: { ...NOTIFICATION_DEFAULTS, ...(row.notifications ?? {}) },
 		viewState: row.viewState ?? {}
 	};
@@ -64,6 +66,7 @@ export type PreferencePatch = Partial<{
 	density: string;
 	defaultLanding: string;
 	weekStartsOn: number;
+	locale: string;
 	notifications: NotificationPrefs;
 	viewState: Record<string, unknown>;
 }>;
@@ -77,6 +80,7 @@ export async function upsertPreferences(userId: string, patch: PreferencePatch) 
 		density: patch.density ?? existing.density,
 		defaultLanding: patch.defaultLanding ?? existing.defaultLanding,
 		weekStartsOn: patch.weekStartsOn ?? existing.weekStartsOn,
+		locale: patch.locale ?? existing.locale,
 		notifications: { ...existing.notifications, ...(patch.notifications ?? {}) },
 		viewState: { ...existing.viewState, ...(patch.viewState ?? {}) }
 	};
@@ -92,6 +96,7 @@ export async function upsertPreferences(userId: string, patch: PreferencePatch) 
 				density: merged.density,
 				defaultLanding: merged.defaultLanding,
 				weekStartsOn: merged.weekStartsOn,
+				locale: merged.locale,
 				notifications: merged.notifications,
 				viewState: merged.viewState,
 				updatedAt: sql`now()`
@@ -104,3 +109,4 @@ export async function upsertPreferences(userId: string, patch: PreferencePatch) 
 export const ALLOWED_THEMES = new Set(['dark', 'light', 'system']);
 export const ALLOWED_DENSITIES = new Set(['comfortable', 'compact']);
 export const ALLOWED_LANDINGS = new Set(['/week', '/tasks', '/projects', '/tickets', '/wiki']);
+export const ALLOWED_LOCALES = new Set(['en', 'de']);

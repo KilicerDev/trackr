@@ -15,6 +15,8 @@
 	import AttachmentDropzone from '../attachments/AttachmentDropzone.svelte';
 	import StagedFileList from '../attachments/StagedFileList.svelte';
 	import { selectStageable } from '$lib/attachments/config';
+	import { m } from '$lib/paraglide/messages';
+	import { priorityLabel, ticketCategoryLabel } from '$lib/labels';
 
 	type OrgOption = { id: string; name: string; slug: string; color: string };
 
@@ -100,28 +102,28 @@
 				submitting = false;
 				if (result.type === 'success') {
 					const data = result.data as { displayId?: string } | undefined;
-					showToast('ok', `Ticket ${data?.displayId ?? ''} created`);
+					showToast('ok', m.tickets_created_toast({ displayId: data?.displayId ?? '' }));
 					await invalidateAll();
 					onclose();
 				} else if (result.type === 'failure') {
-					const msg = (result.data as { message?: string } | undefined)?.message ?? 'Failed to create ticket.';
+					const msg = (result.data as { message?: string } | undefined)?.message ?? m.tickets_create_failed();
 					showToast('err', msg);
 				} else if (result.type === 'error') {
-					showToast('err', result.error?.message ?? 'Failed to create ticket.');
+					showToast('err', result.error?.message ?? m.tickets_create_failed());
 				}
 			};
 		}}
 	>
-		<AttachmentDropzone onfiles={addFiles} disabled={submitting} label="Drop files to attach to this ticket">
+		<AttachmentDropzone onfiles={addFiles} disabled={submitting} label={m.tickets_dropzone_create()}>
 		<div class="flex items-center px-5 pt-4 pb-3 border-b border-border">
 			<div>
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">Support</div>
-				<div class="text-[15px] font-semibold">New ticket</div>
+				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{m.tickets_support_eyebrow()}</div>
+				<div class="text-[15px] font-semibold">{m.tickets_new_title()}</div>
 			</div>
 			<button
 				type="button"
 				onclick={onclose}
-				aria-label="Close"
+				aria-label={m.common_close()}
 				class="ml-auto w-8 h-8 grid place-items-center rounded-lg text-text-3 hover:text-text hover:bg-surface transition-colors"
 			>
 				<Icon name="x" size={14} />
@@ -134,14 +136,14 @@
 				name="subject"
 				bind:value={subject}
 				required
-				placeholder="Subject…"
+				placeholder={m.tickets_subject_placeholder()}
 				class="block w-full bg-transparent border-0 outline-none text-[19px] font-semibold tracking-[-0.01em] text-text placeholder:text-text-3 mb-3"
 			/>
 
 			<textarea
 				name="description"
 				bind:value={description}
-				placeholder="Describe the issue or request…"
+				placeholder={m.tickets_description_placeholder()}
 				rows="4"
 				class="w-full resize-none bg-transparent border-0 outline-none text-[13.5px] leading-relaxed text-text-2 placeholder:text-text-3 mb-4"
 			></textarea>
@@ -160,7 +162,7 @@
 							<span>{selectedOrg.name}</span>
 						{:else}
 							<Icon name="org" size={13} class="text-text-3" />
-							<span>Select org…</span>
+							<span>{m.tickets_select_org_placeholder()}</span>
 						{/if}
 						{#if !lockedOrgId}<Icon name="chevron" size={11} class="text-text-3" />{/if}
 					</button>
@@ -188,7 +190,7 @@
 								</button>
 							{/each}
 							{#if orgs.length === 0}
-								<div class="px-2 py-2 text-[11.5px] text-text-3">No organizations available.</div>
+								<div class="px-2 py-2 text-[11.5px] text-text-3">{m.tickets_no_orgs_available()}</div>
 							{/if}
 						</div>
 					{/if}
@@ -202,7 +204,7 @@
 						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
 					>
 						<PriorityBars priority={priority} />
-						<span>{priorityMeta.label}</span>
+						<span>{priorityLabel(priority)}</span>
 						<Icon name="chevron" size={11} class="text-text-3" />
 					</button>
 					{#if pop === 'priority'}
@@ -222,7 +224,7 @@
 									class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 								>
 									<PriorityBars priority={p.id} />
-									<span class="text-[13px]">{p.label}</span>
+									<span class="text-[13px]">{priorityLabel(p.id)}</span>
 									<span class="ml-auto text-accent {priority === p.id ? 'opacity-100' : 'opacity-0'}">
 										<Icon name="check" size={13} />
 									</span>
@@ -240,7 +242,7 @@
 						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
 					>
 						<span class="w-2 h-2 rounded-full" style:background={categoryMeta.color}></span>
-						<span>{categoryMeta.label}</span>
+						<span>{ticketCategoryLabel(category)}</span>
 						<Icon name="chevron" size={11} class="text-text-3" />
 					</button>
 					{#if pop === 'category'}
@@ -260,7 +262,7 @@
 									class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 								>
 									<span class="w-2 h-2 rounded-full" style:background={c.color}></span>
-									<span class="text-[13px]">{c.label}</span>
+									<span class="text-[13px]">{ticketCategoryLabel(c.id)}</span>
 									<span class="ml-auto text-accent {category === c.id ? 'opacity-100' : 'opacity-0'}">
 										<Icon name="check" size={13} />
 									</span>
@@ -291,7 +293,7 @@
 					class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed border-border hover:border-border-strong text-[12.5px] text-text-3 hover:text-text transition-colors"
 				>
 					<Icon name="paperclip" size={13} />
-					<span>Attach files</span>
+					<span>{m.tickets_attach_files()}</span>
 				</button>
 				<input bind:this={fileInput} type="file" multiple hidden onchange={onPick} />
 			</div>
@@ -299,16 +301,16 @@
 
 		<div class="flex items-center gap-2 px-5 py-3 border-t border-border bg-bg/40 rounded-b-2xl">
 			<span class="text-[11.5px] text-text-3">
-				<Kbd>⌘↵</Kbd> to create
+				<Kbd>⌘↵</Kbd> {m.tickets_kbd_to_create()}
 			</span>
 			<div class="ml-auto flex items-center gap-2">
-				<Button variant="default" onclick={onclose}>Cancel</Button>
+				<Button variant="default" onclick={onclose}>{m.common_cancel()}</Button>
 				<button
 					type="submit"
 					disabled={submitting || !subject.trim() || !orgId}
 					class="inline-flex items-center gap-1.5 rounded-lg font-medium text-[13px] transition-[background,border-color,transform] duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px] px-[11px] py-[7px] bg-accent text-white border border-transparent hover:bg-accent-strong shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)]"
 				>
-					{submitting ? 'Creating…' : 'Create ticket'}
+					{submitting ? m.common_creating() : m.tickets_create()}
 				</button>
 			</div>
 		</div>

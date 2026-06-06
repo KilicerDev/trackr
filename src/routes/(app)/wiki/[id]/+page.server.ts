@@ -9,12 +9,13 @@ import {
 	updateWikiPage
 } from '$lib/server/wiki';
 import { isTrackrTeam } from '$lib/server/permissions';
+import { m } from '$lib/paraglide/messages';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
-	if (!isTrackrTeam(locals)) error(403, 'Wiki is restricted to the Trackr team.');
+	if (!isTrackrTeam(locals)) error(403, m.wiki_err_restricted());
 	let page = await getWikiPage(params.id);
-	if (!page) error(404, 'Page not found');
+	if (!page) error(404, m.wiki_err_page_not_found());
 
 	// Every page (folders included, for their description) edits collaboratively;
 	// make sure a document is linked — lazily created + seeded from the legacy
@@ -43,8 +44,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 
 export const actions: Actions = {
 	update: async ({ params, request, locals }) => {
-		if (!locals.user) return fail(401, { message: 'Not authenticated' });
-		if (!isTrackrTeam(locals)) return fail(403, { message: 'Wiki is restricted.' });
+		if (!locals.user) return fail(401, { message: m.wiki_err_not_authenticated() });
+		if (!isTrackrTeam(locals)) return fail(403, { message: m.wiki_err_restricted_short() });
 		const form = await request.formData();
 		const title = form.get('title');
 		const icon = form.get('icon');
@@ -55,8 +56,8 @@ export const actions: Actions = {
 		const patch: { title?: string; icon?: string } = {};
 		if (typeof title === 'string') {
 			const t = title.trim();
-			if (!t) return fail(400, { message: 'Title cannot be empty.' });
-			if (t.length > 120) return fail(400, { message: 'Title is too long.' });
+			if (!t) return fail(400, { message: m.wiki_err_title_empty() });
+			if (t.length > 120) return fail(400, { message: m.wiki_err_title_too_long() });
 			patch.title = t;
 		}
 		if (typeof icon === 'string' && icon.trim()) patch.icon = icon.trim();
@@ -66,10 +67,10 @@ export const actions: Actions = {
 	},
 
 	delete: async ({ params, locals }) => {
-		if (!locals.user) return fail(401, { message: 'Not authenticated' });
-		if (!isTrackrTeam(locals)) return fail(403, { message: 'Wiki is restricted.' });
+		if (!locals.user) return fail(401, { message: m.wiki_err_not_authenticated() });
+		if (!isTrackrTeam(locals)) return fail(403, { message: m.wiki_err_restricted_short() });
 		const existing = await getWikiPage(params.id);
-		if (!existing) return fail(404, { message: 'Page not found.' });
+		if (!existing) return fail(404, { message: m.wiki_err_page_not_found_period() });
 		await deleteWikiPage(params.id);
 		redirect(303, '/wiki');
 	}

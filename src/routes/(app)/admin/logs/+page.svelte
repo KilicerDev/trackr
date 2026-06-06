@@ -7,6 +7,8 @@
 	import Drawer from '$lib/components/Drawer.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { LOG_EVENTS, LOG_EVENT_TYPES, LOG_KINDS, userById } from '$lib/data';
+	import { m } from '$lib/paraglide/messages';
+	import { logKindLabel, logEventLabel } from '$lib/labels';
 	import type { LogEvent } from '$lib/types';
 
 	let kind = $state('all');
@@ -24,29 +26,29 @@
 		return list;
 	});
 
-	const ranges = [
-		{ id: '1', label: '24h' },
-		{ id: '7', label: '7 days' },
-		{ id: '30', label: '30 days' },
-		{ id: 'all', label: 'All time' }
-	];
+	const ranges = $derived([
+		{ id: '1', label: m.admin_logs_range_24h() },
+		{ id: '7', label: m.admin_logs_range_7days() },
+		{ id: '30', label: m.admin_logs_range_30days() },
+		{ id: 'all', label: m.admin_logs_range_all_time() }
+	]);
 </script>
 
-<svelte:head><title>Trackr · Audit Log</title></svelte:head>
+<svelte:head><title>{m.admin_logs_page_title()}</title></svelte:head>
 
-<Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: 'Audit Log' }]} />
+<Topbar crumbs={[{ label: m.admin_crumb_workspace(), href: '/tasks' }, { label: m.admin_logs_title() }]} />
 
 <div class="flex-1 min-h-0 overflow-y-auto">
 	<div class="px-6 py-6">
 		<div class="flex items-end gap-4 mb-6">
 			<div>
-				<h1 class="text-[26px] font-semibold tracking-[-0.014em]">Audit Log</h1>
+				<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.admin_logs_title()}</h1>
 				<p class="text-[12.5px] text-text-3 mt-1 max-w-xl">
-					Every member action across the workspace. Retained for 90 days.
+					{m.admin_logs_subtitle()}
 				</p>
 			</div>
 			<div class="ml-auto">
-				<Button variant="default" size="sm"><Icon name="logs" size={13} /> Export CSV</Button>
+				<Button variant="default" size="sm"><Icon name="logs" size={13} /> {m.admin_logs_export_csv()}</Button>
 			</div>
 		</div>
 
@@ -58,7 +60,7 @@
 						onclick={() => (kind = k.id)}
 						class="px-2.5 h-full rounded-md text-[12.5px] {kind === k.id ? 'bg-bg-elev text-text shadow-sm' : 'text-text-3 hover:text-text'}"
 					>
-						{k.label}
+						{logKindLabel(k.id)}
 					</button>
 				{/each}
 			</div>
@@ -81,7 +83,7 @@
 				<input
 					type="text"
 					bind:value={search}
-					placeholder="Search events…"
+					placeholder={m.admin_logs_search_placeholder()}
 					class="h-8 pl-8 pr-3 rounded-lg bg-surface border border-border text-[12.5px] outline-none focus:border-border-strong w-56"
 				/>
 			</div>
@@ -89,17 +91,17 @@
 
 		<div class="bg-bg-elev border border-border rounded-2xl overflow-hidden">
 			{#if events.length === 0}
-				<EmptyState icon="logs" title="No events match your filters" />
+				<EmptyState icon="logs" title={m.admin_logs_empty_title()} />
 			{:else}
 				<div
 					class="grid items-center gap-3 px-5 h-9 text-[11px] uppercase tracking-[0.08em] text-text-4 border-b border-border"
 					style:grid-template-columns="1.6fr 1fr 2fr 1.4fr 1.2fr 30px"
 				>
-					<span>Event</span>
-					<span>Actor</span>
-					<span>Target</span>
-					<span>IP / Device</span>
-					<span>When</span>
+					<span>{m.admin_logs_col_event()}</span>
+					<span>{m.admin_logs_col_actor()}</span>
+					<span>{m.admin_logs_col_target()}</span>
+					<span>{m.admin_logs_col_ip_device()}</span>
+					<span>{m.admin_logs_col_when()}</span>
 					<span></span>
 				</div>
 				{#each events as e (e.id)}
@@ -115,7 +117,7 @@
 							<span class="w-6 h-6 rounded-md grid place-items-center shrink-0" style:background={meta.color + '24'} style:color={meta.color}>
 								<Icon name={meta.icon} size={13} />
 							</span>
-							<span class="text-text truncate">{meta.label}</span>
+							<span class="text-text truncate">{logEventLabel(e.type)}</span>
 						</span>
 						<span class="flex items-center gap-1.5 min-w-0">
 							{#if actor}
@@ -123,7 +125,7 @@
 								<span class="truncate">{actor.name.split(' ')[0]}</span>
 							{:else}
 								<span class="w-[18px] h-[18px] rounded-full bg-surface-2 grid place-items-center text-text-3 text-[10px]">?</span>
-								<span class="text-text-3">Anon</span>
+								<span class="text-text-3">{m.admin_logs_anon()}</span>
 							{/if}
 						</span>
 						<span class="text-text-2 truncate">{e.target}</span>
@@ -145,9 +147,9 @@
 		{@const meta = LOG_EVENT_TYPES[selected.type]}
 		{@const actor = userById(selected.actor)}
 		<div class="flex items-center gap-2 px-5 pt-4 pb-3 border-b border-border">
-			<span class="font-mono text-[10.5px] uppercase tracking-[0.08em] text-text-4">Event · {selected.id.toUpperCase()}</span>
+			<span class="font-mono text-[10.5px] uppercase tracking-[0.08em] text-text-4">{m.admin_logs_event_label({ id: selected.id.toUpperCase() })}</span>
 			<div class="ml-auto">
-				<IconButton size={28} ariaLabel="Close" onclick={() => (selected = null)}><Icon name="x" size={14} /></IconButton>
+				<IconButton size={28} ariaLabel={m.common_close()} onclick={() => (selected = null)}><Icon name="x" size={14} /></IconButton>
 			</div>
 		</div>
 		<div class="flex-1 overflow-y-auto px-5 py-5">
@@ -156,30 +158,30 @@
 					<Icon name={meta.icon} size={20} />
 				</span>
 				<div class="min-w-0">
-					<div class="text-[16px] font-semibold text-text">{meta.label}</div>
+					<div class="text-[16px] font-semibold text-text">{logEventLabel(selected.type)}</div>
 					<div class="text-[11.5px] font-mono text-text-3">{selected.type}</div>
 				</div>
 			</div>
 
 			<div class="grid grid-cols-[100px_1fr] gap-y-3 gap-x-3 text-[12.5px] mb-6">
-				<div class="text-text-4">Actor</div>
+				<div class="text-text-4">{m.admin_logs_col_actor()}</div>
 				<div class="flex items-center gap-1.5">
-					{#if actor}<Avatar user={actor} size={16} /><span>{actor.name}</span>{:else}<span class="text-text-3">Anonymous</span>{/if}
+					{#if actor}<Avatar user={actor} size={16} /><span>{actor.name}</span>{:else}<span class="text-text-3">{m.admin_logs_anonymous()}</span>{/if}
 				</div>
-				<div class="text-text-4">Target</div>
+				<div class="text-text-4">{m.admin_logs_col_target()}</div>
 				<div class="text-text break-all">{selected.target}</div>
-				<div class="text-text-4">Timestamp</div>
+				<div class="text-text-4">{m.admin_logs_timestamp()}</div>
 				<div class="font-mono text-text">{selected.at}</div>
-				<div class="text-text-4">IP</div>
+				<div class="text-text-4">{m.admin_logs_ip()}</div>
 				<div class="font-mono">{selected.ip}</div>
-				<div class="text-text-4">Device</div>
+				<div class="text-text-4">{m.admin_logs_device()}</div>
 				<div>{selected.device}</div>
-				<div class="text-text-4">Category</div>
-				<div class="capitalize" style:color={meta.color}>{meta.kind}</div>
+				<div class="text-text-4">{m.admin_logs_category()}</div>
+				<div class="capitalize" style:color={meta.color}>{logKindLabel(meta.kind)}</div>
 			</div>
 
 			<div>
-				<div class="text-[10.5px] uppercase tracking-[0.08em] text-text-4 mb-2">Raw payload</div>
+				<div class="text-[10.5px] uppercase tracking-[0.08em] text-text-4 mb-2">{m.admin_logs_raw_payload()}</div>
 				<pre class="text-[11.5px] font-mono bg-surface border border-border rounded-lg p-3 overflow-x-auto text-text-2">{JSON.stringify(selected, null, 2)}</pre>
 			</div>
 		</div>

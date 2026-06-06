@@ -2,6 +2,7 @@
 	import { enhance } from '$app/forms';
 	import BrandMark from '$lib/components/auth/BrandMark.svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import type { ActionData } from './$types';
 
 	let { form }: { form: ActionData } = $props();
@@ -14,7 +15,7 @@
 </script>
 
 <svelte:head>
-	<title>Forgot password · Trackr</title>
+	<title>{m.auth_forgot_page_title()}</title>
 </svelte:head>
 
 <div class="relative flex min-h-screen items-center justify-center px-4 py-10">
@@ -38,22 +39,21 @@
 					<Icon name="check" size={20} stroke={2} />
 				</div>
 				<h1 class="mt-4 text-center text-[19px] font-semibold tracking-[-0.012em] text-text">
-					Check your email
+					{m.auth_forgot_check_email()}
 				</h1>
 				<p class="mt-1.5 text-center text-[13.5px] leading-relaxed text-text-3">
-					If an account exists for <span class="text-text-2">{form.email}</span>, you'll receive a
-					reset link shortly.
+					{m.auth_forgot_sent_message({ email: form.email })}
 				</p>
 				<a
 					href="/login"
 					class="mt-6 inline-flex h-10 w-full items-center justify-center rounded-[8px] border border-border bg-surface text-[13.5px] font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text"
 				>
-					Back to sign in
+					{m.auth_back_to_sign_in()}
 				</a>
 			{:else}
-				<h1 class="text-[19px] font-semibold tracking-[-0.012em] text-text">Forgot password</h1>
+				<h1 class="text-[19px] font-semibold tracking-[-0.012em] text-text">{m.auth_forgot_title()}</h1>
 				<p class="mt-1 text-[13.5px] text-text-3">
-					Enter your email and we'll send you a reset link.
+					{m.auth_forgot_subtitle()}
 				</p>
 
 				<form
@@ -68,7 +68,7 @@
 					class="mt-6 flex flex-col gap-4"
 				>
 					<label class="flex flex-col gap-1.5">
-						<span class="text-[12.5px] font-medium text-text-2">Email</span>
+						<span class="text-[12.5px] font-medium text-text-2">{m.auth_email_label()}</span>
 						<input
 							bind:this={emailInput}
 							type="email"
@@ -101,9 +101,9 @@
 							<span
 								class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"
 							></span>
-							<span>Sending…</span>
+							<span>{m.auth_forgot_sending()}</span>
 						{:else}
-							<span>Send reset link</span>
+							<span>{m.auth_forgot_send_link()}</span>
 						{/if}
 					</button>
 				</form>
@@ -111,7 +111,7 @@
 		</div>
 
 		<p class="mt-5 text-center text-[12px]">
-			<a href="/login" class="text-text-3 transition-colors hover:text-text">Back to sign in</a>
+			<a href="/login" class="text-text-3 transition-colors hover:text-text">{m.auth_back_to_sign_in()}</a>
 		</p>
 	</div>
 </div>

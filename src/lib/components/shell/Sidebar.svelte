@@ -2,6 +2,7 @@
     import { page } from "$app/state";
     import Icon from "../Icon.svelte";
     import Kbd from "../Kbd.svelte";
+    import { m } from "$lib/paraglide/messages";
 
     type LayoutShape = {
         taskCount?: number;
@@ -21,55 +22,55 @@
     const isTrackrTeam = $derived(!!(page.data as LayoutShape).isTrackrTeam);
 
     const workspaceItems = $derived([
-        { key: "week", label: "My Week", icon: "calendar", href: "/week" },
+        { key: "week", label: m.shell_nav_week(), icon: "calendar", href: "/week" },
         {
             key: "tickets",
-            label: "Support Tickets",
+            label: m.shell_nav_tickets(),
             icon: "ticket",
             href: "/tickets",
         },
         {
             key: "projects",
-            label: "Projects",
+            label: m.shell_nav_projects(),
             icon: "folder",
             href: "/projects",
             count: projectList.length,
         },
         {
             key: "tasks",
-            label: "Tasks",
+            label: m.shell_nav_tasks(),
             icon: "check-square",
             href: "/tasks",
             count: taskCount,
         },
         // Wiki is internal-only — hidden from client / external-org users.
         ...(isTrackrTeam
-            ? [{ key: "wiki", label: "Wiki", icon: "book", href: "/wiki" }]
+            ? [{ key: "wiki", label: m.shell_nav_wiki(), icon: "book", href: "/wiki" }]
             : []),
     ]);
 
-    const adminItems = [
+    const adminItems = $derived([
         {
             key: "orgs",
-            label: "Organizations",
+            label: m.shell_admin_organizations(),
             icon: "org",
             href: "/admin/organizations",
         },
-        { key: "roles", label: "Roles", icon: "shield", href: "/admin/roles" },
+        { key: "roles", label: m.shell_admin_roles(), icon: "shield", href: "/admin/roles" },
         {
             key: "users",
-            label: "User Management",
+            label: m.shell_admin_user_management(),
             icon: "users",
             href: "/admin/users",
         },
         {
             key: "settings",
-            label: "System Settings",
+            label: m.shell_admin_system_settings(),
             icon: "settings",
             href: "/admin/settings",
         },
-        { key: "logs", label: "Logs", icon: "logs", href: "/admin/logs" },
-    ];
+        { key: "logs", label: m.shell_admin_logs(), icon: "logs", href: "/admin/logs" },
+    ]);
 
     function isActive(href: string): boolean {
         if (href === "/") return page.url.pathname === "/";
@@ -109,7 +110,7 @@
         class="mx-3 mb-3.5 mt-1 flex items-center gap-2 bg-surface border border-border rounded-lg px-2.5 py-2 text-text-3 text-[14px] hover:text-text-2 transition-colors"
     >
         <Icon name="search" size={14} />
-        Search…
+        {m.shell_search_placeholder()}
         <span class="ml-auto"><Kbd>⌘K</Kbd></span>
     </button>
 
@@ -118,7 +119,7 @@
             <div
                 class="px-3 pt-2.5 pb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-text-4"
             >
-                Workspace
+                {m.shell_section_workspace()}
             </div>
             {#each workspaceItems as item (item.key)}
                 {@const active = isActive(item.href)}
@@ -151,7 +152,7 @@
             <div
                 class="px-3 pt-2.5 pb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-text-4"
             >
-                Favorites
+                {m.shell_section_favorites()}
             </div>
             {#each favorites as p (p.id)}
                 <a
@@ -167,7 +168,7 @@
             {/each}
             {#if favorites.length === 0}
                 <div class="px-3 py-1.5 text-[12px] text-text-4 leading-snug">
-                    Star a project to pin it here.
+                    {m.shell_favorites_empty()}
                 </div>
             {/if}
         </div>
@@ -177,7 +178,7 @@
             <div
                 class="px-3 pt-2.5 pb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-text-4"
             >
-                Admin
+                {m.shell_section_admin()}
             </div>
             {#each adminItems as item (item.key)}
                 {@const active = isActive(item.href)}

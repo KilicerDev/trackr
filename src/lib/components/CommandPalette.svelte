@@ -3,6 +3,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import Icon from './Icon.svelte';
 	import Kbd from './Kbd.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		open: boolean;
@@ -27,18 +28,18 @@
 		tone?: 'default' | 'accent' | 'danger';
 	};
 
-	const ITEMS: Item[] = [
-		{ id: 'nav.week', section: 'Navigate', label: 'My Week', hint: 'Plan and review this week', icon: 'calendar' },
-		{ id: 'nav.tasks', section: 'Navigate', label: 'Tasks', hint: 'All tasks across the workspace', icon: 'check-square' },
-		{ id: 'nav.projects', section: 'Navigate', label: 'Projects', hint: 'Browse and manage projects', icon: 'folder' },
-		{ id: 'nav.tickets', section: 'Navigate', label: 'Support Tickets', hint: 'Inbox and triage', icon: 'ticket' },
-		{ id: 'nav.wiki', section: 'Navigate', label: 'Wiki', hint: 'Docs and knowledge base', icon: 'book' },
+	const ITEMS: Item[] = $derived([
+		{ id: 'nav.week', section: m.shell_palette_section_navigate(), label: m.shell_nav_week(), hint: m.shell_palette_week_hint(), icon: 'calendar' },
+		{ id: 'nav.tasks', section: m.shell_palette_section_navigate(), label: m.shell_nav_tasks(), hint: m.shell_palette_tasks_hint(), icon: 'check-square' },
+		{ id: 'nav.projects', section: m.shell_palette_section_navigate(), label: m.shell_nav_projects(), hint: m.shell_palette_projects_hint(), icon: 'folder' },
+		{ id: 'nav.tickets', section: m.shell_palette_section_navigate(), label: m.shell_nav_tickets(), hint: m.shell_palette_tickets_hint(), icon: 'ticket' },
+		{ id: 'nav.wiki', section: m.shell_palette_section_navigate(), label: m.shell_nav_wiki(), hint: m.shell_palette_wiki_hint(), icon: 'book' },
 
-		{ id: 'create.task', section: 'Create', label: 'New task', hint: 'Add a task to the workspace', icon: 'plus', tone: 'accent' },
-		{ id: 'create.project', section: 'Create', label: 'New project', hint: 'Spin up a project workspace', icon: 'folder' },
+		{ id: 'create.task', section: m.shell_palette_section_create(), label: m.shell_palette_new_task(), hint: m.shell_palette_new_task_hint(), icon: 'plus', tone: 'accent' },
+		{ id: 'create.project', section: m.shell_palette_section_create(), label: m.shell_palette_new_project(), hint: m.shell_palette_new_project_hint(), icon: 'folder' },
 
-		{ id: 'me.signout', section: 'Account', label: 'Sign out', icon: 'logout', tone: 'danger' }
-	];
+		{ id: 'me.signout', section: m.shell_palette_section_account(), label: m.shell_sign_out(), icon: 'logout', tone: 'danger' }
+	]);
 
 	let query = $state('');
 	let active = $state(0);
@@ -153,7 +154,7 @@
 	<div
 		role="dialog"
 		aria-modal="true"
-		aria-label="Command palette"
+		aria-label={m.shell_palette_aria()}
 		class="fixed inset-0 z-50 flex justify-center px-4 pointer-events-none"
 		onkeydown={onKeydown}
 	>
@@ -170,7 +171,7 @@
 					bind:this={inputEl}
 					bind:value={query}
 					type="text"
-					placeholder="Search tasks, projects, commands…"
+					placeholder={m.shell_palette_search_placeholder()}
 					class="flex-1 bg-transparent border-0 outline-none text-[14px] text-text placeholder:text-text-4"
 					autocomplete="off"
 					spellcheck="false"
@@ -185,9 +186,9 @@
 						<div class="inline-grid place-items-center w-10 h-10 rounded-xl bg-surface border border-border text-text-3 mb-2">
 							<Icon name="search" size={16} />
 						</div>
-						<div class="text-[13px] text-text-2">No results</div>
+						<div class="text-[13px] text-text-2">{m.shell_palette_no_results()}</div>
 						<div class="text-[11.5px] text-text-4 mt-0.5">
-							Try a different search.
+							{m.shell_palette_no_results_hint()}
 						</div>
 					</div>
 				{:else}
@@ -243,11 +244,11 @@
 			<div class="flex items-center gap-3 px-4 h-9 border-t border-border bg-surface/40 text-[11.5px] text-text-3">
 				<div class="flex items-center gap-1.5">
 					<Kbd>↑</Kbd><Kbd>↓</Kbd>
-					<span class="text-text-4">navigate</span>
+					<span class="text-text-4">{m.shell_palette_navigate()}</span>
 				</div>
 				<div class="flex items-center gap-1.5">
 					<Kbd>↵</Kbd>
-					<span class="text-text-4">open</span>
+					<span class="text-text-4">{m.common_open()}</span>
 				</div>
 				<div class="ml-auto flex items-center gap-1.5 font-mono text-[10.5px] text-text-4">
 					<span class="w-1.5 h-1.5 rounded-full bg-accent"></span>

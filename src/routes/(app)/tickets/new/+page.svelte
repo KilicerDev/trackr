@@ -15,6 +15,8 @@
 	import AttachmentDropzone from '$lib/components/attachments/AttachmentDropzone.svelte';
 	import StagedFileList from '$lib/components/attachments/StagedFileList.svelte';
 	import { selectStageable } from '$lib/attachments/config';
+	import { m } from '$lib/paraglide/messages';
+	import { priorityLabel, ticketCategoryLabel } from '$lib/labels';
 
 	type Priority = (typeof TICKET_PRIORITIES)[number]['id'];
 	type Category = (typeof TICKET_CATEGORIES)[number]['id'];
@@ -57,7 +59,7 @@
 
 <svelte:window onkeydown={onKey} />
 
-<Topbar crumbs={[{ label: data.org.name }, { label: 'New ticket' }]} />
+<Topbar crumbs={[{ label: data.org.name }, { label: m.tickets_new_title() }]} />
 
 <div class="flex-1 min-h-0 overflow-auto">
 	<div class="max-w-[720px] mx-auto px-6 py-8">
@@ -67,7 +69,7 @@
 				<span>{data.org.name}</span>
 			</span>
 		</div>
-		<h1 class="text-[22px] font-semibold tracking-[-0.012em] mb-5">Open a new ticket</h1>
+		<h1 class="text-[22px] font-semibold tracking-[-0.012em] mb-5">{m.tickets_new_open_heading()}</h1>
 
 		<form
 			bind:this={formEl}
@@ -81,33 +83,33 @@
 					submitting = false;
 					if (result.type === 'success') {
 						const id = (result.data as { id?: string } | undefined)?.id;
-						showToast('ok', 'Ticket created');
+						showToast('ok', m.tickets_created_simple());
 						if (id) await goto(`/tickets/${id}`);
 					} else if (result.type === 'failure') {
 						showToast(
 							'err',
-							(result.data as { message?: string } | undefined)?.message ?? 'Failed to create ticket.'
+							(result.data as { message?: string } | undefined)?.message ?? m.tickets_create_failed()
 						);
 					} else if (result.type === 'error') {
-						showToast('err', result.error?.message ?? 'Failed to create ticket.');
+						showToast('err', result.error?.message ?? m.tickets_create_failed());
 					}
 				};
 			}}
 		>
-			<AttachmentDropzone onfiles={addFiles} disabled={submitting} label="Drop files to attach">
+			<AttachmentDropzone onfiles={addFiles} disabled={submitting} label={m.tickets_dropzone_new()}>
 				<div class="rounded-2xl border border-border bg-bg-elev p-5">
 					<input
 						type="text"
 						name="subject"
 						bind:value={subject}
 						required
-						placeholder="Subject…"
+						placeholder={m.tickets_subject_placeholder()}
 						class="block w-full bg-transparent border-0 outline-none text-[19px] font-semibold tracking-[-0.01em] text-text placeholder:text-text-3 mb-3"
 					/>
 					<textarea
 						name="description"
 						bind:value={description}
-						placeholder="Describe the issue or request…"
+						placeholder={m.tickets_description_placeholder()}
 						rows="6"
 						class="w-full resize-none bg-transparent border-0 outline-none text-[14px] leading-relaxed text-text-2 placeholder:text-text-3 mb-4"
 					></textarea>
@@ -121,7 +123,7 @@
 								class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
 							>
 								<PriorityBars {priority} />
-								<span>{priorityMeta.label}</span>
+								<span>{priorityLabel(priority)}</span>
 								<Icon name="chevron" size={11} class="text-text-3" />
 							</button>
 							{#if pop === 'priority'}
@@ -141,7 +143,7 @@
 											class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 										>
 											<PriorityBars priority={p.id} />
-											<span class="text-[13px]">{p.label}</span>
+											<span class="text-[13px]">{priorityLabel(p.id)}</span>
 											<span class="ml-auto text-accent {priority === p.id ? 'opacity-100' : 'opacity-0'}">
 												<Icon name="check" size={13} />
 											</span>
@@ -159,7 +161,7 @@
 								class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
 							>
 								<span class="w-2 h-2 rounded-full" style:background={categoryMeta.color}></span>
-								<span>{categoryMeta.label}</span>
+								<span>{ticketCategoryLabel(category)}</span>
 								<Icon name="chevron" size={11} class="text-text-3" />
 							</button>
 							{#if pop === 'category'}
@@ -179,7 +181,7 @@
 											class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 										>
 											<span class="w-2 h-2 rounded-full" style:background={c.color}></span>
-											<span class="text-[13px]">{c.label}</span>
+											<span class="text-[13px]">{ticketCategoryLabel(c.id)}</span>
 											<span class="ml-auto text-accent {category === c.id ? 'opacity-100' : 'opacity-0'}">
 												<Icon name="check" size={13} />
 											</span>
@@ -195,7 +197,7 @@
 							class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed border-border hover:border-border-strong text-[12.5px] text-text-3 hover:text-text transition-colors"
 						>
 							<Icon name="paperclip" size={13} />
-							<span>Attach files</span>
+							<span>{m.tickets_attach_files()}</span>
 						</button>
 						<input bind:this={fileInput} type="file" multiple hidden onchange={onPick} />
 					</div>
@@ -218,15 +220,15 @@
 			</AttachmentDropzone>
 
 			<div class="flex items-center gap-2 mt-4">
-				<span class="text-[11.5px] text-text-3"><Kbd>⌘↵</Kbd> to submit</span>
+				<span class="text-[11.5px] text-text-3"><Kbd>⌘↵</Kbd> {m.tickets_kbd_to_submit()}</span>
 				<div class="ml-auto flex items-center gap-2">
-					<Button variant="default" onclick={() => history.back()}>Cancel</Button>
+					<Button variant="default" onclick={() => history.back()}>{m.common_cancel()}</Button>
 					<button
 						type="submit"
 						disabled={submitting || !subject.trim()}
 						class="inline-flex items-center gap-1.5 rounded-lg font-medium text-[13px] transition-[background,border-color,transform] duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px] px-[13px] py-[8px] bg-accent text-white border border-transparent hover:bg-accent-strong shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)]"
 					>
-						{submitting ? 'Creating…' : 'Create ticket'}
+						{submitting ? m.common_creating() : m.tickets_create()}
 					</button>
 				</div>
 			</div>

@@ -232,7 +232,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		)
 	};
 
-	const preferences = await getPreferences(locals.user.id);
+	const preferences = locals.preferences ?? (await getPreferences(locals.user.id));
 
 	// ── Portal context ─────────────────────────────────────────────────────────
 	// For external ticket-only users: resolve the active org (persisted in

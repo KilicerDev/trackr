@@ -5,6 +5,7 @@
 	import Modal from '../Modal.svelte';
 	import Button from '../Button.svelte';
 	import { showToast } from '$lib/toast.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		open: boolean;
@@ -47,19 +48,19 @@
 
 			if (result.type === 'success') {
 				const id = result.data?.id;
-				showToast('ok', isFolder ? 'Folder created' : 'Page created');
+				showToast('ok', isFolder ? m.wiki_toast_folder_created() : m.wiki_toast_page_created());
 				await invalidateAll();
 				onclose();
 				if (id) await goto(`/wiki/${id}`);
 			} else if (result.type === 'failure') {
-				showToast('err', result.data?.message ?? 'Could not create');
+				showToast('err', result.data?.message ?? m.wiki_toast_could_not_create());
 				busy = false;
 			} else {
-				showToast('err', 'Could not create');
+				showToast('err', m.wiki_toast_could_not_create());
 				busy = false;
 			}
 		} catch {
-			showToast('err', 'Network error');
+			showToast('err', m.wiki_toast_network_error());
 			busy = false;
 		}
 	}
@@ -68,26 +69,26 @@
 <Modal {open} {onclose} maxWidth={420}>
 	<div class="px-5 pt-4 pb-3 border-b border-border">
 		<h2 class="text-[15px] font-semibold tracking-[-0.005em]">
-			{isFolder ? 'New folder' : 'New page'}
+			{isFolder ? m.wiki_new_folder() : m.wiki_new_page()}
 		</h2>
 	</div>
 	<form onsubmit={submit} class="px-5 py-4 space-y-4">
 		<div>
-			<label for="wiki-title" class="block text-[11.5px] text-text-3 mb-1.5">Title</label>
+			<label for="wiki-title" class="block text-[11.5px] text-text-3 mb-1.5">{m.wiki_title_label()}</label>
 			<!-- svelte-ignore a11y_autofocus -->
 			<input
 				id="wiki-title"
 				bind:value={title}
 				autofocus
 				maxlength="120"
-				placeholder={isFolder ? 'e.g. Engineering' : 'e.g. Onboarding'}
+				placeholder={isFolder ? m.wiki_folder_placeholder() : m.wiki_page_placeholder()}
 				class="w-full bg-surface border border-border rounded-lg px-3 py-2 outline-none focus:border-border-strong text-[13px]"
 			/>
 		</div>
 		<div class="flex items-center justify-end gap-2 pt-1">
-			<Button type="button" variant="ghost" onclick={onclose}>Cancel</Button>
+			<Button type="button" variant="ghost" onclick={onclose}>{m.common_cancel()}</Button>
 			<Button type="submit" variant="primary" disabled={!title.trim() || busy}>
-				{busy ? 'Creating…' : 'Create'}
+				{busy ? m.common_creating() : m.common_create()}
 			</Button>
 		</div>
 	</form>

@@ -8,6 +8,8 @@
 	import Icon from '../Icon.svelte';
 	import { TRACKR_PRIORITIES, formatDateShort, dueCountdown } from '$lib/data';
 	import { resolveUser } from '$lib/lookup.svelte';
+	import { priorityLabel } from '$lib/labels';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		task: Task;
@@ -47,15 +49,15 @@
 				class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] text-accent shrink-0"
 				style:background="rgba(239,122,109,0.14)"
 				title={task.plannedFor
-					? `Planned for ${formatDateShort(task.plannedFor)}`
-					: 'In your week (no date set)'}
+					? m.tasks_planned_for({ date: formatDateShort(task.plannedFor) })
+					: m.tasks_in_your_week_no_date()}
 			>
 				{#if task.plannedFor}
 					<Icon name="calendar" size={12} />
 					<span class="font-mono">{formatDateShort(task.plannedFor)}</span>
 				{:else}
 					<Icon name="bookmark" size={12} />
-					<span>This week</span>
+					<span>{m.tasks_this_week()}</span>
 				{/if}
 			</span>
 		{/if}
@@ -66,7 +68,7 @@
 	<span class="flex items-center gap-2 text-[12.5px] text-text-3">
 		{#if task.priority !== 'none'}
 			<PriorityBars priority={task.priority} />
-			<span>{prio.label}</span>
+			<span>{priorityLabel(prio.id)}</span>
 		{:else}
 			<span class="text-text-4">—</span>
 		{/if}

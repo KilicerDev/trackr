@@ -23,6 +23,8 @@
 	import AttachmentDropzone from '$lib/components/attachments/AttachmentDropzone.svelte';
 	import StagedFileList from '$lib/components/attachments/StagedFileList.svelte';
 	import { selectStageable, type AttachmentDTO } from '$lib/attachments/config';
+	import { m } from '$lib/paraglide/messages';
+	import { ticketStatusLabel, ticketCategoryLabel, ticketChannelLabel, priorityLabel } from '$lib/labels';
 
 	type PageData = {
 		ticket: TicketRow;
@@ -58,10 +60,10 @@
 				method: 'POST',
 				body: fd
 			});
-			if (!res.ok) throw new Error('Pin failed');
+			if (!res.ok) throw new Error(m.tickets_pin_failed());
 			await invalidateAll();
 		} catch (err) {
-			showToast('err', err instanceof Error ? err.message : 'Pin failed');
+			showToast('err', err instanceof Error ? err.message : m.tickets_pin_failed());
 		} finally {
 			pinPending = false;
 		}
@@ -84,11 +86,11 @@
 		fd.set(field, value ?? '');
 		try {
 			const res = await fetch('/tickets?/update', { method: 'POST', body: fd });
-			if (!res.ok) throw new Error('Update failed');
+			if (!res.ok) throw new Error(m.tickets_update_failed());
 			pop = null;
 			await invalidateAll();
 		} catch (err) {
-			showToast('err', err instanceof Error ? err.message : 'Update failed');
+			showToast('err', err instanceof Error ? err.message : m.tickets_update_failed());
 		} finally {
 			pending = false;
 		}
@@ -125,13 +127,13 @@
 		for (const file of commentFiles) fd.append('attachments', file);
 		try {
 			const res = await fetch('/tickets?/message', { method: 'POST', body: fd });
-			if (!res.ok) throw new Error('Send failed');
+			if (!res.ok) throw new Error(m.tickets_send_failed());
 			body = '';
 			internal = false;
 			commentFiles = [];
 			await invalidateAll();
 		} catch (err) {
-			showToast('err', err instanceof Error ? err.message : 'Send failed');
+			showToast('err', err instanceof Error ? err.message : m.tickets_send_failed());
 		} finally {
 			sending = false;
 		}
@@ -162,13 +164,13 @@
 	function relTime(iso: string): string {
 		const ts = new Date(iso).getTime();
 		const diff = Date.now() - ts;
-		const m = Math.floor(diff / 60_000);
-		if (m < 1) return 'just now';
-		if (m < 60) return `${m}m ago`;
-		const h = Math.floor(m / 60);
-		if (h < 24) return `${h}h ago`;
+		const mins = Math.floor(diff / 60_000);
+		if (mins < 1) return m.tickets_just_now();
+		if (mins < 60) return m.tickets_min_ago({ m: mins });
+		const h = Math.floor(mins / 60);
+		if (h < 24) return m.tickets_hour_ago({ h });
 		const d = Math.floor(h / 24);
-		if (d < 7) return `${d}d ago`;
+		if (d < 7) return m.tickets_day_ago({ d });
 		return new Date(iso).toLocaleDateString();
 	}
 
@@ -194,9 +196,9 @@
 
 	async function deleteTicket() {
 		const ok = await uiConfirm({
-			title: `Delete ${t.displayId}?`,
-			message: `"${t.subject}" and its conversation will be removed from the ticket list. This is an administrative action.`,
-			confirmLabel: 'Delete ticket',
+			title: m.tickets_delete_confirm_title({ displayId: t.displayId }),
+			message: m.tickets_delete_confirm_message({ subject: t.subject }),
+			confirmLabel: m.tickets_delete_confirm_label(),
 			tone: 'danger',
 			icon: 'trash'
 		});
@@ -205,24 +207,24 @@
 		fd.set('id', t.id);
 		try {
 			const res = await fetch('/tickets?/delete', { method: 'POST', body: fd });
-			if (!res.ok) throw new Error('Delete failed');
+			if (!res.ok) throw new Error(m.tickets_delete_failed());
 			await goto('/tickets');
 		} catch (err) {
-			showToast('err', err instanceof Error ? err.message : 'Delete failed');
+			showToast('err', err instanceof Error ? err.message : m.tickets_delete_failed());
 		}
 	}
 </script>
 
 <svelte:head>
-	<title>Trackr · {t.displayId} · {t.subject}</title>
+	<title>{m.tickets_detail_page_title({ displayId: t.displayId, subject: t.subject })}</title>
 </svelte:head>
 
 <Topbar
 	crumbs={data.isPortalUser
 		? [{ label: t.orgName }, { label: t.displayId }]
 		: [
-				{ label: 'Trackr Workspace', href: '/tasks' },
-				{ label: 'Support Tickets', href: '/tickets' },
+				{ label: m.tickets_breadcrumb_workspace(), href: '/tasks' },
+				{ label: m.tickets_breadcrumb_support(), href: '/tickets' },
 				{ label: t.displayId }
 			]}
 />
@@ -242,13 +244,13 @@
 					onclick={togglePin}
 					disabled={pinPending}
 					aria-pressed={data.isPinned}
-					title={data.isPinned ? 'Unpin ticket' : 'Pin ticket'}
+					title={data.isPinned ? m.tickets_unpin() : m.tickets_pin()}
 					class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[12px] transition-colors disabled:opacity-50 {data.isPinned
 						? 'border-accent/40 bg-accent/10 text-accent'
 						: 'border-border bg-surface text-text-2 hover:text-text hover:border-border-strong'}"
 				>
 					<Icon name="bookmark" size={14} />
-					<span>{data.isPinned ? 'Pinned' : 'Pin'}</span>
+					<span>{data.isPinned ? m.tickets_pinned() : m.tickets_pin_short()}</span>
 				</button>
 				{#if canDelete}
 					<button
@@ -257,7 +259,7 @@
 						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-surface text-[12px] text-text-2 hover:text-[#ef4f5e] hover:border-[#ef4f5e]/40 hover:bg-[#ef4f5e]/10 transition-colors"
 					>
 						<Icon name="trash" size={14} />
-						<span>Delete</span>
+						<span>{m.tickets_delete()}</span>
 					</button>
 				{/if}
 			</div>
@@ -279,7 +281,7 @@
 						: ''} {pop === 'status' ? 'ring-2 ring-accent/40' : ''}"
 				>
 					<span class="w-2 h-2 rounded-full" style:background={statusMeta?.dot ?? '#7c7c84'}></span>
-					<span>{statusMeta?.label ?? t.status}</span>
+					<span>{ticketStatusLabel(t.status)}</span>
 				</button>
 				{#if pop === 'status'}
 					<div
@@ -296,7 +298,7 @@
 								class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text disabled:opacity-50"
 							>
 								<span class="w-2 h-2 rounded-full" style:background={s.dot}></span>
-								<span class="text-[13px]">{s.label}</span>
+								<span class="text-[13px]">{ticketStatusLabel(s.id)}</span>
 								<span class="ml-auto text-accent {t.status === s.id ? 'opacity-100' : 'opacity-0'}">
 									<Icon name="check" size={13} />
 								</span>
@@ -317,7 +319,7 @@
 						: ''} {pop === 'priority' ? 'ring-2 ring-accent/40' : ''}"
 				>
 					<PriorityBars priority={t.priority} />
-					<span>{priorityMeta?.label ?? t.priority}</span>
+					<span>{priorityLabel(t.priority)}</span>
 				</button>
 				{#if pop === 'priority'}
 					<div
@@ -334,7 +336,7 @@
 								class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text disabled:opacity-50"
 							>
 								<PriorityBars priority={p.id} />
-								<span class="text-[13px]">{p.label}</span>
+								<span class="text-[13px]">{priorityLabel(p.id)}</span>
 								<span class="ml-auto text-accent {t.priority === p.id ? 'opacity-100' : 'opacity-0'}">
 									<Icon name="check" size={13} />
 								</span>
@@ -355,7 +357,7 @@
 						: ''} {pop === 'category' ? 'ring-2 ring-accent/40' : ''}"
 				>
 					<span class="w-2 h-2 rounded-full" style:background={categoryMeta?.color ?? '#7c7c84'}></span>
-					<span>{categoryMeta?.label ?? t.category}</span>
+					<span>{ticketCategoryLabel(t.category)}</span>
 				</button>
 				{#if pop === 'category'}
 					<div
@@ -372,7 +374,7 @@
 								class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text disabled:opacity-50"
 							>
 								<span class="w-2 h-2 rounded-full" style:background={c.color}></span>
-								<span class="text-[13px]">{c.label}</span>
+								<span class="text-[13px]">{ticketCategoryLabel(c.id)}</span>
 								<span class="ml-auto text-accent {t.category === c.id ? 'opacity-100' : 'opacity-0'}">
 									<Icon name="check" size={13} />
 								</span>
@@ -401,7 +403,7 @@
 						<span>{assignee.name}</span>
 					{:else}
 						<Icon name="user" size={13} />
-						<span>Unassigned</span>
+						<span>{m.common_unassigned()}</span>
 					{/if}
 				</button>
 				{#if pop === 'assignee'}
@@ -418,7 +420,7 @@
 							class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text disabled:opacity-50"
 						>
 							<span class="w-[18px] h-[18px] rounded-full border border-dashed border-border-strong"></span>
-							<span class="text-[13px]">Unassigned</span>
+							<span class="text-[13px]">{m.common_unassigned()}</span>
 							<span
 								class="ml-auto text-accent {t.assignedAgentId == null ? 'opacity-100' : 'opacity-0'}"
 							>
@@ -459,7 +461,7 @@
 		<div class="mb-6">
 			<div class="flex items-center justify-between mb-2">
 				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">
-					Attachments{#if data.attachments.length}<span class="ml-1.5 text-text-3">{data.attachments.length}</span>{/if}
+					{m.tickets_attachments()}{#if data.attachments.length}<span class="ml-1.5 text-text-3">{data.attachments.length}</span>{/if}
 				</div>
 				<AttachmentUploader entityType="ticket" entityId={t.id} />
 			</div>
@@ -467,13 +469,13 @@
 				<!-- Deletion is agent-only; clients/members can attach but not remove. -->
 				<AttachmentList attachments={data.attachments} canDelete={isAgent} />
 			{:else}
-				<p class="text-[12.5px] text-text-3">No files attached.</p>
+				<p class="text-[12.5px] text-text-3">{m.tickets_no_files()}</p>
 			{/if}
 		</div>
 
 		<!-- Activity timeline -->
 		<div class="mt-2">
-			<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-3">Activity</div>
+			<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-3">{m.tickets_activity()}</div>
 			<div class="relative space-y-4 pl-7">
 				<span class="absolute left-[10px] top-2 bottom-2 w-px bg-border"></span>
 				{#each events as e (e.id)}
@@ -489,13 +491,13 @@
 							{/if}
 						</span>
 						<div class="text-[12.5px] text-text-2">
-							<span class="text-text font-medium">{u?.name ?? 'Unknown'}</span>
+							<span class="text-text font-medium">{u?.name ?? m.tickets_unknown_user()}</span>
 							{#if e.kind === 'created'}
-								opened this ticket
+								{m.tickets_opened_this()}
 							{:else if e.internal}
-								added an <span class="text-[#e9c46a]">internal note</span>
+								{m.tickets_added_internal_note_pre()} <span class="text-[#e9c46a]">{m.tickets_internal_note()}</span> {m.tickets_added_internal_note_post()}
 							{:else}
-								replied
+								{m.tickets_replied()}
 							{/if}
 							<span class="font-mono text-text-4">· {relTime(e.at)}</span>
 						</div>
@@ -519,20 +521,20 @@
 		<!-- Footer meta -->
 		<div class="mt-8 text-[11px] text-text-4 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-4">
 			<span>
-				Reporter <span class="text-text-2">{customer?.name ?? '—'}</span>
+				{m.tickets_meta_reporter()} <span class="text-text-2">{customer?.name ?? '—'}</span>
 			</span>
 			<span>
-				Channel <span class="text-text-2 font-mono">{t.channel}</span>
+				{m.tickets_meta_channel()} <span class="text-text-2">{ticketChannelLabel(t.channel)}</span>
 			</span>
 			<span>
-				Created <span class="font-mono text-text-3">{fmtDate(t.createdAt)}</span>
+				{m.tickets_meta_created()} <span class="font-mono text-text-3">{fmtDate(t.createdAt)}</span>
 			</span>
 			<span>
-				First response <span class="font-mono text-text-3">{fmtDate(t.firstResponseAt)}</span>
+				{m.tickets_meta_first_response()} <span class="font-mono text-text-3">{fmtDate(t.firstResponseAt)}</span>
 			</span>
 			{#if t.resolvedAt}
 				<span>
-					Resolved <span class="font-mono text-text-3">{fmtDate(t.resolvedAt)}</span>
+					{m.tickets_meta_resolved()} <span class="font-mono text-text-3">{fmtDate(t.resolvedAt)}</span>
 				</span>
 			{/if}
 		</div>
@@ -542,7 +544,7 @@
 <!-- Composer docked at bottom -->
 <div class="px-6 py-3">
 	<div class="max-w-[820px] mx-auto">
-		<AttachmentDropzone onfiles={addCommentFiles} disabled={sending} label="Drop files to attach to your reply">
+		<AttachmentDropzone onfiles={addCommentFiles} disabled={sending} label={m.tickets_dropzone_reply()}>
 			{#if commentFiles.length}
 				<div class="mb-2">
 					<StagedFileList
@@ -554,7 +556,7 @@
 			{/if}
 			<Composer
 				bind:value={body}
-				placeholder={internal ? 'Add an internal note…' : 'Write a reply…'}
+				placeholder={internal ? m.tickets_composer_internal_placeholder() : m.tickets_composer_reply_placeholder()}
 				accent={internal ? 'warning' : 'default'}
 				{sending}
 				onsend={send}
@@ -562,8 +564,8 @@
 				{#snippet rightActions()}
 					<button
 						type="button"
-						aria-label="Attach files"
-						title="Attach files"
+						aria-label={m.tickets_attach_files()}
+						title={m.tickets_attach_files()}
 						onclick={() => commentFileInput?.click()}
 						class="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-transparent text-text-3 hover:text-text hover:bg-surface-2 transition-colors"
 					>
@@ -572,8 +574,8 @@
 					{#if isAgent}
 						<button
 							type="button"
-							aria-label={internal ? 'Switch to public reply' : 'Switch to internal note'}
-							title={internal ? 'Internal note · click to switch to reply' : 'Internal note (agents only)'}
+							aria-label={internal ? m.tickets_switch_to_reply() : m.tickets_switch_to_internal()}
+							title={internal ? m.tickets_internal_note_tooltip() : m.tickets_internal_note_agents_only()}
 							aria-pressed={internal}
 							onclick={() => (internal = !internal)}
 							class="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-[12px] transition-colors {internal
@@ -581,7 +583,7 @@
 								: 'bg-transparent border-transparent text-text-3 hover:text-text hover:bg-surface-2'}"
 						>
 							<Icon name="shield" size={12} />
-							<span>{internal ? 'Internal' : 'Public'}</span>
+							<span>{internal ? m.tickets_internal() : m.tickets_public()}</span>
 						</button>
 					{/if}
 				{/snippet}

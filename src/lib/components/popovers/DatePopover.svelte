@@ -4,6 +4,7 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/motion';
 	import Icon from '../Icon.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		value: string | null;
@@ -51,8 +52,10 @@
 
 	let title = $derived.by(() => {
 		const months = [
-			'January', 'February', 'March', 'April', 'May', 'June',
-			'July', 'August', 'September', 'October', 'November', 'December'
+			m.tasks_month_january(), m.tasks_month_february(), m.tasks_month_march(),
+			m.tasks_month_april(), m.tasks_month_may(), m.tasks_month_june(),
+			m.tasks_month_july(), m.tasks_month_august(), m.tasks_month_september(),
+			m.tasks_month_october(), m.tasks_month_november(), m.tasks_month_december()
 		];
 		return `${months[cursor.getMonth()]} ${cursor.getFullYear()}`;
 	});
@@ -106,16 +109,16 @@
 	style:box-shadow="var(--shadow-lg)"
 >
 	<div class="flex items-center justify-between px-1 pb-2">
-		<button type="button" onclick={() => step(-1)} class="w-6 h-6 grid place-items-center rounded-md text-text-3 hover:text-text hover:bg-surface" aria-label="Previous month">
+		<button type="button" onclick={() => step(-1)} class="w-6 h-6 grid place-items-center rounded-md text-text-3 hover:text-text hover:bg-surface" aria-label={m.tasks_previous_month()}>
 			<Icon name="chevron-r" size={11} class="rotate-180" />
 		</button>
 		<span class="text-[12.5px] font-medium">{title}</span>
-		<button type="button" onclick={() => step(1)} class="w-6 h-6 grid place-items-center rounded-md text-text-3 hover:text-text hover:bg-surface" aria-label="Next month">
+		<button type="button" onclick={() => step(1)} class="w-6 h-6 grid place-items-center rounded-md text-text-3 hover:text-text hover:bg-surface" aria-label={m.tasks_next_month()}>
 			<Icon name="chevron-r" size={11} />
 		</button>
 	</div>
 	<div class="grid grid-cols-7 gap-px text-center text-[10.5px] uppercase tracking-[0.06em] text-text-4 mb-1">
-		{#each ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as d, i (i)}
+		{#each [m.tasks_weekday_mon(), m.tasks_weekday_tue(), m.tasks_weekday_wed(), m.tasks_weekday_thu(), m.tasks_weekday_fri(), m.tasks_weekday_sat(), m.tasks_weekday_sun()] as d, i (i)}
 			<span>{d}</span>
 		{/each}
 	</div>
@@ -137,10 +140,10 @@
 		{/each}
 	</div>
 	<div class="flex items-center gap-1 mt-2 pt-2 border-t border-border">
-		<button type="button" onclick={() => quick(0)} class="flex-1 text-[11.5px] px-2 py-1 rounded-md text-text-2 hover:bg-surface hover:text-text">Today</button>
-		<button type="button" onclick={() => quick(1)} class="flex-1 text-[11.5px] px-2 py-1 rounded-md text-text-2 hover:bg-surface hover:text-text">Tomorrow</button>
-		<button type="button" onclick={() => quick(7)} class="flex-1 text-[11.5px] px-2 py-1 rounded-md text-text-2 hover:bg-surface hover:text-text">+1w</button>
-		<button type="button" onclick={() => { onchange(null); onclose(); }} class="text-[11.5px] px-2 py-1 rounded-md text-text-3 hover:bg-surface hover:text-text">Clear</button>
+		<button type="button" onclick={() => quick(0)} class="flex-1 text-[11.5px] px-2 py-1 rounded-md text-text-2 hover:bg-surface hover:text-text">{m.common_today()}</button>
+		<button type="button" onclick={() => quick(1)} class="flex-1 text-[11.5px] px-2 py-1 rounded-md text-text-2 hover:bg-surface hover:text-text">{m.tasks_tomorrow()}</button>
+		<button type="button" onclick={() => quick(7)} class="flex-1 text-[11.5px] px-2 py-1 rounded-md text-text-2 hover:bg-surface hover:text-text">{m.tasks_plus_one_week()}</button>
+		<button type="button" onclick={() => { onchange(null); onclose(); }} class="text-[11.5px] px-2 py-1 rounded-md text-text-3 hover:bg-surface hover:text-text">{m.tasks_clear()}</button>
 	</div>
 	{#if undatedLabel && onundated}
 		<button

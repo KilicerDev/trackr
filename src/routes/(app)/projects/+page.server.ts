@@ -10,6 +10,7 @@ import {
 import { user } from '$lib/server/db/auth.schema';
 import { accessibleProjectIds, assertCan } from '$lib/server/permissions';
 import { getPreferences } from '$lib/server/preferences';
+import { m } from '$lib/paraglide/messages';
 
 interface MemberSummary {
 	id: string;
@@ -170,7 +171,7 @@ export const load: ServerLoad = async ({ locals }) => {
 
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
+		if (!locals.user) throw error(401, m.projects_not_authenticated());
 		await assertCan(locals, 'project.create');
 		const me = locals.user;
 
@@ -185,11 +186,11 @@ export const actions: Actions = {
 		const orgId = String(form.get('orgId') ?? '').trim() || null;
 		const memberIds = form.getAll('members').map((v) => String(v)).filter(Boolean);
 
-		if (!name) return fail(400, { message: 'Name is required.' });
-		if (!key) return fail(400, { message: 'Key is required.' });
+		if (!name) return fail(400, { message: m.projects_name_required() });
+		if (!key) return fail(400, { message: m.projects_key_required() });
 
 		const [existing] = await db.select({ id: project.id }).from(project).where(eq(project.key, key)).limit(1);
-		if (existing) return fail(409, { message: `Project key "${key}" is already in use.` });
+		if (existing) return fail(409, { message: m.projects_key_in_use({ key }) });
 
 		// Validate org id (if provided) actually points at an existing row.
 		if (orgId) {
@@ -198,7 +199,7 @@ export const actions: Actions = {
 				.from(organization)
 				.where(eq(organization.id, orgId))
 				.limit(1);
-			if (!org) return fail(400, { message: 'Selected organization does not exist.' });
+			if (!org) return fail(400, { message: m.projects_org_not_exist() });
 		}
 
 		const id = crypto.randomUUID();

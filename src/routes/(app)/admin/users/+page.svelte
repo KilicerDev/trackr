@@ -12,6 +12,8 @@
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
 	import { ROLE_META, ORG_ROLE_META, type Role } from '$lib/admin-meta';
 	import { allowedOrgRoles } from '$lib/roles';
+	import { m } from '$lib/paraglide/messages';
+	import { metaRoleLabel, orgRoleLabel, orgRolePerm } from '$lib/labels';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/motion';
@@ -66,11 +68,11 @@
 		return list;
 	});
 
-	const tabs: { id: StatusFilter; label: string }[] = [
-		{ id: 'all', label: 'All' },
-		{ id: 'active', label: 'Active' },
-		{ id: 'banned', label: 'Banned' }
-	];
+	const tabs = $derived<{ id: StatusFilter; label: string }[]>([
+		{ id: 'all', label: m.common_all() },
+		{ id: 'active', label: m.admin_users_tab_active() },
+		{ id: 'banned', label: m.admin_users_tab_banned() }
+	]);
 
 	function makeAvatar(u: { id: string; name: string | null; email: string }) {
 		const name = u.name ?? u.email;
@@ -97,10 +99,10 @@
 	function fmtRelative(d: Date | string): string {
 		const dt = typeof d === 'string' ? new Date(d) : d;
 		const ms = dt.getTime() - Date.now();
-		if (ms <= 0) return 'expired';
+		if (ms <= 0) return m.admin_users_invite_expired();
 		const days = Math.round(ms / (24 * 60 * 60 * 1000));
-		if (days >= 1) return `expires in ${days} day${days === 1 ? '' : 's'}`;
-		return 'expires in <1 day';
+		if (days >= 1) return m.admin_users_invite_expires_in_days({ count: days });
+		return m.admin_users_invite_expires_soon();
 	}
 
 	function showToast(kind: 'ok' | 'err', msg: string) {
@@ -120,11 +122,11 @@
 		});
 		const result: ActionResult = deserialize(await res.text());
 		if (result.type === 'failure') {
-			const msg = (result.data as { message?: string } | undefined)?.message ?? 'Action failed.';
+			const msg = (result.data as { message?: string } | undefined)?.message ?? m.admin_action_failed();
 			throw new Error(msg);
 		}
 		if (result.type === 'error') {
-			throw new Error(result.error?.message ?? 'Action failed.');
+			throw new Error(result.error?.message ?? m.admin_action_failed());
 		}
 		await invalidateAll();
 	}
@@ -135,9 +137,9 @@
 		pendingAction = key;
 		try {
 			await postAction('sendPasswordReset', { userId: u.id });
-			showToast('ok', `Reset link sent to ${u.email}.`);
+			showToast('ok', m.admin_users_reset_sent({ email: u.email }));
 		} catch (e) {
-			showToast('err', e instanceof Error ? e.message : 'Failed.');
+			showToast('err', e instanceof Error ? e.message : m.admin_failed());
 		} finally {
 			pendingAction = null;
 		}
@@ -151,17 +153,17 @@
 			await postAction('impersonateUser', { userId: u.id });
 			await goto('/', { invalidateAll: true });
 		} catch (e) {
-			showToast('err', e instanceof Error ? e.message : 'Failed.');
+			showToast('err', e instanceof Error ? e.message : m.admin_failed());
 			pendingAction = null;
 		}
 	}
 
 	async function handleDelete(u: UserRow) {
 		const ok = await uiConfirm({
-			title: 'Delete user',
-			message: `${u.email} will be permanently removed. This cannot be undone.`,
-			confirmLabel: 'Delete user',
-			cancelLabel: 'Keep',
+			title: m.admin_users_delete_title(),
+			message: m.admin_users_delete_message({ email: u.email }),
+			confirmLabel: m.admin_users_delete_confirm(),
+			cancelLabel: m.admin_users_keep(),
 			tone: 'danger'
 		});
 		if (!ok) return;
@@ -170,10 +172,10 @@
 		pendingAction = key;
 		try {
 			await postAction('deleteUser', { userId: u.id });
-			showToast('ok', `${u.email} deleted.`);
+			showToast('ok', m.admin_users_deleted({ email: u.email }));
 			selected = null;
 		} catch (e) {
-			showToast('err', e instanceof Error ? e.message : 'Failed.');
+			showToast('err', e instanceof Error ? e.message : m.admin_failed());
 		} finally {
 			pendingAction = null;
 		}
@@ -185,9 +187,9 @@
 		pendingAction = key;
 		try {
 			await postAction('resendInvitation', { id: inv.id });
-			showToast('ok', `Invitation resent to ${inv.email}.`);
+			showToast('ok', m.admin_users_invite_resent({ email: inv.email }));
 		} catch (e) {
-			showToast('err', e instanceof Error ? e.message : 'Failed.');
+			showToast('err', e instanceof Error ? e.message : m.admin_failed());
 		} finally {
 			pendingAction = null;
 		}
@@ -195,10 +197,10 @@
 
 	async function handleRevoke(inv: InvitationRow) {
 		const ok = await uiConfirm({
-			title: 'Revoke invitation',
-			message: `The invitation link for ${inv.email} will stop working.`,
-			confirmLabel: 'Revoke',
-			cancelLabel: 'Keep',
+			title: m.admin_users_revoke_title(),
+			message: m.admin_users_revoke_message({ email: inv.email }),
+			confirmLabel: m.admin_users_revoke_confirm(),
+			cancelLabel: m.admin_users_keep(),
 			tone: 'warn'
 		});
 		if (!ok) return;
@@ -207,9 +209,9 @@
 		pendingAction = key;
 		try {
 			await postAction('revokeInvitation', { id: inv.id });
-			showToast('ok', `Invitation for ${inv.email} revoked.`);
+			showToast('ok', m.admin_users_invite_revoked({ email: inv.email }));
 		} catch (e) {
-			showToast('err', e instanceof Error ? e.message : 'Failed.');
+			showToast('err', e instanceof Error ? e.message : m.admin_failed());
 		} finally {
 			pendingAction = null;
 		}
@@ -275,11 +277,11 @@
 		e.preventDefault();
 		cError = null;
 		if (cPassword.length < 8) {
-			cError = 'Password must be at least 8 characters.';
+			cError = m.admin_users_password_min();
 			return;
 		}
 		if (!cOrgId || !cOrgRole) {
-			cError = 'Pick an organization and a role.';
+			cError = m.admin_users_pick_org_role();
 			return;
 		}
 		cSubmitting = true;
@@ -291,11 +293,11 @@
 				orgId: cOrgId,
 				orgRole: cOrgRole
 			});
-			showToast('ok', `Created ${cEmail}.`);
+			showToast('ok', m.admin_users_created_toast({ email: cEmail }));
 			resetCreate();
 			createOpen = false;
 		} catch (err) {
-			cError = err instanceof Error ? err.message : 'Failed to create user.';
+			cError = err instanceof Error ? err.message : m.admin_users_create_failed();
 		} finally {
 			cSubmitting = false;
 		}
@@ -331,7 +333,7 @@
 		e.preventDefault();
 		iError = null;
 		if (!iOrgId || !iOrgRole) {
-			iError = 'Pick an organization and a role.';
+			iError = m.admin_users_pick_org_role();
 			return;
 		}
 		iSubmitting = true;
@@ -342,11 +344,11 @@
 				orgId: iOrgId,
 				orgRole: iOrgRole
 			});
-			showToast('ok', `Invitation sent to ${iEmail}.`);
+			showToast('ok', m.admin_users_invite_sent({ email: iEmail }));
 			resetInvite();
 			inviteOpen = false;
 		} catch (err) {
-			iError = err instanceof Error ? err.message : 'Failed to send invitation.';
+			iError = err instanceof Error ? err.message : m.admin_users_invite_failed();
 		} finally {
 			iSubmitting = false;
 		}
@@ -355,25 +357,25 @@
 	let showPassword = $state(false);
 </script>
 
-<svelte:head><title>Trackr · User Management</title></svelte:head>
+<svelte:head><title>{m.admin_users_page_title()}</title></svelte:head>
 
-<Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: 'User Management' }]} />
+<Topbar crumbs={[{ label: m.admin_crumb_workspace(), href: '/tasks' }, { label: m.admin_users_title() }]} />
 
 <div class="flex-1 min-h-0 overflow-y-auto">
 	<div class="px-6 py-6">
 		<div class="flex items-end gap-4 mb-6">
 			<div>
-				<h1 class="text-[26px] font-semibold tracking-[-0.014em]">User Management</h1>
+				<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.admin_users_title()}</h1>
 				<p class="text-[12.5px] text-text-3 mt-1">
-					{counts.all} users · {counts.active} active · {counts.invited} pending invite{counts.invited === 1 ? '' : 's'}
+					{m.admin_users_subtitle({ total: counts.all, active: counts.active, invited: counts.invited })}
 				</p>
 			</div>
 			<div class="ml-auto flex items-center gap-2">
 				<Button variant="default" size="sm" onclick={() => (createOpen = true)}>
-					<Icon name="user" size={13} /> Create user
+					<Icon name="user" size={13} /> {m.admin_users_create()}
 				</Button>
 				<Button variant="primary" size="sm" onclick={() => (inviteOpen = true)}>
-					<Icon name="plus" size={13} /> Invite user
+					<Icon name="plus" size={13} /> {m.admin_users_invite()}
 				</Button>
 			</div>
 		</div>
@@ -400,7 +402,7 @@
 				<input
 					type="text"
 					bind:value={search}
-					placeholder="Search by name or email…"
+					placeholder={m.admin_users_search_placeholder()}
 					class="h-8 pl-8 pr-3 rounded-lg bg-surface border border-border text-[12.5px] outline-none focus:border-border-strong w-64"
 				/>
 			</div>
@@ -409,11 +411,12 @@
 		{#if data.invitations.length > 0}
 			<div class="mb-5">
 				<div class="text-[10.5px] uppercase tracking-[0.08em] text-text-4 mb-2 px-1">
-					Pending invitations · {data.invitations.length}
+					{m.admin_users_pending_invitations({ count: data.invitations.length })}
 				</div>
 				<div class="bg-bg-elev border border-border rounded-2xl overflow-hidden">
 					{#each data.invitations as inv (inv.id)}
 						{@const meta = ORG_ROLE_META[inv.orgRole ?? ''] ?? ROLE_META[inv.role as Role] ?? ROLE_META.user}
+						{@const metaLabel = inv.orgRole && ORG_ROLE_META[inv.orgRole] ? orgRoleLabel(inv.orgRole) : metaRoleLabel((inv.role as Role) ?? 'user')}
 						{@const expired = new Date(inv.expiresAt).getTime() < Date.now()}
 						<div
 							class="flex items-center gap-3 px-5 py-3 border-b border-border/40 last:border-b-0"
@@ -432,11 +435,11 @@
 										style:color={meta.color}
 									>
 										<span class="w-1 h-1 rounded-full" style:background={meta.color}></span>
-										{meta.label}
+										{metaLabel}
 									</span>
 								</div>
 								<div class="text-[11.5px] text-text-3 mt-0.5">
-									Invited as <span class="text-text-2">{inv.name}</span>
+									{m.admin_users_invited_as()} <span class="text-text-2">{inv.name}</span>
 									{' · '}
 									<span class={expired ? 'text-prio-urgent' : ''}>{fmtRelative(inv.expiresAt)}</span>
 								</div>
@@ -444,7 +447,7 @@
 							<div class="flex items-center gap-1">
 								<IconButton
 									size={28}
-									ariaLabel="Resend invitation"
+									ariaLabel={m.admin_users_resend_invitation()}
 									onclick={() => handleResend(inv)}
 								>
 									{#if pendingAction === `resend:${inv.id}`}
@@ -457,7 +460,7 @@
 								</IconButton>
 								<IconButton
 									size={28}
-									ariaLabel="Revoke invitation"
+									ariaLabel={m.admin_users_revoke_invitation()}
 									onclick={() => handleRevoke(inv)}
 								>
 									<Icon name="x" size={13} />
@@ -474,15 +477,15 @@
 				class="grid items-center gap-3 px-5 h-9 text-[11px] uppercase tracking-[0.08em] text-text-4 border-b border-border"
 				style:grid-template-columns="2fr 1fr 1fr 1fr 36px"
 			>
-				<span>User</span>
-				<span>Role</span>
-				<span>Status</span>
-				<span>Joined</span>
+				<span>{m.admin_users_col_user()}</span>
+				<span>{m.admin_users_col_role()}</span>
+				<span>{m.admin_users_col_status()}</span>
+				<span>{m.admin_users_col_joined()}</span>
 				<span></span>
 			</div>
 			{#if users.length === 0}
 				<div class="px-5 py-10 text-center text-[12.5px] text-text-3">
-					No users match your filters.
+					{m.admin_users_no_match()}
 				</div>
 			{/if}
 			{#each users as u (u.id)}
@@ -501,7 +504,7 @@
 							<span class="block font-medium text-text truncate">
 								{u.name ?? '—'}
 								{#if isSelf}
-									<span class="ml-1 text-[10.5px] font-mono text-text-4">(you)</span>
+									<span class="ml-1 text-[10.5px] font-mono text-text-4">{m.admin_users_you()}</span>
 								{/if}
 							</span>
 							<span class="block text-[11.5px] text-text-3 truncate font-mono">{u.email}</span>
@@ -509,7 +512,7 @@
 					</span>
 					<span class="flex items-center gap-1.5">
 						<span class="w-1.5 h-1.5 rounded-full" style:background={meta.color}></span>
-						<span style:color={meta.color}>{meta.label}</span>
+						<span style:color={meta.color}>{metaRoleLabel((u.role ?? 'user'))}</span>
 					</span>
 					<span>
 						{#if banned}
@@ -519,7 +522,7 @@
 								style:color="#ef4f5e"
 							>
 								<span class="w-1.5 h-1.5 rounded-full" style:background="#ef4f5e"></span>
-								Banned
+								{m.admin_users_status_banned()}
 							</span>
 						{:else}
 							<span
@@ -528,7 +531,7 @@
 								style:color="#7fc8a9"
 							>
 								<span class="w-1.5 h-1.5 rounded-full" style:background="#7fc8a9"></span>
-								Active
+								{m.admin_users_status_active()}
 							</span>
 						{/if}
 					</span>
@@ -562,9 +565,9 @@
 		{@const isSelf = sel.id === data.currentUserId}
 		{@const canImpersonate = data.viewerIsSuperadmin && !isSelf && !banned}
 		<div class="flex items-center gap-2 px-5 pt-4 pb-3 border-b border-border">
-			<span class="font-mono text-[10.5px] uppercase tracking-[0.08em] text-text-4">User</span>
+			<span class="font-mono text-[10.5px] uppercase tracking-[0.08em] text-text-4">{m.admin_users_drawer_user()}</span>
 			<div class="ml-auto flex items-center gap-1">
-				<IconButton size={28} ariaLabel="Close" onclick={() => (selected = null)}>
+				<IconButton size={28} ariaLabel={m.common_close()} onclick={() => (selected = null)}>
 					<Icon name="x" size={14} />
 				</IconButton>
 			</div>
@@ -576,7 +579,7 @@
 					<div class="text-[18px] font-semibold tracking-[-0.01em] text-text truncate">
 						{sel.name ?? '—'}
 						{#if isSelf}
-							<span class="ml-1 text-[12px] font-mono text-text-4">(you)</span>
+							<span class="ml-1 text-[12px] font-mono text-text-4">{m.admin_users_you()}</span>
 						{/if}
 					</div>
 					<div class="text-[12.5px] text-text-3 font-mono truncate">{sel.email}</div>
@@ -584,22 +587,22 @@
 			</div>
 
 			<div class="grid grid-cols-[auto_1fr] gap-y-3 gap-x-4 text-[12.5px] mb-6">
-				<div class="text-text-4">Role</div>
+				<div class="text-text-4">{m.admin_users_col_role()}</div>
 				<div class="flex items-center gap-1.5">
 					<span class="w-1.5 h-1.5 rounded-full" style:background={meta.color}></span>
-					<span style:color={meta.color}>{meta.label}</span>
+					<span style:color={meta.color}>{metaRoleLabel((sel.role ?? 'user'))}</span>
 				</div>
-				<div class="text-text-4">Status</div>
+				<div class="text-text-4">{m.admin_users_col_status()}</div>
 				<div>
 					{#if banned}
-						<span style:color="#ef4f5e">Banned</span>
+						<span style:color="#ef4f5e">{m.admin_users_status_banned()}</span>
 					{:else}
-						<span style:color="#7fc8a9">Active</span>
+						<span style:color="#7fc8a9">{m.admin_users_status_active()}</span>
 					{/if}
 				</div>
-				<div class="text-text-4">Joined</div>
+				<div class="text-text-4">{m.admin_users_col_joined()}</div>
 				<div class="font-mono">{fmtDate(sel.createdAt)}</div>
-				<div class="text-text-4">ID</div>
+				<div class="text-text-4">{m.admin_users_id()}</div>
 				<div class="font-mono text-text-3 truncate">{sel.id}</div>
 			</div>
 
@@ -611,7 +614,7 @@
 					onclick={() => handleResetPassword(sel)}
 				>
 					<Icon name="shield" size={13} />
-					{pendingAction === `reset:${sel.id}` ? 'Sending…' : 'Send password reset'}
+					{pendingAction === `reset:${sel.id}` ? m.admin_users_sending() : m.admin_users_send_password_reset()}
 				</Button>
 				{#if canImpersonate}
 					<Button
@@ -621,7 +624,7 @@
 						onclick={() => handleImpersonate(sel)}
 					>
 						<Icon name="user" size={13} />
-						{pendingAction === `imp:${sel.id}` ? 'Starting…' : 'Impersonate'}
+						{pendingAction === `imp:${sel.id}` ? m.admin_users_starting() : m.admin_users_impersonate()}
 					</Button>
 				{/if}
 				{#if !isSelf}
@@ -632,7 +635,7 @@
 						onclick={() => handleDelete(sel)}
 					>
 						<Icon name="x" size={13} />
-						{pendingAction === `del:${sel.id}` ? 'Deleting…' : 'Delete user'}
+						{pendingAction === `del:${sel.id}` ? m.admin_users_deleting() : m.admin_users_delete_confirm()}
 					</Button>
 				{/if}
 			</div>
@@ -644,16 +647,16 @@
 {#snippet orgRolePicker(p: OrgRolePickerProps)}
 	<div class="grid grid-cols-2 gap-3">
 		<div class="relative">
-			<span class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">Organization</span>
+			<span class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">{m.admin_organization()}</span>
 			<button
 				type="button"
 				onclick={() => p.onTogglePop('org')}
 				class="w-full inline-flex items-center gap-2 bg-surface border border-border rounded-lg px-3 py-2 text-[13px] text-left transition-colors hover:border-border-strong {p.pop === 'org' ? 'border-border-strong' : ''}"
 			>
 				<span class="w-2 h-2 rounded-full shrink-0" style:background={p.selectedOrg?.color ?? '#7a9cf0'}></span>
-				<span class="truncate">{p.selectedOrg?.name ?? 'Select…'}</span>
+				<span class="truncate">{p.selectedOrg?.name ?? m.admin_users_select_placeholder()}</span>
 				{#if p.selectedOrg?.isInternal}
-					<span class="text-[10px] font-mono text-text-4">internal</span>
+					<span class="text-[10px] font-mono text-text-4">{m.admin_users_internal()}</span>
 				{/if}
 				<Icon name="chevron" size={11} class="text-text-3 ml-auto shrink-0" />
 			</button>
@@ -673,7 +676,7 @@
 							<span class="w-2 h-2 rounded-full shrink-0" style:background={o.color}></span>
 							<span class="text-[13px] truncate">{o.name}</span>
 							{#if o.isInternal}
-								<span class="text-[10px] font-mono text-text-4">internal</span>
+								<span class="text-[10px] font-mono text-text-4">{m.admin_users_internal()}</span>
 							{/if}
 							<span class="ml-auto text-accent {p.orgId === o.id ? 'opacity-100' : 'opacity-0'}">
 								<Icon name="check" size={13} />
@@ -684,14 +687,14 @@
 			{/if}
 		</div>
 		<div class="relative">
-			<span class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">Role</span>
+			<span class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">{m.admin_users_col_role()}</span>
 			<button
 				type="button"
 				onclick={() => p.onTogglePop('role')}
 				class="w-full inline-flex items-center gap-2 bg-surface border border-border rounded-lg px-3 py-2 text-[13px] text-left transition-colors hover:border-border-strong {p.pop === 'role' ? 'border-border-strong' : ''}"
 			>
 				<span class="w-2 h-2 rounded-full shrink-0" style:background={ORG_ROLE_META[p.orgRole]?.color ?? '#7a9cf0'}></span>
-				<span class="truncate">{ORG_ROLE_META[p.orgRole]?.label ?? p.orgRole}</span>
+				<span class="truncate">{p.orgRole ? orgRoleLabel(p.orgRole) : p.orgRole}</span>
 				<Icon name="chevron" size={11} class="text-text-3 ml-auto shrink-0" />
 			</button>
 			{#if p.pop === 'role'}
@@ -708,7 +711,7 @@
 							class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 						>
 							<span class="w-2 h-2 rounded-full shrink-0" style:background={ORG_ROLE_META[r]?.color ?? '#7a9cf0'}></span>
-							<span class="text-[13px] truncate">{ORG_ROLE_META[r]?.label ?? r}</span>
+							<span class="text-[13px] truncate">{orgRoleLabel(r)}</span>
 							<span class="ml-auto text-accent {p.orgRole === r ? 'opacity-100' : 'opacity-0'}">
 								<Icon name="check" size={13} />
 							</span>
@@ -719,7 +722,7 @@
 		</div>
 	</div>
 	{#if p.orgRole}
-		<p class="text-[11.5px] text-text-3 mt-2">{ORG_ROLE_META[p.orgRole]?.perm ?? ''}</p>
+		<p class="text-[11.5px] text-text-3 mt-2">{orgRolePerm(p.orgRole)}</p>
 	{/if}
 {/snippet}
 
@@ -735,8 +738,8 @@
 	<form onsubmit={submitCreate}>
 		<div class="flex items-center px-5 pt-4 pb-3 border-b border-border">
 			<div>
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">Workspace</div>
-				<div class="text-[15px] font-semibold">Create a user</div>
+				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{m.admin_workspace()}</div>
+				<div class="text-[15px] font-semibold">{m.admin_users_create_title()}</div>
 			</div>
 			<button
 				type="button"
@@ -745,36 +748,36 @@
 					createOpen = false;
 					resetCreate();
 				}}
-				aria-label="Close"
+				aria-label={m.common_close()}
 			>
 				<Icon name="x" size={14} />
 			</button>
 		</div>
 		<div class="p-5 space-y-4">
 			<div>
-				<label for="c-name" class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">Name</label>
+				<label for="c-name" class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">{m.admin_name()}</label>
 				<input
 					id="c-name"
 					bind:value={cName}
 					required
 					type="text"
-					placeholder="Jane Doe"
+					placeholder={m.admin_users_name_placeholder()}
 					class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-[13px] outline-none focus:border-border-strong"
 				/>
 			</div>
 			<div>
-				<label for="c-email" class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">Email</label>
+				<label for="c-email" class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">{m.admin_users_email()}</label>
 				<input
 					id="c-email"
 					bind:value={cEmail}
 					required
 					type="email"
-					placeholder="name@example.com"
+					placeholder={m.admin_users_email_placeholder()}
 					class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-[13px] outline-none focus:border-border-strong"
 				/>
 			</div>
 			<div>
-				<label for="c-password" class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">Initial password</label>
+				<label for="c-password" class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">{m.admin_users_initial_password()}</label>
 				<div class="relative">
 					<input
 						id="c-password"
@@ -782,7 +785,7 @@
 						required
 						minlength={8}
 						type={showPassword ? 'text' : 'password'}
-						placeholder="At least 8 characters"
+						placeholder={m.admin_users_password_placeholder()}
 						class="w-full bg-surface border border-border rounded-lg pl-3 pr-20 py-2 text-[13px] outline-none focus:border-border-strong font-mono"
 					/>
 					<div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
@@ -790,7 +793,7 @@
 							type="button"
 							onclick={() => (showPassword = !showPassword)}
 							class="w-7 h-7 grid place-items-center rounded-md text-text-3 hover:text-text hover:bg-[var(--row-hover)]"
-							aria-label={showPassword ? 'Hide password' : 'Show password'}
+							aria-label={showPassword ? m.admin_users_hide_password() : m.admin_users_show_password()}
 							tabindex={-1}
 						>
 							<Icon name={showPassword ? 'x' : 'user'} size={13} />
@@ -801,7 +804,7 @@
 							class="px-1.5 h-7 rounded-md text-[11px] font-medium text-text-3 hover:text-text hover:bg-[var(--row-hover)]"
 							tabindex={-1}
 						>
-							Generate
+							{m.admin_users_generate()}
 						</button>
 					</div>
 				</div>
@@ -840,14 +843,14 @@
 					resetCreate();
 				}}
 			>
-				Cancel
+				{m.common_cancel()}
 			</Button>
 			<button
 				type="submit"
 				disabled={cSubmitting}
 				class="inline-flex items-center gap-1.5 rounded-lg font-medium text-[13px] transition-[background,border-color,transform] duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px] px-[11px] py-[7px] bg-accent text-white border border-transparent hover:bg-accent-strong shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)]"
 			>
-				{cSubmitting ? 'Creating…' : 'Create user'}
+				{cSubmitting ? m.common_creating() : m.admin_users_create()}
 			</button>
 		</div>
 	</form>
@@ -865,8 +868,8 @@
 	<form onsubmit={submitInvite}>
 		<div class="flex items-center px-5 pt-4 pb-3 border-b border-border">
 			<div>
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">Workspace</div>
-				<div class="text-[15px] font-semibold">Invite a user</div>
+				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{m.admin_workspace()}</div>
+				<div class="text-[15px] font-semibold">{m.admin_users_invite_title()}</div>
 			</div>
 			<button
 				type="button"
@@ -875,31 +878,31 @@
 					inviteOpen = false;
 					resetInvite();
 				}}
-				aria-label="Close"
+				aria-label={m.common_close()}
 			>
 				<Icon name="x" size={14} />
 			</button>
 		</div>
 		<div class="p-5 space-y-4">
 			<div>
-				<label for="i-name" class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">Name</label>
+				<label for="i-name" class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">{m.admin_name()}</label>
 				<input
 					id="i-name"
 					bind:value={iName}
 					required
 					type="text"
-					placeholder="Jane Doe"
+					placeholder={m.admin_users_name_placeholder()}
 					class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-[13px] outline-none focus:border-border-strong"
 				/>
 			</div>
 			<div>
-				<label for="i-email" class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">Email</label>
+				<label for="i-email" class="text-[11.5px] uppercase tracking-[0.06em] text-text-4 block mb-1.5">{m.admin_users_email()}</label>
 				<input
 					id="i-email"
 					bind:value={iEmail}
 					required
 					type="email"
-					placeholder="name@example.com"
+					placeholder={m.admin_users_email_placeholder()}
 					class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-[13px] outline-none focus:border-border-strong"
 				/>
 			</div>
@@ -918,7 +921,7 @@
 				}
 			})}
 			<p class="text-[12px] text-text-3 leading-relaxed">
-				The invitee will receive an email with a link to set their password. The link expires in 7 days.
+				{m.admin_users_invite_note()}
 			</p>
 			{#if iError}
 				<div
@@ -940,14 +943,14 @@
 					resetInvite();
 				}}
 			>
-				Cancel
+				{m.common_cancel()}
 			</Button>
 			<button
 				type="submit"
 				disabled={iSubmitting}
 				class="inline-flex items-center gap-1.5 rounded-lg font-medium text-[13px] transition-[background,border-color,transform] duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px] px-[11px] py-[7px] bg-accent text-white border border-transparent hover:bg-accent-strong shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)]"
 			>
-				{iSubmitting ? 'Sending…' : 'Send invite'}
+				{iSubmitting ? m.admin_users_sending() : m.admin_users_send_invite()}
 			</button>
 		</div>
 	</form>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import BrandMark from '$lib/components/auth/BrandMark.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -22,14 +23,14 @@
 	const strength = $derived.by(() => {
 		if (!password) return null;
 		if (password.length < minLength)
-			return { label: 'Too short', tone: 'error' as const };
-		if (password.length < 12) return { label: 'OK', tone: 'warn' as const };
-		return { label: 'Strong', tone: 'good' as const };
+			return { label: m.auth_password_too_short(), tone: 'error' as const };
+		if (password.length < 12) return { label: m.auth_password_ok(), tone: 'warn' as const };
+		return { label: m.auth_password_strong(), tone: 'good' as const };
 	});
 </script>
 
 <svelte:head>
-	<title>Reset password · Trackr</title>
+	<title>{m.auth_reset_page_title()}</title>
 </svelte:head>
 
 <div class="relative flex min-h-screen items-center justify-center px-4 py-10">
@@ -66,17 +67,17 @@
 					</svg>
 				</div>
 				<h1 class="mt-4 text-[18px] font-semibold tracking-[-0.012em] text-text">
-					Link invalid or expired
+					{m.auth_reset_link_invalid()}
 				</h1>
 				<p class="mt-1.5 text-[13.5px] leading-relaxed text-text-3">
-					Reset links expire after 24 hours. Request a new one to continue.
+					{m.auth_reset_link_invalid_desc()}
 				</p>
 				<a
 					href="/forgot-password"
 					class="mt-6 inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-accent px-4 text-[13px] font-semibold text-white transition-colors hover:bg-accent-strong"
 					style:box-shadow="0 1px 0 rgba(255,255,255,0.18) inset, 0 6px 18px -4px rgba(239,122,109,0.35)"
 				>
-					Request new link
+					{m.auth_reset_request_new_link()}
 				</a>
 			</div>
 		{:else}
@@ -84,9 +85,9 @@
 				class="rounded-[14px] border border-border bg-bg-elev px-7 pt-7 pb-6"
 				style:box-shadow="0 1px 0 rgba(255,255,255,0.03) inset, 0 24px 60px -28px rgba(0,0,0,0.55)"
 			>
-				<h1 class="text-[19px] font-semibold tracking-[-0.012em] text-text">Set a new password</h1>
+				<h1 class="text-[19px] font-semibold tracking-[-0.012em] text-text">{m.auth_reset_set_new_password()}</h1>
 				<p class="mt-1 text-[13.5px] leading-relaxed text-text-3">
-					Choose a password with at least {minLength} characters.
+					{m.auth_reset_subtitle({ min: minLength })}
 				</p>
 
 				<form
@@ -94,12 +95,12 @@
 					use:enhance={({ cancel }) => {
 						clientError = null;
 						if (password.length < minLength) {
-							clientError = `Password must be at least ${minLength} characters.`;
+							clientError = m.auth_password_min_chars({ min: minLength });
 							cancel();
 							return;
 						}
 						if (password !== confirmPassword) {
-							clientError = 'Passwords do not match.';
+							clientError = m.auth_passwords_no_match();
 							cancel();
 							return;
 						}
@@ -114,7 +115,7 @@
 					<input type="hidden" name="token" value={data.token} />
 
 					<label class="flex flex-col gap-1.5">
-						<span class="text-[12.5px] font-medium text-text-2">New password</span>
+						<span class="text-[12.5px] font-medium text-text-2">{m.auth_new_password_label()}</span>
 						<div class="relative">
 							<input
 								bind:this={passwordInput}
@@ -124,14 +125,14 @@
 								required
 								minlength={minLength}
 								autocomplete="new-password"
-								placeholder="At least {minLength} characters"
+								placeholder={m.auth_password_min_placeholder({ min: minLength })}
 								class="h-10 w-full rounded-[8px] border border-border bg-surface pr-10 pl-3 text-[14px] text-text placeholder:text-text-4 transition-colors focus:border-border-strong focus:bg-surface-2"
 							/>
 							<button
 								type="button"
 								onclick={() => (showPassword = !showPassword)}
 								class="absolute top-1/2 right-2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-[6px] text-text-4 transition-colors hover:bg-[var(--row-hover)] hover:text-text-2"
-								aria-label={showPassword ? 'Hide password' : 'Show password'}
+								aria-label={showPassword ? m.auth_hide_password() : m.auth_show_password()}
 								tabindex={-1}
 							>
 								<svg
@@ -171,13 +172,13 @@
 					</label>
 
 					<label class="flex flex-col gap-1.5">
-						<span class="text-[12.5px] font-medium text-text-2">Confirm password</span>
+						<span class="text-[12.5px] font-medium text-text-2">{m.auth_confirm_password_label()}</span>
 						<input
 							bind:value={confirmPassword}
 							type={showPassword ? 'text' : 'password'}
 							required
 							autocomplete="new-password"
-							placeholder="Re-enter password"
+							placeholder={m.auth_reenter_password_placeholder()}
 							class="h-10 rounded-[8px] border border-border bg-surface px-3 text-[14px] text-text placeholder:text-text-4 transition-colors focus:border-border-strong focus:bg-surface-2"
 						/>
 					</label>
@@ -201,16 +202,16 @@
 							<span
 								class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"
 							></span>
-							<span>Updating…</span>
+							<span>{m.auth_reset_updating()}</span>
 						{:else}
-							<span>Update password</span>
+							<span>{m.auth_reset_update_password()}</span>
 						{/if}
 					</button>
 				</form>
 			</div>
 
 			<p class="mt-5 text-center text-[12px]">
-				<a href="/login" class="text-text-3 transition-colors hover:text-text">Back to sign in</a>
+				<a href="/login" class="text-text-3 transition-colors hover:text-text">{m.auth_back_to_sign_in()}</a>
 			</p>
 		{/if}
 	</div>

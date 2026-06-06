@@ -13,6 +13,7 @@ import { loadTasks } from '$lib/server/tasks';
 import { loadProjectActivity } from '$lib/server/activity-feed';
 import { logActivityFF } from '$lib/server/activity';
 import { assertCan } from '$lib/server/permissions';
+import { m } from '$lib/paraglide/messages';
 
 const ALLOWED_MEMBER_ROLES = new Set(['project.manager', 'project.member', 'project.viewer']);
 const ALLOWED_STATUSES = new Set([
@@ -45,10 +46,10 @@ export const load: ServerLoad = async ({ params, locals }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
 
 	const id = params.id;
-	if (!id) throw error(404, 'Project not found');
+	if (!id) throw error(404, m.projects_not_found());
 
 	const [row] = await db.select().from(project).where(eq(project.id, id)).limit(1);
-	if (!row) throw error(404, 'Project not found');
+	if (!row) throw error(404, m.projects_not_found());
 
 	// Authorise read access. Trackr team is granted via their internal-org
 	// role (project.tasks.read); project members get it via their explicit
@@ -123,8 +124,8 @@ export const load: ServerLoad = async ({ params, locals }) => {
 
 export const actions: Actions = {
 	update: async ({ request, params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		if (!locals.user) throw error(401, m.projects_not_authenticated());
+		if (!params.id) return fail(400, { message: m.projects_missing_id() });
 		await assertCan(locals, 'project.edit', { projectId: params.id });
 
 		const form = await request.formData();
@@ -133,8 +134,8 @@ export const actions: Actions = {
 		const status = String(form.get('status') ?? '').trim();
 		const color = String(form.get('color') ?? '').trim();
 
-		if (!name) return fail(400, { message: 'Project name is required.' });
-		if (!ALLOWED_STATUSES.has(status)) return fail(400, { message: 'Invalid status.' });
+		if (!name) return fail(400, { message: m.projects_name_required_edit() });
+		if (!ALLOWED_STATUSES.has(status)) return fail(400, { message: m.projects_invalid_status() });
 
 		const icon = (name[0] ?? 'P').toUpperCase();
 
@@ -148,7 +149,7 @@ export const actions: Actions = {
 			.from(project)
 			.where(eq(project.id, params.id))
 			.limit(1);
-		if (!prior) return fail(404, { message: 'Project not found.' });
+		if (!prior) return fail(404, { message: m.projects_not_found_period() });
 
 		try {
 			await db
@@ -164,7 +165,7 @@ export const actions: Actions = {
 				.where(eq(project.id, params.id));
 		} catch (err) {
 			console.error('project update failed', err);
-			return fail(500, { message: 'Failed to update project.' });
+			return fail(500, { message: m.projects_update_failed() });
 		}
 
 		const actorId = locals.user.id;
@@ -202,8 +203,8 @@ export const actions: Actions = {
 	// Until the project audit log lands (which will record the prior status),
 	// unarchive restores to 'active' as a sensible default.
 	archive: async ({ params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		if (!locals.user) throw error(401, m.projects_not_authenticated());
+		if (!params.id) return fail(400, { message: m.projects_missing_id() });
 		await assertCan(locals, 'project.archive', { projectId: params.id });
 		await db
 			.update(project)
@@ -219,8 +220,8 @@ export const actions: Actions = {
 	},
 
 	unarchive: async ({ params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		if (!locals.user) throw error(401, m.projects_not_authenticated());
+		if (!params.id) return fail(400, { message: m.projects_missing_id() });
 		await assertCan(locals, 'project.archive', { projectId: params.id });
 		await db
 			.update(project)
@@ -236,8 +237,8 @@ export const actions: Actions = {
 	},
 
 	favoriteAdd: async ({ params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		if (!locals.user) throw error(401, m.projects_not_authenticated());
+		if (!params.id) return fail(400, { message: m.projects_missing_id() });
 		await db
 			.insert(projectFavorite)
 			.values({ userId: locals.user.id, projectId: params.id })
@@ -246,8 +247,8 @@ export const actions: Actions = {
 	},
 
 	favoriteRemove: async ({ params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		if (!locals.user) throw error(401, m.projects_not_authenticated());
+		if (!params.id) return fail(400, { message: m.projects_missing_id() });
 		await db
 			.delete(projectFavorite)
 			.where(
@@ -260,8 +261,8 @@ export const actions: Actions = {
 	},
 
 	delete: async ({ params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		if (!locals.user) throw error(401, m.projects_not_authenticated());
+		if (!params.id) return fail(400, { message: m.projects_missing_id() });
 		// project.archive is the closest existing perm; project deletion is
 		// strictly more destructive but we don't model a separate perm yet.
 		// Restrict to managers and Trackr admins via project.archive.
@@ -272,18 +273,18 @@ export const actions: Actions = {
 	},
 
 	memberAdd: async ({ request, params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		if (!locals.user) throw error(401, m.projects_not_authenticated());
+		if (!params.id) return fail(400, { message: m.projects_missing_id() });
 		await assertCan(locals, 'project.members.manage', { projectId: params.id });
 
 		const form = await request.formData();
 		const userId = String(form.get('userId') ?? '').trim();
 		const role = String(form.get('role') ?? 'project.member');
-		if (!userId) return fail(400, { message: 'Missing user.' });
-		if (!ALLOWED_MEMBER_ROLES.has(role)) return fail(400, { message: 'Invalid role.' });
+		if (!userId) return fail(400, { message: m.projects_missing_user() });
+		if (!ALLOWED_MEMBER_ROLES.has(role)) return fail(400, { message: m.projects_invalid_role() });
 
 		const [u] = await db.select({ id: user.id }).from(user).where(eq(user.id, userId)).limit(1);
-		if (!u) return fail(404, { message: 'User not found.' });
+		if (!u) return fail(404, { message: m.projects_user_not_found() });
 
 		try {
 			await db
@@ -295,7 +296,7 @@ export const actions: Actions = {
 				});
 		} catch (err) {
 			console.error('project memberAdd failed', err);
-			return fail(500, { message: 'Failed to add member.' });
+			return fail(500, { message: m.projects_add_member_failed() });
 		}
 		logActivityFF({
 			projectId: params.id,
@@ -307,8 +308,8 @@ export const actions: Actions = {
 	},
 
 	leadSet: async ({ request, params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		if (!locals.user) throw error(401, m.projects_not_authenticated());
+		if (!params.id) return fail(400, { message: m.projects_missing_id() });
 		await assertCan(locals, 'project.members.manage', { projectId: params.id });
 
 		const form = await request.formData();
@@ -329,21 +330,21 @@ export const actions: Actions = {
 			// Require the new lead to already be a project member; the UI only
 			// surfaces this from the member chip menu, so the constraint also
 			// guards against stale form posts.
-			const [m] = await db
+			const [member] = await db
 				.select({ userId: projectMember.userId })
 				.from(projectMember)
 				.where(
 					and(eq(projectMember.projectId, params.id), eq(projectMember.userId, userId))
 				)
 				.limit(1);
-			if (!m) {
-				return fail(400, { message: 'Lead must be a project member.' });
+			if (!member) {
+				return fail(400, { message: m.projects_lead_must_be_member() });
 			}
 
 			await db.update(project).set({ leadId: userId }).where(eq(project.id, params.id));
 		} catch (err) {
 			console.error('project leadSet failed', err);
-			return fail(500, { message: 'Failed to update lead.' });
+			return fail(500, { message: m.projects_update_lead_failed() });
 		}
 		logActivityFF({
 			projectId: params.id,
@@ -355,15 +356,15 @@ export const actions: Actions = {
 	},
 
 	memberSetRole: async ({ request, params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		if (!locals.user) throw error(401, m.projects_not_authenticated());
+		if (!params.id) return fail(400, { message: m.projects_missing_id() });
 		await assertCan(locals, 'project.members.manage', { projectId: params.id });
 
 		const form = await request.formData();
 		const userId = String(form.get('userId') ?? '').trim();
 		const role = String(form.get('role') ?? '');
-		if (!userId) return fail(400, { message: 'Missing user.' });
-		if (!ALLOWED_MEMBER_ROLES.has(role)) return fail(400, { message: 'Invalid role.' });
+		if (!userId) return fail(400, { message: m.projects_missing_user() });
+		if (!ALLOWED_MEMBER_ROLES.has(role)) return fail(400, { message: m.projects_invalid_role() });
 
 		await db
 			.update(projectMember)
@@ -381,13 +382,13 @@ export const actions: Actions = {
 	},
 
 	memberRemove: async ({ request, params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		if (!locals.user) throw error(401, m.projects_not_authenticated());
+		if (!params.id) return fail(400, { message: m.projects_missing_id() });
 		await assertCan(locals, 'project.members.manage', { projectId: params.id });
 
 		const form = await request.formData();
 		const userId = String(form.get('userId') ?? '').trim();
-		if (!userId) return fail(400, { message: 'Missing user.' });
+		if (!userId) return fail(400, { message: m.projects_missing_user() });
 
 		try {
 			await db.transaction(async (tx) => {
@@ -414,7 +415,7 @@ export const actions: Actions = {
 			});
 		} catch (err) {
 			console.error('project memberRemove failed', err);
-			return fail(500, { message: 'Failed to remove member.' });
+			return fail(500, { message: m.projects_remove_member_failed() });
 		}
 		logActivityFF({
 			projectId: params.id,
@@ -427,13 +428,13 @@ export const actions: Actions = {
 
 	// Project-level comment posted from the history sidebar (taskId stays null).
 	commentAdd: async ({ request, params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		if (!locals.user) throw error(401, m.projects_not_authenticated());
+		if (!params.id) return fail(400, { message: m.projects_missing_id() });
 		await assertCan(locals, 'project.tasks.read', { projectId: params.id });
 
 		const form = await request.formData();
 		const body = String(form.get('body') ?? '').trim();
-		if (!body) return fail(400, { message: 'Comment cannot be empty.' });
+		if (!body) return fail(400, { message: m.projects_comment_empty() });
 
 		try {
 			await db.insert(projectActivity).values({
@@ -445,15 +446,15 @@ export const actions: Actions = {
 			});
 		} catch (err) {
 			console.error('project comment add failed', err);
-			return fail(500, { message: 'Failed to add comment.' });
+			return fail(500, { message: m.projects_add_comment_failed() });
 		}
 		return { success: true };
 	},
 
 	// Pagination endpoint for the history sidebar's "load more".
 	activity: async ({ request, params, locals }) => {
-		if (!locals.user) throw error(401, 'Not authenticated');
-		if (!params.id) return fail(400, { message: 'Missing project id.' });
+		if (!locals.user) throw error(401, m.projects_not_authenticated());
+		if (!params.id) return fail(400, { message: m.projects_missing_id() });
 		await assertCan(locals, 'project.tasks.read', { projectId: params.id });
 
 		const form = await request.formData();

@@ -11,6 +11,8 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/motion';
 	import { PROJECT_STATUS } from '$lib/data';
+	import { projectStatusLabel } from '$lib/labels';
+	import { m } from '$lib/paraglide/messages';
 	import type { Project } from '$lib/types';
 
 	type OrgOption = { id: string; name: string; slug: string; color: string };
@@ -126,11 +128,11 @@
 					await invalidateAll();
 					onclose();
 				} else if (result.type === 'failure') {
-					const msg = (result.data as { message?: string } | undefined)?.message ?? 'Failed to create project.';
+					const msg = (result.data as { message?: string } | undefined)?.message ?? m.projects_create_failed();
 					showToast('err', msg);
 					onerror?.(msg);
 				} else if (result.type === 'error') {
-					const msg = result.error?.message ?? 'Failed to create project.';
+					const msg = result.error?.message ?? m.projects_create_failed();
 					showToast('err', msg);
 					onerror?.(msg);
 				}
@@ -139,13 +141,13 @@
 	>
 		<div class="flex items-center px-5 pt-4 pb-3 border-b border-border">
 			<div>
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">Workspace</div>
-				<div class="text-[15px] font-semibold">Create a project</div>
+				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{m.projects_workspace_eyebrow()}</div>
+				<div class="text-[15px] font-semibold">{m.projects_create_title()}</div>
 			</div>
 			<button
 				type="button"
 				onclick={onclose}
-				aria-label="Close"
+				aria-label={m.common_close()}
 				class="ml-auto w-8 h-8 grid place-items-center rounded-lg text-text-3 hover:text-text hover:bg-surface transition-colors"
 			>
 				<Icon name="x" size={14} />
@@ -171,11 +173,11 @@
 						name="name"
 						bind:value={name}
 						required
-						placeholder="Project name…"
+						placeholder={m.projects_name_placeholder()}
 						class="block w-full bg-transparent border-0 outline-none text-[19px] font-semibold tracking-[-0.01em] text-text placeholder:text-text-3"
 					/>
 					<div class="flex items-center gap-1.5 mt-1">
-						<span class="text-[10.5px] uppercase tracking-[0.08em] text-text-4">Key</span>
+						<span class="text-[10.5px] uppercase tracking-[0.08em] text-text-4">{m.projects_key_label()}</span>
 						<input
 							type="text"
 							name="key"
@@ -188,13 +190,13 @@
 									.slice(0, 5);
 							}}
 							maxlength={5}
-							placeholder="ABC"
+							placeholder={m.projects_key_placeholder()}
 							class="bg-surface border border-border rounded-md px-1.5 py-0.5 font-mono text-[11.5px] text-text outline-none focus:border-border-strong w-[72px] uppercase tracking-[0.04em]"
 						/>
 						<span class="text-text-4 text-[11.5px]">·</span>
 						<span class="text-[11.5px] text-text-3">
-							tasks will be prefixed
-							<span class="font-mono text-text-2">{effectiveKey || 'KEY'}-1</span>
+							{m.projects_key_prefix_hint_before()}
+							<span class="font-mono text-text-2">{effectiveKey || m.projects_key_fallback()}-1</span>
 						</span>
 					</div>
 				</div>
@@ -203,19 +205,19 @@
 			<textarea
 				name="description"
 				bind:value={description}
-				placeholder="What is this project about?"
+				placeholder={m.projects_description_placeholder()}
 				rows="2"
 				class="w-full resize-none bg-transparent border-0 outline-none text-[13.5px] leading-relaxed text-text-2 placeholder:text-text-3 mb-4"
 			></textarea>
 
 			<div class="mb-4">
-				<div class="text-[10.5px] uppercase tracking-[0.08em] text-text-4 mb-2">Color</div>
+				<div class="text-[10.5px] uppercase tracking-[0.08em] text-text-4 mb-2">{m.projects_color_label()}</div>
 				<div class="flex flex-wrap gap-1.5">
 					{#each PALETTE as c (c)}
 						<button
 							type="button"
 							onclick={() => (color = c)}
-							aria-label="Pick color {c}"
+							aria-label={m.projects_pick_color({ color: c })}
 							class="relative w-7 h-7 rounded-lg grid place-items-center transition-transform hover:scale-105 active:scale-95"
 							style:background="linear-gradient(140deg, {c}, color-mix(in oklch, {c} 70%, #000) 85%)"
 							style:box-shadow={color === c
@@ -250,7 +252,7 @@
 						class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
 					>
 						<span class="w-2 h-2 rounded-full" style:background={statusMeta.color}></span>
-						<span>{statusMeta.label}</span>
+						<span>{projectStatusLabel(status)}</span>
 						<Icon name="chevron" size={11} class="text-text-3" />
 					</button>
 					{#if pop === 'status'}
@@ -271,7 +273,7 @@
 									class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 								>
 									<span class="w-2 h-2 rounded-full" style:background={meta.color}></span>
-									<span class="text-[13px]">{meta.label}</span>
+									<span class="text-[13px]">{projectStatusLabel(s)}</span>
 									<span
 										class="ml-auto text-accent {status === s ? 'opacity-100' : 'opacity-0'}"
 									>
@@ -294,7 +296,7 @@
 							<span>{selectedOrg.name}</span>
 						{:else}
 							<Icon name="org" size={13} class="text-text-3" />
-							<span>Internal</span>
+							<span>{m.projects_internal()}</span>
 						{/if}
 						<Icon name="chevron" size={11} class="text-text-3" />
 					</button>
@@ -314,7 +316,7 @@
 								class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
 							>
 								<Icon name="org" size={13} class="text-text-3" />
-								<span class="text-[13px]">Internal</span>
+								<span class="text-[13px]">{m.projects_internal()}</span>
 								<span
 									class="ml-auto text-accent {orgId === '' ? 'opacity-100' : 'opacity-0'}"
 								>
@@ -341,9 +343,9 @@
 							{/each}
 							{#if orgs.length === 0}
 								<div class="px-2 py-2 text-[11.5px] text-text-3">
-									No organizations yet. Create one in
+									{m.projects_no_orgs_hint_before()}
 									<a href="/admin/organizations" class="text-accent hover:underline"
-										>Admin · Organizations</a
+										>{m.projects_admin_orgs_link()}</a
 									>.
 								</div>
 							{/if}
@@ -359,22 +361,22 @@
 
 
 			<p class="text-[11.5px] text-text-3 mt-4">
-				You'll be the project lead. Invite teammates from the project page once it's created.
+				{m.projects_create_lead_hint()}
 			</p>
 		</div>
 
 		<div class="flex items-center gap-2 px-5 py-3 border-t border-border bg-bg/40 rounded-b-2xl">
 			<span class="text-[11.5px] text-text-3">
-				<Kbd>⌘↵</Kbd> to create
+				<Kbd>⌘↵</Kbd> {m.projects_kbd_to_create()}
 			</span>
 			<div class="ml-auto flex items-center gap-2">
-				<Button variant="default" onclick={onclose}>Cancel</Button>
+				<Button variant="default" onclick={onclose}>{m.common_cancel()}</Button>
 				<button
 					type="submit"
 					disabled={submitting || !name.trim() || !effectiveKey}
 					class="inline-flex items-center gap-1.5 rounded-lg font-medium text-[13px] transition-[background,border-color,transform] duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px] px-[11px] py-[7px] bg-accent text-white border border-transparent hover:bg-accent-strong shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)]"
 				>
-					{submitting ? 'Creating…' : 'Create project'}
+					{submitting ? m.common_creating() : m.projects_create_title()}
 				</button>
 			</div>
 		</div>

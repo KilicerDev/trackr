@@ -17,6 +17,7 @@
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/motion';
+	import { m } from '$lib/paraglide/messages';
 
 	export interface FilterField {
 		id: string;
@@ -96,7 +97,7 @@
 >
 	<div data-pop-trigger="add" class="shrink-0">
 		<Chip variant="add" onclick={() => (pop = pop?.startsWith('add:') ? null : 'add:fields')}>
-			<Icon name="plus" size={12} /> Filter
+			<Icon name="plus" size={12} /> {m.tasks_filter()}
 		</Chip>
 	</div>
 
@@ -116,7 +117,7 @@
 					{#if values.length === 1}
 						{valueLabel(field, values[0])}
 					{:else}
-						{values.length} selected
+						{m.tasks_n_selected({ n: values.length })}
 					{/if}
 				</span>
 			</Chip>
@@ -128,7 +129,7 @@
 			onclick={clearAll}
 			class="shrink-0 text-[12px] text-text-3 hover:text-text px-2"
 		>
-			Clear
+			{m.tasks_clear()}
 		</button>
 	{/if}
 </div>

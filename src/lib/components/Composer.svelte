@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import Icon from './Icon.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	type Accent = 'default' | 'warning';
 
@@ -21,7 +22,7 @@
 
 	let {
 		value = $bindable(),
-		placeholder = 'Write a message…',
+		placeholder = m.composer_placeholder(),
 		sending = false,
 		disabled = false,
 		accent = 'default',
@@ -55,7 +56,7 @@
 			{#if rightActions}{@render rightActions()}{/if}
 			<button
 				type="button"
-				aria-label="Send"
+				aria-label={m.composer_send()}
 				onclick={onsend}
 				disabled={sending || !value.trim()}
 				class="w-8 h-8 grid place-items-center rounded-lg bg-accent hover:bg-accent-strong text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
