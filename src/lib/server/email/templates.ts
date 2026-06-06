@@ -1,4 +1,6 @@
 import type { EmailMessage } from './index';
+import { m } from '$lib/paraglide/messages';
+import type { Locale } from '$lib/paraglide/runtime';
 
 const PRODUCT_NAME = 'Trackr';
 
@@ -41,12 +43,13 @@ export function notificationEmail(opts: {
 	body?: string | null;
 	url: string;
 	actorName?: string | null;
+	locale?: Locale;
 }): EmailMessage {
 	const lines = [opts.title];
 	if (opts.body) {
 		lines.push('', opts.body);
 	}
-	lines.push('', `Open: ${opts.url}`);
+	lines.push('', `${m.notify_email_open(undefined, { locale: opts.locale })}: ${opts.url}`);
 	lines.push('', `— ${PRODUCT_NAME}`);
 	return {
 		to: opts.to,

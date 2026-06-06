@@ -5,6 +5,7 @@
 // labels through these functions so they react to the active locale. Each
 // function calls a Paraglide message (evaluated per render via getLocale()).
 import { m } from '$lib/paraglide/messages';
+import type { Locale } from '$lib/paraglide/runtime';
 
 function pick<T extends string>(
 	map: Record<T, () => string>,
@@ -14,18 +15,18 @@ function pick<T extends string>(
 	return map[id]?.() ?? fallback ?? id;
 }
 
-export function statusLabel(id: string): string {
-	return pick(
-		{
-			backlog: m.status_backlog,
-			todo: m.status_todo,
-			in_progress: m.status_in_progress,
-			paused: m.status_paused,
-			in_review: m.status_in_review,
-			done: m.status_done
-		},
-		id
-	);
+// `locale` overrides the ambient request locale — used when rendering text for
+// a different user than the current request (e.g. notifications per recipient).
+export function statusLabel(id: string, locale?: Locale): string {
+	const map: Record<string, (i?: undefined, o?: { locale?: Locale }) => string> = {
+		backlog: m.status_backlog,
+		todo: m.status_todo,
+		in_progress: m.status_in_progress,
+		paused: m.status_paused,
+		in_review: m.status_in_review,
+		done: m.status_done
+	};
+	return map[id]?.(undefined, locale ? { locale } : undefined) ?? id;
 }
 
 export function priorityLabel(id: string): string {

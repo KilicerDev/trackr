@@ -19,6 +19,7 @@ import { accessibleProjectIds, assertCan, can } from '$lib/server/permissions';
 import { attachFormFiles, deleteAttachmentsFor } from '$lib/server/attachments';
 import { getPreferences } from '$lib/server/preferences';
 import { m } from '$lib/paraglide/messages';
+import { statusLabel } from '$lib/labels';
 
 export const load: ServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
@@ -182,7 +183,9 @@ export const actions: Actions = {
 			recipients: assignedIds,
 			actorId: me.id,
 			orgId: p.orgId,
-			title: `Assigned to you: ${displayId} — ${title}`,
+			render: (locale) => ({
+				title: m.notify_task_assigned({ ref: displayId, title }, { locale })
+			}),
 			url: `/tasks?task=${displayId}`,
 			entity: { type: 'task', id: newId },
 			baseUrl: url.origin
@@ -335,7 +338,9 @@ export const actions: Actions = {
 					recipients: added,
 					actorId: me.id,
 					orgId: target.projectOrgId,
-					title: `Assigned to you: ${displayId} — ${target.title}`,
+					render: (locale) => ({
+						title: m.notify_task_assigned({ ref: displayId, title: target.title }, { locale })
+					}),
 					url: taskUrl,
 					entity: { type: 'task', id: target.id },
 					baseUrl: url.origin
@@ -351,12 +356,18 @@ export const actions: Actions = {
 				creatorId: target.createdBy,
 				assigneeIds: finalAssignees
 			});
+			const newStatus = patch.status;
 			void notify({
 				kind: 'taskStatusChanged',
 				recipients,
 				actorId: me.id,
 				orgId: target.projectOrgId,
-				title: `${displayId} → ${patch.status}: ${target.title}`,
+				render: (locale) => ({
+					title: m.notify_task_status(
+						{ ref: displayId, status: statusLabel(newStatus, locale), title: target.title },
+						{ locale }
+					)
+				}),
 				url: taskUrl,
 				entity: { type: 'task', id: target.id },
 				baseUrl: url.origin
@@ -483,8 +494,10 @@ export const actions: Actions = {
 			recipients,
 			actorId: me.id,
 			orgId: target.projectOrgId,
-			title: `New comment on ${displayId}: ${target.title}`,
-			body,
+			render: (locale) => ({
+				title: m.notify_task_commented({ ref: displayId, title: target.title }, { locale }),
+				body
+			}),
 			url: `/tasks?task=${displayId}`,
 			entity: { type: 'task', id: target.id },
 			baseUrl: url.origin

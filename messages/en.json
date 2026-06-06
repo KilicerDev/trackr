@@ -1,5 +1,13 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
+	"notify_ticket_created": "New ticket {ref}: {subject}",
+	"notify_ticket_assigned": "Assigned to you: {ref} — {subject}",
+	"notify_ticket_message": "New message on {ref} — {subject}",
+	"notify_ticket_internal_note": "Internal note on {ref}",
+	"notify_task_assigned": "Assigned to you: {ref} — {title}",
+	"notify_task_status": "{ref} → {status}: {title}",
+	"notify_task_commented": "New comment on {ref}: {title}",
+	"notify_email_open": "Open",
 	"admin_action_failed": "Action failed.",
 	"admin_color": "Color",
 	"admin_created": "Created",

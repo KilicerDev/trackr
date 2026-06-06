@@ -150,8 +150,10 @@ export const actions: Actions = {
 				recipients,
 				actorId: me.id,
 				orgId,
-				title: `New ticket ${displayId}: ${subject}`,
-				body: description,
+				render: (locale) => ({
+					title: m.notify_ticket_created({ ref: displayId, subject }, { locale }),
+					body: description
+				}),
 				url: `/tickets/${id}`,
 				entity: { type: 'ticket', id },
 				baseUrl: url.origin
@@ -162,7 +164,9 @@ export const actions: Actions = {
 					recipients: [assignedAgentId],
 					actorId: me.id,
 					orgId,
-					title: `Assigned to you: ${displayId} — ${subject}`,
+					render: (locale) => ({
+						title: m.notify_ticket_assigned({ ref: displayId, subject }, { locale })
+					}),
 					url: `/tickets/${id}`,
 					entity: { type: 'ticket', id },
 					baseUrl: url.origin
@@ -244,7 +248,12 @@ export const actions: Actions = {
 					recipients: [patch.assignedAgentId],
 					actorId: locals.user!.id,
 					orgId: before.orgId,
-					title: `Assigned to you: ${before.displayId} — ${before.subject}`,
+					render: (locale) => ({
+						title: m.notify_ticket_assigned(
+							{ ref: before.displayId, subject: before.subject },
+							{ locale }
+						)
+					}),
 					url: `/tickets/${id}`,
 					entity: { type: 'ticket', id },
 					baseUrl: url.origin
@@ -346,10 +355,12 @@ export const actions: Actions = {
 					recipients,
 					actorId: me.id,
 					orgId: t.orgId,
-					title: internal
-						? `Internal note on ${t.displayId}`
-						: `New message on ${t.displayId} — ${t.subject}`,
-					body: body.slice(0, 280),
+					render: (locale) => ({
+						title: internal
+							? m.notify_ticket_internal_note({ ref: t.displayId }, { locale })
+							: m.notify_ticket_message({ ref: t.displayId, subject: t.subject }, { locale }),
+						body: body.slice(0, 280)
+					}),
 					url: `/tickets/${id}`,
 					entity: { type: 'ticket', id },
 					baseUrl: url.origin

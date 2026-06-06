@@ -13,6 +13,9 @@ import { user as userTable } from './db/auth.schema';
 import { getPreferences } from './preferences';
 import { sendEmailFireAndForget } from './email';
 import { notificationEmail } from './email/templates';
+import { baseLocale, isLocale, type Locale } from '$lib/paraglide/runtime';
+
+export type NotifyContent = { title: string; body?: string | null };
 
 export type NotifyInput = {
 	kind: NotificationKind;
@@ -21,7 +24,11 @@ export type NotifyInput = {
 	// but we belt-and-brace it: notify() drops `actorId` from the list.
 	actorId?: string | null;
 	orgId?: string | null;
-	title: string;
+	// Notification text is rendered per recipient in their saved language via
+	// `render(locale)`. `title`/`body` remain as a non-localized fallback for
+	// callers that don't pass `render` (the renderer wins when both are given).
+	render?: (locale: Locale) => NotifyContent;
+	title?: string;
 	body?: string | null;
 	url: string;
 	entity?: { type: string; id: string } | null;
@@ -50,29 +57,48 @@ export async function notify(input: NotifyInput): Promise<void> {
 	// Pull prefs in parallel. getPreferences merges with NOTIFICATION_DEFAULTS
 	// so the channel object is always populated.
 	const prefsList = await Promise.all(recipientIds.map((id) => getPreferences(id)));
+	const localeOf = new Map<string, Locale>();
 	const wantsInApp: string[] = [];
 	const wantsEmail: string[] = [];
 	for (let i = 0; i < recipientIds.length; i++) {
-		const pref = prefsList[i].notifications[input.kind];
+		const prefs = prefsList[i];
+		localeOf.set(recipientIds[i], isLocale(prefs.locale) ? prefs.locale : baseLocale);
+		const pref = prefs.notifications[input.kind];
 		if (pref?.inApp) wantsInApp.push(recipientIds[i]);
 		if (pref?.email) wantsEmail.push(recipientIds[i]);
 	}
 
+	// Render once per distinct locale; recipients sharing a language reuse it.
+	const contentCache = new Map<Locale, NotifyContent>();
+	const contentFor = (recipientId: string): NotifyContent => {
+		const locale = localeOf.get(recipientId) ?? baseLocale;
+		if (!input.render) return { title: input.title ?? '', body: input.body ?? null };
+		let content = contentCache.get(locale);
+		if (!content) {
+			content = input.render(locale);
+			contentCache.set(locale, content);
+		}
+		return content;
+	};
+
 	const fullUrl = buildUrl(input.url, input.baseUrl);
 
 	if (wantsInApp.length > 0) {
-		const rows = wantsInApp.map((recipientId) => ({
-			id: crypto.randomUUID(),
-			recipientId,
-			orgId: input.orgId ?? null,
-			kind: input.kind,
-			title: input.title,
-			body: input.body ?? null,
-			url: input.url,
-			actorId: input.actorId ?? null,
-			entityType: input.entity?.type ?? null,
-			entityId: input.entity?.id ?? null
-		}));
+		const rows = wantsInApp.map((recipientId) => {
+			const content = contentFor(recipientId);
+			return {
+				id: crypto.randomUUID(),
+				recipientId,
+				orgId: input.orgId ?? null,
+				kind: input.kind,
+				title: content.title,
+				body: content.body ?? null,
+				url: input.url,
+				actorId: input.actorId ?? null,
+				entityType: input.entity?.type ?? null,
+				entityId: input.entity?.id ?? null
+			};
+		});
 		await db.insert(notification).values(rows);
 	}
 
@@ -83,12 +109,14 @@ export async function notify(input: NotifyInput): Promise<void> {
 			.where(inArray(userTable.id, wantsEmail));
 		for (const u of emailRows) {
 			if (u.banned) continue;
+			const content = contentFor(u.id);
 			sendEmailFireAndForget(
 				notificationEmail({
 					to: u.email,
-					title: input.title,
-					body: input.body,
-					url: fullUrl
+					title: content.title,
+					body: content.body,
+					url: fullUrl,
+					locale: localeOf.get(u.id) ?? baseLocale
 				})
 			);
 		}
