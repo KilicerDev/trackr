@@ -341,9 +341,14 @@ export const LOG_EVENT_TYPES: Record<
 	'project.delete': { label: 'Project deleted', icon: 'trash', color: '#ef4f5e', kind: 'project' },
 	'project.member': { label: 'Project membership changed', icon: 'users', color: '#7a9cf0', kind: 'project' },
 	// tasks
+	'task.create': { label: 'Task created', icon: 'plus', color: '#7fc8a9', kind: 'task' },
+	'task.status': { label: 'Task status changed', icon: 'check-square', color: '#7a9cf0', kind: 'task' },
+	'task.comment': { label: 'Task comment', icon: 'msg', color: '#9aa4b2', kind: 'task' },
 	'task.delete': { label: 'Task deleted', icon: 'x', color: '#ef7a6d', kind: 'task' },
 	// tickets
 	'ticket.create': { label: 'Ticket created', icon: 'ticket', color: '#7fc8a9', kind: 'ticket' },
+	'ticket.update': { label: 'Ticket status changed', icon: 'ticket', color: '#7a9cf0', kind: 'ticket' },
+	'ticket.message': { label: 'Ticket reply', icon: 'msg', color: '#7fc8a9', kind: 'ticket' },
 	'ticket.delete': { label: 'Ticket deleted', icon: 'trash', color: '#ef7a6d', kind: 'ticket' },
 	'ticket.convert': { label: 'Ticket converted to task', icon: 'arrow-up', color: '#7a9cf0', kind: 'ticket' },
 	// settings

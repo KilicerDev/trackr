@@ -136,6 +136,16 @@ export const actions: Actions = {
 		}
 		const { id: newId, displayId, assignedIds } = created;
 
+		void recordAudit({
+			type: 'task.create',
+			actorId: me.id,
+			targetType: 'task',
+			targetId: newId,
+			targetLabel: `${displayId} · ${title}`,
+			orgId: p.orgId,
+			meta: { projectId: p.id, taskRef: displayId }
+		});
+
 		// Notify each newly-assigned user (notify() drops the actor itself, so
 		// self-assignment is silent). Fire-and-forget: a failed notification
 		// must never undo the create.
@@ -358,6 +368,15 @@ export const actions: Actions = {
 					reopenNote: m.tickets_note_task_reopened({ ref: displayId })
 				}).catch((err) => console.error('ticket sync failed', err));
 			}
+			void recordAudit({
+				type: 'task.status',
+				actorId: me.id,
+				targetType: 'task',
+				targetId: target.id,
+				targetLabel: `${displayId} · ${target.title}`,
+				orgId: target.projectOrgId,
+				meta: { projectId, taskRef: displayId, from: priorStatus, to: patch.status }
+			});
 		}
 		if (typeof patch.priority === 'string' && patch.priority !== target.priority) {
 			logActivityFF({
@@ -475,6 +494,16 @@ export const actions: Actions = {
 			entity: { type: 'task', id: target.id },
 			baseUrl: url.origin
 		}).catch((err) => console.error('task comment notify failed', err));
+
+		void recordAudit({
+			type: 'task.comment',
+			actorId: me.id,
+			targetType: 'task',
+			targetId: target.id,
+			targetLabel: `${displayId} · ${target.title}`,
+			orgId: target.projectOrgId,
+			meta: { projectId: target.projectId, taskRef: displayId, body }
+		});
 
 		return { success: true };
 	},

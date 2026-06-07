@@ -240,10 +240,24 @@ export const actions: Actions = {
 			patch.tags = tags.map((t) => String(t)).filter(Boolean);
 		}
 
-		const before = patch.assignedAgentId !== undefined ? await getTicket(id) : null;
+		const before = await getTicket(id);
 
 		try {
 			await updateTicket(id, patch);
+
+			// Audit: status transitions only (assignment/priority stay in the
+			// ticket thread). Logged when the status actually changes.
+			if (before && typeof patch.status === 'string' && patch.status !== before.status) {
+				void recordAudit({
+					type: 'ticket.update',
+					actorId: locals.user!.id,
+					targetType: 'ticket',
+					targetId: id,
+					targetLabel: `${before.displayId} · ${before.subject}`,
+					orgId,
+					meta: { from: before.status, to: patch.status }
+				});
+			}
 
 			// Notify the *new* assignee if assignment changed to a real user
 			// (not the actor themselves, not a no-op). The assignee is
@@ -386,6 +400,15 @@ export const actions: Actions = {
 					url: `/tickets/${id}`,
 					entity: { type: 'ticket', id },
 					baseUrl: url.origin
+				});
+				void recordAudit({
+					type: 'ticket.message',
+					actorId: me.id,
+					targetType: 'ticket',
+					targetId: id,
+					targetLabel: `${t.displayId} · ${t.subject}`,
+					orgId: t.orgId,
+					meta: { internal, body: body.slice(0, 280) }
 				});
 			}
 
