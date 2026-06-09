@@ -24,6 +24,7 @@ import {
 import { notify } from '$lib/server/notify';
 import { recordAudit } from '$lib/server/audit';
 import { ticketRecipients } from '$lib/server/notify-recipients';
+import { parseMentionIds } from '$lib/mentions';
 import { getPreferences } from '$lib/server/preferences';
 import { m } from '$lib/paraglide/messages';
 
@@ -401,6 +402,27 @@ export const actions: Actions = {
 					entity: { type: 'ticket', id },
 					baseUrl: url.origin
 				});
+
+				// @-mentions in the message. `recipients` is already scoped (and
+				// excludes the customer for internal notes), so intersecting with
+				// it guarantees a mention can never leak past the ticket audience.
+				const mentionIds = parseMentionIds(body).filter((mid) => recipients.has(mid));
+				if (mentionIds.length > 0) {
+					await notify({
+						kind: 'mentioned',
+						recipients: mentionIds,
+						actorId: me.id,
+						orgId: t.orgId,
+						render: (locale) => ({
+							title: m.notify_mentioned({ label: `${t.displayId} — ${t.subject}` }, { locale }),
+							body: body.slice(0, 280)
+						}),
+						url: `/tickets/${id}`,
+						entity: { type: 'ticket', id },
+						baseUrl: url.origin
+					});
+				}
+
 				void recordAudit({
 					type: 'ticket.message',
 					actorId: me.id,

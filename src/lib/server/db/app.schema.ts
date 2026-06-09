@@ -563,6 +563,9 @@ export const roleRelations = relations(role, ({ many }) => ({
 
 export type NotificationChannelPrefs = { email: boolean; inApp: boolean };
 export type NotificationPrefs = Partial<{
+	// Generic @-mention across tasks, tickets and projects. Distinct from the
+	// legacy `taskMentioned` key (kept for back-compat; unused by the mention feature).
+	mentioned: NotificationChannelPrefs;
 	taskAssigned: NotificationChannelPrefs;
 	taskMentioned: NotificationChannelPrefs;
 	taskCommented: NotificationChannelPrefs;
@@ -887,6 +890,7 @@ export const attachmentRelations = relations(attachment, ({ one }) => ({
 // rows read when the recipient opens the related entity page.
 
 export const NOTIFICATION_KINDS = [
+	'mentioned',
 	'taskAssigned',
 	'taskMentioned',
 	'taskCommented',

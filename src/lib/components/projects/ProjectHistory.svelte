@@ -3,6 +3,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Composer from '$lib/components/Composer.svelte';
+	import MentionText from '$lib/components/MentionText.svelte';
 	import { resolveUser } from '$lib/lookup.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
@@ -335,7 +336,7 @@
 									<div
 										class="mt-1.5 p-3 rounded-xl rounded-tl-sm bg-surface border border-border text-[13px] leading-relaxed text-text whitespace-pre-wrap"
 									>
-										{e.body}
+										<MentionText text={e.body} />
 									</div>
 								{:else if e.type === 'task.assignee'}
 									<div class="mt-1 flex flex-wrap gap-1.5 text-[11.5px]">

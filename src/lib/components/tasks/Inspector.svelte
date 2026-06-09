@@ -15,6 +15,7 @@
 	import Icon from '../Icon.svelte';
 	import IconButton from '../IconButton.svelte';
 	import Composer from '../Composer.svelte';
+	import MentionText from '../MentionText.svelte';
 	import TypeBadge from '../TypeBadge.svelte';
 	import TimeLogger from './TimeLogger.svelte';
 	import AttachmentList from '../attachments/AttachmentList.svelte';
@@ -729,8 +730,8 @@
 								<span class="font-mono text-text-4">· {e.date}</span>
 							</div>
 							{#if e.kind === 'comment'}
-								<div class="mt-2 p-3 rounded-lg bg-surface border border-border text-[13px] leading-relaxed text-text">
-									{e.data}
+								<div class="mt-2 p-3 rounded-lg bg-surface border border-border text-[13px] leading-relaxed text-text whitespace-pre-wrap">
+									<MentionText text={e.data} />
 								</div>
 								{#if e.files?.length}
 									<div class="mt-2">

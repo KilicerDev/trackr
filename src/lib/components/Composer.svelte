@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import Icon from './Icon.svelte';
+	import MentionTextarea from './MentionTextarea.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	type Accent = 'default' | 'warning';
@@ -43,14 +44,14 @@
 		? 'border-[#e9c46a]/40 focus-within:border-[#e9c46a]/70'
 		: 'border-border focus-within:border-border-strong'}"
 >
-	<textarea
+	<MentionTextarea
 		bind:value
 		onkeydown={onKey}
 		{placeholder}
-		rows="2"
+		rows={2}
 		disabled={disabled || sending}
 		class="w-full resize-none bg-transparent border-0 px-3.5 pt-3 pb-1 text-[13px] leading-relaxed outline-none placeholder:text-text-3 disabled:opacity-60"
-	></textarea>
+	/>
 	<div class="flex items-center gap-1 px-2 pb-2">
 		<div class="ml-auto flex items-center gap-1">
 			{#if rightActions}{@render rightActions()}{/if}

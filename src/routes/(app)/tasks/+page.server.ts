@@ -16,7 +16,8 @@ import { logActivityFF } from '$lib/server/activity';
 import { recordAudit } from '$lib/server/audit';
 import { syncTicketForLinkedTaskStatus } from '$lib/server/tickets';
 import { notify } from '$lib/server/notify';
-import { taskRecipients } from '$lib/server/notify-recipients';
+import { taskRecipients, projectMentionRecipients } from '$lib/server/notify-recipients';
+import { parseMentionIds } from '$lib/mentions';
 import { accessibleProjectIds, assertCan, can } from '$lib/server/permissions';
 import { attachFormFiles, deleteAttachmentsFor } from '$lib/server/attachments';
 import { getPreferences } from '$lib/server/preferences';
@@ -494,6 +495,24 @@ export const actions: Actions = {
 			entity: { type: 'task', id: target.id },
 			baseUrl: url.origin
 		}).catch((err) => console.error('task comment notify failed', err));
+
+		// Notify anyone @-mentioned in the comment (project members only).
+		const mentioned = await projectMentionRecipients(target.projectId, parseMentionIds(body));
+		if (mentioned.size > 0) {
+			void notify({
+				kind: 'mentioned',
+				recipients: mentioned,
+				actorId: me.id,
+				orgId: target.projectOrgId,
+				render: (locale) => ({
+					title: m.notify_mentioned({ label: `${displayId} — ${target.title}` }, { locale }),
+					body
+				}),
+				url: `/tasks?task=${displayId}`,
+				entity: { type: 'task', id: target.id },
+				baseUrl: url.origin
+			}).catch((err) => console.error('task comment mention notify failed', err));
+		}
 
 		void recordAudit({
 			type: 'task.comment',

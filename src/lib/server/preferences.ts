@@ -16,6 +16,7 @@ export const PREF_DEFAULTS = {
 };
 
 export const NOTIFICATION_DEFAULTS: Required<NotificationPrefs> = {
+	mentioned: { email: true, inApp: true },
 	taskAssigned: { email: true, inApp: true },
 	taskMentioned: { email: true, inApp: true },
 	taskCommented: { email: false, inApp: true },

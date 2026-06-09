@@ -8,7 +8,12 @@
 
 import { eq, inArray } from 'drizzle-orm';
 import { db } from './db';
-import { organization, organizationMember, rolePermission } from './db/app.schema';
+import {
+	organization,
+	organizationMember,
+	projectMember,
+	rolePermission
+} from './db/app.schema';
 import type { Permission } from '../permissions';
 
 async function rolesGranting(perms: Permission[]): Promise<Set<string>> {
@@ -81,6 +86,48 @@ export function taskRecipients(ctx: TaskRecipientCtx): Set<string> {
 	if (ctx.creatorId) out.add(ctx.creatorId);
 	if (ctx.extraIds) for (const id of ctx.extraIds) if (id) out.add(id);
 	return out;
+}
+
+// All members of internal (Trackr) organizations. They see every project
+// (mirrors `accessibleProjectIds` returning `{ all: true }` for the team), so
+// any of them is a valid mention recipient on any project/task.
+async function internalOrgMemberIds(): Promise<Set<string>> {
+	const internalOrgs = await db
+		.select({ id: organization.id })
+		.from(organization)
+		.where(eq(organization.isInternal, true));
+	if (internalOrgs.length === 0) return new Set();
+	const rows = await db
+		.select({ userId: organizationMember.userId })
+		.from(organizationMember)
+		.where(
+			inArray(
+				organizationMember.orgId,
+				internalOrgs.map((o) => o.id)
+			)
+		);
+	return new Set(rows.map((r) => r.userId));
+}
+
+// Filter `candidateIds` (people picked from an @-mention) down to those who can
+// actually access `projectId`: explicit project members + internal Trackr team.
+// Prevents mentioning someone into a project they can't read. The actor is
+// dropped later inside notify().
+export async function projectMentionRecipients(
+	projectId: string,
+	candidateIds: Iterable<string>
+): Promise<Set<string>> {
+	const candidates = new Set([...candidateIds].filter(Boolean));
+	if (candidates.size === 0) return new Set();
+	const [memberRows, internal] = await Promise.all([
+		db
+			.select({ userId: projectMember.userId })
+			.from(projectMember)
+			.where(eq(projectMember.projectId, projectId)),
+		internalOrgMemberIds()
+	]);
+	const allowed = new Set<string>([...memberRows.map((r) => r.userId), ...internal]);
+	return new Set([...candidates].filter((id) => allowed.has(id)));
 }
 
 export type TicketRecipientCtx = {

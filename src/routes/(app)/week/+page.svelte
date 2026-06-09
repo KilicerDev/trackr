@@ -25,7 +25,7 @@
 
 	type SavedWeekView = {
 		weekStart?: string;
-		tab?: 'planned' | 'unplanned' | 'all';
+		tab?: 'past' | 'mine' | 'others';
 		// ISO dates the user has collapsed. Persisted by date (not weekday index)
 		// so collapsing one day doesn't collapse that weekday in every week.
 		collapsedDates?: string[];
@@ -160,28 +160,45 @@
 		return plannedByDay[i].reduce((s, t) => s + (t.estimate ?? DEFAULT_ESTIMATE), 0);
 	}
 
-	let unscheduledTab = $state<'planned' | 'unplanned' | 'all'>(saved.tab ?? 'planned');
-	function setUnscheduledTab(t: 'planned' | 'unplanned' | 'all') {
+	type UnscheduledTab = 'past' | 'mine' | 'others';
+	const validTab = (t: unknown): t is UnscheduledTab =>
+		t === 'past' || t === 'mine' || t === 'others';
+	let unscheduledTab = $state<UnscheduledTab>(validTab(saved.tab) ? saved.tab : 'past');
+	function setUnscheduledTab(t: UnscheduledTab) {
 		unscheduledTab = t;
 		saveView('week', { tab: t });
 	}
 
 	const unscheduled = $derived.by(() => {
-		// "Unscheduled" = anything without a specific day, regardless of plan
-		// status. Tabs split on "in my week (no date)" vs the rest. Bookmarked
-		// rows always sort to the top of whichever list contains them.
-		const all = data.tasks.filter(
-			(t) => !t.plannedFor && t.status !== 'done' && t.status !== 'in_review'
+		// Open = still actionable; we never surface done/in-review here.
+		const isOpen = (t: Task) => t.status !== 'done' && t.status !== 'in_review';
+		const me = data.currentUserId;
+		const mine = (t: Task) => t.assignee === me || (t.assignees ?? []).includes(me);
+
+		if (unscheduledTab === 'past') {
+			// Open tasks I planned for a day in a week before this one — so I
+			// don't forget the overdue work. Oldest first.
+			return data.tasks
+				.filter((t) => isOpen(t) && !!t.plannedFor && t.plannedFor < data.weekStartIso)
+				.sort((a, b) => (a.plannedFor! < b.plannedFor! ? -1 : a.plannedFor! > b.plannedFor! ? 1 : 0))
+				.slice(0, 16);
+		}
+
+		if (unscheduledTab === 'mine') {
+			// In my week, no specific date yet, assigned to me.
+			return data.tasks
+				.filter((t) => isOpen(t) && t.inMyPlan && !t.plannedFor && mine(t))
+				.slice(0, 16);
+		}
+
+		// Others: every other open task without a specific date — including
+		// ones assigned to someone else. Bookmarked rows sort to the top.
+		const rest = data.tasks.filter(
+			(t) => isOpen(t) && !t.plannedFor && !(t.inMyPlan && mine(t))
 		);
-		const filtered =
-			unscheduledTab === 'planned'
-				? all.filter((t) => t.inMyPlan)
-				: unscheduledTab === 'unplanned'
-					? all.filter((t) => !t.inMyPlan)
-					: all;
-		const planned = filtered.filter((t) => t.inMyPlan);
-		const rest = filtered.filter((t) => !t.inMyPlan);
-		return [...planned, ...rest].slice(0, 16);
+		const planned = rest.filter((t) => t.inMyPlan);
+		const others = rest.filter((t) => !t.inMyPlan);
+		return [...planned, ...others].slice(0, 16);
 	});
 
 	function weekRangeLabel(): string {
@@ -394,10 +411,10 @@
 				<div
 					class="inline-flex items-center h-7 bg-surface border border-border rounded-lg p-0.5 text-[11.5px] w-full"
 				>
-					{#each [['planned', m.week_tab_in_my_week()], ['unplanned', m.week_tab_others()], ['all', m.common_all()]] as [k, lbl] (k)}
+					{#each [['past', m.week_tab_past()], ['mine', m.week_tab_my_tasks()], ['others', m.week_tab_others()]] as [k, lbl] (k)}
 						<button
 							type="button"
-							onclick={() => setUnscheduledTab(k as 'planned' | 'unplanned' | 'all')}
+							onclick={() => setUnscheduledTab(k as UnscheduledTab)}
 							class="flex-1 h-full rounded-md transition-colors {unscheduledTab === k
 								? 'bg-bg-elev text-text'
 								: 'text-text-3 hover:text-text'}"

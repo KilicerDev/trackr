@@ -5,6 +5,7 @@ import { m } from '$lib/paraglide/messages';
 import type { Actions } from './$types';
 
 const EVENTS = [
+	'mentioned',
 	'taskAssigned',
 	'taskMentioned',
 	'taskCommented',

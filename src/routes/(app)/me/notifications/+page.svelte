@@ -14,6 +14,12 @@
 
 	const groups = $derived([
 		{
+			title: m.notif_group_general(),
+			items: [
+				{ key: 'mentioned', label: m.notif_mentioned(), desc: m.notif_mentioned_desc() }
+			]
+		},
+		{
 			title: m.notif_group_tasks(),
 			items: [
 				{ key: 'taskAssigned', label: m.notif_task_assigned(), desc: m.notif_task_assigned_desc() },

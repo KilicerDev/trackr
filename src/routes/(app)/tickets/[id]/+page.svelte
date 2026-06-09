@@ -7,6 +7,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Composer from '$lib/components/Composer.svelte';
+	import MentionText from '$lib/components/MentionText.svelte';
 	import PriorityBars from '$lib/components/PriorityBars.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
@@ -484,7 +485,7 @@
 		<!-- Description (if any) shown as opening message -->
 		{#if t.description}
 			<div class="mb-6 text-[13.5px] leading-relaxed text-text whitespace-pre-wrap">
-				{t.description}
+				<MentionText text={t.description} />
 			</div>
 		{/if}
 
@@ -566,7 +567,7 @@
 								class="mt-2 p-3 rounded-lg text-[13px] leading-relaxed whitespace-pre-wrap {e.internal
 									? 'bg-[#e9c46a]/8 border border-[#e9c46a]/30 text-text'
 									: 'bg-surface border border-border text-text'}"
-							>{e.body}</div>
+							><MentionText text={e.body} /></div>
 							{#if data.messageAttachments[e.id]?.length}
 								<div class="mt-2">
 									<AttachmentList attachments={data.messageAttachments[e.id]} canDelete={isAgent} />

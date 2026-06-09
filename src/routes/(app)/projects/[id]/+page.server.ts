@@ -13,6 +13,9 @@ import { loadTasks } from '$lib/server/tasks';
 import { loadProjectActivity } from '$lib/server/activity-feed';
 import { logActivityFF } from '$lib/server/activity';
 import { recordAudit } from '$lib/server/audit';
+import { notify } from '$lib/server/notify';
+import { projectMentionRecipients } from '$lib/server/notify-recipients';
+import { parseMentionIds } from '$lib/mentions';
 import { assertCan } from '$lib/server/permissions';
 import { m } from '$lib/paraglide/messages';
 
@@ -486,7 +489,7 @@ export const actions: Actions = {
 	},
 
 	// Project-level comment posted from the history sidebar (taskId stays null).
-	commentAdd: async ({ request, params, locals }) => {
+	commentAdd: async ({ request, params, locals, url }) => {
 		if (!locals.user) throw error(401, m.projects_not_authenticated());
 		if (!params.id) return fail(400, { message: m.projects_missing_id() });
 		await assertCan(locals, 'project.tasks.read', { projectId: params.id });
@@ -507,6 +510,30 @@ export const actions: Actions = {
 			console.error('project comment add failed', err);
 			return fail(500, { message: m.projects_add_comment_failed() });
 		}
+
+		// Notify members @-mentioned in the comment.
+		const mentioned = await projectMentionRecipients(params.id, parseMentionIds(body));
+		if (mentioned.size > 0) {
+			const [proj] = await db
+				.select({ name: project.name, orgId: project.orgId })
+				.from(project)
+				.where(eq(project.id, params.id))
+				.limit(1);
+			void notify({
+				kind: 'mentioned',
+				recipients: mentioned,
+				actorId: locals.user.id,
+				orgId: proj?.orgId ?? null,
+				render: (locale) => ({
+					title: m.notify_mentioned({ label: proj?.name ?? '' }, { locale }),
+					body
+				}),
+				url: `/projects/${params.id}`,
+				entity: { type: 'project', id: params.id },
+				baseUrl: url.origin
+			}).catch((err) => console.error('project comment mention notify failed', err));
+		}
+
 		return { success: true };
 	},
 
