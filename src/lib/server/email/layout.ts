@@ -1,34 +1,41 @@
-// Branded HTML email shell, built to mirror Trackr's auth screens 1:1. Email
-// clients are stuck in ~2005 HTML: tables for layout, inline styles only (no
-// <style> cascade in Gmail), no flex/grid, and Outlook needs bulletproof
-// (padded-<a>) buttons. Everything below sticks to that lowest common
-// denominator; richer touches (gradients, glow, shadows) are progressive
-// enhancements that degrade to flat color where unsupported.
+// Branded HTML email shell, on a pure-white theme.
 //
-// Palette/spacing/shadows are lifted straight from the app: dark canvas, a
-// bg-elev card with an inset top highlight + soft drop shadow, the coral brand
-// mark, a full-width coral CTA, and a monospace link chip styled like an input.
+// Why pure white: new Outlook's dark mode runs its own color-inversion and
+// cannot be stopped (color-scheme metas, !important, hardcoded light — none
+// hold). It pushes every background toward a muddy gray, WORST on warm
+// off-whites and dark themes (they sit in its "invert toward middle" zone). A
+// true #ffffff card with near-black text is the one design its algorithm
+// handles gracefully: often left nearly untouched, and where it does shift,
+// white→light-gray with black→white text stays readable rather than muddy.
+// Brand identity comes through the coral mark + button, which no client
+// inverts (the approach Linear, Stripe and GitHub all take despite dark apps).
+//
+// Standard email HTML: tables for layout, inline styles only, bulletproof
+// (padded-<a>) buttons for Outlook.
 
-const ACCENT = '#ef7a6d'; // --accent
-const ACCENT_STRONG = '#f08e7f'; // --accent-strong (gradient start)
-const ACCENT_DEEP = '#d8584b'; // brand-mark gradient end
-// Three distinct dark tiers from the app palette: near-black canvas, an
-// elevated card, and a slightly lighter chip that nests visibly inside it.
-const PAGE_BG = '#0a0b0c'; // --bg canvas
-const CARD_BG = '#16171a'; // elevated surface
-const CARD_BORDER = '#2a2c31'; // hairline that reads against the card
-const CHIP_BG = '#1f2024'; // --surface-2, lighter than the card
-const HEADING = '#f4f5f9'; // --text
-const BODY = '#a9abb0'; // --text-2
-const SUBTLE = '#6d6e73'; // --text-3
-const FAINT = '#4b4d52'; // --text-4
+const ACCENT_STRONG = '#f08e7f'; // --accent-strong (button gradient start)
+const ACCENT_DEEP = '#d8584b'; // button gradient end + solid fallback
+const ACCENT_LINK = '#cf5447'; // deeper coral so links read on a white surface
+const LOGO = '#FF4867'; // brand mark red — matches the app sidebar logo exactly
+// Pure white surfaces — the safest possible target for Outlook dark mode.
+// Canvas and card are both #ffffff; the card reads via border + soft shadow,
+// not a fill (so there's no off-white tone for Outlook to gray). The chip is
+// the only light-gray surface — an input-style nest the eye expects to recede.
+const PAGE_BG = '#ffffff'; // canvas
+const CARD_BG = '#ffffff'; // card (border + shadow define it)
+const CARD_BORDER = '#e4e2df'; // visible warm hairline on white
+const CHIP_BG = '#f4f3f1'; // input-style nest inside the card
+const HEADING = '#191a1e'; // near-black
+const BODY = '#4e5054'; // --text-2
+const SUBTLE = '#787a7f'; // --text-3
+const FAINT = '#909297'; // --text-4
 const FONT =
 	"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 const MONO = "ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace";
 const CARD_SHADOW =
-	'0 1px 0 rgba(255,255,255,0.03) inset, 0 24px 60px -28px rgba(0,0,0,0.55)';
+	'0 1px 0 rgba(255,255,255,0.6) inset, 0 14px 36px -12px rgba(40,30,30,0.16), 0 2px 6px rgba(40,30,30,0.05)';
 const BTN_SHADOW =
-	'0 1px 0 rgba(255,255,255,0.18) inset, 0 8px 22px -6px rgba(239,122,109,0.45)';
+	'0 1px 0 rgba(255,255,255,0.25) inset, 0 8px 20px -6px rgba(216,88,75,0.40)';
 
 export function escapeHtml(value: string): string {
 	return value
@@ -55,21 +62,22 @@ export type EmailLayoutOptions = {
 	footnotes?: string[];
 };
 
-// The app brand mark: a coral gradient rounded square holding three stacked
-// white lines of decreasing width, next to the "Trackr" wordmark.
+// The app brand mark: three vertical coral bars (the exact sidebar logo), next
+// to the "Trackr" wordmark. Built from table cells + divs, not SVG — Gmail and
+// Outlook strip <svg>. Each bar is a coral div; Outlook keeps it as a solid
+// fill, so the mark survives even where backgrounds get touched.
 function brandMark(): string {
-	const line = (w: number, pad: boolean) =>
-		`<tr><td style="${pad ? 'padding:0 0 3px;' : ''}line-height:0;font-size:0;"><div style="width:${w}px;height:2px;background:#ffffff;border-radius:2px;line-height:2px;font-size:0;">&nbsp;</div></td></tr>`;
+	const bar = (last: boolean) =>
+		`<td width="4" valign="middle" style="${last ? '' : 'padding-right:3px;'}font-size:0;line-height:0;"><div style="width:4px;height:18px;background-color:${LOGO};border-radius:1px;font-size:0;line-height:18px;">&nbsp;</div></td>`;
 	return `
 	<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
 		<tr>
-			<td width="32" height="32" align="center" valign="middle" bgcolor="${ACCENT}"
-				style="width:32px;height:32px;border-radius:9px;background-image:linear-gradient(140deg,${ACCENT_STRONG},${ACCENT_DEEP} 85%);box-shadow:0 1px 0 rgba(255,255,255,0.18) inset,0 4px 14px rgba(239,122,109,0.28);">
+			<td valign="middle" style="font-size:0;line-height:0;">
 				<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
-					${line(13, true)}${line(9, true)}${line(6, false)}
+					<tr>${bar(false)}${bar(false)}${bar(true)}</tr>
 				</table>
 			</td>
-			<td width="11" style="font-size:0;line-height:0;">&nbsp;</td>
+			<td width="10" style="font-size:0;line-height:0;">&nbsp;</td>
 			<td valign="middle" style="font-family:${FONT};font-size:18px;font-weight:700;letter-spacing:-0.02em;color:${HEADING};">Trackr</td>
 		</tr>
 	</table>`;
@@ -81,7 +89,7 @@ function button({ label, url }: Button): string {
 		<td style="padding:8px 0 2px;">
 			<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;">
 				<tr>
-					<td align="center" bgcolor="${ACCENT}"
+					<td align="center" bgcolor="${ACCENT_DEEP}"
 						style="border-radius:9px;background-image:linear-gradient(140deg,${ACCENT_STRONG},${ACCENT_DEEP} 92%);box-shadow:${BTN_SHADOW};">
 						<a href="${escapeHtml(url)}" target="_blank"
 							style="display:block;padding:13px 24px;font-family:${FONT};font-size:14px;font-weight:600;line-height:1.2;color:#ffffff;text-decoration:none;text-align:center;border-radius:9px;">${escapeHtml(label)}</a>
@@ -99,8 +107,8 @@ function linkChip(url: string): string {
 			<div style="font-family:${FONT};font-size:12px;line-height:1.5;color:${SUBTLE};padding:0 0 8px;">Or paste this link into your browser</div>
 			<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 				<tr>
-					<td style="background:${CHIP_BG};border:1px solid ${CARD_BORDER};border-radius:8px;padding:11px 13px;">
-						<a href="${escapeHtml(url)}" target="_blank" style="font-family:${MONO};font-size:12px;line-height:1.55;color:${ACCENT};text-decoration:none;word-break:break-all;">${escapeHtml(url)}</a>
+					<td style="background-color:${CHIP_BG};border:1px solid ${CARD_BORDER};border-radius:8px;padding:11px 13px;">
+						<a href="${escapeHtml(url)}" target="_blank" style="font-family:${MONO};font-size:12px;line-height:1.55;color:${ACCENT_LINK};text-decoration:none;word-break:break-all;">${escapeHtml(url)}</a>
 					</td>
 				</tr>
 			</table>
@@ -139,19 +147,28 @@ export function renderEmail(opts: EmailLayoutOptions): string {
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
-	<meta name="color-scheme" content="dark" />
-	<meta name="supported-color-schemes" content="dark" />
+	<meta name="color-scheme" content="light" />
+	<meta name="supported-color-schemes" content="light" />
 	<title>${escapeHtml(opts.heading)}</title>
+	<style>
+		:root { color-scheme: light only; supported-color-schemes: light; }
+		/* Keep it light in clients that honour this (e.g. Apple Mail dark mode). */
+		@media (prefers-color-scheme: dark) {
+			body, .em-canvas { background-color: ${PAGE_BG} !important; }
+			.em-card { background-color: ${CARD_BG} !important; }
+			.em-chip { background-color: ${CHIP_BG} !important; }
+		}
+	</style>
 </head>
-<body style="margin:0;padding:0;background:${PAGE_BG};-webkit-text-size-adjust:100%;">
+<body class="em-canvas" style="margin:0;padding:0;background-color:${PAGE_BG};-webkit-text-size-adjust:100%;">
 	<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:${PAGE_BG};">${escapeHtml(opts.preheader)}</div>
-	<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${PAGE_BG};">
+	<table role="presentation" class="em-canvas" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${PAGE_BG};">
 		<tr>
-			<td align="center" style="padding:0 16px;background-color:${PAGE_BG};">
+			<td align="center" class="em-canvas" style="padding:0 16px;background-color:${PAGE_BG};">
 				<table role="presentation" width="448" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:448px;">
-					<tr><td align="center" style="padding:48px 0 26px;background-color:${PAGE_BG};">${brandMark()}</td></tr>
+					<tr><td align="center" class="em-canvas" style="padding:48px 0 26px;background-color:${PAGE_BG};">${brandMark()}</td></tr>
 					<tr>
-						<td style="background:${CARD_BG};border:1px solid ${CARD_BORDER};border-radius:16px;padding:32px 32px 28px;box-shadow:${CARD_SHADOW};">
+						<td class="em-card" style="background-color:${CARD_BG};border:1px solid ${CARD_BORDER};border-radius:16px;padding:32px 32px 28px;box-shadow:${CARD_SHADOW};">
 							<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 								<tr><td style="font-family:${FONT};font-size:20px;font-weight:600;line-height:1.3;letter-spacing:-0.014em;color:${HEADING};padding:0 0 8px;">${escapeHtml(opts.heading)}</td></tr>
 								${paragraphs}
@@ -162,7 +179,7 @@ export function renderEmail(opts: EmailLayoutOptions): string {
 						</td>
 					</tr>
 					<tr>
-						<td align="center" style="font-family:${FONT};font-size:11.5px;line-height:1.6;color:${FAINT};padding:22px 8px 44px;background-color:${PAGE_BG};">
+						<td align="center" class="em-canvas" style="font-family:${FONT};font-size:11.5px;line-height:1.6;color:${FAINT};padding:22px 8px 44px;background-color:${PAGE_BG};">
 							Trackr · You received this email because of activity on your account.
 						</td>
 					</tr>
