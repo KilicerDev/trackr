@@ -12,10 +12,12 @@
 const ACCENT = '#ef7a6d'; // --accent
 const ACCENT_STRONG = '#f08e7f'; // --accent-strong (gradient start)
 const ACCENT_DEEP = '#d8584b'; // brand-mark gradient end
-const PAGE_BG = '#0a0b0d'; // a touch below --bg, so the card reads as elevated
-const CARD_BG = '#141518'; // --bg-elev
-const CARD_BORDER = '#282a2e'; // --border
-const CHIP_BG = '#18191d'; // --surface
+// Three distinct dark tiers from the app palette: near-black canvas, an
+// elevated card, and a slightly lighter chip that nests visibly inside it.
+const PAGE_BG = '#0a0b0c'; // --bg canvas
+const CARD_BG = '#16171a'; // elevated surface
+const CARD_BORDER = '#2a2c31'; // hairline that reads against the card
+const CHIP_BG = '#1f2024'; // --surface-2, lighter than the card
 const HEADING = '#f4f5f9'; // --text
 const BODY = '#a9abb0'; // --text-2
 const SUBTLE = '#6d6e73'; // --text-3
@@ -145,9 +147,9 @@ export function renderEmail(opts: EmailLayoutOptions): string {
 	<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:${PAGE_BG};">${escapeHtml(opts.preheader)}</div>
 	<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${PAGE_BG};">
 		<tr>
-			<td align="center" style="padding:0 16px;background-image:radial-gradient(circle at 50% 0,rgba(239,122,109,0.10),transparent 62%);">
+			<td align="center" style="padding:0 16px;background-color:${PAGE_BG};">
 				<table role="presentation" width="448" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:448px;">
-					<tr><td align="center" style="padding:48px 0 26px;">${brandMark()}</td></tr>
+					<tr><td align="center" style="padding:48px 0 26px;background-color:${PAGE_BG};">${brandMark()}</td></tr>
 					<tr>
 						<td style="background:${CARD_BG};border:1px solid ${CARD_BORDER};border-radius:16px;padding:32px 32px 28px;box-shadow:${CARD_SHADOW};">
 							<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -160,7 +162,7 @@ export function renderEmail(opts: EmailLayoutOptions): string {
 						</td>
 					</tr>
 					<tr>
-						<td align="center" style="font-family:${FONT};font-size:11.5px;line-height:1.6;color:${FAINT};padding:22px 8px 44px;">
+						<td align="center" style="font-family:${FONT};font-size:11.5px;line-height:1.6;color:${FAINT};padding:22px 8px 44px;background-color:${PAGE_BG};">
 							Trackr · You received this email because of activity on your account.
 						</td>
 					</tr>
