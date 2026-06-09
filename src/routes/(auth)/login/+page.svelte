@@ -9,6 +9,7 @@
 	let { form }: { form: ActionData } = $props();
 	let submitting = $state(false);
 	let emailInput = $state<HTMLInputElement | null>(null);
+	let email = $state(form?.email ?? '');
 	let showPassword = $state(false);
 
 	const justReset = $derived(page.url.searchParams.get('reset') === '1');
@@ -76,7 +77,7 @@
 						required
 						autocomplete="email"
 						spellcheck="false"
-						value={form?.email ?? ''}
+						bind:value={email}
 						placeholder="you@example.com"
 						class="h-10 rounded-[8px] border border-border bg-surface px-3 text-[14px] text-text placeholder:text-text-4 transition-colors focus:border-border-strong focus:bg-surface-2"
 					/>
