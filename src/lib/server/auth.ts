@@ -41,9 +41,17 @@ export const auth = betterAuth({
 		enabled: true,
 		disableSignUp: true,
 		resetPasswordTokenExpiresIn: 60 * 60 * 24,
-		sendResetPassword: async ({ user, url }) => {
+		sendResetPassword: async ({ user, token }) => {
+			// Point at better-auth's API callback (`/api/auth/reset-password/:token`),
+			// which validates the token then redirects to the page in `callbackURL`
+			// with `?token=`. We build the path ourselves instead of trusting the
+			// `url` better-auth generates: with `ORIGIN` unset (host-based routing)
+			// its baseURL loses the `/api/auth` basePath, leaving a bare
+			// `/reset-password/:token` that hits no page route (404).
+			const callbackURL = encodeURIComponent('/reset-password');
+			const path = `/api/auth/reset-password/${token}?callbackURL=${callbackURL}`;
 			sendEmailFireAndForget(
-				passwordResetEmail({ to: user.email, resetUrl: withRequestOrigin(url) })
+				passwordResetEmail({ to: user.email, resetUrl: withRequestOrigin(path) })
 			);
 		}
 	},
