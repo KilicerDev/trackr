@@ -26,12 +26,15 @@
 		open: boolean;
 		onclose: () => void;
 		activity: ActivityItem[];
+		// Scopes the comment composer's @-mention list to people who can
+		// access this project (internal staff + explicit members).
+		projectId?: string | null;
 		// Display ids of tasks still loadable on the page; refs not in here
 		// (deleted/archived) render as plain text rather than a link.
 		taskIds?: string[];
 		onOpenTask?: (ref: string) => void;
 	}
-	let { open, onclose, activity, taskIds = [], onOpenTask }: Props = $props();
+	let { open, onclose, activity, projectId = null, taskIds = [], onOpenTask }: Props = $props();
 
 	const openableTasks = $derived(new Set(taskIds));
 
@@ -378,6 +381,7 @@
 			bind:value={commentBody}
 			placeholder={m.projects_comment_placeholder()}
 			{sending}
+			{projectId}
 			onsend={sendComment}
 		/>
 	</div>

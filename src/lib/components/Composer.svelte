@@ -19,6 +19,9 @@
 		// button and the internal-note toggle used by tickets). Omit for plain
 		// composers.
 		rightActions?: Snippet;
+		// Scope @-mention suggestions to people who can access this project
+		// (see MentionTextarea). Omit for org-level surfaces like tickets.
+		projectId?: string | null;
 	}
 
 	let {
@@ -28,7 +31,8 @@
 		disabled = false,
 		accent = 'default',
 		onsend,
-		rightActions
+		rightActions,
+		projectId = null
 	}: Props = $props();
 
 	function onKey(e: KeyboardEvent) {
@@ -47,6 +51,7 @@
 	<MentionTextarea
 		bind:value
 		onkeydown={onKey}
+		{projectId}
 		{placeholder}
 		rows={2}
 		disabled={disabled || sending}

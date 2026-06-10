@@ -75,6 +75,9 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 	// member's email to clients. Banned users are excluded for non-staff so
 	// disabled-account metadata isn't leaked either.
 	const trackrTeamFlag = isTrackrTeam(locals);
+	// Project visibility — Trackr internal team members see everything;
+	// everyone else sees only projects they're explicitly a member of.
+	const access = accessibleProjectIds(locals);
 	let visibleUserIds: Set<string> | null = null;
 	if (!trackrTeamFlag) {
 		const myOrgIds = (locals.memberships?.orgs ?? []).map((m) => m.orgId);
@@ -113,6 +116,36 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			? await userQuery.where(inArray(userTable.id, [...visibleUserIds]))
 			: [];
 
+	// Mention scoping: tag each user with whether they're internal staff and
+	// which (viewer-accessible) projects they're an explicit member of, so the
+	// task/project mention dropdowns offer only people who can actually see the
+	// resource — mirroring projectMentionRecipients on the notify path. Org-only
+	// client users (no project access) stay mentionable in tickets only.
+	const [internalMemberRows, projectMemberRows] = await Promise.all([
+		db
+			.select({ userId: organizationMember.userId })
+			.from(organizationMember)
+			.innerJoin(organization, eq(organization.id, organizationMember.orgId))
+			.where(eq(organization.isInternal, true)),
+		access.all
+			? db
+					.select({ projectId: projectMember.projectId, userId: projectMember.userId })
+					.from(projectMember)
+			: access.ids.size > 0
+				? db
+						.select({ projectId: projectMember.projectId, userId: projectMember.userId })
+						.from(projectMember)
+						.where(inArray(projectMember.projectId, [...access.ids]))
+				: Promise.resolve([] as { projectId: string; userId: string }[])
+	]);
+	const internalUserIds = new Set(internalMemberRows.map((r) => r.userId));
+	const projectIdsByUser = new Map<string, string[]>();
+	for (const r of projectMemberRows) {
+		const list = projectIdsByUser.get(r.userId);
+		if (list) list.push(r.projectId);
+		else projectIdsByUser.set(r.userId, [r.projectId]);
+	}
+
 	const users = userRows
 		// Hide banned accounts from non-staff so disabled-account state isn't
 		// leaked. Staff continue to see them to support moderation flows.
@@ -123,12 +156,11 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			email: u.email,
 			initials: initials(u.name),
 			color: userColor(u.id),
-			status: (u.banned ? 'disabled' : 'active') as 'active' | 'invited' | 'disabled'
+			status: (u.banned ? 'disabled' : 'active') as 'active' | 'invited' | 'disabled',
+			internal: internalUserIds.has(u.id),
+			projectIds: projectIdsByUser.get(u.id) ?? []
 		}));
 
-	// Project visibility — Trackr internal team members see everything;
-	// everyone else sees only projects they're explicitly a member of.
-	const access = accessibleProjectIds(locals);
 	const projectAccessFilter = access.all
 		? undefined
 		: access.ids.size > 0

@@ -72,8 +72,24 @@
 		currentUserId?: string;
 		isTrackrTeam?: boolean;
 		projects?: { id: string; key: string }[];
+		archivedProjects?: { id: string; key: string }[];
 		memberRoles?: { projects?: Record<string, string> };
 	};
+
+	// The open task's project id — scopes the comment composer's @-mention
+	// list to people who can actually see this task. Tasks store the project
+	// key, so resolve it via the layout's project lists (archived included so
+	// tasks on archived projects stay scoped too).
+	const taskProjectId = $derived.by(() => {
+		const t = task;
+		if (!t) return null;
+		const pd = page.data as LayoutShape;
+		return (
+			pd.projects?.find((p) => p.key === t.project)?.id ??
+			pd.archivedProjects?.find((p) => p.key === t.project)?.id ??
+			null
+		);
+	});
 
 	const canEdit = $derived.by(() => {
 		const t = task;
@@ -773,6 +789,7 @@
 					placeholder={m.tasks_write_a_comment()}
 					sending={commentSending}
 					onsend={sendComment}
+					projectId={taskProjectId}
 				>
 					{#snippet rightActions()}
 						<button

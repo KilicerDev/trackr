@@ -595,6 +595,7 @@
 	open={historyOpen}
 	onclose={() => (historyOpen = false)}
 	activity={data.activity}
+	projectId={data.project.id}
 	taskIds={data.tasks.map((t) => t.id)}
 	onOpenTask={(ref) => {
 		historyOpen = false;

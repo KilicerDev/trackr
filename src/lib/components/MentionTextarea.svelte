@@ -18,6 +18,9 @@
 		initials: string;
 		color: string;
 		status: 'active' | 'invited' | 'disabled';
+		// Mention-scoping fields supplied by the (app) layout users payload.
+		internal?: boolean;
+		projectIds?: string[];
 	};
 
 	interface Props {
@@ -30,6 +33,11 @@
 		class?: string;
 		// Host keydown (e.g. Composer's Cmd+Enter to send).
 		onkeydown?: (e: KeyboardEvent) => void;
+		// When set, only users who can access this project are offered:
+		// internal org members plus explicit project members. Mirrors the
+		// server's projectMentionRecipients filter so the dropdown never
+		// suggests someone whose mention would be silently dropped.
+		projectId?: string | null;
 	}
 	let {
 		value = $bindable(''),
@@ -37,7 +45,8 @@
 		disabled = false,
 		rows = 2,
 		class: cls = '',
-		onkeydown
+		onkeydown,
+		projectId = null
 	}: Props = $props();
 
 	let root = $state<HTMLDivElement | null>(null);
@@ -54,7 +63,9 @@
 
 	const candidates = $derived.by<MentionUser[]>(() => {
 		const all = ((page.data as { users?: MentionUser[] }).users ?? []).filter(
-			(u) => u.status !== 'disabled'
+			(u) =>
+				u.status !== 'disabled' &&
+				(!projectId || u.internal || (u.projectIds ?? []).includes(projectId))
 		);
 		if (!query) return all.slice(0, 6);
 		const needle = query.toLowerCase();
