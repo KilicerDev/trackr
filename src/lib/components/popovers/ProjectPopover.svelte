@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { autoPlace } from '$lib/actions/autoPlace';
 	import { fly } from 'svelte/transition';
@@ -78,17 +79,60 @@
 	const live = $derived(base.filter((p) => !isDormant(p.status)));
 	const dormant = $derived(base.filter((p) => isDormant(p.status)));
 
+	// Flat list of rows in render order, so keyboard navigation matches what's
+	// on screen regardless of search/grouping state.
+	const visible = $derived(
+		searching ? searchResults : expandedInactive ? [...live, ...dormant] : live
+	);
+
+	let inputEl = $state<HTMLInputElement | null>(null);
+	let listEl = $state<HTMLDivElement | null>(null);
+	// Start on the current selection so Enter without arrowing is a no-op pick.
+	let activeIndex = $state(0);
+
+	$effect(() => {
+		activeIndex = Math.max(0, visible.findIndex((p) => p.key === value));
+		inputEl?.focus();
+	});
+
 	function pick(key: string) {
 		onchange(key as ProjectId);
 		onclose();
 	}
+
+	async function move(delta: number) {
+		if (visible.length === 0) return;
+		activeIndex = (activeIndex + delta + visible.length) % visible.length;
+		await tick();
+		listEl?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' });
+	}
+
+	function onkeydown(e: KeyboardEvent) {
+		if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			move(1);
+		} else if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			move(-1);
+		} else if (e.key === 'Enter') {
+			e.preventDefault();
+			const p = visible[activeIndex];
+			if (p) pick(p.key);
+		} else if (e.key === 'Escape') {
+			e.preventDefault();
+			e.stopPropagation();
+			onclose();
+		}
+	}
 </script>
 
-{#snippet row(p: PickableProject)}
+{#snippet row(p: PickableProject, i: number)}
 	<button
 		type="button"
+		data-active={i === activeIndex}
 		onclick={() => pick(p.key)}
-		class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text {isDormant(p.status) ? 'opacity-60' : ''}"
+		onmouseenter={() => (activeIndex = i)}
+		class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-text-2 hover:text-text {isDormant(p.status) ? 'opacity-60' : ''} {i === activeIndex ? 'bg-surface-2 text-text' : ''}"
 	>
 		<span class="w-2 h-2 rounded-full shrink-0" style:background={p.color}></span>
 		<span class="text-[13px]">{p.name}</span>
@@ -107,34 +151,34 @@
 >
 	<div class="flex items-center gap-2 px-2 pt-1 pb-2 border-b border-border mb-1.5">
 		<span class="text-text-3"><Icon name="search" size={13} /></span>
-		<!-- svelte-ignore a11y_autofocus -->
 		<input
 			type="text"
+			bind:this={inputEl}
 			bind:value={q}
-			autofocus
+			{onkeydown}
 			placeholder={m.tasks_search_projects_placeholder()}
 			class="flex-1 bg-transparent border-0 outline-none text-[13px] placeholder:text-text-3"
 		/>
 	</div>
 
-	<div class="max-h-[300px] overflow-y-auto">
+	<div bind:this={listEl} class="max-h-[300px] overflow-y-auto">
 		{#if searching}
-			{#each searchResults as p (p.key)}
-				{@render row(p)}
+			{#each searchResults as p, i (p.key)}
+				{@render row(p, i)}
 			{/each}
 			{#if searchResults.length === 0}
 				<div class="px-2 py-3 text-[12.5px] text-text-3 text-center">{m.tasks_no_projects_match({ q })}</div>
 			{/if}
 		{:else}
-			{#each live as p (p.key)}
-				{@render row(p)}
+			{#each live as p, i (p.key)}
+				{@render row(p, i)}
 			{/each}
 
 			{#if dormant.length > 0}
 				{#if expandedInactive}
 					<div class="my-1 border-t border-border"></div>
-					{#each dormant as p (p.key)}
-						{@render row(p)}
+					{#each dormant as p, i (p.key)}
+						{@render row(p, live.length + i)}
 					{/each}
 				{:else}
 					<button
