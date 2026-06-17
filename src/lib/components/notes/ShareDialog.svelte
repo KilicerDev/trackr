@@ -1,0 +1,174 @@
+<script lang="ts">
+	import { browser } from '$app/environment';
+	import { invalidateAll } from '$app/navigation';
+	import { deserialize } from '$app/forms';
+	import type { ActionResult } from '@sveltejs/kit';
+	import Icon from '$lib/components/Icon.svelte';
+	import { confirm } from '$lib/components/confirm.svelte';
+	import { showToast } from '$lib/toast.svelte';
+	import { m } from '$lib/paraglide/messages';
+
+	type Link = {
+		id: string;
+		token: string;
+		role: string;
+		revokedAt: Date | string | null;
+	};
+
+	let {
+		open = $bindable(false),
+		noteId,
+		links
+	}: { open: boolean; noteId: string; links: Link[] } = $props();
+
+	let busy = $state(false);
+
+	const activeLinks = $derived(links.filter((l) => !l.revokedAt));
+
+	function shareUrl(token: string): string {
+		const origin = browser ? location.origin : '';
+		return `${origin}/notes/shared/${token}`;
+	}
+
+	async function post(action: string, body: FormData): Promise<ActionResult> {
+		const res = await fetch(`/notes/${noteId}?/${action}`, {
+			method: 'POST',
+			body,
+			headers: { 'x-sveltekit-action': 'true' }
+		});
+		return deserialize(await res.text()) as ActionResult;
+	}
+
+	async function createLink(role: 'read' | 'write') {
+		if (busy) return;
+		busy = true;
+		const fd = new FormData();
+		fd.set('role', role);
+		const result = await post('share', fd);
+		busy = false;
+		if (result.type === 'success' && result.data?.token) {
+			await navigator.clipboard?.writeText(shareUrl(result.data.token as string)).catch(() => {});
+			showToast('ok', m.notes_toast_link_created());
+			await invalidateAll();
+		} else {
+			showToast('err', m.notes_toast_share_failed());
+		}
+	}
+
+	async function copyLink(token: string) {
+		await navigator.clipboard?.writeText(shareUrl(token)).then(
+			() => showToast('ok', m.notes_toast_link_copied()),
+			() => showToast('err', m.notes_toast_copy_failed())
+		);
+	}
+
+	async function revoke(id: string) {
+		const ok = await confirm({
+			title: m.notes_confirm_revoke_title(),
+			message: m.notes_confirm_revoke_message(),
+			confirmLabel: m.notes_revoke(),
+			tone: 'danger'
+		});
+		if (!ok) return;
+		const fd = new FormData();
+		fd.set('linkId', id);
+		const result = await post('revokeShare', fd);
+		if (result.type === 'success') {
+			showToast('ok', m.notes_toast_link_revoked());
+			await invalidateAll();
+		} else {
+			showToast('err', m.notes_toast_revoke_failed());
+		}
+	}
+</script>
+
+{#if open}
+	<div
+		class="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm p-4"
+		role="presentation"
+		onclick={(e) => {
+			if (e.target === e.currentTarget) open = false;
+		}}
+	>
+		<div
+			class="w-full max-w-[460px] rounded-2xl border border-border bg-bg-elev shadow-2xl"
+			role="dialog"
+			aria-modal="true"
+		>
+			<div class="flex items-center justify-between px-5 py-4 border-b border-border/70">
+				<h2 class="text-[15px] font-semibold text-text">{m.notes_share_title()}</h2>
+				<button
+					type="button"
+					onclick={() => (open = false)}
+					class="grid place-items-center w-7 h-7 rounded-md text-text-3 hover:text-text hover:bg-surface-2"
+					aria-label={m.common_cancel()}
+				>
+					<Icon name="x" size={15} />
+				</button>
+			</div>
+
+			<div class="px-5 py-4 grid gap-4">
+				<p class="text-[12.5px] text-text-3 leading-relaxed">{m.notes_share_hint()}</p>
+
+				<div class="flex gap-2">
+					<button
+						type="button"
+						disabled={busy}
+						onclick={() => createLink('read')}
+						class="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-text-2 hover:border-border-strong disabled:opacity-50"
+					>
+						<Icon name="link" size={13} />
+						{m.notes_share_create_read()}
+					</button>
+					<button
+						type="button"
+						disabled={busy}
+						onclick={() => createLink('write')}
+						class="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-text-2 hover:border-border-strong disabled:opacity-50"
+					>
+						<Icon name="link" size={13} />
+						{m.notes_share_create_write()}
+					</button>
+				</div>
+
+				{#if activeLinks.length > 0}
+					<div class="grid gap-1.5">
+						{#each activeLinks as link (link.id)}
+							<div class="flex items-center gap-2 rounded-lg bg-surface px-3 py-2">
+								<span
+									class="text-[10.5px] font-mono uppercase tracking-wide rounded px-1.5 py-0.5 {link.role ===
+									'write'
+										? 'bg-accent/15 text-accent'
+										: 'bg-surface-2 text-text-3'}"
+								>
+									{link.role === 'write' ? m.notes_role_write() : m.notes_role_read()}
+								</span>
+								<span class="flex-1 truncate text-[12px] text-text-4 font-mono">
+									/notes/shared/{link.token.slice(0, 10)}…
+								</span>
+								<button
+									type="button"
+									onclick={() => copyLink(link.token)}
+									aria-label={m.notes_toast_link_copied()}
+									class="grid place-items-center w-6 h-6 rounded text-text-3 hover:text-text hover:bg-surface-2"
+								>
+									<Icon name="paperclip" size={13} />
+								</button>
+								<button
+									type="button"
+									onclick={() => revoke(link.id)}
+									aria-label={m.notes_revoke()}
+									class="grid place-items-center w-6 h-6 rounded text-text-3 hover:text-accent hover:bg-surface-2"
+								>
+									<Icon name="trash" size={13} />
+								</button>
+							</div>
+						{/each}
+					</div>
+				{:else}
+					<p class="text-[12px] text-text-4 text-center py-2">{m.notes_share_no_links()}</p>
+				{/if}
+			</div>
+		</div>
+	</div>
+{/if}

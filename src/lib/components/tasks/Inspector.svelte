@@ -31,6 +31,7 @@
 	import EstimatePopover from '../popovers/EstimatePopover.svelte';
 	import TagsPopover from '../popovers/TagsPopover.svelte';
 	import TaskMenuPopover from '../popovers/TaskMenuPopover.svelte';
+	import NewMeetingDialog from '../notes/NewMeetingDialog.svelte';
 	import {
 		TRACKR_PRIORITIES,
 		TRACKR_STATUSES,
@@ -90,6 +91,40 @@
 			null
 		);
 	});
+
+	const isTeam = $derived(!!(page.data as LayoutShape).isTrackrTeam);
+
+	// Meeting notes linked to this task (notes feature is team-only). Fetched on
+	// demand when a task opens — kept out of the bulk task load.
+	type LinkedNote = { id: string; title: string; meetingDate: string | null };
+	type MeetingTemplate = { id: string; name: string; icon: string };
+	let meetingNotes = $state<LinkedNote[]>([]);
+	let meetingTemplates = $state<MeetingTemplate[]>([]);
+	let newMeetingOpen = $state(false);
+
+	async function loadMeetingNotes(uuid: string) {
+		try {
+			const res = await fetch(`/api/tasks/${uuid}/meetings`);
+			if (!res.ok) return;
+			const data = (await res.json()) as { notes: LinkedNote[]; templates: MeetingTemplate[] };
+			// Ignore if the open task changed while we were fetching.
+			if (task?.uuid !== uuid) return;
+			meetingNotes = data.notes;
+			meetingTemplates = data.templates;
+		} catch {
+			/* non-fatal — section just stays empty */
+		}
+	}
+
+	$effect(() => {
+		const uuid = task?.uuid;
+		meetingNotes = [];
+		if (uuid && isTeam) void loadMeetingNotes(uuid);
+	});
+
+	function meetingDateLabel(d: string | null): string {
+		return d ? formatDateLong(d) : '';
+	}
 
 	const canEdit = $derived.by(() => {
 		const t = task;
@@ -718,6 +753,50 @@
 				</div>
 			{/if}
 
+			{#if isTeam && draft.uuid}
+				<div class="mb-6">
+					<div class="flex items-center justify-between mb-2">
+						<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">
+							{m.notes_section_meetings()}{#if meetingNotes.length}<span class="ml-1.5 text-text-3"
+									>{meetingNotes.length}</span
+								>{/if}
+						</div>
+						{#if taskProjectId}
+							<button
+								type="button"
+								onclick={() => (newMeetingOpen = true)}
+								class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-dashed border-border text-[12px] text-text-3 hover:text-text hover:border-border-strong transition-colors"
+							>
+								<Icon name="plus" size={12} />
+								{m.notes_new_meeting()}
+							</button>
+						{/if}
+					</div>
+					{#if meetingNotes.length}
+						<div class="grid gap-1.5">
+							{#each meetingNotes as n (n.id)}
+								<a
+									href="/notes/{n.id}"
+									class="group flex items-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-2 hover:border-border-strong transition-colors"
+								>
+									<Icon name="users" size={14} class="text-text-3 shrink-0" />
+									<span class="flex-1 truncate text-[13px] text-text-2 group-hover:text-text"
+										>{n.title || m.notes_untitled()}</span
+									>
+									{#if n.meetingDate}
+										<span class="text-[11.5px] text-text-4 shrink-0"
+											>{meetingDateLabel(n.meetingDate)}</span
+										>
+									{/if}
+								</a>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-[12.5px] text-text-3">{m.notes_task_no_meetings()}</p>
+					{/if}
+				</div>
+			{/if}
+
 			<div class="mt-4">
 				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-3">{m.tasks_activity()}</div>
 				<div class="mb-4">
@@ -806,5 +885,21 @@
 				<input bind:this={commentFileInput} type="file" multiple hidden onchange={onCommentPick} />
 			</AttachmentDropzone>
 		</div>
+
+		{#if isTeam && taskProjectId}
+			<NewMeetingDialog
+				bind:open={newMeetingOpen}
+				projects={(page.data as {
+					projects?: { id: string; key: string; name: string; color: string; status: string }[];
+				}).projects ?? []}
+				templates={meetingTemplates}
+				tasks={[]}
+				presetProjectId={taskProjectId}
+				presetTaskId={draft.uuid ?? ''}
+				presetTaskRef={draft.id}
+				presetTaskTitle={draft.title}
+				locked
+			/>
+		{/if}
 	{/if}
 </Drawer>

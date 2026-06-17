@@ -687,6 +687,144 @@ export const wikiPageRelations = relations(wikiPage, ({ one }) => ({
 	})
 }));
 
+// ─── Notes ───────────────────────────────────────────────────────────────
+// A note owns a collaborative `document` like a wiki page, but lives outside the
+// wiki tree. Two kinds:
+//   - 'quick'   : frictionless personal capture. Owner-private; the owner can
+//                 mint share links (read / read-write) for internal teammates.
+//   - 'meeting' : time-anchored, REQUIRED to link a project or task; created
+//                 from an optional template. Access is inherited from the
+//                 linked project/task.
+// The whole feature is internal-team gated (like wiki); sharing widens a single
+// quick note to specific teammates via `note_access`.
+
+export const noteTemplate = pgTable('note_template', {
+	id: text('id').primaryKey(),
+	name: text('name').notNull(),
+	icon: text('icon').notNull().default('file-text'),
+	// null owner = system/seeded template available to everyone.
+	ownerId: text('owner_id').references(() => user.id, { onDelete: 'cascade' }),
+	isSystem: boolean('is_system').notNull().default(false),
+	// Skeleton stored as HTML; applied by seeding a new note's `document.body_html`
+	// and letting Hocuspocus' onLoadDocument build the ydoc lazily on first open.
+	bodyHtml: text('body_html').notNull().default(''),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at')
+		.defaultNow()
+		.$onUpdate(() => /* @__PURE__ */ new Date())
+		.notNull()
+});
+
+export type NoteTemplate = typeof noteTemplate.$inferSelect;
+
+export const note = pgTable(
+	'note',
+	{
+		id: text('id').primaryKey(),
+		kind: text('kind').notNull().default('quick'), // 'quick' | 'meeting'
+		title: text('title').notNull().default(''),
+		icon: text('icon').notNull().default('file-text'),
+		documentId: text('document_id').references(() => document.id, { onDelete: 'set null' }),
+		ownerId: text('owner_id').references(() => user.id, { onDelete: 'set null' }),
+		updatedById: text('updated_by_id').references(() => user.id, { onDelete: 'set null' }),
+		pinned: boolean('pinned').notNull().default(false),
+		// Meeting-only (null for quick notes).
+		meetingDate: timestamp('meeting_date'),
+		projectId: text('project_id').references(() => project.id, { onDelete: 'set null' }),
+		taskId: text('task_id').references(() => task.id, { onDelete: 'set null' }),
+		templateId: text('template_id').references(() => noteTemplate.id, { onDelete: 'set null' }),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at')
+			.defaultNow()
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull()
+	},
+	(t) => [
+		index('note_owner_idx').on(t.ownerId, t.updatedAt),
+		index('note_kind_date_idx').on(t.kind, t.meetingDate)
+	]
+);
+
+export type Note = typeof note.$inferSelect;
+
+// A share link the owner mints for a quick note. The websocket only carries the
+// viewer's userId, so the token alone can't authorize a collab connection;
+// redeeming a link resolves it to a per-user `note_access` row instead.
+export const noteShareLink = pgTable('note_share_link', {
+	id: text('id').primaryKey(),
+	noteId: text('note_id')
+		.notNull()
+		.references(() => note.id, { onDelete: 'cascade' }),
+	token: text('token').notNull().unique(),
+	role: text('role').notNull().default('read'), // 'read' | 'write'
+	createdById: text('created_by_id').references(() => user.id, { onDelete: 'set null' }),
+	revokedAt: timestamp('revoked_at'),
+	createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export type NoteShareLink = typeof noteShareLink.$inferSelect;
+
+// Per-user grant resolved when a teammate redeems a share link. Read by collab
+// auth (resolveNoteRole) and the "shared with me" list. Owner is implicit write.
+export const noteAccess = pgTable(
+	'note_access',
+	{
+		id: text('id').primaryKey(),
+		noteId: text('note_id')
+			.notNull()
+			.references(() => note.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		role: text('role').notNull().default('read'), // 'read' | 'write'
+		grantedVia: text('granted_via').references(() => noteShareLink.id, { onDelete: 'set null' }),
+		createdAt: timestamp('created_at').defaultNow().notNull()
+	},
+	(t) => [uniqueIndex('note_access_note_user_idx').on(t.noteId, t.userId)]
+);
+
+export type NoteAccess = typeof noteAccess.$inferSelect;
+
+export const noteRelations = relations(note, ({ one, many }) => ({
+	document: one(document, {
+		fields: [note.documentId],
+		references: [document.id]
+	}),
+	owner: one(user, {
+		fields: [note.ownerId],
+		references: [user.id],
+		relationName: 'note_owner'
+	}),
+	updatedBy: one(user, {
+		fields: [note.updatedById],
+		references: [user.id],
+		relationName: 'note_updated_by'
+	}),
+	project: one(project, {
+		fields: [note.projectId],
+		references: [project.id]
+	}),
+	task: one(task, {
+		fields: [note.taskId],
+		references: [task.id]
+	}),
+	template: one(noteTemplate, {
+		fields: [note.templateId],
+		references: [noteTemplate.id]
+	}),
+	shareLinks: many(noteShareLink),
+	access: many(noteAccess)
+}));
+
+export const noteShareLinkRelations = relations(noteShareLink, ({ one }) => ({
+	note: one(note, { fields: [noteShareLink.noteId], references: [note.id] })
+}));
+
+export const noteAccessRelations = relations(noteAccess, ({ one }) => ({
+	note: one(note, { fields: [noteAccess.noteId], references: [note.id] }),
+	user: one(user, { fields: [noteAccess.userId], references: [user.id] })
+}));
+
 // ─── Tickets ───────────────────────────────────────────────────────────────
 // Org-scoped support requests. Clients (org.client role) see only tickets in
 // their own org; internal Trackr staff act as agents and see every org's

@@ -13,7 +13,11 @@
 import { Extension, type Editor } from '@tiptap/core';
 import { Plugin } from '@tiptap/pm/state';
 import { showToast } from '$lib/toast.svelte';
-import { MAX_UPLOAD_BYTES, formatBytes } from '$lib/attachments/config';
+import {
+	MAX_UPLOAD_BYTES,
+	formatBytes,
+	type AttachmentEntityType
+} from '$lib/attachments/config';
 
 declare module '@tiptap/core' {
 	interface Commands<ReturnType> {
@@ -25,12 +29,19 @@ declare module '@tiptap/core' {
 }
 
 export interface WikiImageUploadOptions {
-	/** The wiki_page id these uploads attach to. */
+	/** The id these uploads attach to (wiki_page id, note id, …). */
 	entityId: string;
+	/** Polymorphic parent kind; defaults to wiki pages. */
+	entityType: AttachmentEntityType;
 }
 
 /** Upload one image file and insert it at the current selection. */
-async function uploadAndInsert(editor: Editor, entityId: string, file: File): Promise<void> {
+async function uploadAndInsert(
+	editor: Editor,
+	entityType: AttachmentEntityType,
+	entityId: string,
+	file: File
+): Promise<void> {
 	if (!file.type.startsWith('image/')) {
 		showToast('err', 'Only images can be embedded here.');
 		return;
@@ -40,7 +51,7 @@ async function uploadAndInsert(editor: Editor, entityId: string, file: File): Pr
 		return;
 	}
 	const form = new FormData();
-	form.set('entityType', 'wiki_page');
+	form.set('entityType', entityType);
 	form.set('entityId', entityId);
 	form.set('file', file);
 	const res = await fetch('/api/attachments', { method: 'POST', body: form });
@@ -67,7 +78,7 @@ export const WikiImageUpload = Extension.create<WikiImageUploadOptions>({
 	name: 'wikiImageUpload',
 
 	addOptions() {
-		return { entityId: '' };
+		return { entityId: '', entityType: 'wiki_page' as AttachmentEntityType };
 	},
 
 	addCommands() {
@@ -75,14 +86,15 @@ export const WikiImageUpload = Extension.create<WikiImageUploadOptions>({
 			openWikiImagePicker:
 				() =>
 				({ editor }) => {
-					const entityId = this.options.entityId;
+					const { entityId, entityType } = this.options;
 					const input = document.createElement('input');
 					input.type = 'file';
 					input.accept = 'image/*';
 					input.multiple = true;
 					input.style.display = 'none';
 					input.addEventListener('change', () => {
-						for (const file of imageFiles(input.files)) void uploadAndInsert(editor, entityId, file);
+						for (const file of imageFiles(input.files))
+							void uploadAndInsert(editor, entityType, entityId, file);
 						input.remove();
 					});
 					document.body.appendChild(input);
@@ -94,7 +106,7 @@ export const WikiImageUpload = Extension.create<WikiImageUploadOptions>({
 
 	addProseMirrorPlugins() {
 		const editor = this.editor;
-		const entityId = this.options.entityId;
+		const { entityId, entityType } = this.options;
 		return [
 			new Plugin({
 				props: {
@@ -102,7 +114,7 @@ export const WikiImageUpload = Extension.create<WikiImageUploadOptions>({
 						const files = imageFiles(event.clipboardData?.files);
 						if (!files.length) return false; // let normal paste proceed
 						event.preventDefault();
-						for (const file of files) void uploadAndInsert(editor, entityId, file);
+						for (const file of files) void uploadAndInsert(editor, entityType, entityId, file);
 						return true;
 					},
 					handleDrop: (_view, event) => {
@@ -110,7 +122,7 @@ export const WikiImageUpload = Extension.create<WikiImageUploadOptions>({
 						const files = imageFiles(dt?.files);
 						if (!files.length) return false;
 						event.preventDefault();
-						for (const file of files) void uploadAndInsert(editor, entityId, file);
+						for (const file of files) void uploadAndInsert(editor, entityType, entityId, file);
 						return true;
 					}
 				}

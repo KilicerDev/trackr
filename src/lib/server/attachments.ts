@@ -24,6 +24,7 @@ import {
 	ticketMessage,
 	task,
 	projectActivity,
+	note,
 	type Attachment
 } from '$lib/server/db/app.schema';
 import { storage } from '$lib/server/storage';
@@ -426,6 +427,16 @@ export async function resolveEntityContext(
 		case 'wiki_page':
 			// Wiki is Trackr-team-only; no org/project scope.
 			return { orgId: null, projectId: null, ticketOwners: [] };
+		case 'note': {
+			// Notes are Trackr-team-only (like wiki); just prove existence.
+			const [row] = await db
+				.select({ id: note.id })
+				.from(note)
+				.where(eq(note.id, entityId))
+				.limit(1);
+			if (!row) return null;
+			return { orgId: null, projectId: null, ticketOwners: [] };
+		}
 	}
 }
 
@@ -474,6 +485,7 @@ export async function authorizeAttachmentAccess(
 			return can(locals, 'project.tasks.read', { projectId });
 		}
 		case 'wiki_page':
+		case 'note':
 			// Both read and write require Trackr-team membership.
 			return isTrackrTeam(locals);
 	}
@@ -502,6 +514,7 @@ export async function authorizeAttachmentDelete(
 				: false;
 		}
 		case 'wiki_page':
+		case 'note':
 			return isTrackrTeam(locals);
 	}
 }

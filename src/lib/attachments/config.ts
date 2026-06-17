@@ -33,6 +33,7 @@ export const ATTACHMENT_ENTITY_TYPES = [
 	'ticket',
 	'task',
 	'wiki_page',
+	'note',
 	'ticket_message',
 	'project_activity'
 ] as const;

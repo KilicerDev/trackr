@@ -9,16 +9,19 @@
 	import { collabSchemaExtensions, COLLAB_FIELD } from '$lib/collab/extensions';
 	import { SlashCommand } from './slash-command.svelte';
 	import { WikiImageUpload } from './image-upload';
+	import type { AttachmentEntityType } from '$lib/attachments/config';
 	import { m } from '$lib/paraglide/messages';
 	import './wiki-editor.css';
 
 	export type PresenceUser = { clientId: number; isSelf: boolean; name: string; color: string };
 
 	interface Props {
-		/** The collaborative document id (wiki_page.documentId). */
+		/** The collaborative document id (wiki_page.documentId / note.documentId). */
 		documentId: string;
-		/** The wiki_page id — used to scope uploaded image attachments. */
+		/** The parent entity id — used to scope uploaded image attachments. */
 		pageId: string;
+		/** Polymorphic attachment parent kind. Defaults to wiki pages. */
+		entityType?: AttachmentEntityType;
 		/** Identity shown on this user's remote caret. */
 		user: { name: string; color: string };
 		editable?: boolean;
@@ -32,6 +35,7 @@
 	let {
 		documentId,
 		pageId,
+		entityType = 'wiki_page',
 		user,
 		editable = true,
 		placeholder = m.wiki_editor_placeholder_commands(),
@@ -101,7 +105,7 @@
 				CollaborationCaret.configure({ provider, user }),
 				Placeholder.configure({ placeholder }),
 				SlashCommand,
-				WikiImageUpload.configure({ entityId: pageId })
+				WikiImageUpload.configure({ entityId: pageId, entityType })
 			],
 			onUpdate: ({ editor }) => onUpdate?.(editor),
 			onCreate: ({ editor }) => onReady?.(editor)

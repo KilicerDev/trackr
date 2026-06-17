@@ -43,9 +43,17 @@
             href: "/tasks",
             count: taskCount,
         },
-        // Wiki is internal-only — hidden from client / external-org users.
+        // Wiki + Notes are internal-only — hidden from client / external-org users.
         ...(isTrackrTeam
-            ? [{ key: "wiki", label: m.shell_nav_wiki(), icon: "book", href: "/wiki" }]
+            ? [
+                  { key: "wiki", label: m.shell_nav_wiki(), icon: "book", href: "/wiki" },
+                  {
+                      key: "notes",
+                      label: m.shell_nav_notes(),
+                      icon: "file",
+                      href: "/notes",
+                  },
+              ]
             : []),
     ]);
 

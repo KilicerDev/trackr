@@ -8,6 +8,7 @@
 	import type { ProjectId, StatusId, Task } from '$lib/types';
 	import type { PageData } from './$types';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import { readView, saveView } from '$lib/viewState';
 	import { m } from '$lib/paraglide/messages';
 
@@ -86,6 +87,19 @@
 		const id = manualSelectedId ?? page.url.searchParams.get('task');
 		return id ? data.tasks.find((t) => t.id === id) ?? null : null;
 	});
+
+	// Closing must clear BOTH the manual selection and the `?task=` deep-link
+	// param — otherwise a task opened from an external link (e.g. a meeting note)
+	// stays stuck open because `selected` keeps reading the param.
+	function closeInspector() {
+		manualSelectedId = null;
+		if (page.url.searchParams.has('task')) {
+			const url = new URL(page.url);
+			url.searchParams.delete('task');
+			const qs = url.searchParams.toString();
+			void goto(qs ? `?${qs}` : '?', { keepFocus: true, noScroll: true, replaceState: true });
+		}
+	}
 	let creating = $state(false);
 	let createPrefill = $state<{ project?: ProjectId; status?: StatusId } | undefined>(undefined);
 
@@ -171,7 +185,7 @@
 	/>
 {/if}
 
-<Inspector task={selected} onclose={() => (manualSelectedId = null)} users={data.users} />
+<Inspector task={selected} onclose={closeInspector} users={data.users} />
 
 <CreateTaskModal
 	open={creating}

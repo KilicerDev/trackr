@@ -17,9 +17,10 @@ import { JSDOM } from 'jsdom';
 import * as Y from 'yjs';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { document, wikiPage } from '$lib/server/db/app.schema';
+import { document, note, wikiPage } from '$lib/server/db/app.schema';
 import { collabSchemaExtensions, COLLAB_FIELD } from '$lib/collab/extensions';
 import { resolveCollabSession } from './auth';
+import { resolveNoteRole, touchNoteByDocument } from '$lib/server/notes';
 
 declare global {
 	var __hocuspocus: Hocuspocus | undefined;
@@ -47,20 +48,47 @@ function build(): Hocuspocus {
 	return new Hocuspocus({
 		name: 'trackr-collab',
 
-		async onAuthenticate({ token, documentName, context }) {
+		async onAuthenticate({ token, documentName, context, connectionConfig }) {
 			const session = await resolveCollabSession(token);
+			// The whole collab surface (wiki + notes) is internal-team gated.
 			if (!session.isTrackrTeam) throw new Error('forbidden');
 			// documentName === document.id — confirm a wiki page references it.
-			const [link] = await db
-				.select({ pageId: wikiPage.id })
+			// documentName === document.id. It belongs to exactly one feature row:
+			// a wiki page (team-wide) or a note (owner / shared / project-scoped).
+			const [page] = await db
+				.select({ id: wikiPage.id })
 				.from(wikiPage)
 				.where(eq(wikiPage.documentId, documentName))
 				.limit(1);
-			if (!link) throw new Error('not found');
-			// Stash for store() so we can attribute the edit.
-			context.userId = session.userId;
-			context.pageId = link.pageId;
-			return { userId: session.userId, pageId: link.pageId };
+			if (page) {
+				context.userId = session.userId;
+				context.entityType = 'wiki_page';
+				context.entityId = page.id;
+				return { userId: session.userId };
+			}
+
+			const [n] = await db
+				.select({
+					id: note.id,
+					kind: note.kind,
+					ownerId: note.ownerId,
+					projectId: note.projectId
+				})
+				.from(note)
+				.where(eq(note.documentId, documentName))
+				.limit(1);
+			if (n) {
+				const role = await resolveNoteRole(n, session.userId, session.memberships);
+				if (!role) throw new Error('forbidden');
+				// Read-only grants connect but can't mutate — Hocuspocus enforces it.
+				if (role === 'read') connectionConfig.readOnly = true;
+				context.userId = session.userId;
+				context.entityType = 'note';
+				context.entityId = n.id;
+				return { userId: session.userId };
+			}
+
+			throw new Error('not found');
 		},
 
 		extensions: [
@@ -88,15 +116,21 @@ function build(): Hocuspocus {
 						.update(document)
 						.set({ ydoc: state, ...(html !== null ? { bodyHtml: html } : {}), updatedAt: new Date() })
 						.where(eq(document.id, documentName));
-					// Keep the wiki row's "edited" signal fresh for list/recent views,
-					// attributed to the most recent editor.
-					const userId = (lastContext as { userId?: string } | undefined)?.userId;
-					const wikiPatch = {
-						...(html !== null ? { body: html } : {}),
-						...(userId ? { updatedById: userId } : {})
-					};
-					if (Object.keys(wikiPatch).length)
-						await db.update(wikiPage).set(wikiPatch).where(eq(wikiPage.documentId, documentName));
+					// Keep the owning row's "edited" signal fresh for list/recent views,
+					// attributed to the most recent editor. The document belongs to either
+					// a wiki page or a note (resolved at auth time, stashed in context).
+					const ctx = lastContext as { userId?: string; entityType?: string } | undefined;
+					const userId = ctx?.userId;
+					if (ctx?.entityType === 'note') {
+						if (userId) await touchNoteByDocument(documentName, userId);
+					} else {
+						const wikiPatch = {
+							...(html !== null ? { body: html } : {}),
+							...(userId ? { updatedById: userId } : {})
+						};
+						if (Object.keys(wikiPatch).length)
+							await db.update(wikiPage).set(wikiPatch).where(eq(wikiPage.documentId, documentName));
+					}
 				}
 			})
 		],

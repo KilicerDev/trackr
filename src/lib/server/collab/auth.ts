@@ -7,6 +7,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { env } from '$env/dynamic/private';
 import { loadMemberships } from '$lib/server/permissions';
+import type { Memberships } from '$lib/permissions';
 
 const TTL_SECONDS = 5 * 60;
 
@@ -30,7 +31,11 @@ export function signCollabToken(userId: string): string {
 	return `${payload}.${sign(payload)}`;
 }
 
-export type CollabSession = { userId: string; isTrackrTeam: boolean };
+export type CollabSession = {
+	userId: string;
+	isTrackrTeam: boolean;
+	memberships: Memberships;
+};
 
 /** Verify a collab token and resolve the user's team membership. Throws if invalid/expired. */
 export async function resolveCollabSession(token: string | undefined): Promise<CollabSession> {
@@ -53,5 +58,9 @@ export async function resolveCollabSession(token: string | undefined): Promise<C
 	if (data.exp < Math.floor(Date.now() / 1000)) throw new Error('expired');
 
 	const memberships = await loadMemberships(data.userId);
-	return { userId: data.userId, isTrackrTeam: memberships.orgs.some((o) => o.isInternal) };
+	return {
+		userId: data.userId,
+		isTrackrTeam: memberships.orgs.some((o) => o.isInternal),
+		memberships
+	};
 }
