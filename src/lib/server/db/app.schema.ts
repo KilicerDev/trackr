@@ -283,6 +283,13 @@ export const task = pgTable(
 		endDate: timestamp('end_date'),
 		estimateMinutes: integer('estimate_minutes'),
 		tags: text('tags').array().notNull().default([]),
+		// Lightweight in-task checklist (tick-boxes), distinct from subtasks.
+		// Stored inline as an ordered array so progress (done/total) is a trivial
+		// read for cards/rows without joins.
+		checklist: jsonb('checklist')
+			.$type<{ id: string; text: string; done: boolean }[]>()
+			.notNull()
+			.default([]),
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
 		archivedAt: timestamp('archived_at'),
 		deletedAt: timestamp('deleted_at'),

@@ -222,6 +222,24 @@ export const actions: Actions = {
 			const v = String(form.get('description'));
 			patch.description = v.trim() || null;
 		}
+		// Checklist: full array sent as JSON. Sanitized to {id,text,done}, empty
+		// text dropped, capped so a runaway payload can't bloat the row.
+		if (form.has('checklist')) {
+			try {
+				const raw = JSON.parse(String(form.get('checklist')));
+				if (!Array.isArray(raw)) return fail(400, { message: m.tasks_err_invalid_checklist() });
+				patch.checklist = raw
+					.slice(0, 100)
+					.map((it) => ({
+						id: typeof it?.id === 'string' && it.id ? it.id : crypto.randomUUID(),
+						text: String(it?.text ?? '').trim().slice(0, 500),
+						done: !!it?.done
+					}))
+					.filter((it) => it.text.length > 0);
+			} catch {
+				return fail(400, { message: m.tasks_err_invalid_checklist() });
+			}
+		}
 		if (form.has('due')) {
 			const v = String(form.get('due')).trim();
 			patch.dueDate = v ? new Date(v) : null;

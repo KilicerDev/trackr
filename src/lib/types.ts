@@ -40,6 +40,12 @@ export interface Project {
 	icon: string;
 }
 
+export interface ChecklistItem {
+	id: string;
+	text: string;
+	done: boolean;
+}
+
 export interface Task {
 	id: string;
 	/** Real database UUID (distinct from `id`, which is the display ref). */
@@ -62,6 +68,7 @@ export interface Task {
 	createdBy?: string;
 	createdAt?: string;
 	description?: string;
+	checklist?: ChecklistItem[];
 	attachments?: { name: string; size: string }[];
 	/** Real uploaded attachments (populated from the DB by loadTasks). */
 	files?: import('$lib/attachments/config').AttachmentDTO[];

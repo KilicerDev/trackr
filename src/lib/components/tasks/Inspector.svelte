@@ -273,6 +273,43 @@
 		}
 	});
 
+	// ─── Checklist ───────────────────────────────────────────────────────────
+	let newChecklistItem = $state('');
+	const checklistItems = $derived(draft?.checklist ?? []);
+	const checklistDone = $derived(checklistItems.filter((it) => it.done).length);
+
+	function saveChecklist() {
+		if (!draft) return;
+		void postAction('update', 'checklist', { checklist: JSON.stringify(draft.checklist ?? []) });
+	}
+	function addChecklistItem() {
+		const text = newChecklistItem.trim();
+		if (!text || !draft) return;
+		draft.checklist = [...(draft.checklist ?? []), { id: crypto.randomUUID(), text, done: false }];
+		newChecklistItem = '';
+		saveChecklist();
+	}
+	function toggleChecklistItem(id: string) {
+		if (!draft) return;
+		draft.checklist = (draft.checklist ?? []).map((it) =>
+			it.id === id ? { ...it, done: !it.done } : it
+		);
+		saveChecklist();
+	}
+	function editChecklistItem(id: string, text: string) {
+		if (!draft) return;
+		const t = text.trim();
+		draft.checklist = (draft.checklist ?? [])
+			.map((it) => (it.id === id ? { ...it, text: t } : it))
+			.filter((it) => it.text.length > 0);
+		saveChecklist();
+	}
+	function removeChecklistItem(id: string) {
+		if (!draft) return;
+		draft.checklist = (draft.checklist ?? []).filter((it) => it.id !== id);
+		saveChecklist();
+	}
+
 	type PopId =
 		| 'type'
 		| 'status'
@@ -688,6 +725,89 @@
 				}}
 				class="w-full resize-none bg-transparent border-0 outline-none text-[13.5px] leading-relaxed text-text-2 mb-5 placeholder:text-text-4 min-h-[60px]"
 			></textarea>
+
+			{#if canEdit || checklistItems.length > 0}
+				{@const total = checklistItems.length}
+				{@const allDone = total > 0 && checklistDone === total}
+				<div class="mb-6">
+					<div class="flex items-center gap-2.5 mb-2.5">
+						<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{m.tasks_checklist()}</div>
+						{#if total > 0}
+							<span class="font-mono text-[11px] {allDone ? 'text-[#7fc8a9]' : 'text-text-3'}">
+								{checklistDone}/{total}
+							</span>
+							<div class="ml-auto h-1.5 w-24 rounded-full bg-surface-2 overflow-hidden">
+								<div
+									class="h-full rounded-full transition-all duration-300 {allDone
+										? 'bg-[#7fc8a9]'
+										: 'bg-accent'}"
+									style:width="{(checklistDone / total) * 100}%"
+								></div>
+							</div>
+						{/if}
+					</div>
+					<div class="rounded-xl border border-border bg-surface/40 divide-y divide-border overflow-hidden">
+						{#each checklistItems as item (item.id)}
+							<div class="group flex items-center gap-2.5 px-2.5 py-2 hover:bg-surface-2/60 transition-colors">
+								<button
+									type="button"
+									disabled={!canEdit}
+									onclick={() => toggleChecklistItem(item.id)}
+									aria-label={item.text}
+									class="shrink-0 grid place-items-center w-[18px] h-[18px] rounded-md border-[1.5px] transition-all {item.done
+										? 'bg-accent border-accent text-white'
+										: 'border-border-strong hover:border-accent/60'} disabled:cursor-default"
+								>
+									{#if item.done}<Icon name="check" size={12} />{/if}
+								</button>
+								{#if canEdit}
+									<input
+										value={item.text}
+										onblur={(e) => editChecklistItem(item.id, e.currentTarget.value)}
+										onkeydown={(e) => {
+											if (e.key === 'Enter') {
+												e.preventDefault();
+												(e.currentTarget as HTMLInputElement).blur();
+											}
+										}}
+										class="flex-1 bg-transparent border-0 outline-none text-[13px] {item.done
+											? 'line-through text-text-4'
+											: 'text-text-2'}"
+									/>
+									<button
+										type="button"
+										onclick={() => removeChecklistItem(item.id)}
+										aria-label={m.common_delete()}
+										class="shrink-0 grid place-items-center w-5 h-5 rounded text-text-4 opacity-0 group-hover:opacity-100 hover:text-accent transition-colors"
+									>
+										<Icon name="x" size={12} />
+									</button>
+								{:else}
+									<span class="flex-1 text-[13px] {item.done ? 'line-through text-text-4' : 'text-text-2'}">{item.text}</span>
+								{/if}
+							</div>
+						{/each}
+						{#if canEdit}
+							<div class="flex items-center gap-2.5 px-2.5 py-2">
+								<span class="shrink-0 grid place-items-center w-[18px] h-[18px] text-text-4">
+									<Icon name="plus" size={13} />
+								</span>
+								<input
+									bind:value={newChecklistItem}
+									placeholder={m.tasks_checklist_add()}
+									onkeydown={(e) => {
+										if (e.key === 'Enter') {
+											e.preventDefault();
+											addChecklistItem();
+										}
+									}}
+									class="flex-1 bg-transparent border-0 outline-none text-[13px] text-text-2 placeholder:text-text-4"
+								/>
+							</div>
+						{/if}
+					</div>
+				</div>
+			{/if}
 
 			{#if draft.parent || draft.sourceTicket || (draft.labels && draft.labels.length > 0) || canEdit}
 				<div class="flex flex-wrap items-center gap-2 mb-6">

@@ -1,0 +1,1 @@
+ALTER TABLE "task" ADD COLUMN "checklist" jsonb DEFAULT '[]'::jsonb NOT NULL;

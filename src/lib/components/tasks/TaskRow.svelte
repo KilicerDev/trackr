@@ -64,6 +64,17 @@
 		{#each task.labels as l (l)}
 			<LabelChip id={l} />
 		{/each}
+		{#if task.checklist && task.checklist.length > 0}
+			<span
+				class="inline-flex items-center gap-1 text-[11.5px] {task.checklist.every((i) => i.done)
+					? 'text-[#7fc8a9]'
+					: 'text-text-3'}"
+				title={m.tasks_checklist()}
+			>
+				<Icon name="check-square" size={11} />
+				<span class="font-mono">{task.checklist.filter((i) => i.done).length}/{task.checklist.length}</span>
+			</span>
+		{/if}
 	</span>
 	<span class="flex items-center gap-2 text-[12.5px] text-text-3">
 		{#if task.priority !== 'none'}

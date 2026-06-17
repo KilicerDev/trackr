@@ -204,6 +204,13 @@
       "when": 1781723653766,
       "tag": "0028_harsh_calypso",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1781734742832,
+      "tag": "0029_friendly_ultimo",
+      "breakpoints": true
     }
   ]
 }

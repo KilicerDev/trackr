@@ -80,6 +80,17 @@
 		{#if task.estimate}
 			<span class="font-mono">{formatEstimate(task.estimate)}</span>
 		{/if}
+		{#if task.checklist && task.checklist.length > 0}
+			<span
+				class="inline-flex items-center gap-1 {task.checklist.every((i) => i.done)
+					? 'text-[#7fc8a9]'
+					: ''}"
+				title={m.tasks_checklist()}
+			>
+				<Icon name="check-square" size={11} />
+				<span class="font-mono">{task.checklist.filter((i) => i.done).length}/{task.checklist.length}</span>
+			</span>
+		{/if}
 		<span class="ml-auto">
 			<AvatarStack users={assignees} size={20} max={3} overlap={5} />
 		</span>
