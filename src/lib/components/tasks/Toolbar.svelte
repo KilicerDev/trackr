@@ -108,9 +108,47 @@
 		{ id: 'tags', label: m.tasks_tags(), icon: 'bookmark' }
 	];
 
-	// Group/Sub popovers live outside the FilterBar's scroll area, so they
-	// still use ordinary absolute positioning. Their own micro state-machine.
+	// The Group / Subgroup / Time menus are anchored with `position: fixed`
+	// (not absolute) so the controls can sit inside a horizontally-scrollable
+	// strip without the dropdowns getting clipped by its overflow.
 	let pop = $state<'group' | 'sub' | 'time' | null>(null);
+	let popAnchor: HTMLElement | null = null;
+	let popPos = $state<{ left: number; top: number } | null>(null);
+
+	function openPop(name: 'group' | 'sub' | 'time', el: HTMLElement) {
+		if (pop === name) {
+			pop = null;
+			popAnchor = null;
+			return;
+		}
+		pop = name;
+		popAnchor = el;
+		queueMicrotask(positionPop);
+	}
+
+	function positionPop() {
+		if (!popAnchor) {
+			popPos = null;
+			return;
+		}
+		const r = popAnchor.getBoundingClientRect();
+		// Clamp so the menu never spills past the right viewport edge.
+		const W = 190;
+		const maxLeft = Math.max(8, window.innerWidth - W - 8);
+		popPos = { left: Math.min(r.left, maxLeft), top: r.bottom + 6 };
+	}
+
+	$effect(() => {
+		if (!pop) return;
+		const on = () => positionPop();
+		// Capture phase catches scrolls on the controls strip too, not just window.
+		window.addEventListener('resize', on);
+		window.addEventListener('scroll', on, true);
+		return () => {
+			window.removeEventListener('resize', on);
+			window.removeEventListener('scroll', on, true);
+		};
+	});
 
 	function toggleValue(field: string, value: string) {
 		const cur = filters[field] ?? [];
@@ -218,7 +256,10 @@
 {/snippet}
 
 <div class="flex items-center gap-2 px-5 py-2.5 border-b border-border bg-bg shrink-0">
-	<div class="inline-flex items-center h-7 bg-surface border border-border rounded-lg p-0.5 text-[12.5px]">
+	<!-- Controls strip: scrolls horizontally as a last resort on very narrow
+	     widths instead of wrapping or squeezing. New task stays pinned outside. -->
+	<div class="tb-scroll flex items-center gap-2 flex-1 min-w-0 overflow-x-auto">
+	<div class="inline-flex shrink-0 items-center h-7 bg-surface border border-border rounded-lg p-0.5 text-[12.5px]">
 		<button
 			type="button"
 			onclick={() => setView('list')}
@@ -235,24 +276,26 @@
 		</button>
 	</div>
 
-	<div class="w-px h-5 bg-border"></div>
+	<div class="w-px h-5 bg-border shrink-0"></div>
 
 	<!-- Group -->
-	<div class="relative">
+	<div class="shrink-0">
 		<button
 			type="button"
-			onclick={() => (pop = pop === 'group' ? null : 'group')}
-			class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] transition-colors"
+			onclick={(e) => openPop('group', e.currentTarget)}
+			class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] whitespace-nowrap transition-colors"
 		>
 			<span class="text-text-3">{m.tasks_group_by()}</span>
 			<span class="text-text font-medium">{groupLabel(group)}</span>
 			<Icon name="chevron" size={10} class="text-text-3" />
 		</button>
-		{#if pop === 'group'}
+		{#if pop === 'group' && popPos}
 			<div
 				use:clickOutside={() => (pop = null)}
 				in:fly={POPOVER_IN}
-				class="absolute top-full left-0 mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[170px]"
+				class="fixed z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[170px]"
+				style:left="{popPos.left}px"
+				style:top="{popPos.top}px"
 				style:box-shadow="var(--shadow-lg)"
 			>
 				{#each GROUP_OPTIONS as o (o.id)}
@@ -276,20 +319,23 @@
 
 	<!-- Sub (board view only) -->
 	{#if view === 'board'}
-		<div class="relative">
+		<div class="shrink-0">
 			<button
 				type="button"
-				onclick={() => (pop = pop === 'sub' ? null : 'sub')}
-				class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] transition-colors"
+				onclick={(e) => openPop('sub', e.currentTarget)}
+				class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] whitespace-nowrap transition-colors"
 			>
 				<span class="text-text-3">{m.tasks_sub_group()}</span>
 				<span class="text-text font-medium">{subLabel(sub)}</span>
 				<Icon name="chevron" size={10} class="text-text-3" />
 			</button>
-			{#if pop === 'sub'}
+			{#if pop === 'sub' && popPos}
 				<div
 					use:clickOutside={() => (pop = null)}
-					class="absolute top-full left-0 mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[170px]"
+					in:fly={POPOVER_IN}
+					class="fixed z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[170px]"
+					style:left="{popPos.left}px"
+					style:top="{popPos.top}px"
 					style:box-shadow="var(--shadow-lg)"
 				>
 					{#each SUB_OPTIONS as o (o.id)}
@@ -312,25 +358,27 @@
 		</div>
 	{/if}
 
-	<div class="w-px h-5 bg-border"></div>
+	<div class="w-px h-5 bg-border shrink-0"></div>
 
 	<!-- Time window: forward horizon for end/planned dates (past always shown) -->
-	<div class="relative">
+	<div class="shrink-0">
 		<button
 			type="button"
-			onclick={() => (pop = pop === 'time' ? null : 'time')}
-			class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] transition-colors"
+			onclick={(e) => openPop('time', e.currentTarget)}
+			class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] whitespace-nowrap transition-colors"
 		>
 			<Icon name="calendar" size={13} class="text-text-3" />
 			<span class="text-text-3">{m.tasks_time()}</span>
 			<span class="text-text font-medium">{timeLabel(time)}</span>
 			<Icon name="chevron" size={10} class="text-text-3" />
 		</button>
-		{#if pop === 'time'}
+		{#if pop === 'time' && popPos}
 			<div
 				use:clickOutside={() => (pop = null)}
 				in:fly={POPOVER_IN}
-				class="absolute top-full left-0 mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[170px]"
+				class="fixed z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[170px]"
+				style:left="{popPos.left}px"
+				style:top="{popPos.top}px"
 				style:box-shadow="var(--shadow-lg)"
 			>
 				{#each TIME_OPTIONS as o (o.id)}
@@ -352,27 +400,47 @@
 		{/if}
 	</div>
 
-	<div class="w-px h-5 bg-border"></div>
+	<div class="w-px h-5 bg-border shrink-0"></div>
 
-	<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
+	<!-- Filter chips. Bounded so they never starve the rest of the row; the
+	     "+ Filter" chip stays pinned at the left edge (min width), and extra
+	     chips scroll within FilterBar (its popovers are fixed, so no clipping). -->
+	<div class="shrink min-w-[84px] max-w-[240px]">
+		<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
+	</div>
 
-	<div class="ml-auto flex items-center gap-2 shrink-0">
-		<div class="relative">
-			<span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none">
-				<Icon name="search" size={13} />
-			</span>
-			<input
-				type="text"
-				placeholder={m.common_search()}
-				value={search}
-				oninput={(e) => setSearch((e.target as HTMLInputElement).value)}
-				class="h-7 pl-7 pr-2.5 rounded-lg bg-surface border border-border text-[12.5px] text-text placeholder:text-text-3 outline-none focus:border-border-strong w-44"
-			/>
-		</div>
-		{#if canCreate}
+	<!-- Search stays compact and right-aligned (ml-auto eats the slack), but is
+	     allowed to shrink as the toolbar narrows so the controls never squeeze
+	     or wrap; past its min the whole strip scrolls instead. -->
+	<div class="relative w-44 min-w-[120px] shrink ml-auto">
+		<span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none">
+			<Icon name="search" size={13} />
+		</span>
+		<input
+			type="text"
+			placeholder={m.common_search()}
+			value={search}
+			oninput={(e) => setSearch((e.target as HTMLInputElement).value)}
+			class="h-7 w-full pl-7 pr-2.5 rounded-lg bg-surface border border-border text-[12.5px] text-text placeholder:text-text-3 outline-none focus:border-border-strong"
+		/>
+	</div>
+	</div>
+
+	{#if canCreate}
+		<div class="shrink-0">
 			<Button variant="primary" size="sm" onclick={onNewTask}>
 				<Icon name="plus" size={13} /> {m.tasks_new_task()}
 			</Button>
-		{/if}
-	</div>
+		</div>
+	{/if}
 </div>
+
+<style>
+	/* Hide the controls-strip scrollbar; it only scrolls on very narrow widths. */
+	.tb-scroll {
+		scrollbar-width: none;
+	}
+	.tb-scroll::-webkit-scrollbar {
+		display: none;
+	}
+</style>
