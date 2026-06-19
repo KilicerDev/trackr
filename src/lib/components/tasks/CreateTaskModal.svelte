@@ -121,7 +121,7 @@
 
 	let title = $state('');
 	let description = $state('');
-	let project = $state<ProjectId>('TRACKR');
+	let project = $state<ProjectId | ''>('');
 	let type = $state<TypeId>('task');
 	let status = $state<StatusId>('todo');
 	let priority = $state<PriorityId>('medium');
@@ -153,8 +153,9 @@
 		if (open) {
 			title = prefill?.title ?? '';
 			description = prefill?.description ?? '';
-			const defaultProject = (projectList[0]?.key as ProjectId) ?? 'TRACKR';
-			project = (prefill?.project as ProjectId | undefined) ?? defaultProject;
+			// No default project: leave the picker empty so the user has to make a
+			// deliberate choice — creation is blocked until they do (see submit).
+			project = (prefill?.project as ProjectId | undefined) ?? '';
 			type = prefill?.type ?? 'task';
 			status = prefill?.status ?? 'todo';
 			priority = prefill?.priority ?? 'medium';
@@ -170,17 +171,18 @@
 	});
 
 	let prioMeta = $derived(TRACKR_PRIORITIES.find((p) => p.id === priority)!);
-	let projectMeta = $derived(
-		projectList.find((p) => p.key === project) ?? projectList[0] ?? { key: '', name: '—', color: '#7c7c84', icon: '?' }
-	);
+	let projectMeta = $derived(project ? projectList.find((p) => p.key === project) : undefined);
 	let assigneeUsers = $derived(assignees.map((id) => userList.find((u) => u.id === id)));
+	// Creation requires a title and an explicit project choice — no project is
+	// defaulted, so the user must pick one.
+	let canSubmit = $derived(!submitting && !!title.trim() && !!project);
 
 	function handleKey(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
 			onclose();
 		} else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
 			e.preventDefault();
-			formEl?.requestSubmit();
+			if (canSubmit) formEl?.requestSubmit();
 		}
 	}
 </script>
@@ -193,7 +195,13 @@
 		method="POST"
 		{action}
 		enctype="multipart/form-data"
-		use:enhance={({ formData }) => {
+		use:enhance={({ formData, cancel }) => {
+			// Belt-and-suspenders: never submit without a project even if some
+			// path bypasses the disabled button.
+			if (!project) {
+				cancel();
+				return;
+			}
 			// Staged files ride along with the form; the create action attaches
 			// them to the new task after it exists.
 			for (const file of stagedFiles) formData.append('attachments', file);
@@ -227,10 +235,14 @@
 				<button
 					type="button"
 					onclick={() => (pop = pop === 'project' ? null : 'project')}
-					class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
+					class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] transition-colors {projectMeta ? 'bg-surface border border-border hover:border-border-strong' : 'border border-dashed border-border text-text-3 hover:text-text hover:border-border-strong'}"
 				>
-					<span class="w-2 h-2 rounded-full" style:background={projectMeta.color}></span>
-					<span class="text-text font-medium">{projectMeta.name}</span>
+					{#if projectMeta}
+						<span class="w-2 h-2 rounded-full" style:background={projectMeta.color}></span>
+						<span class="text-text font-medium">{projectMeta.name}</span>
+					{:else}
+						<span>{m.tasks_select_project()}</span>
+					{/if}
 					<Icon name="chevron" size={11} class="text-text-3" />
 				</button>
 				{#if pop === 'project'}
@@ -434,14 +446,10 @@
 				<Kbd>⌘↵</Kbd> {m.tasks_to_create()}
 			</span>
 			<div class="ml-auto flex items-center gap-2">
-				<Button size="sm" variant="default" onclick={onclose}>{m.common_cancel()}</Button>
-				<button
-					type="submit"
-					disabled={submitting || !title.trim()}
-					class="inline-flex items-center gap-1.5 rounded-lg font-medium text-[13px] transition-[background,border-color,transform] duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px] px-[11px] py-[7px] bg-accent text-white border border-transparent hover:bg-accent-strong shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)]"
-				>
+				<Button variant="default" onclick={onclose}>{m.common_cancel()}</Button>
+				<Button type="submit" variant="primary" disabled={!canSubmit}>
 					{submitting ? m.common_creating() : m.tasks_create_task()}
-				</button>
+				</Button>
 			</div>
 		</div>
 		</AttachmentDropzone>

@@ -4,8 +4,9 @@
 	import PriorityBars from '../PriorityBars.svelte';
 	import TypeBadge from '../TypeBadge.svelte';
 	import Avatar from '../Avatar.svelte';
-	import { formatEstimate } from '$lib/data';
+	import { formatEstimate, loggedMinutes } from '$lib/data';
 	import { resolveProject, resolveUser } from '$lib/lookup.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
 		task: Task;
@@ -14,6 +15,9 @@
 	let { task, onclick }: Props = $props();
 	let assignee = $derived(resolveUser(task.assignee));
 	let project = $derived(resolveProject(task.project));
+	// Show real logged time when any has been logged, otherwise the estimate.
+	let logged = $derived(loggedMinutes(task));
+	let timeMinutes = $derived(logged > 0 ? logged : task.estimate);
 </script>
 
 <button
@@ -28,8 +32,11 @@
 	{#if task.priority !== 'none'}
 		<PriorityBars priority={task.priority} />
 	{/if}
-	{#if task.estimate}
-		<span class="font-mono text-[11px] text-text-3 w-10 text-right">{formatEstimate(task.estimate)}</span>
+	{#if timeMinutes}
+		<span
+			class="font-mono text-[11px] w-10 text-right {logged > 0 ? 'text-text-2' : 'text-text-3'}"
+			title={logged > 0 ? m.week_time_logged() : m.week_time_estimated()}
+		>{formatEstimate(timeMinutes)}</span>
 	{/if}
 	<span
 		class="w-2 h-2 rounded-full"

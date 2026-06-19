@@ -12,7 +12,7 @@
 	type PickableProject = { id: string; key: string; name: string; color: string; status: string };
 
 	interface Props {
-		value: ProjectId;
+		value: ProjectId | '';
 		onchange: (v: ProjectId) => void;
 		onclose: () => void;
 		projects?: PickableProject[];

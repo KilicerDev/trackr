@@ -9,7 +9,7 @@
 	import type { ComposerDraft } from '$lib/components/week/SmartComposer.svelte';
 	import PriorityBars from '$lib/components/PriorityBars.svelte';
 	import { resolveProject } from '$lib/lookup.svelte';
-	import { formatEstimate } from '$lib/data';
+	import { formatEstimate, taskTimeMinutes } from '$lib/data';
 	import { showToast } from '$lib/toast.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
@@ -142,7 +142,7 @@
 	const weekMinutes = $derived.by(() => {
 		let total = 0;
 		for (let i = 0; i < 5; i++) {
-			for (const t of plannedByDay[i]) total += t.estimate ?? DEFAULT_ESTIMATE;
+			for (const t of plannedByDay[i]) total += taskTimeMinutes(t) ?? DEFAULT_ESTIMATE;
 		}
 		return total;
 	});
@@ -157,7 +157,7 @@
 	}
 
 	function dayMinutes(i: number): number {
-		return plannedByDay[i].reduce((s, t) => s + (t.estimate ?? DEFAULT_ESTIMATE), 0);
+		return plannedByDay[i].reduce((s, t) => s + (taskTimeMinutes(t) ?? DEFAULT_ESTIMATE), 0);
 	}
 
 	type UnscheduledTab = 'past' | 'mine' | 'others';
