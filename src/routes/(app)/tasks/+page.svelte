@@ -174,7 +174,13 @@
 />
 
 {#if view === 'list'}
-	<ListView {tasks} {group} onSelect={(t) => (manualSelectedId = t.id)} selectedId={selected?.id} />
+	<ListView
+		{tasks}
+		{group}
+		onSelect={(t) => (manualSelectedId = t.id)}
+		selectedId={selected?.id}
+		onAddInProject={(pid) => openCreate({ project: pid })}
+	/>
 {:else}
 	<BoardView
 		{tasks}

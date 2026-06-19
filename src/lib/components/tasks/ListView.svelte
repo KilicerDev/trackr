@@ -1,11 +1,13 @@
 <script lang="ts">
-	import type { Task } from '$lib/types';
+	import type { Task, ProjectId } from '$lib/types';
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/data';
 	import { statusLabel, priorityLabel } from '$lib/labels';
+	import { m } from '$lib/paraglide/messages';
 	import { resolveProject, resolveUser } from '$lib/lookup.svelte';
 	import { page } from '$app/state';
 	import TaskRow from './TaskRow.svelte';
 	import Icon from '../Icon.svelte';
+	import IconButton from '../IconButton.svelte';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 
@@ -16,8 +18,9 @@
 		group?: GroupBy;
 		onSelect?: (t: Task) => void;
 		selectedId?: string;
+		onAddInProject?: (pid: ProjectId) => void;
 	}
-	let { tasks, group = 'status', onSelect, selectedId }: Props = $props();
+	let { tasks, group = 'status', onSelect, selectedId, onAddInProject }: Props = $props();
 
 	let collapsed = $state(new Set<string>());
 
@@ -98,28 +101,50 @@
 		{@const pct = g.tasks.length === 0 ? 0 : Math.round((done / g.tasks.length) * 100)}
 		<div>
 			{#if g.label}
-				<button
-					type="button"
-					onclick={() => toggle(g.id)}
-					class="group sticky top-0 z-[5] flex items-center gap-2.5 w-full px-5 h-10 bg-surface border-y border-border text-left"
+				<div
+					class="sticky top-0 z-[5] flex items-center w-full pr-3 bg-surface border-y border-border"
 				>
-					<span class="transition-transform text-text-3 {isCollapsed ? '-rotate-90' : ''}">
-						<Icon name="chevron" size={12} />
-					</span>
-					<span class="w-2 h-2 rounded-full" style:background={g.dot}></span>
-					<span class="text-[13px] font-semibold text-text">{g.label}</span>
-					<span class="font-mono text-[11px] text-text-3">{g.tasks.length}</span>
-					<div class="ml-2 w-24 h-1 rounded-full bg-surface overflow-hidden">
-						<div class="h-full" style:width="{pct}%" style:background={g.dot}></div>
-					</div>
-					<span class="font-mono text-[10px] text-text-4">{pct}%</span>
-				</button>
+					<button
+						type="button"
+						onclick={() => toggle(g.id)}
+						class="group flex items-center gap-2.5 flex-1 min-w-0 px-5 h-10 text-left"
+					>
+						<span class="transition-transform text-text-3 {isCollapsed ? '-rotate-90' : ''}">
+							<Icon name="chevron" size={12} />
+						</span>
+						<span class="w-2 h-2 rounded-full" style:background={g.dot}></span>
+						<span class="text-[13px] font-semibold text-text">{g.label}</span>
+						<span class="font-mono text-[11px] text-text-3">{g.tasks.length}</span>
+						<div class="ml-2 w-24 h-1 rounded-full bg-surface overflow-hidden">
+							<div class="h-full" style:width="{pct}%" style:background={g.dot}></div>
+						</div>
+						<span class="font-mono text-[10px] text-text-4">{pct}%</span>
+					</button>
+					{#if group === 'project'}
+						<IconButton
+							size={24}
+							ariaLabel={m.tasks_add_task()}
+							onclick={() => onAddInProject?.(g.id as ProjectId)}
+						>
+							<Icon name="plus" size={13} />
+						</IconButton>
+					{/if}
+				</div>
 			{/if}
 			{#if !isCollapsed}
 				<div transition:slide={{ duration: 180, easing: cubicOut }}>
 					{#each g.tasks as t (t.id)}
 						<TaskRow task={t} selected={selectedId === t.id} onclick={() => onSelect?.(t)} />
 					{/each}
+					{#if group === 'project'}
+						<button
+							type="button"
+							onclick={() => onAddInProject?.(g.id as ProjectId)}
+							class="flex items-center gap-1.5 w-full px-5 h-9 text-left text-[12px] text-text-3 hover:text-text hover:bg-surface transition-colors border-b border-border"
+						>
+							<Icon name="plus" size={12} /> {m.tasks_new_task()}
+						</button>
+					{/if}
 				</div>
 			{/if}
 		</div>
