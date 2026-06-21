@@ -921,6 +921,7 @@
 	"tasks_network_error_saving": "Network error while saving.",
 	"tasks_new_task": "New task",
 	"tasks_next_month": "Next month",
+	"tasks_open_project": "Open {name}",
 	"tasks_no_files_attached": "No files attached.",
 	"tasks_no_projects_match": "No projects match \"{q}\"",
 	"tasks_no_tags": "No tags",

@@ -30,6 +30,15 @@
 		collapsed = next;
 	}
 
+	// Map a project key (the group id when grouping by project) to its detail
+	// page. resolveProject doesn't expose the DB id, so read it off page.data.
+	function projectHref(key: string): string | undefined {
+		const p = (page.data as { projects?: { id: string; key: string }[] }).projects?.find(
+			(x) => x.key === key
+		);
+		return p ? `/projects/${p.id}` : undefined;
+	}
+
 	let groups = $derived.by(() => {
 		if (group === 'none') {
 			return [{ id: 'all', label: '', dot: 'transparent', tasks }];
@@ -101,21 +110,40 @@
 		{@const pct = g.tasks.length === 0 ? 0 : Math.round((done / g.tasks.length) * 100)}
 		<div>
 			{#if g.label}
+				{@const href = group === 'project' ? projectHref(g.id) : undefined}
 				<div
-					class="sticky top-0 z-[5] flex items-center w-full pr-3 bg-surface border-y border-border"
+					class="sticky top-0 z-[5] flex items-center gap-2.5 w-full pl-5 pr-3 h-10 bg-surface border-y border-border"
 				>
 					<button
 						type="button"
 						onclick={() => toggle(g.id)}
-						class="group flex items-center gap-2.5 flex-1 min-w-0 px-5 h-10 text-left"
+						aria-label={g.label}
+						class="group flex items-center gap-2.5 shrink-0 h-full"
 					>
 						<span class="transition-transform text-text-3 {isCollapsed ? '-rotate-90' : ''}">
 							<Icon name="chevron" size={12} />
 						</span>
 						<span class="w-2 h-2 rounded-full" style:background={g.dot}></span>
-						<span class="text-[13px] font-semibold text-text">{g.label}</span>
+					</button>
+					{#if href}
+						<a
+							{href}
+							class="text-[13px] font-semibold text-text hover:underline truncate"
+							title={m.tasks_open_project({ name: g.label })}
+						>
+							{g.label}
+						</a>
+					{:else}
+						<span class="text-[13px] font-semibold text-text truncate">{g.label}</span>
+					{/if}
+					<button
+						type="button"
+						onclick={() => toggle(g.id)}
+						aria-label={g.label}
+						class="flex items-center gap-2.5 flex-1 min-w-0 h-full text-left"
+					>
 						<span class="font-mono text-[11px] text-text-3">{g.tasks.length}</span>
-						<div class="ml-2 w-24 h-1 rounded-full bg-surface overflow-hidden">
+						<div class="w-24 h-1 rounded-full bg-surface overflow-hidden">
 							<div class="h-full" style:width="{pct}%" style:background={g.dot}></div>
 						</div>
 						<span class="font-mono text-[10px] text-text-4">{pct}%</span>

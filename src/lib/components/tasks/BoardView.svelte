@@ -106,6 +106,16 @@
 		collapsed = n;
 	}
 
+	// Map a project key to its detail page. resolveProject doesn't expose the DB
+	// id, so read it off page.data (where the route id lives).
+	function projectHref(key: string | undefined): string | undefined {
+		if (!key) return undefined;
+		const p = (page.data as { projects?: { id: string; key: string }[] }).projects?.find(
+			(x) => x.key === key
+		);
+		return p ? `/projects/${p.id}` : undefined;
+	}
+
 	interface SubGroupDef {
 		key: string;
 		label: string;
@@ -184,7 +194,17 @@
 					{:else if col.color !== 'transparent'}
 						<span class="w-2.5 h-2.5 rounded-full" style:background={col.color}></span>
 					{/if}
-					<span class="text-[13px] font-semibold text-text">{col.label}</span>
+					{#if projectHref(col.project)}
+						<a
+							href={projectHref(col.project)}
+							class="text-[13px] font-semibold text-text hover:underline truncate"
+							title={m.tasks_open_project({ name: col.label })}
+						>
+							{col.label}
+						</a>
+					{:else}
+						<span class="text-[13px] font-semibold text-text truncate">{col.label}</span>
+					{/if}
 					<span class="font-mono text-[11px] text-text-3">{col.tasks.length}</span>
 					<span class="ml-auto">
 						<IconButton

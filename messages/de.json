@@ -819,6 +819,7 @@
 	"tasks_network_error_saving": "Netzwerkfehler beim Speichern.",
 	"tasks_new_task": "Neue Aufgabe",
 	"tasks_next_month": "Nächster Monat",
+	"tasks_open_project": "{name} öffnen",
 	"tasks_no_files_attached": "Keine Dateien angehängt.",
 	"tasks_no_projects_match": "Keine Projekte passen zu \"{q}\"",
 	"tasks_no_tags": "Keine Tags",
