@@ -13,6 +13,7 @@
 		type PresenceUser
 	} from '$lib/components/wiki/CollaborativeWikiEditor.svelte';
 	import ShareDialog from '$lib/components/notes/ShareDialog.svelte';
+	import CreateTaskModal from '$lib/components/tasks/CreateTaskModal.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { Editor } from '@tiptap/core';
 	import type { WebSocketStatus } from '@hocuspocus/provider';
@@ -54,6 +55,110 @@
 	let editor: Editor | undefined = $state();
 	let collabStatus = $state<WebSocketStatus | undefined>(undefined);
 	let presence = $state<PresenceUser[]>([]);
+
+	// ─── Convert a todo (taskItem) into a Trackr task ───────────────────────
+	// A hover button appears on each todo line; clicking it opens the standard
+	// CreateTaskModal prefilled with the note's project + the todo text. On
+	// success we tick the todo and append the new task's ref as an inline link.
+	type LayoutData = {
+		users?: {
+			id: string;
+			name: string;
+			email: string;
+			initials: string;
+			color: string;
+			status: 'active' | 'invited' | 'disabled';
+		}[];
+		projects?: { id: string; key: string; name: string; color: string; icon: string; status: string }[];
+		memberRoles?: { projects?: Record<string, string> };
+		isTrackrTeam?: boolean;
+		currentUserId?: string;
+	};
+	const layout = $derived(page.data as LayoutData);
+
+	let editorWrap = $state<HTMLDivElement>();
+	let hoverTodoEl = $state<HTMLElement | null>(null);
+	let hoverTodoTop = $state(0);
+	let convertOpen = $state(false);
+	let convertPrefill = $state<{ project?: string; title?: string } | undefined>(undefined);
+	let convertTargetEl: HTMLElement | null = null;
+
+	function onEditorPointerMove(e: PointerEvent) {
+		if (!canEdit || !editorWrap) return;
+		const target = e.target as HTMLElement | null;
+		// Moving onto the floating button must not dismiss it.
+		if (target?.closest?.('[data-todo-action]')) return;
+		// TaskItem's node view renders a plain <li> carrying only `data-checked`
+		// (no data-type), so that attribute is the reliable hook for a todo row.
+		const li = target?.closest?.('li[data-checked]') as HTMLElement | null;
+		if (!li) {
+			hoverTodoEl = null;
+			return;
+		}
+		hoverTodoEl = li;
+		hoverTodoTop = li.getBoundingClientRect().top - editorWrap.getBoundingClientRect().top;
+	}
+
+	// Resolve the taskItem ProseMirror node + its document position from a DOM
+	// <li>. Returns null if the element is stale or not inside a taskItem.
+	function todoNodeAt(el: HTMLElement): { pos: number; text: string } | null {
+		if (!editor) return null;
+		// The node view's <li> wraps a content <div> (contentDOM). Resolving from
+		// the inner content is the most reliable; fall back to the <li> itself.
+		const anchors = [el.querySelector('div'), el].filter(Boolean) as HTMLElement[];
+		for (const anchor of anchors) {
+			try {
+				const at = editor.view.posAtDOM(anchor, 0);
+				const rpos = editor.state.doc.resolve(at);
+				for (let d = rpos.depth; d > 0; d--) {
+					const node = rpos.node(d);
+					if (node.type.name === 'taskItem') {
+						return { pos: rpos.before(d), text: node.textContent.trim() };
+					}
+				}
+			} catch {
+				/* element detached or remapped — try the next anchor / bail out */
+			}
+		}
+		return null;
+	}
+
+	function openConvert() {
+		if (!hoverTodoEl) return;
+		const info = todoNodeAt(hoverTodoEl);
+		if (!info) return;
+		convertTargetEl = hoverTodoEl;
+		convertPrefill = { project: project?.key, title: info.text };
+		convertOpen = true;
+	}
+
+	// After the task exists: tick the todo and append " · TRACK-42" as a link
+	// to the end of the todo's text. Done in one transaction so it syncs cleanly
+	// over the collaborative document.
+	function onTaskCreated(displayId: string) {
+		const el = convertTargetEl;
+		convertTargetEl = null;
+		if (!editor || !el || !displayId) return;
+		const info = todoNodeAt(el);
+		if (!info) return;
+		const url = `/tasks?task=${displayId}`;
+		editor
+			.chain()
+			.command(({ tr }) => {
+				const node = tr.doc.nodeAt(info.pos);
+				const para = node?.firstChild;
+				if (!node || node.type.name !== 'taskItem' || !para) return false;
+				const insertPos = info.pos + 1 + para.nodeSize - 1; // end of the todo's text
+				const link = editor!.schema.marks.link.create({ href: url });
+				const sep = editor!.schema.text('  ·  ');
+				const ref = editor!.schema.text(displayId, [link]);
+				tr.insert(insertPos, sep);
+				tr.insert(insertPos + sep.nodeSize, ref);
+				tr.setNodeMarkup(info.pos, undefined, { ...node.attrs, checked: true });
+				return true;
+			})
+			.run();
+	}
 
 	function userColor(id: string): string {
 		let h = 0;
@@ -302,25 +407,60 @@
 		</div>
 
 		{#if browser && note.documentId}
-			{#key note.documentId}
-				<CollaborativeWikiEditor
-					documentId={note.documentId}
-					pageId={note.id}
-					entityType="note"
-					editable={canEdit}
-					user={collabUser}
-					placeholder={m.notes_editor_placeholder()}
-					onReady={(ed) => (editor = ed)}
-					onStatus={(s) => (collabStatus = s)}
-					onPresence={(u) => (presence = u)}
-				/>
-			{/key}
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div
+				bind:this={editorWrap}
+				class="relative"
+				onpointermove={onEditorPointerMove}
+				onpointerleave={() => (hoverTodoEl = null)}
+			>
+				{#key note.documentId}
+					<CollaborativeWikiEditor
+						documentId={note.documentId}
+						pageId={note.id}
+						entityType="note"
+						editable={canEdit}
+						user={collabUser}
+						placeholder={m.notes_editor_placeholder()}
+						onReady={(ed) => (editor = ed)}
+						onStatus={(s) => (collabStatus = s)}
+						onPresence={(u) => (presence = u)}
+					/>
+				{/key}
+				{#if canEdit && hoverTodoEl}
+					<button
+						type="button"
+						data-todo-action
+						onclick={openConvert}
+						title={m.notes_todo_to_task()}
+						class="absolute right-1 z-10 inline-flex items-center gap-1 h-6 px-1.5 rounded-md border border-border bg-bg-elev text-[11px] text-text-3 hover:text-text hover:border-border-strong shadow-sm transition-colors"
+						style:top="{hoverTodoTop}px"
+					>
+						<Icon name="check-square" size={12} />
+						{m.notes_todo_to_task_short()}
+					</button>
+				{/if}
+			</div>
 		{/if}
 	</div>
 </div>
 
 {#if isOwner}
 	<ShareDialog bind:open={shareOpen} noteId={note.id} links={data.shareLinks} />
+{/if}
+
+{#if canEdit}
+	<CreateTaskModal
+		open={convertOpen}
+		prefill={convertPrefill}
+		onclose={() => (convertOpen = false)}
+		oncreated={onTaskCreated}
+		users={layout.users}
+		projects={layout.projects}
+		currentUserId={layout.currentUserId}
+		memberProjectIds={Object.keys(layout.memberRoles?.projects ?? {})}
+		allAccess={layout.isTrackrTeam}
+	/>
 {/if}
 
 <style>

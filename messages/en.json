@@ -722,6 +722,8 @@
 	"notes_page_title": "Notes",
 	"notes_meetings_title": "Meeting notes",
 	"notes_templates_title": "Templates",
+	"notes_todo_to_task": "Create a task from this to-do",
+	"notes_todo_to_task_short": "Task",
 	"notes_tab_recent": "Recent",
 	"notes_tab_meetings": "Meetings",
 	"notes_new_note": "New note",
