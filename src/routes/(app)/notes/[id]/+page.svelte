@@ -14,6 +14,10 @@
 	} from '$lib/components/wiki/CollaborativeWikiEditor.svelte';
 	import ShareDialog from '$lib/components/notes/ShareDialog.svelte';
 	import CreateTaskModal from '$lib/components/tasks/CreateTaskModal.svelte';
+	import BulkCreateTasksModal, {
+		type CreatedTodo,
+		type SourceTodo
+	} from '$lib/components/tasks/BulkCreateTasksModal.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { Editor } from '@tiptap/core';
 	import type { WebSocketStatus } from '@hocuspocus/provider';
@@ -82,6 +86,11 @@
 	let convertOpen = $state(false);
 	let convertPrefill = $state<{ project?: string; title?: string } | undefined>(undefined);
 	let convertTargetEl: HTMLElement | null = null;
+
+	// Bulk convert: a header button gathers every open (unchecked) todo on the
+	// page and feeds them to a stepper modal.
+	let bulkOpen = $state(false);
+	let bulkTodos = $state<SourceTodo[]>([]);
 
 	function onEditorPointerMove(e: PointerEvent) {
 		if (!canEdit || !editorWrap) return;
@@ -156,6 +165,62 @@
 				tr.insert(insertPos + sep.nodeSize, ref);
 				tr.setNodeMarkup(info.pos, undefined, { ...node.attrs, checked: true });
 				return true;
+			})
+			.run();
+	}
+
+	// Walk the document for every unchecked taskItem with text. The `pos` is the
+	// taskItem's start position — the same coordinate `onBulkCreated` resolves
+	// against later to tick it.
+	function collectOpenTodos(): SourceTodo[] {
+		if (!editor) return [];
+		const out: SourceTodo[] = [];
+		editor.state.doc.descendants((node, pos) => {
+			if (node.type.name === 'taskItem' && node.attrs.checked !== true) {
+				const text = node.textContent.trim();
+				if (text) out.push({ pos, text });
+			}
+			return true;
+		});
+		return out;
+	}
+
+	function openBulk() {
+		const todos = collectOpenTodos();
+		if (!todos.length) {
+			showToast('ok', m.notes_bulk_none());
+			return;
+		}
+		bulkTodos = todos;
+		bulkOpen = true;
+	}
+
+	// For each created task, tick its source todo and append the task ref link —
+	// all in one transaction. Highest position first so the inserts/markups never
+	// invalidate the positions of todos still to be processed.
+	function onBulkCreated(created: CreatedTodo[]) {
+		if (!editor || !created.length) return;
+		const ordered = [...created].sort((a, b) => b.pos - a.pos);
+		editor
+			.chain()
+			.command(({ tr }) => {
+				let changed = false;
+				for (const { pos, displayId } of ordered) {
+					const node = tr.doc.nodeAt(pos);
+					const para = node?.firstChild;
+					if (!node || node.type.name !== 'taskItem' || !para) continue;
+					if (displayId) {
+						const insertPos = pos + 1 + para.nodeSize - 1; // end of the todo's text
+						const link = editor!.schema.marks.link.create({ href: `/tasks?task=${displayId}` });
+						const sep = editor!.schema.text('  ·  ');
+						const ref = editor!.schema.text(displayId, [link]);
+						tr.insert(insertPos, sep);
+						tr.insert(insertPos + sep.nodeSize, ref);
+					}
+					tr.setNodeMarkup(pos, undefined, { ...node.attrs, checked: true });
+					changed = true;
+				}
+				return changed;
 			})
 			.run();
 	}
@@ -356,6 +421,11 @@
 
 			<div class="h-4 w-px bg-border"></div>
 
+			{#if canEdit}
+				<IconButton ariaLabel={m.notes_bulk_tooltip()} onclick={openBulk}>
+					<Icon name="check-square" size={14} />
+				</IconButton>
+			{/if}
 			{#if isOwner}
 				<IconButton ariaLabel={m.notes_share_title()} onclick={() => (shareOpen = true)}>
 					<Icon name="link" size={14} />
@@ -460,6 +530,18 @@
 		currentUserId={layout.currentUserId}
 		memberProjectIds={Object.keys(layout.memberRoles?.projects ?? {})}
 		allAccess={layout.isTrackrTeam}
+	/>
+	<BulkCreateTasksModal
+		open={bulkOpen}
+		todos={bulkTodos}
+		defaultProjectKey={project?.key}
+		onclose={() => (bulkOpen = false)}
+		oncreated={onBulkCreated}
+		users={layout.users ?? []}
+		projects={layout.projects ?? []}
+		currentUserId={layout.currentUserId}
+		memberProjectIds={Object.keys(layout.memberRoles?.projects ?? {})}
+		allAccess={layout.isTrackrTeam ?? false}
 	/>
 {/if}
 
