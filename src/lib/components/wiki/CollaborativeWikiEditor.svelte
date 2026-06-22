@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { Editor } from '@tiptap/core';
 	import Placeholder from '@tiptap/extension-placeholder';
 	import Collaboration from '@tiptap/extension-collaboration';
@@ -9,6 +10,7 @@
 	import { collabSchemaExtensions, COLLAB_FIELD } from '$lib/collab/extensions';
 	import { SlashCommand } from './slash-command.svelte';
 	import { WikiImageUpload } from './image-upload';
+	import { MarkdownPaste } from './markdown-paste';
 	import type { AttachmentEntityType } from '$lib/attachments/config';
 	import { m } from '$lib/paraglide/messages';
 	import './wiki-editor.css';
@@ -99,13 +101,33 @@
 		editor = new Editor({
 			element: host,
 			editable,
+			editorProps: {
+				// Suppress the browser's native red-squiggle spellcheck in the editor.
+				attributes: { spellcheck: 'false' },
+				// Links use openOnClick:false (so their text stays editable), which
+				// means a plain click only moves the caret. Intercept it: navigate
+				// internal app links in-place via the SPA router, open external links
+				// (and any ⌘/Ctrl-click) in a new tab.
+				handleClick: (_view, _pos, event) => {
+					const anchor = (event.target as HTMLElement | null)?.closest?.('a');
+					const href = anchor?.getAttribute('href');
+					if (!href) return false;
+					if (/^https?:\/\//i.test(href) || event.metaKey || event.ctrlKey) {
+						window.open(href, '_blank', 'noopener,noreferrer');
+					} else {
+						void goto(href);
+					}
+					return true;
+				}
+			},
 			extensions: [
 				...collabSchemaExtensions,
 				Collaboration.configure({ document: ydoc, field: COLLAB_FIELD }),
 				CollaborationCaret.configure({ provider, user }),
 				Placeholder.configure({ placeholder }),
 				SlashCommand,
-				WikiImageUpload.configure({ entityId: pageId, entityType })
+				WikiImageUpload.configure({ entityId: pageId, entityType }),
+				MarkdownPaste
 			],
 			onUpdate: ({ editor }) => onUpdate?.(editor),
 			onCreate: ({ editor }) => onReady?.(editor)
