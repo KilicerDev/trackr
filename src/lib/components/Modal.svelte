@@ -21,6 +21,8 @@
 	></button>
 	<div class="fixed inset-0 z-50 grid place-items-center p-4 pointer-events-none">
 		<div
+			role="dialog"
+			aria-modal="true"
 			transition:fly={{ y: 12, duration: 220, easing: cubicOut }}
 			class="bg-bg-elev border border-border rounded-2xl pointer-events-auto w-full"
 			style:max-width="{maxWidth}px"

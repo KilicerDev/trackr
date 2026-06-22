@@ -9,7 +9,19 @@
 		children: Snippet;
 	}
 	let { open, onclose, width = 460, children }: Props = $props();
+
+	function onKeydown(e: KeyboardEvent) {
+		if (!open || e.key !== 'Escape') return;
+		// Defer to any dialog/confirm/command-palette layered on top — they own
+		// Escape and set their own role; closing the drawer too would be a
+		// double-close. The drawer's own <aside> has no dialog role, so it won't
+		// match itself here.
+		if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
+		onclose();
+	}
 </script>
+
+<svelte:window onkeydown={onKeydown} />
 
 {#if open}
 	<button
