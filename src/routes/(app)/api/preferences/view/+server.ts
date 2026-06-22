@@ -2,7 +2,16 @@ import { json } from '@sveltejs/kit';
 import { upsertPreferences, getPreferences } from '$lib/server/preferences';
 import type { RequestHandler } from './$types';
 
-const ALLOWED_KEYS = new Set(['tasks', 'projects', 'week', 'tickets', 'wiki', 'notes', 'portal']);
+const ALLOWED_KEYS = new Set([
+	'tasks',
+	'projects',
+	'week',
+	'tickets',
+	'wiki',
+	'notes',
+	'portal',
+	'shell'
+]);
 const MAX_BYTES = 8 * 1024;
 
 export const POST: RequestHandler = async ({ request, locals }) => {

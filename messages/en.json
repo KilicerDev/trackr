@@ -834,6 +834,8 @@
 	"shell_portal_support": "Support",
 	"shell_portal_support_portal": "Support portal",
 	"shell_search_placeholder": "Search",
+	"shell_collapse_sidebar": "Collapse sidebar",
+	"shell_expand_sidebar": "Expand sidebar",
 	"shell_section_admin": "Admin",
 	"shell_section_favorites": "Favorites",
 	"shell_section_workspace": "Workspace",

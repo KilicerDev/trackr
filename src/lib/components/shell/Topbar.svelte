@@ -7,8 +7,12 @@
 	import FeedbackModal from '../FeedbackModal.svelte';
 	import { page } from '$app/state';
 	import { setActiveOrg, type PortalOrg } from '$lib/portal';
+	import { getSidebar } from '$lib/shell.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { Snippet } from 'svelte';
+
+	// Present only inside the main AppShell (not the portal shell).
+	const sidebarUi = getSidebar();
 
 	interface Crumb {
 		label: string;
@@ -79,6 +83,17 @@
 </script>
 
 <header class="flex items-center gap-3.5 px-[22px] py-3 border-b border-border bg-bg shrink-0">
+	{#if sidebarUi}
+		<button
+			type="button"
+			onclick={() => sidebarUi.toggle()}
+			title={sidebarUi.collapsed ? m.shell_expand_sidebar() : m.shell_collapse_sidebar()}
+			aria-label={sidebarUi.collapsed ? m.shell_expand_sidebar() : m.shell_collapse_sidebar()}
+			class="-ml-1 grid place-items-center w-8 h-8 rounded-lg text-text-3 hover:text-text hover:bg-surface transition-colors shrink-0"
+		>
+			<Icon name="sidebar" size={16} />
+		</button>
+	{/if}
 	<div class="flex items-center gap-2 text-[13.5px]">
 		{#each crumbs as c, i (c.label)}
 			{#if i > 0}<span class="text-text-4">/</span>{/if}

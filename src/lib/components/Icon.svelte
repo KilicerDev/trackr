@@ -89,6 +89,8 @@
 		<path d="m6 9 6 6 6-6" />
 	{:else if name === 'chevron-r'}
 		<path d="m9 6 6 6-6 6" />
+	{:else if name === 'sidebar'}
+		<rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" />
 	{:else if name === 'filter'}
 		<path d="M4 5h16l-6 8v6l-4-2v-4z" />
 	{:else if name === 'bookmark'}
