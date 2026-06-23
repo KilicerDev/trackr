@@ -402,10 +402,10 @@
 
 	<div class="w-px h-5 bg-border shrink-0"></div>
 
-	<!-- Filter chips. Bounded so they never starve the rest of the row; the
-	     "+ Filter" chip stays pinned at the left edge (min width), and extra
-	     chips scroll within FilterBar (its popovers are fixed, so no clipping). -->
-	<div class="shrink min-w-[84px] max-w-[240px]">
+	<!-- Filter chips expand to fit their active chips; the "+ Filter" chip stays
+	     pinned at the left edge (min width). On very narrow widths the whole strip
+	     scrolls (its popovers are fixed, so no clipping). -->
+	<div class="shrink-0 min-w-[84px]">
 		<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
 	</div>
 
