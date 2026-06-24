@@ -211,6 +211,20 @@
       "when": 1781734742832,
       "tag": "0029_friendly_ultimo",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1782312185719,
+      "tag": "0030_fair_mole_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1782312211318,
+      "tag": "0031_notify_jobs_ready",
+      "breakpoints": true
     }
   ]
 }
