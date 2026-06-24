@@ -15,7 +15,7 @@ type prunePayload struct {
 	OlderThanDays int `json:"olderThanDays"`
 }
 
-// pruneJobs returns the `system.prune-jobs` handler bound to the DB. It deletes
+// pruneJobs returns the `prune.jobs` handler bound to the DB. It deletes
 // terminal jobs that finished more than olderThanDays ago, keeping the queue
 // table bounded. Schedule it via a row in `schedules` (see services/README.md).
 // The running prune job is not terminal, so it never deletes itself.

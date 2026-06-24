@@ -192,7 +192,7 @@ on a cadence):
 
 ```sql
 INSERT INTO schedules (job_type, payload, interval, next_run_at, dedupe_key)
-VALUES ('system.prune-jobs', '{"olderThanDays":30}', '24h', now(), 'prune-jobs');
+VALUES ('prune.jobs', '{"olderThanDays":30}', '24h', now(), 'prune.jobs');
 ```
 
 Monitoring: `/admin/system/jobs` lists recent jobs with status, priority, attempts

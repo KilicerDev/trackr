@@ -225,6 +225,13 @@
       "when": 1782312211318,
       "tag": "0031_notify_jobs_ready",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1782320812703,
+      "tag": "0032_seed_cleanup_schedules",
+      "breakpoints": true
     }
   ]
 }

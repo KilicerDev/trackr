@@ -8,7 +8,7 @@ all background work and the concrete counterpart to `createJob(...)` /
 protocol.
 
 It ships with the **mail service** (`mail.send`) — the email-sending engine every
-project needs — plus a `system.prune-jobs` retention handler; replace or add
+project needs — plus `prune.*` retention handlers; replace or add
 handlers for your own work. It shares the queue contract (`Job`, `Enqueue`,
 `Claim`, heartbeat/retry/reap SQL) with the scheduler via [`../shared`](../shared).
 `/web` owns the schema — the worker never migrates.
@@ -48,7 +48,7 @@ worker/
     └── jobs/
         ├── jobs.go             Deps + Register(deps) → map[type]Handler (explicit DI)
         ├── mail.go             the `mail.send` handler (the core service)
-        └── prune.go            the `system.prune-jobs` retention handler
+        └── prune.go            the `prune.jobs` retention handler
 ```
 
 The claim loop, heartbeat, retry/backoff, reaper, cooperative cancellation and

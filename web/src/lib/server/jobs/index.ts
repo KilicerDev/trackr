@@ -9,6 +9,7 @@
 export * from './core';
 export * from './services/mail';
 export * from './services/prune';
+export * from './services/cleanup';
 
 import type { MailPayload } from './services/mail';
 import type { PrunePayload } from './services/prune';
@@ -21,7 +22,9 @@ import type { PrunePayload } from './services/prune';
  */
 export type JobPayloads = {
 	'mail.send': MailPayload;
-	'system.prune-jobs': PrunePayload;
+	'prune.jobs': PrunePayload;
+	'prune.invitations': PrunePayload;
+	'prune.notifications': PrunePayload;
 };
 
 export type JobType = keyof JobPayloads;

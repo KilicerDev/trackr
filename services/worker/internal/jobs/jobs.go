@@ -23,7 +23,9 @@ type Deps struct {
 // Register builds the type → handler map for the engine.
 func Register(d Deps) map[string]jobworker.Handler {
 	return map[string]jobworker.Handler{
-		"mail.send":         sendMail(d.Mailer),
-		"system.prune-jobs": pruneJobs(d.DB),
+		"mail.send":           sendMail(d.Mailer),
+		"prune.jobs":          pruneJobs(d.DB),
+		"prune.invitations":   pruneInvitations(d.DB),
+		"prune.notifications": pruneNotifications(d.DB),
 	}
 }

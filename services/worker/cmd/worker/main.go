@@ -2,7 +2,7 @@
 // hands a set of handlers to the shared jobworker engine, which owns the whole
 // lifecycle (claim/heartbeat/retry/reaper/cancellation/shutdown). Adding work is
 // a new handler in internal/jobs — not a new copy of this loop. The bundled
-// handlers are the mail service (mail.send) and a retention job (system.prune-jobs).
+// handlers are the mail service (mail.send) and retention jobs (prune.*).
 package main
 
 import (
