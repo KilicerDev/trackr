@@ -12,9 +12,9 @@
  * transaction commits.
  */
 
-import { sql, eq, desc, inArray, and } from 'drizzle-orm';
+import { sql, eq, asc, desc, inArray, and } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { jobs, type Job } from '$lib/server/db/jobs.schema';
+import { jobs, schedules, type Job, type Schedule } from '$lib/server/db/jobs.schema';
 
 /** Default attempts before a job is marked `failed` (also the column default). */
 const DEFAULT_MAX_ATTEMPTS = 5;
@@ -211,5 +211,48 @@ function toView(row: Job): JobView {
 		result: row.result as Record<string, unknown> | null,
 		enqueuedAt: row.createdAt,
 		updatedAt: row.updatedAt
+	};
+}
+
+// --- Schedules (recurring work) — admin read + pause/resume -----------------
+
+export type ScheduleView = {
+	id: string;
+	jobType: string;
+	interval: string;
+	nextRunAt: Date;
+	lastRunAt: Date | null;
+	enabled: boolean;
+	dedupeKey: string | null;
+};
+
+/** All schedules, ordered by job type. */
+export async function listSchedules(): Promise<ScheduleView[]> {
+	const rows = await db
+		.select()
+		.from(schedules)
+		.orderBy(asc(schedules.jobType), asc(schedules.createdAt));
+	return rows.map(toScheduleView);
+}
+
+/** Pause (`enabled = false`) or resume a schedule. Returns true if a row changed. */
+export async function setScheduleEnabled(id: string, enabled: boolean): Promise<boolean> {
+	const rows = await db
+		.update(schedules)
+		.set({ enabled })
+		.where(eq(schedules.id, id))
+		.returning({ id: schedules.id });
+	return rows.length > 0;
+}
+
+function toScheduleView(row: Schedule): ScheduleView {
+	return {
+		id: row.id,
+		jobType: row.jobType,
+		interval: row.interval,
+		nextRunAt: row.nextRunAt,
+		lastRunAt: row.lastRunAt,
+		enabled: row.enabled,
+		dedupeKey: row.dedupeKey
 	};
 }

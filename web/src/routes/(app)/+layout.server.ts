@@ -19,6 +19,7 @@ import {
 } from '$lib/server/permissions';
 import { getPreferences } from '$lib/server/preferences';
 import { loadTickets, type TicketRow } from '$lib/server/tickets';
+import { isSuperadmin } from '$lib/roles';
 import type { LayoutServerLoad } from './$types';
 
 // Routes a confined portal user is allowed to reach. Everything else redirects
@@ -347,6 +348,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		currentUserId: locals.user.id,
 		orgs,
 		isAdmin: !!locals.isAdmin,
+		isSuperadmin: isSuperadmin((locals.user as { role?: string | null }).role),
 		isTrackrTeam: trackrTeamFlag,
 		isPortalUser: portal,
 		portalRole,

@@ -13,6 +13,7 @@
         projects?: { id: string; key: string; name: string; color: string }[];
         favoriteProjectIds?: string[];
         isAdmin?: boolean;
+        isSuperadmin?: boolean;
         isTrackrTeam?: boolean;
     };
 
@@ -23,6 +24,7 @@
     );
     const favorites = $derived(projectList.filter((p) => favoriteIds.has(p.id)));
     const isAdmin = $derived(!!(page.data as LayoutShape).isAdmin);
+    const isSuperadmin = $derived(!!(page.data as LayoutShape).isSuperadmin);
     const isTrackrTeam = $derived(!!(page.data as LayoutShape).isTrackrTeam);
 
     const workspaceItems = $derived([
@@ -82,6 +84,17 @@
             href: "/admin/settings",
         },
         { key: "logs", label: m.shell_admin_logs(), icon: "logs", href: "/admin/logs" },
+        // System (jobs + schedules) is root-tier only — superadmins, not admins.
+        ...(isSuperadmin
+            ? [
+                  {
+                      key: "system",
+                      label: m.shell_admin_system(),
+                      icon: "sliders",
+                      href: "/admin/system/jobs",
+                  },
+              ]
+            : []),
     ]);
 
     function isActive(href: string): boolean {
