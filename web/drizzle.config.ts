@@ -1,3 +1,4 @@
+import './scripts/load-root-env';
 import { defineConfig } from 'drizzle-kit';
 import { resolveDatabaseUrl } from './src/lib/server/db/resolve-url';
 

@@ -14,15 +14,16 @@
 		"check:watch": "svelte-kit sync && bun run paraglide && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
-		"db:start": "docker compose up db",
+		"db:start": "bun run scripts/db/start.ts",
+		"s3:start": "bun run scripts/storage/start.ts",
+		"mail:start": "bun run scripts/mail/start.ts",
 		"db:push": "drizzle-kit push",
 		"db:generate": "drizzle-kit generate",
-		"db:migrate": "drizzle-kit migrate",
+		"db:migrate": "bun run scripts/db/migrate.ts",
 		"db:studio": "drizzle-kit studio",
-		"migrate": "bun scripts/migrate.ts",
 		"auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes",
-		"seed:root": "bun run scripts/seed-root.ts",
-		"seed:demo": "bun run scripts/seed-demo.ts"
+		"seed:root": "bun run scripts/db/seed-root.ts",
+		"seed:demo": "bun run scripts/db/seed-demo.ts"
 	},
 	"devDependencies": {
 		"@better-auth/cli": "~1.4.21",
@@ -54,6 +55,7 @@
 		"vite": "^8.0.7"
 	},
 	"dependencies": {
+		"@aws-sdk/client-s3": "^3.700.0",
 		"@hocuspocus/extension-database": "^4.1.0",
 		"@hocuspocus/provider": "^4.1.0",
 		"@hocuspocus/server": "^4.1.0",

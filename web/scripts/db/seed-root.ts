@@ -11,12 +11,13 @@
  *   - If it exists with role = 'superadmin' → no-op.
  */
 
+import '../load-root-env';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { and, eq } from 'drizzle-orm';
 import { hashPassword } from 'better-auth/crypto';
-import * as schema from '../src/lib/server/db/schema';
-import { resolveDatabaseUrl } from '../src/lib/server/db/resolve-url';
+import * as schema from '../../src/lib/server/db/schema';
+import { resolveDatabaseUrl } from '../../src/lib/server/db/resolve-url';
 
 const email = (process.env.ROOT_EMAIL ?? 'root@example.com').toLowerCase();
 const password = process.env.ROOT_PASSWORD;

@@ -1,13 +1,16 @@
-# Postgres + the SvelteKit app. Migrations run on app container start
-# (scripts/migrate.ts). Used for both production deploy and `bun db:start`
-# during dev — the latter starts only the `db` service.
+# Postgres + the SvelteKit app for PRODUCTION. Migrations run on app container
+# start (scripts/db/migrate.ts).
 #
 # Production:
 #   cp .env.example .env       # then fill in production values
 #   docker compose up -d --build
 #
-# Dev (Postgres only, app runs on host via `bun dev`):
-#   bun db:start
+# Local dev does NOT use this file for infra. It uses shared containers, one per
+# machine, started from web/ via:
+#   bun run db:start    # shared dev-postgres (per-project database)
+#   bun run s3:start    # shared dev-minio    (per-project bucket)
+#   bun run mail:start  # shared dev-mailpit  (single inbox at :8025)
+# The web app then runs on the host: `cd web && bun dev`.
 #
 # The `app` service does NOT publish a host port. A reverse proxy in front
 # (Traefik via Coolify, Caddy, nginx, …) reaches it directly over the Docker

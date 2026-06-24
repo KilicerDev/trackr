@@ -7,14 +7,15 @@
  * on every container start.
  *
  * Usage:
- *   DATABASE_URL=postgres://... bun scripts/migrate.ts
+ *   DATABASE_URL=postgres://... bun scripts/db/migrate.ts
  */
 
+import '../load-root-env';
 import { existsSync } from 'node:fs';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
-import { resolveDatabaseUrl } from '../src/lib/server/db/resolve-url';
+import { resolveDatabaseUrl } from '../../src/lib/server/db/resolve-url';
 
 let url: string;
 try {

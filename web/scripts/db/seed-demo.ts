@@ -13,14 +13,15 @@
  *   DEMO_PASSWORD=changeme123 bun seed:demo  # overrides default
  */
 
+import '../load-root-env';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { and, eq, sql } from 'drizzle-orm';
 import { hashPassword } from 'better-auth/crypto';
-import * as schema from '../src/lib/server/db/schema';
-import { resolveDatabaseUrl } from '../src/lib/server/db/resolve-url';
-import { TRACKR_TASKS, TRACKR_PROJECTS, TRACKR_USERS } from '../src/lib/data';
-import type { ProjectId } from '../src/lib/types';
+import * as schema from '../../src/lib/server/db/schema';
+import { resolveDatabaseUrl } from '../../src/lib/server/db/resolve-url';
+import { TRACKR_TASKS, TRACKR_PROJECTS, TRACKR_USERS } from '../../src/lib/data';
+import type { ProjectId } from '../../src/lib/types';
 
 const DEFAULT_PASSWORD = process.env.DEMO_PASSWORD ?? 'demo12345';
 if (DEFAULT_PASSWORD.length < 8) {
