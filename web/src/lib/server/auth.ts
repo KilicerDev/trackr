@@ -7,8 +7,7 @@ import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
-import { sendEmailFireAndForget } from '$lib/server/email';
-import { passwordResetEmail } from '$lib/server/email/templates';
+import { sendEmailFireAndForget, passwordResetEmail, EMAIL_PRIORITY } from '$lib/server/jobs';
 import { recordAudit } from '$lib/server/audit';
 
 function ipFromHeaders(headers: Headers | undefined): string | null {
@@ -51,7 +50,8 @@ export const auth = betterAuth({
 			const callbackURL = encodeURIComponent('/reset-password');
 			const path = `/api/auth/reset-password/${token}?callbackURL=${callbackURL}`;
 			sendEmailFireAndForget(
-				passwordResetEmail({ to: user.email, resetUrl: withRequestOrigin(path) })
+				passwordResetEmail({ to: user.email, resetUrl: withRequestOrigin(path) }),
+				{ priority: EMAIL_PRIORITY.high }
 			);
 		}
 	},

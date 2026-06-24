@@ -11,8 +11,7 @@ import { db } from './db';
 import { notification, type NotificationKind } from './db/app.schema';
 import { user as userTable } from './db/auth.schema';
 import { getPreferences } from './preferences';
-import { sendEmailFireAndForget } from './email';
-import { notificationEmail } from './email/templates';
+import { sendEmailFireAndForget, notificationEmail, EMAIL_PRIORITY } from '$lib/server/jobs';
 import { baseLocale, isLocale, type Locale } from '$lib/paraglide/runtime';
 
 export type NotifyContent = { title: string; body?: string | null };
@@ -117,7 +116,8 @@ export async function notify(input: NotifyInput): Promise<void> {
 					body: content.body,
 					url: fullUrl,
 					locale: localeOf.get(u.id) ?? baseLocale
-				})
+				}),
+				{ priority: EMAIL_PRIORITY.low }
 			);
 		}
 	}

@@ -2,8 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
 import { eq, isNull } from 'drizzle-orm';
 import { auth } from '$lib/server/auth';
-import { sendEmail } from '$lib/server/email';
-import { invitationEmail } from '$lib/server/email/templates';
+import { sendEmail, invitationEmail, EMAIL_PRIORITY } from '$lib/server/jobs';
 import {
 	createOrRefreshInvitation,
 	getInvitationById,
@@ -196,7 +195,8 @@ export const actions: Actions = {
 					inviterName: event.locals.user?.name,
 					acceptUrl,
 					expiresAt: invitation.expiresAt
-				})
+				}),
+				{ priority: EMAIL_PRIORITY.high }
 			);
 			void recordAudit(
 				{
@@ -249,7 +249,8 @@ export const actions: Actions = {
 					inviterName: event.locals.user?.name,
 					acceptUrl,
 					expiresAt: invitation.expiresAt
-				})
+				}),
+				{ priority: EMAIL_PRIORITY.high }
 			);
 			void recordAudit(
 				{
