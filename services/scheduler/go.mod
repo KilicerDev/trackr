@@ -3,9 +3,9 @@ module github.com/KilicerDev/trackr/services/scheduler
 go 1.26
 
 require (
+	github.com/KilicerDev/trackr/services/shared v0.0.0
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/joho/godotenv v1.5.1
-	github.com/KilicerDev/trackr/services/shared v0.0.0
 )
 
 require (

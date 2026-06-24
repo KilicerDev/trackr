@@ -24,7 +24,6 @@
 		failed: () => m.jobs_status_failed(),
 		cancelled: () => m.jobs_status_cancelled()
 	};
-	const summaryOrder = ['queued', 'running', 'succeeded', 'failed', 'cancelled'] as const;
 
 	const isCancellable = (s: string) => s === 'queued' || s === 'running';
 	const isRetryable = (s: string) => s === 'succeeded' || s === 'failed' || s === 'cancelled';
@@ -47,44 +46,30 @@
 	</div>
 </div>
 
-<!-- Queue health -->
-<div class="mb-5 flex flex-wrap gap-2">
-	{#each summaryOrder as status (status)}
-		<span
-			class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg-elev px-2.5 py-1.5 text-[12.5px] text-text-3"
-		>
-			<span
-				class="inline-flex rounded-full px-2 py-0.5 text-[11.5px] font-medium {statusStyles[
-					status
-				]}"
-			>
-				{statusLabels[status]()}
-			</span>
-			<span class="font-semibold text-text">{data.counts[status]}</span>
-		</span>
-	{/each}
-</div>
-
 <!-- Send a test email — smoke-tests the mail worker end-to-end -->
-<div class="mb-6 max-w-xl rounded-2xl border border-border bg-bg-elev p-5">
-	<h2 class="text-[14px] font-semibold text-text">{m.jobs_enqueue_heading()}</h2>
-	<p class="mt-1 text-[12.5px] text-text-3">{m.jobs_enqueue_description()}</p>
-	<form
-		method="post"
-		action="?/sendTest"
-		class="mt-4"
-		use:enhance={() => {
-			return async ({ result, update }) => {
-				await update();
-				if (result.type === 'success') {
-					showToast('ok', m.jobs_enqueue_success());
-					await invalidateAll();
-				}
-			};
-		}}
-	>
-		<Button variant="primary" size="sm" type="submit">{m.jobs_enqueue_submit()}</Button>
-	</form>
+<div class="mb-6 rounded-2xl border border-border bg-bg-elev p-5">
+	<div class="flex items-center justify-between gap-4">
+		<div>
+			<h2 class="text-[14px] font-semibold text-text">{m.jobs_enqueue_heading()}</h2>
+			<p class="mt-1 text-[12.5px] text-text-3">{m.jobs_enqueue_description()}</p>
+		</div>
+		<form
+			method="post"
+			action="?/sendTest"
+			class="shrink-0"
+			use:enhance={() => {
+				return async ({ result, update }) => {
+					await update();
+					if (result.type === 'success') {
+						showToast('ok', m.jobs_enqueue_success());
+						await invalidateAll();
+					}
+				};
+			}}
+		>
+			<Button variant="primary" size="sm" type="submit">{m.jobs_enqueue_submit()}</Button>
+		</form>
+	</div>
 	{#if form?.message}
 		<p class="mt-3 text-[12.5px] text-red-400">{form.message}</p>
 	{/if}

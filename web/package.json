@@ -17,6 +17,8 @@
 		"db:start": "bun run scripts/db/start.ts",
 		"s3:start": "bun run scripts/storage/start.ts",
 		"mail:start": "bun run scripts/mail/start.ts",
+		"services:start": "docker compose -f ../docker-compose.dev.yaml up -d --build",
+		"services:stop": "docker compose -f ../docker-compose.dev.yaml down",
 		"db:push": "drizzle-kit push",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "bun run scripts/db/migrate.ts",

@@ -1,12 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import {
-	listJobs,
-	countJobsByStatus,
-	cancelJob,
-	retryJob,
-	sendEmail,
-	EMAIL_PRIORITY
-} from '$lib/server/jobs';
+import { listJobs, cancelJob, retryJob, sendEmail, EMAIL_PRIORITY } from '$lib/server/jobs';
 import { m } from '$lib/paraglide/messages';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -19,9 +12,8 @@ function fmt(d: Date | null): string {
 }
 
 export const load: PageServerLoad = async () => {
-	const [rows, counts] = await Promise.all([listJobs({ limit: 50 }), countJobsByStatus()]);
+	const rows = await listJobs({ limit: 50 });
 	return {
-		counts,
 		jobs: rows.map((j) => ({
 			id: j.id,
 			type: j.type,
