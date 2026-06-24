@@ -1,0 +1,80 @@
+// The worker drains the Postgres job queue. It wires up its dependencies and
+// hands a set of handlers to the shared jobworker engine, which owns the whole
+// lifecycle (claim/heartbeat/retry/reaper/cancellation/shutdown). Adding work is
+// a new handler in internal/jobs — not a new copy of this loop. The bundled
+// handlers are the mail service (mail.send) and a retention job (system.prune-jobs).
+package main
+
+import (
+	"context"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/KilicerDev/trackr/services/shared/jobworker"
+	"github.com/KilicerDev/trackr/services/shared/pg"
+	"github.com/KilicerDev/trackr/services/worker/internal/config"
+	"github.com/KilicerDev/trackr/services/worker/internal/jobs"
+	"github.com/KilicerDev/trackr/services/worker/internal/mail"
+)
+
+func main() {
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	slog.SetDefault(logger)
+
+	cfg, err := config.Load()
+	if err != nil {
+		logger.Error("invalid configuration", "error", err)
+		os.Exit(1)
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	pool, err := pg.Connect(ctx, cfg.DSN)
+	if err != nil {
+		logger.Error("postgres connection failed", "error", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	// Build the mail sender for the mail.send handler (SMTP, or a console sender
+	// when SMTP_HOST is unset).
+	mailer, err := mail.New(mail.Config{
+		Host:     cfg.SmtpHost,
+		Port:     cfg.SmtpPort,
+		Secure:   cfg.SmtpSecure,
+		Username: cfg.SmtpUser,
+		Password: cfg.SmtpPass,
+		From:     cfg.EmailFrom,
+	}, logger)
+	if err != nil {
+		logger.Error("mail configuration invalid", "error", err)
+		os.Exit(1)
+	}
+
+	// Inject deps into handlers (explicit DI — no package globals).
+	handlers := jobs.Register(jobs.Deps{DB: pool, Mailer: mailer})
+
+	engine, err := jobworker.New(pool, jobworker.Config{
+		Concurrency:       cfg.Concurrency,
+		JobTimeout:        cfg.JobTimeout,
+		PollInterval:      cfg.PollInterval,
+		Notify:            cfg.Notify,
+		HeartbeatInterval: cfg.HeartbeatInterval,
+		ReapAfter:         cfg.ReapAfter,
+		BackoffBase:       cfg.BackoffBase,
+		BackoffCap:        cfg.BackoffCap,
+		JobTypes:          cfg.JobTypes,
+	}, handlers, logger.With("workerId", cfg.WorkerID))
+	if err != nil {
+		logger.Error("invalid worker configuration", "error", err)
+		os.Exit(1)
+	}
+
+	if err := engine.Run(ctx); err != nil {
+		logger.Error("worker stopped with error", "error", err)
+		os.Exit(1)
+	}
+}

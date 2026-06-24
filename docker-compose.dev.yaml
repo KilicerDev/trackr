@@ -1,0 +1,63 @@
+# Development infrastructure — the Go services that run in Docker while you develop.
+#
+#   worker     Go job-queue worker — drains the Postgres `jobs` queue
+#   scheduler  Go scheduler — enqueues jobs for due rows in `schedules`
+#
+# There is no broker container: the queue lives in Postgres. The database, S3,
+# mail inbox, and web app are NOT here — each runs in a container shared across
+# every project on the machine (or on the host):
+#   - Postgres runs in the shared `dev-postgres` container — `bun run db:start`.
+#   - S3 runs in the shared `dev-minio` container          — `bun run s3:start`.
+#   - Mailpit runs in the shared `dev-mailpit` container   — `bun run mail:start`.
+#   - The web app runs on the host via vite                — `cd web && bun dev`.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yaml up -d --build
+#
+# The shared `dev-postgres` container publishes on 127.0.0.1:5432, on Docker's
+# default network — not this compose project's network. So these services reach
+# it via `host.docker.internal` (the host's published port), exactly as the
+# host-run web (vite) reaches it on localhost. Production (docker-compose.yaml)
+# instead runs its own `db` service on the compose network.
+#
+# Tip: for the fastest inner loop, run the Go services on the host instead —
+# `cd services/worker && go run ./cmd/worker` (godotenv loads the root .env, so
+# the DSN resolves to localhost:5432). This compose file is for an in-Docker check.
+
+services:
+  worker:
+    build:
+      context: ./services
+      dockerfile: worker/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://dev:dev@host.docker.internal:5432/trackr
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
+      WORKER_JOB_TIMEOUT: ${WORKER_JOB_TIMEOUT:-4m}
+      WORKER_POLL_INTERVAL: ${WORKER_POLL_INTERVAL:-1s}
+      WORKER_NOTIFY: ${WORKER_NOTIFY:-true}
+      WORKER_HEARTBEAT: ${WORKER_HEARTBEAT:-30s}
+      WORKER_REAP_AFTER: ${WORKER_REAP_AFTER:-5m}
+      # Mail (mail.send handler). SMTP_HOST empty → emails are logged, not sent.
+      # Point at the shared Mailpit (`bun run mail:start`) for a clickable inbox:
+      #   SMTP_HOST=host.docker.internal  SMTP_PORT=1025
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+
+  scheduler:
+    build:
+      context: ./services
+      dockerfile: scheduler/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://dev:dev@host.docker.internal:5432/trackr
+      SCHEDULER_POLL_INTERVAL: ${SCHEDULER_POLL_INTERVAL:-5s}
+      SCHEDULER_BATCH_SIZE: ${SCHEDULER_BATCH_SIZE:-100}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'

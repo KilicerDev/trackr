@@ -81,12 +81,8 @@ services:
       HOST_HEADER: ${HOST_HEADER:-x-forwarded-host}
       XFF_DEPTH: ${XFF_DEPTH:-1}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET is required}
-      EMAIL_FROM: ${EMAIL_FROM}
-      SMTP_HOST: ${SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_SECURE: ${SMTP_SECURE}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASS: ${SMTP_PASS}
+      # Email now lives in the worker (the mail.send handler); the app only
+      # renders + enqueues mail.send jobs, so it needs no SMTP/EMAIL_FROM vars.
       ROOT_EMAIL: ${ROOT_EMAIL}
       ROOT_PASSWORD: ${ROOT_PASSWORD}
       ROOT_NAME: ${ROOT_NAME}
@@ -101,6 +97,61 @@ services:
       - uploads:/app/data/attachments
     # No `ports:` — the reverse proxy routes to container port 3000 via the
     # Docker network. EXPOSE 3000 in the Dockerfile is the contract.
+
+  # Go job-queue worker — drains the Postgres `jobs` queue (services/README.md).
+  # Email lives here: the mail.send handler transmits via SMTP (SMTP_HOST empty →
+  # emails are logged, not sent). Scale with replicas; pin a replica to a subset
+  # of job types via WORKER_JOB_TYPES.
+  worker:
+    build:
+      context: ./services
+      dockerfile: worker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-trackr}
+      DATABASE_URL: ${DATABASE_URL:-}
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-4}
+      WORKER_JOB_TIMEOUT: ${WORKER_JOB_TIMEOUT:-4m}
+      WORKER_POLL_INTERVAL: ${WORKER_POLL_INTERVAL:-1s}
+      WORKER_NOTIFY: ${WORKER_NOTIFY:-true}
+      WORKER_HEARTBEAT: ${WORKER_HEARTBEAT:-30s}
+      WORKER_REAP_AFTER: ${WORKER_REAP_AFTER:-5m}
+      WORKER_BACKOFF_BASE: ${WORKER_BACKOFF_BASE:-10s}
+      WORKER_BACKOFF_CAP: ${WORKER_BACKOFF_CAP:-10m}
+      WORKER_JOB_TYPES: ${WORKER_JOB_TYPES:-}
+      EMAIL_FROM: ${EMAIL_FROM}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+
+  # Go scheduler — turns due rows in `schedules` into jobs (services/README.md).
+  # SKIP LOCKED makes multiple replicas safe, but one is enough for most setups.
+  scheduler:
+    build:
+      context: ./services
+      dockerfile: scheduler/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-trackr}
+      DATABASE_URL: ${DATABASE_URL:-}
+      SCHEDULER_POLL_INTERVAL: ${SCHEDULER_POLL_INTERVAL:-5s}
+      SCHEDULER_BATCH_SIZE: ${SCHEDULER_BATCH_SIZE:-100}
 
 volumes:
   pgdata:
