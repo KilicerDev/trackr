@@ -8,6 +8,9 @@ const config = {
 	},
 	kit: {
 		adapter: adapter(),
+		// Load $env/dynamic/* from the repo-root .env (shared with docker compose
+		// and the Go services). vite.config.ts sets the matching `envDir`.
+		env: { dir: '../' },
 		typescript: {
 			config: (config) => ({
 				...config,

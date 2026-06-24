@@ -23,6 +23,10 @@ function collabDev(): Plugin {
 }
 
 export default defineConfig({
+	// The canonical .env lives at the repo root, shared with docker compose and
+	// the Go services. vite's envDir covers $env/static/* and import.meta.env;
+	// kit's env.dir (in svelte.config.js) covers $env/dynamic/* in dev.
+	envDir: '../',
 	plugins: [
 		tailwindcss(),
 		sveltekit(),
