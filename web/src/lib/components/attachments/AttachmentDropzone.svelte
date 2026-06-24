@@ -62,11 +62,11 @@
 
 	{#if dragging}
 		<div
-			class="absolute inset-0 z-50 grid place-items-center rounded-2xl bg-accent/8 backdrop-blur-[1px] pointer-events-none"
+			class="pointer-events-none absolute inset-0 z-50 grid place-items-center rounded-2xl bg-accent/8 backdrop-blur-[1px]"
 			style:box-shadow="inset 0 0 0 2px var(--color-accent, #ef7a6d)"
 		>
 			<div
-				class="flex flex-col items-center gap-2 px-4 py-3 rounded-xl bg-bg-elev border border-accent/40 text-accent"
+				class="flex flex-col items-center gap-2 rounded-xl border border-accent/40 bg-bg-elev px-4 py-3 text-accent"
 				style:box-shadow="var(--shadow-lg)"
 			>
 				<Icon name="paperclip" size={20} />

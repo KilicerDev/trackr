@@ -83,13 +83,13 @@
 		<button
 			type="button"
 			onclick={() => (pop = pop === 'project' ? null : 'project')}
-			class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] transition-colors {projectMeta
-				? 'bg-surface border border-border hover:border-border-strong'
-				: 'border border-dashed border-border text-text-3 hover:text-text hover:border-border-strong'}"
+			class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] transition-colors {projectMeta
+				? 'border border-border bg-surface hover:border-border-strong'
+				: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
 		>
 			{#if projectMeta}
-				<span class="w-2 h-2 rounded-full" style:background={projectMeta.color}></span>
-				<span class="text-text font-medium">{projectMeta.name}</span>
+				<span class="h-2 w-2 rounded-full" style:background={projectMeta.color}></span>
+				<span class="font-medium text-text">{projectMeta.name}</span>
 			{:else}
 				<span>{m.tasks_select_project()}</span>
 			{/if}
@@ -111,7 +111,7 @@
 		<button
 			type="button"
 			onclick={() => (pop = pop === 'type' ? null : 'type')}
-			class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
+			class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
 		>
 			<TypeBadge {type} showLabel={false} />
 			<span>{typeLabel(type)}</span>
@@ -125,7 +125,7 @@
 		<button
 			type="button"
 			onclick={() => (pop = pop === 'status' ? null : 'status')}
-			class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
+			class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
 		>
 			<StatusDot {status} />
 			<span>{statusLabel(status)}</span>
@@ -139,13 +139,17 @@
 		<button
 			type="button"
 			onclick={() => (pop = pop === 'priority' ? null : 'priority')}
-			class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
+			class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
 		>
 			{#if prioMeta.bars > 0}<PriorityBars {priority} />{/if}
 			<span>{priorityLabel(priority)}</span>
 		</button>
 		{#if pop === 'priority'}
-			<PriorityPopover value={priority} onchange={(v) => (priority = v)} onclose={() => (pop = null)} />
+			<PriorityPopover
+				value={priority}
+				onchange={(v) => (priority = v)}
+				onclose={() => (pop = null)}
+			/>
 		{/if}
 	</div>
 
@@ -153,7 +157,7 @@
 		<button
 			type="button"
 			onclick={() => (pop = pop === 'assignees' ? null : 'assignees')}
-			class="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
+			class="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
 		>
 			{#if assignees.length === 1 && assigneeUsers[0]}
 				<Avatar user={assigneeUsers[0]} size={18} />
@@ -179,12 +183,14 @@
 		<button
 			type="button"
 			onclick={() => (pop = pop === 'due' ? null : 'due')}
-			class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] transition-colors {due
-				? 'bg-surface border border-border hover:border-border-strong'
-				: 'border border-dashed border-border text-text-3 hover:text-text hover:border-border-strong'}"
+			class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] transition-colors {due
+				? 'border border-border bg-surface hover:border-border-strong'
+				: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
 		>
 			<Icon name="calendar" size={13} />
-			{#if due}<span class="font-mono">{formatDateLong(due)}</span>{:else}<span>{m.tasks_due_date()}</span>{/if}
+			{#if due}<span class="font-mono">{formatDateLong(due)}</span>{:else}<span
+					>{m.tasks_due_date()}</span
+				>{/if}
 		</button>
 		{#if pop === 'due'}
 			<DatePopover value={due} onchange={(v) => (due = v)} onclose={() => (pop = null)} />
@@ -195,16 +201,20 @@
 		<button
 			type="button"
 			onclick={() => (pop = pop === 'estimate' ? null : 'estimate')}
-			class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] transition-colors {estimate
-				? 'bg-surface border border-border hover:border-border-strong'
-				: 'border border-dashed border-border text-text-3 hover:text-text hover:border-border-strong'}"
+			class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] transition-colors {estimate
+				? 'border border-border bg-surface hover:border-border-strong'
+				: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
 		>
 			{#if estimate}<span class="text-text-3">{m.tasks_est()}</span><span class="font-mono"
 					>{formatEstimate(estimate)}</span
 				>{:else}<span>{m.tasks_estimate()}</span>{/if}
 		</button>
 		{#if pop === 'estimate'}
-			<EstimatePopover value={estimate} onchange={(v) => (estimate = v)} onclose={() => (pop = null)} />
+			<EstimatePopover
+				value={estimate}
+				onchange={(v) => (estimate = v)}
+				onclose={() => (pop = null)}
+			/>
 		{/if}
 	</div>
 
@@ -212,10 +222,10 @@
 		<button
 			type="button"
 			onclick={() => (pop = pop === 'tags' ? null : 'tags')}
-			class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12.5px] transition-colors {tags.length >
+			class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] transition-colors {tags.length >
 			0
-				? 'bg-surface border border-border hover:border-border-strong'
-				: 'border border-dashed border-border text-text-3 hover:text-text hover:border-border-strong'}"
+				? 'border border-border bg-surface hover:border-border-strong'
+				: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
 		>
 			{#if tags.length > 0}
 				{#each tags.slice(0, 2) as t (t)}<LabelChip id={t} />{/each}

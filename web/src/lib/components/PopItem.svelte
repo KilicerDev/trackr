@@ -12,7 +12,7 @@
 <button
 	type="button"
 	{onclick}
-	class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left hover:bg-surface-2 text-text-2 hover:text-text transition-colors"
+	class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-text-2 transition-colors hover:bg-surface-2 hover:text-text"
 >
 	{@render children()}
 	<span class="ml-auto text-accent {selected ? 'opacity-100' : 'opacity-0'}">

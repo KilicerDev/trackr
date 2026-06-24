@@ -25,7 +25,9 @@ import type { LayoutServerLoad } from './$types';
 // Routes a confined portal user is allowed to reach. Everything else redirects
 // back to the new-ticket view.
 function portalPathAllowed(pathname: string): boolean {
-	return /^\/tickets(\/|$)/.test(pathname) || /^\/me(\/|$)/.test(pathname) || pathname === '/logout';
+	return (
+		/^\/tickets(\/|$)/.test(pathname) || /^\/me(\/|$)/.test(pathname) || pathname === '/logout'
+	);
 }
 
 function initials(name: string): string {
@@ -257,9 +259,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 					.orderBy(organization.name);
 
 	const memberRoles = {
-		orgs: Object.fromEntries(
-			(locals.memberships?.orgs ?? []).map((m) => [m.orgId, m.role])
-		),
+		orgs: Object.fromEntries((locals.memberships?.orgs ?? []).map((m) => [m.orgId, m.role])),
 		projects: Object.fromEntries(
 			(locals.memberships?.projects ?? []).map((m) => [m.projectId, m.role])
 		)
@@ -277,9 +277,8 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 	let recentTickets: TicketRow[] = [];
 	if (portal && orgs.length > 0) {
 		const orgIds = orgs.map((o) => o.id);
-		const storedActive = (
-			preferences.viewState?.portal as { activeOrgId?: string } | undefined
-		)?.activeOrgId;
+		const storedActive = (preferences.viewState?.portal as { activeOrgId?: string } | undefined)
+			?.activeOrgId;
 		activeOrgId = storedActive && orgIds.includes(storedActive) ? storedActive : orgs[0].id;
 		portalRole = memberRoles.orgs[activeOrgId] ?? null;
 		const scope =
@@ -317,10 +316,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			.select({ total: count() })
 			.from(notificationTable)
 			.where(
-				and(
-					eq(notificationTable.recipientId, locals.user.id),
-					isNull(notificationTable.readAt)
-				)
+				and(eq(notificationTable.recipientId, locals.user.id), isNull(notificationTable.readAt))
 			)
 	]);
 	const notifications = {

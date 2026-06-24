@@ -29,13 +29,11 @@ const HEADING = '#191a1e'; // near-black
 const BODY = '#4e5054'; // --text-2
 const SUBTLE = '#787a7f'; // --text-3
 const FAINT = '#909297'; // --text-4
-const FONT =
-	"-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 const MONO = "ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace";
 const CARD_SHADOW =
 	'0 1px 0 rgba(255,255,255,0.6) inset, 0 14px 36px -12px rgba(40,30,30,0.16), 0 2px 6px rgba(40,30,30,0.05)';
-const BTN_SHADOW =
-	'0 1px 0 rgba(255,255,255,0.25) inset, 0 8px 20px -6px rgba(216,88,75,0.40)';
+const BTN_SHADOW = '0 1px 0 rgba(255,255,255,0.25) inset, 0 8px 20px -6px rgba(216,88,75,0.40)';
 
 export function escapeHtml(value: string): string {
 	return value

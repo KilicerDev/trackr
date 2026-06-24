@@ -48,9 +48,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.select({ id: task.id })
 			.from(task)
 			.innerJoin(project, eq(project.id, task.projectId))
-			.where(
-				and(eq(project.key, key), eq(task.number, number), isNull(task.deletedAt))
-			)
+			.where(and(eq(project.key, key), eq(task.number, number), isNull(task.deletedAt)))
 			.limit(1);
 		if (!row) return json({ ok: true });
 		await markEntityRead(locals.user.id, 'task', row.id);

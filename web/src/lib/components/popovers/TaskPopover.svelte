@@ -40,7 +40,10 @@
 	let activeIndex = $state(0);
 
 	$effect(() => {
-		activeIndex = Math.max(0, rows.findIndex((r) => r.id === value));
+		activeIndex = Math.max(
+			0,
+			rows.findIndex((r) => r.id === value)
+		);
 		inputEl?.focus();
 	});
 
@@ -79,10 +82,10 @@
 	use:clickOutside={onclose}
 	use:autoPlace
 	in:fly={POPOVER_IN}
-	class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[300px] w-[var(--task-pop-w,300px)]"
+	class="absolute top-full z-50 mt-1.5 w-[var(--task-pop-w,300px)] min-w-[300px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 	style:box-shadow="var(--shadow-lg)"
 >
-	<div class="flex items-center gap-2 px-2 pt-1 pb-2 border-b border-border mb-1.5">
+	<div class="mb-1.5 flex items-center gap-2 border-b border-border px-2 pt-1 pb-2">
 		<span class="text-text-3"><Icon name="search" size={13} /></span>
 		<input
 			type="text"
@@ -90,7 +93,7 @@
 			bind:value={q}
 			{onkeydown}
 			placeholder={m.notes_search_tasks_placeholder()}
-			class="flex-1 bg-transparent border-0 outline-none text-[13px] placeholder:text-text-3"
+			class="flex-1 border-0 bg-transparent text-[13px] outline-none placeholder:text-text-3"
 		/>
 	</div>
 
@@ -101,22 +104,22 @@
 				data-active={i === activeIndex}
 				onclick={() => pick(r.id)}
 				onmouseenter={() => (activeIndex = i)}
-				class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-text-2 hover:text-text {i ===
+				class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-text-2 hover:text-text {i ===
 				activeIndex
 					? 'bg-surface-2 text-text'
 					: ''}"
 			>
 				{#if r.ref}
-					<span class="font-mono text-[11.5px] text-text-3 shrink-0">{r.ref}</span>
+					<span class="shrink-0 font-mono text-[11.5px] text-text-3">{r.ref}</span>
 				{/if}
-				<span class="text-[13px] truncate">{r.title}</span>
-				<span class="ml-auto text-accent shrink-0 {r.id === value ? 'opacity-100' : 'opacity-0'}">
+				<span class="truncate text-[13px]">{r.title}</span>
+				<span class="ml-auto shrink-0 text-accent {r.id === value ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
 				</span>
 			</button>
 		{/each}
 		{#if searching && filtered.length === 0}
-			<div class="px-2 py-3 text-[12.5px] text-text-3 text-center">
+			<div class="px-2 py-3 text-center text-[12.5px] text-text-3">
 				{m.notes_no_tasks_match({ q })}
 			</div>
 		{/if}

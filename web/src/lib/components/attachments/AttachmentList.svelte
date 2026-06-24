@@ -52,7 +52,9 @@
 {#if attachments.length}
 	<ul class="flex flex-col gap-1.5">
 		{#each attachments as att (att.id)}
-			<li class="group flex items-center gap-2.5 px-2 py-1.5 rounded-lg bg-surface border border-border">
+			<li
+				class="group flex items-center gap-2.5 rounded-lg border border-border bg-surface px-2 py-1.5"
+			>
 				{#if att.hasThumbnail}
 					<a
 						href={`/api/attachments/${att.id}`}
@@ -65,21 +67,23 @@
 							src={`/api/attachments/${att.id}?thumb`}
 							alt={att.filename}
 							loading="lazy"
-							class="w-9 h-9 rounded-md object-cover border border-border"
+							class="h-9 w-9 rounded-md border border-border object-cover"
 						/>
 					</a>
 				{:else}
-					<span class="w-9 h-9 grid place-items-center rounded-md bg-surface-2 text-text-3 shrink-0">
+					<span
+						class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-surface-2 text-text-3"
+					>
 						<Icon name="file" size={16} />
 					</span>
 				{/if}
 				<div class="min-w-0 flex-1">
-					<div class="text-[12.5px] text-text truncate">{att.filename}</div>
+					<div class="truncate text-[12.5px] text-text">{att.filename}</div>
 					<div class="text-[11px] text-text-3">{formatBytes(att.sizeBytes)}</div>
 				</div>
 				<a
 					href={`/api/attachments/${att.id}/download`}
-					class="w-7 h-7 grid place-items-center rounded-md text-text-3 hover:text-text hover:bg-surface-2 transition-colors"
+					class="grid h-7 w-7 place-items-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text"
 					aria-label={m.attach_download({ filename: att.filename })}
 				>
 					<Icon name="download" size={14} />
@@ -90,7 +94,7 @@
 						disabled={deleting === att.id}
 						onclick={() => remove(att)}
 						aria-label={m.attach_delete_file({ filename: att.filename })}
-						class="w-7 h-7 grid place-items-center rounded-md text-text-3 hover:text-red-500 hover:bg-surface-2 transition-colors disabled:opacity-50"
+						class="grid h-7 w-7 place-items-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-red-500 disabled:opacity-50"
 					>
 						<Icon name="trash" size={14} />
 					</button>

@@ -36,14 +36,10 @@
 
 	const normalizedEntry = $derived(normalizeTag(entry));
 	const filtered = $derived(
-		normalizedEntry
-			? allOptions.filter((id) => id.includes(normalizedEntry))
-			: allOptions
+		normalizedEntry ? allOptions.filter((id) => id.includes(normalizedEntry)) : allOptions
 	);
 	// Offer a "create" row when the typed tag isn't already an option.
-	const canCreate = $derived(
-		normalizedEntry.length > 0 && !allOptions.includes(normalizedEntry)
-	);
+	const canCreate = $derived(normalizedEntry.length > 0 && !allOptions.includes(normalizedEntry));
 
 	function toggle(id: string) {
 		const has = value.includes(id);
@@ -69,7 +65,7 @@
 	use:clickOutside={onclose}
 	use:autoPlace
 	in:fly={POPOVER_IN}
-	class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[210px]"
+	class="absolute top-full z-50 mt-1.5 min-w-[210px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 	style:box-shadow="var(--shadow-lg)"
 >
 	<input
@@ -77,7 +73,7 @@
 		bind:value={entry}
 		{onkeydown}
 		placeholder={m.tasks_add_or_search_tags()}
-		class="w-full mb-1.5 px-2 py-1.5 rounded-md bg-surface border border-border text-[12.5px] text-text placeholder:text-text-3 outline-none focus:border-border-strong"
+		class="mb-1.5 w-full rounded-md border border-border bg-surface px-2 py-1.5 text-[12.5px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
 	/>
 	<div class="max-h-[240px] overflow-y-auto">
 		{#each filtered as id (id)}
@@ -85,10 +81,10 @@
 			<button
 				type="button"
 				onclick={() => toggle(id)}
-				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
-				<span class="w-2 h-2 rounded-full" style:background={l.color}></span>
-				<span class="text-[13px] truncate">{l.label}</span>
+				<span class="h-2 w-2 rounded-full" style:background={l.color}></span>
+				<span class="truncate text-[13px]">{l.label}</span>
 				<span class="ml-auto text-accent {value.includes(id) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
 				</span>
@@ -98,10 +94,10 @@
 			<button
 				type="button"
 				onclick={create}
-				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<Icon name="plus" size={13} class="text-text-3" />
-				<span class="text-[13px] truncate">{m.tasks_create_tag({ tag: normalizedEntry })}</span>
+				<span class="truncate text-[13px]">{m.tasks_create_tag({ tag: normalizedEntry })}</span>
 			</button>
 		{:else if filtered.length === 0}
 			<div class="px-2 py-1.5 text-[12.5px] text-text-3">{m.tasks_no_tags()}</div>

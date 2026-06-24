@@ -114,17 +114,14 @@
 	}
 </script>
 
-<aside
-	class="flex flex-col min-h-0 border-r border-border bg-bg-elev"
-	style:width="260px"
->
+<aside class="flex min-h-0 flex-col border-r border-border bg-bg-elev" style:width="260px">
 	<!-- Tabs + contextual create -->
 	<div class="flex items-center gap-2 px-3 pt-3 pb-2.5">
-		<div class="flex-1 flex items-center gap-0.5 p-0.5 rounded-lg bg-surface border border-border">
+		<div class="flex flex-1 items-center gap-0.5 rounded-lg border border-border bg-surface p-0.5">
 			<button
 				type="button"
 				onclick={() => setTab('notes')}
-				class="flex-1 px-2 py-1 rounded-[6px] text-[12.5px] font-medium transition-colors {tab ===
+				class="flex-1 rounded-[6px] px-2 py-1 text-[12.5px] font-medium transition-colors {tab ===
 				'notes'
 					? 'bg-bg-elev text-text shadow-sm'
 					: 'text-text-3 hover:text-text-2'}"
@@ -134,7 +131,7 @@
 			<button
 				type="button"
 				onclick={() => setTab('meetings')}
-				class="flex-1 px-2 py-1 rounded-[6px] text-[12.5px] font-medium transition-colors {tab ===
+				class="flex-1 rounded-[6px] px-2 py-1 text-[12.5px] font-medium transition-colors {tab ===
 				'meetings'
 					? 'bg-bg-elev text-text shadow-sm'
 					: 'text-text-3 hover:text-text-2'}"
@@ -161,7 +158,7 @@
 					disabled={creating}
 					aria-label={m.notes_new_note()}
 					title={m.notes_new_note()}
-					class="grid place-items-center w-[30px] h-[30px] rounded-lg border border-border text-text-2 hover:bg-[var(--row-hover)] hover:text-text transition-colors disabled:opacity-50"
+					class="grid h-[30px] w-[30px] place-items-center rounded-lg border border-border text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text disabled:opacity-50"
 				>
 					<Icon name="plus" size={15} />
 				</button>
@@ -172,7 +169,7 @@
 				onclick={onNewMeeting}
 				aria-label={m.notes_new_meeting()}
 				title={m.notes_new_meeting()}
-				class="grid place-items-center w-[30px] h-[30px] rounded-lg border border-border text-text-2 hover:bg-[var(--row-hover)] hover:text-text transition-colors"
+				class="grid h-[30px] w-[30px] place-items-center rounded-lg border border-border text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text"
 			>
 				<Icon name="plus" size={15} />
 			</button>
@@ -187,12 +184,12 @@
 			{#each mine as n (n.id)}
 				<a
 					href="/notes/{n.id}"
-					class="group flex items-center gap-2 px-2 py-[7px] rounded-[7px] my-[1px] text-[13px] transition-colors {activeId ===
+					class="group my-[1px] flex items-center gap-2 rounded-[7px] px-2 py-[7px] text-[13px] transition-colors {activeId ===
 					n.id
 						? 'bg-[var(--row-active)] text-text'
 						: 'text-text-2 hover:bg-[var(--row-hover)] hover:text-text'}"
 				>
-					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0">
+					<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3">
 						<Icon name={n.icon || 'file'} size={14} />
 					</span>
 					<span class="flex-1 truncate">{n.title || m.notes_untitled()}</span>
@@ -200,7 +197,7 @@
 						type="button"
 						onclick={(e) => togglePin(e, n.id, n.pinned)}
 						aria-label={n.pinned ? m.notes_unpin() : m.notes_pin()}
-						class="grid place-items-center w-5 h-5 rounded transition-colors {n.pinned
+						class="grid h-5 w-5 place-items-center rounded transition-colors {n.pinned
 							? 'text-accent'
 							: 'text-text-4 opacity-0 group-hover:opacity-100 hover:text-text-2'}"
 					>
@@ -211,23 +208,23 @@
 
 			{#if shared.length > 0}
 				<div
-					class="px-1 pt-3.5 pb-1 text-[10.5px] font-medium uppercase tracking-[0.1em] text-text-4"
+					class="px-1 pt-3.5 pb-1 text-[10.5px] font-medium tracking-[0.1em] text-text-4 uppercase"
 				>
 					{m.notes_shared_with_me()}
 				</div>
 				{#each shared as n (n.id)}
 					<a
 						href="/notes/{n.id}"
-						class="flex items-center gap-2 px-2 py-[7px] rounded-[7px] my-[1px] text-[13px] transition-colors {activeId ===
+						class="my-[1px] flex items-center gap-2 rounded-[7px] px-2 py-[7px] text-[13px] transition-colors {activeId ===
 						n.id
 							? 'bg-[var(--row-active)] text-text'
 							: 'text-text-2 hover:bg-[var(--row-hover)] hover:text-text'}"
 					>
-						<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0">
+						<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3">
 							<Icon name={n.icon || 'file'} size={14} />
 						</span>
 						<span class="flex-1 truncate">{n.title || m.notes_untitled()}</span>
-						<Icon name="link" size={12} class="text-text-4 shrink-0" />
+						<Icon name="link" size={12} class="shrink-0 text-text-4" />
 					</a>
 				{/each}
 			{/if}
@@ -242,21 +239,19 @@
 					{@const proj = n.projectId ? projectById.get(n.projectId) : null}
 					<a
 						href="/notes/{n.id}"
-						class="flex items-start gap-2 px-2 py-[7px] rounded-[7px] my-[1px] text-[13px] transition-colors {activeId ===
+						class="my-[1px] flex items-start gap-2 rounded-[7px] px-2 py-[7px] text-[13px] transition-colors {activeId ===
 						n.id
 							? 'bg-[var(--row-active)] text-text'
 							: 'text-text-2 hover:bg-[var(--row-hover)] hover:text-text'}"
 					>
-						<span class="grid place-items-center w-4 h-4 mt-px text-text-3 shrink-0">
+						<span class="mt-px grid h-4 w-4 shrink-0 place-items-center text-text-3">
 							<Icon name={n.icon || 'users'} size={14} />
 						</span>
-						<span class="flex-1 min-w-0">
+						<span class="min-w-0 flex-1">
 							<span class="block truncate">{n.title || m.notes_untitled()}</span>
 							{#if proj}
 								<span class="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-text-4">
-									<span
-										class="w-2 h-2 rounded-[2.5px] shrink-0"
-										style:background={proj.color}
+									<span class="h-2 w-2 shrink-0 rounded-[2.5px]" style:background={proj.color}
 									></span>
 									<span class="truncate">{proj.name}</span>
 								</span>
@@ -272,10 +267,10 @@
 	<div class="border-t border-border px-2 py-2">
 		<a
 			href="/notes/templates"
-			class="flex items-center gap-2 px-2 py-1.5 rounded-md text-[12.5px] transition-colors {page.url
-				.pathname === '/notes/templates'
+			class="flex items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] transition-colors {page
+				.url.pathname === '/notes/templates'
 				? 'text-text'
-				: 'text-text-3 hover:text-text hover:bg-[var(--row-hover)]'}"
+				: 'text-text-3 hover:bg-[var(--row-hover)] hover:text-text'}"
 		>
 			<Icon name="bookmark" size={13} />
 			{m.notes_templates_title()}

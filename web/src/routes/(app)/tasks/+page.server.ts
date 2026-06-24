@@ -63,9 +63,7 @@ async function resolveTaskByDisplayId(displayId: string) {
 		})
 		.from(task)
 		.innerJoin(project, eq(project.id, task.projectId))
-		.where(
-			and(eq(project.key, key), eq(task.number, number), isNull(task.deletedAt))
-		)
+		.where(and(eq(project.key, key), eq(task.number, number), isNull(task.deletedAt)))
 		.limit(1);
 	return row ?? null;
 }
@@ -89,9 +87,17 @@ export const actions: Actions = {
 		const due = String(form.get('due') ?? '').trim();
 		const estimateRaw = String(form.get('estimate') ?? '').trim();
 		const tags = [
-			...new Set(form.getAll('tags').map((v) => normalizeTag(String(v))).filter(Boolean))
+			...new Set(
+				form
+					.getAll('tags')
+					.map((v) => normalizeTag(String(v)))
+					.filter(Boolean)
+			)
 		];
-		const assigneeIds = form.getAll('assignees').map((v) => String(v)).filter(Boolean);
+		const assigneeIds = form
+			.getAll('assignees')
+			.map((v) => String(v))
+			.filter(Boolean);
 		const plannedFor = String(form.get('plannedFor') ?? '').trim();
 
 		if (!title) return fail(400, { message: m.tasks_err_title_required() });
@@ -200,17 +206,20 @@ export const actions: Actions = {
 
 		if (form.has('status')) {
 			const v = String(form.get('status'));
-			if (!ALLOWED_STATUS.has(v)) return fail(400, { message: m.tasks_err_invalid_status({ value: v }) });
+			if (!ALLOWED_STATUS.has(v))
+				return fail(400, { message: m.tasks_err_invalid_status({ value: v }) });
 			patch.status = v;
 		}
 		if (form.has('priority')) {
 			const v = String(form.get('priority'));
-			if (!ALLOWED_PRIORITY.has(v)) return fail(400, { message: m.tasks_err_invalid_priority({ value: v }) });
+			if (!ALLOWED_PRIORITY.has(v))
+				return fail(400, { message: m.tasks_err_invalid_priority({ value: v }) });
 			patch.priority = v;
 		}
 		if (form.has('type')) {
 			const v = String(form.get('type'));
-			if (!ALLOWED_TYPE.has(v)) return fail(400, { message: m.tasks_err_invalid_type({ type: v }) });
+			if (!ALLOWED_TYPE.has(v))
+				return fail(400, { message: m.tasks_err_invalid_type({ type: v }) });
 			patch.type = v;
 		}
 		if (form.has('title')) {
@@ -232,7 +241,9 @@ export const actions: Actions = {
 					.slice(0, 100)
 					.map((it) => ({
 						id: typeof it?.id === 'string' && it.id ? it.id : crypto.randomUUID(),
-						text: String(it?.text ?? '').trim().slice(0, 500),
+						text: String(it?.text ?? '')
+							.trim()
+							.slice(0, 500),
 						done: !!it?.done
 					}))
 					.filter((it) => it.text.length > 0);
@@ -300,9 +311,9 @@ export const actions: Actions = {
 							.from(user)
 							.where(inArray(user.id, assigneesUpdate));
 						if (valid.length > 0) {
-							await tx.insert(taskAssignee).values(
-								valid.map((u) => ({ taskId: target.id, userId: u.id }))
-							);
+							await tx
+								.insert(taskAssignee)
+								.values(valid.map((u) => ({ taskId: target.id, userId: u.id })));
 						}
 						assigneeOut.next = valid.map((u) => u.id);
 					} else {
@@ -489,16 +500,12 @@ export const actions: Actions = {
 			db
 				.select({ authorId: projectActivity.actorId })
 				.from(projectActivity)
-				.where(
-					and(eq(projectActivity.taskId, target.id), eq(projectActivity.type, 'comment'))
-				)
+				.where(and(eq(projectActivity.taskId, target.id), eq(projectActivity.type, 'comment')))
 		]);
 		const recipients = taskRecipients({
 			creatorId: target.createdBy,
 			assigneeIds: assigneeRows.map((r) => r.userId),
-			extraIds: priorCommenterRows
-				.map((r) => r.authorId)
-				.filter((id): id is string => id !== null)
+			extraIds: priorCommenterRows.map((r) => r.authorId).filter((id): id is string => id !== null)
 		});
 		void notify({
 			kind: 'taskCommented',
@@ -658,10 +665,7 @@ export const actions: Actions = {
 		await assertCan(locals, 'project.tasks.delete.any', { projectId: target.projectId });
 
 		try {
-			await db
-				.update(task)
-				.set({ deletedAt: new Date() })
-				.where(eq(task.id, target.id));
+			await db.update(task).set({ deletedAt: new Date() }).where(eq(task.id, target.id));
 			// The task's read paths are now closed, so its attachments are already
 			// unreachable; remove their files (task-level + per-comment) to reclaim disk.
 			await deleteAttachmentsFor('task', target.id);

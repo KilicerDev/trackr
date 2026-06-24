@@ -90,7 +90,7 @@
 	}
 </script>
 
-<div class="flex flex-col min-h-0 flex-1 overflow-auto">
+<div class="flex min-h-0 flex-1 flex-col overflow-auto">
 	{#each groups as g (g.id)}
 		{@const isCollapsed = collapsed.has(g.id)}
 		<div>
@@ -98,12 +98,12 @@
 				<button
 					type="button"
 					onclick={() => toggle(g.id)}
-					class="group sticky top-0 z-[5] flex items-center gap-2.5 w-full px-5 h-10 bg-surface border-y border-border text-left"
+					class="group sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-y border-border bg-surface px-5 text-left"
 				>
-					<span class="transition-transform text-text-3 {isCollapsed ? '-rotate-90' : ''}">
+					<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
 						<Icon name="chevron" size={12} />
 					</span>
-					<span class="w-2 h-2 rounded-full" style:background={g.dot}></span>
+					<span class="h-2 w-2 rounded-full" style:background={g.dot}></span>
 					<span class="text-[13px] font-semibold text-text">{g.label}</span>
 					<span class="font-mono text-[11px] text-text-3">{g.tickets.length}</span>
 				</button>
@@ -115,36 +115,43 @@
 						<button
 							type="button"
 							onclick={() => onSelect?.(t)}
-							class="w-full flex items-center gap-3 pl-5 pr-4 h-10 border-b border-border text-left text-[13px] hover:bg-surface transition-colors {selectedId === t.id ? 'bg-surface' : ''}"
+							class="flex h-10 w-full items-center gap-3 border-b border-border pr-4 pl-5 text-left text-[13px] transition-colors hover:bg-surface {selectedId ===
+							t.id
+								? 'bg-surface'
+								: ''}"
 						>
 							<PriorityBars priority={t.priority} />
-							<span class="font-mono text-[11.5px] text-text-3 shrink-0 w-[112px] truncate">{t.displayId}</span>
+							<span class="w-[112px] shrink-0 truncate font-mono text-[11.5px] text-text-3"
+								>{t.displayId}</span
+							>
 							<span
-								class="w-2.5 h-2.5 rounded-full shrink-0"
+								class="h-2.5 w-2.5 shrink-0 rounded-full"
 								style:background={statusDot(t.status)}
 								title={t.status}
 							></span>
-							<span class="truncate flex-1 text-text">{t.subject}</span>
+							<span class="flex-1 truncate text-text">{t.subject}</span>
 							<span
-								class="hidden md:inline-flex items-center gap-1 text-[11.5px] text-text-3 px-1.5 py-0.5 rounded-md border border-border bg-surface shrink-0"
+								class="hidden shrink-0 items-center gap-1 rounded-md border border-border bg-surface px-1.5 py-0.5 text-[11.5px] text-text-3 md:inline-flex"
 								title={t.orgName}
 							>
-								<span class="w-1.5 h-1.5 rounded-full" style:background={t.orgColor}></span>
-								<span class="truncate max-w-[120px]">{t.orgName}</span>
+								<span class="h-1.5 w-1.5 rounded-full" style:background={t.orgColor}></span>
+								<span class="max-w-[120px] truncate">{t.orgName}</span>
 							</span>
 							{#if t.messageCount > 0}
-								<span class="hidden md:inline-flex items-center gap-1 text-[11.5px] text-text-3 shrink-0">
+								<span
+									class="hidden shrink-0 items-center gap-1 text-[11.5px] text-text-3 md:inline-flex"
+								>
 									<Icon name="msg" size={11} />
 									{t.messageCount}
 								</span>
 							{/if}
-							<span class="hidden lg:inline text-[11px] text-text-3 shrink-0 w-[72px] text-right">
+							<span class="hidden w-[72px] shrink-0 text-right text-[11px] text-text-3 lg:inline">
 								{relTime(t.lastMessageAt ?? t.updatedAt)}
 							</span>
 							{#if assignee}
 								<Avatar user={assignee} size={20} />
 							{:else}
-								<span class="w-5 h-5 rounded-full border border-dashed border-border-strong"></span>
+								<span class="h-5 w-5 rounded-full border border-dashed border-border-strong"></span>
 							{/if}
 						</button>
 					{/each}
@@ -153,7 +160,7 @@
 		</div>
 	{/each}
 	{#if tickets.length === 0}
-		<div class="flex-1 grid place-items-center text-text-3 text-[13px]">
+		<div class="grid flex-1 place-items-center text-[13px] text-text-3">
 			{mm.tickets_none_match()}
 		</div>
 	{/if}

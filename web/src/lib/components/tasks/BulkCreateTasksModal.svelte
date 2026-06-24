@@ -211,14 +211,14 @@
 <Modal {open} {onclose} maxWidth={640}>
 	{#if current}
 		<!-- Head -->
-		<div class="flex items-center gap-2 px-5 pt-4 pb-3 border-b border-border">
+		<div class="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3">
 			<Icon name="check-square" size={15} class="text-text-2" />
 			<div class="text-[13px] font-medium text-text">{m.notes_bulk_title()}</div>
-			<span class="text-[11px] font-mono text-text-3">{index + 1} / {total}</span>
+			<span class="font-mono text-[11px] text-text-3">{index + 1} / {total}</span>
 			<button
 				type="button"
 				onclick={onclose}
-				class="ml-auto w-8 h-8 grid place-items-center rounded-lg text-text-3 hover:text-text hover:bg-surface transition-colors"
+				class="ml-auto grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
 				aria-label={m.common_close()}
 			>
 				<Icon name="x" size={14} />
@@ -231,7 +231,7 @@
 				type="button"
 				onclick={() => go(index - 1)}
 				disabled={index === 0 || creating}
-				class="w-7 h-7 grid place-items-center rounded-lg border border-border text-text-2 hover:text-text hover:border-border-strong disabled:opacity-40 disabled:pointer-events-none transition-colors"
+				class="grid h-7 w-7 place-items-center rounded-lg border border-border text-text-2 transition-colors hover:border-border-strong hover:text-text disabled:pointer-events-none disabled:opacity-40"
 				aria-label={m.notes_bulk_prev()}
 			>
 				<Icon name="chevron" size={14} class="rotate-90" />
@@ -240,15 +240,15 @@
 				type="button"
 				onclick={() => go(index + 1)}
 				disabled={index >= total - 1 || creating}
-				class="w-7 h-7 grid place-items-center rounded-lg border border-border text-text-2 hover:text-text hover:border-border-strong disabled:opacity-40 disabled:pointer-events-none transition-colors"
+				class="grid h-7 w-7 place-items-center rounded-lg border border-border text-text-2 transition-colors hover:border-border-strong hover:text-text disabled:pointer-events-none disabled:opacity-40"
 				aria-label={m.notes_bulk_next()}
 			>
 				<Icon name="chevron" size={14} class="-rotate-90" />
 			</button>
 
 			<label
-				class="ml-auto inline-flex items-center gap-2 text-[12.5px] cursor-pointer select-none {current.created
-					? 'opacity-50 pointer-events-none'
+				class="ml-auto inline-flex cursor-pointer items-center gap-2 text-[12.5px] select-none {current.created
+					? 'pointer-events-none opacity-50'
 					: ''}"
 			>
 				<input type="checkbox" bind:checked={current.include} class="accent-accent" />
@@ -263,14 +263,14 @@
 				bind:value={current.title}
 				disabled={current.created}
 				placeholder={m.tasks_title_placeholder()}
-				class="w-full bg-transparent border-0 outline-none text-[19px] font-semibold tracking-[-0.01em] text-text placeholder:text-text-3 mb-2 disabled:text-text-3"
+				class="mb-2 w-full border-0 bg-transparent text-[19px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3 disabled:text-text-3"
 			/>
 			<textarea
 				bind:value={current.description}
 				disabled={current.created}
 				placeholder={m.tasks_description_placeholder()}
 				rows="2"
-				class="w-full resize-none bg-transparent border-0 outline-none text-[13.5px] leading-relaxed text-text-2 placeholder:text-text-3"
+				class="w-full resize-none border-0 bg-transparent text-[13.5px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
 			></textarea>
 
 			<div class="mt-3">
@@ -308,7 +308,7 @@
 					onclick={() => go(i)}
 					aria-label={`${i + 1}`}
 					title={d.title}
-					class="w-2.5 h-2.5 rounded-full transition-colors {d.created
+					class="h-2.5 w-2.5 rounded-full transition-colors {d.created
 						? 'bg-accent'
 						: !d.include
 							? 'bg-border'
@@ -318,7 +318,7 @@
 		</div>
 
 		<!-- Foot -->
-		<div class="flex items-center gap-2 px-5 py-3 border-t border-border bg-bg/40 rounded-b-2xl">
+		<div class="flex items-center gap-2 rounded-b-2xl border-t border-border bg-bg/40 px-5 py-3">
 			<Button variant="default" onclick={onclose}>{m.common_cancel()}</Button>
 			<div class="ml-auto">
 				<Button

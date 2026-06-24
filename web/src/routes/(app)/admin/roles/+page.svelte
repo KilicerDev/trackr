@@ -55,9 +55,7 @@
 	const allCols = $derived([...internalOrgRoles, ...tenantOrgRoles, ...projectRoles]);
 	const dividerBetweenOrg = $derived(internalOrgRoles.length > 0 && tenantOrgRoles.length > 0);
 	const dividerBeforeProject = $derived(orgRoles.length > 0 && projectRoles.length > 0);
-	const dividerCount = $derived(
-		(dividerBetweenOrg ? 1 : 0) + (dividerBeforeProject ? 1 : 0)
-	);
+	const dividerCount = $derived((dividerBetweenOrg ? 1 : 0) + (dividerBeforeProject ? 1 : 0));
 	const gridTemplate = $derived(
 		[
 			'minmax(260px,1fr)',
@@ -74,142 +72,148 @@
 
 <svelte:head><title>{m.admin_roles_page_title()}</title></svelte:head>
 
-<Topbar crumbs={[{ label: m.admin_crumb_workspace(), href: '/tasks' }, { label: m.admin_roles_crumb() }]} />
+<Topbar
+	crumbs={[{ label: m.admin_crumb_workspace(), href: '/tasks' }, { label: m.admin_roles_crumb() }]}
+/>
 
-<div class="flex-1 min-h-0 overflow-y-auto">
-	<div class="px-6 py-6 max-w-[1280px]">
-		<div class="flex items-end gap-4 mb-6">
+<div class="min-h-0 flex-1 overflow-y-auto">
+	<div class="max-w-[1280px] px-6 py-6">
+		<div class="mb-6 flex items-end gap-4">
 			<div>
 				<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.admin_roles_title()}</h1>
-				<p class="text-[12.5px] text-text-3 mt-1 max-w-2xl leading-relaxed">
+				<p class="mt-1 max-w-2xl text-[12.5px] leading-relaxed text-text-3">
 					{m.admin_roles_subtitle()}
 				</p>
 			</div>
 			<div class="ml-auto" title={m.admin_roles_custom_soon()}>
 				<Button variant="default" size="sm" disabled>
-					<Icon name="plus" size={13} /> {m.admin_roles_new()}
+					<Icon name="plus" size={13} />
+					{m.admin_roles_new()}
 				</Button>
 			</div>
 		</div>
 
 		<!-- Scope legend -->
-		<div class="flex items-center gap-3 mb-3 text-[11.5px] text-text-3">
+		<div class="mb-3 flex items-center gap-3 text-[11.5px] text-text-3">
 			<span class="inline-flex items-center gap-1.5">
-				<span class="w-1.5 h-1.5 rounded-full bg-accent"></span>
+				<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
 				{m.admin_roles_legend_org({ count: orgRoles.length })}
 			</span>
 			<span class="inline-flex items-center gap-1.5">
-				<span class="w-1.5 h-1.5 rounded-full bg-[#7a9cf0]"></span>
+				<span class="h-1.5 w-1.5 rounded-full bg-[#7a9cf0]"></span>
 				{m.admin_roles_legend_project({ count: projectRoles.length })}
 			</span>
 		</div>
 
-		<div class="bg-bg-elev border border-border rounded-2xl overflow-x-auto">
+		<div class="overflow-x-auto rounded-2xl border border-border bg-bg-elev">
 			<div style:min-width="{minRowWidth}px">
-			{#snippet headerCell(r: (typeof allCols)[number])}
-				<div
-					class="flex flex-col items-center gap-0.5 leading-tight normal-case"
-					title={r.description ?? ''}
-				>
-					<span class="flex items-center gap-1.5" style:color={r.color ?? 'inherit'}>
-						{#if r.internalOnly}<Icon name="shield" size={11} />{/if}
-						<span class="font-semibold text-[12px]">{r.label}</span>
-					</span>
-					<span class="font-mono text-[10px] text-text-4 lowercase tracking-normal">
-						{r.internalOnly ? r.id.replace(/^org\./, '') : r.id}
-					</span>
-				</div>
-			{/snippet}
-
-			{#snippet bodyCell(r: (typeof allCols)[number], p: string)}
-				{@const on = has(r.id, p)}
-				<div class="flex justify-center">
-					<span
-						class="w-7 h-7 rounded-md grid place-items-center transition-colors {on
-							? 'text-white'
-							: 'text-text-4 border border-border bg-surface'}"
-						style:background={on ? (r.color ?? 'var(--accent)') : ''}
-						style:border-color={on ? 'transparent' : ''}
-						aria-label={on ? m.admin_roles_granted() : m.admin_roles_not_granted()}
+				{#snippet headerCell(r: (typeof allCols)[number])}
+					<div
+						class="flex flex-col items-center gap-0.5 leading-tight normal-case"
+						title={r.description ?? ''}
 					>
-						{#if on}
-							<Icon name="check" size={12} />
-						{:else}
-							<Icon name="x" size={11} />
-						{/if}
-					</span>
-				</div>
-			{/snippet}
+						<span class="flex items-center gap-1.5" style:color={r.color ?? 'inherit'}>
+							{#if r.internalOnly}<Icon name="shield" size={11} />{/if}
+							<span class="text-[12px] font-semibold">{r.label}</span>
+						</span>
+						<span class="font-mono text-[10px] tracking-normal text-text-4 lowercase">
+							{r.internalOnly ? r.id.replace(/^org\./, '') : r.id}
+						</span>
+					</div>
+				{/snippet}
 
-			<!-- Header row -->
-			<div
-				class="grid items-end gap-3 px-5 py-3 text-[11px] uppercase tracking-[0.08em] text-text-4 border-b border-border bg-surface/30"
-				style:grid-template-columns={gridTemplate}
-			>
-				<span>{m.admin_roles_col_permission()}</span>
-				{#each internalOrgRoles as r (r.id)}
-					{@render headerCell(r)}
-				{/each}
-				{#if dividerBetweenOrg}
-					<div class="self-stretch w-px bg-border" aria-hidden="true"></div>
-				{/if}
-				{#each tenantOrgRoles as r (r.id)}
-					{@render headerCell(r)}
-				{/each}
-				{#if dividerBeforeProject}
-					<div class="self-stretch w-px bg-border" aria-hidden="true"></div>
-				{/if}
-				{#each projectRoles as r (r.id)}
-					{@render headerCell(r)}
-				{/each}
-			</div>
-
-			{#each groups as g (g.key)}
-				{@const isCollapsed = collapsed.has(g.key)}
-				<button
-					type="button"
-					onclick={() => toggle(g.key)}
-					class="flex items-center gap-2 w-full px-5 py-2.5 bg-surface/20 border-y border-border text-left text-[12.5px]"
-				>
-					<span class="transition-transform text-text-3 {isCollapsed ? '-rotate-90' : ''}">
-						<Icon name="chevron" size={11} />
-					</span>
-					<span class="font-semibold text-text">{g.label}</span>
-					<span class="font-mono text-[11px] text-text-3">{g.perms.length}</span>
-				</button>
-				{#if !isCollapsed}
-					{#each g.perms as p (p)}
-						<div
-							class="grid items-center gap-3 px-5 py-2.5 border-b border-border/40 hover:bg-[var(--row-hover)]"
-							style:grid-template-columns={gridTemplate}
+				{#snippet bodyCell(r: (typeof allCols)[number], p: string)}
+					{@const on = has(r.id, p)}
+					<div class="flex justify-center">
+						<span
+							class="grid h-7 w-7 place-items-center rounded-md transition-colors {on
+								? 'text-white'
+								: 'border border-border bg-surface text-text-4'}"
+							style:background={on ? (r.color ?? 'var(--accent)') : ''}
+							style:border-color={on ? 'transparent' : ''}
+							aria-label={on ? m.admin_roles_granted() : m.admin_roles_not_granted()}
 						>
-							<div class="min-w-0">
-								<div class="text-[13px] text-text">{p}</div>
-							</div>
-							{#each internalOrgRoles as r (r.id)}
-								{@render bodyCell(r, p)}
-							{/each}
-							{#if dividerBetweenOrg}
-								<div class="self-stretch w-px bg-border" aria-hidden="true"></div>
+							{#if on}
+								<Icon name="check" size={12} />
+							{:else}
+								<Icon name="x" size={11} />
 							{/if}
-							{#each tenantOrgRoles as r (r.id)}
-								{@render bodyCell(r, p)}
-							{/each}
-							{#if dividerBeforeProject}
-								<div class="self-stretch w-px bg-border" aria-hidden="true"></div>
-							{/if}
-							{#each projectRoles as r (r.id)}
-								{@render bodyCell(r, p)}
-							{/each}
-						</div>
+						</span>
+					</div>
+				{/snippet}
+
+				<!-- Header row -->
+				<div
+					class="grid items-end gap-3 border-b border-border bg-surface/30 px-5 py-3 text-[11px] tracking-[0.08em] text-text-4 uppercase"
+					style:grid-template-columns={gridTemplate}
+				>
+					<span>{m.admin_roles_col_permission()}</span>
+					{#each internalOrgRoles as r (r.id)}
+						{@render headerCell(r)}
 					{/each}
-				{/if}
-			{/each}
+					{#if dividerBetweenOrg}
+						<div class="w-px self-stretch bg-border" aria-hidden="true"></div>
+					{/if}
+					{#each tenantOrgRoles as r (r.id)}
+						{@render headerCell(r)}
+					{/each}
+					{#if dividerBeforeProject}
+						<div class="w-px self-stretch bg-border" aria-hidden="true"></div>
+					{/if}
+					{#each projectRoles as r (r.id)}
+						{@render headerCell(r)}
+					{/each}
+				</div>
+
+				{#each groups as g (g.key)}
+					{@const isCollapsed = collapsed.has(g.key)}
+					<button
+						type="button"
+						onclick={() => toggle(g.key)}
+						class="flex w-full items-center gap-2 border-y border-border bg-surface/20 px-5 py-2.5 text-left text-[12.5px]"
+					>
+						<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
+							<Icon name="chevron" size={11} />
+						</span>
+						<span class="font-semibold text-text">{g.label}</span>
+						<span class="font-mono text-[11px] text-text-3">{g.perms.length}</span>
+					</button>
+					{#if !isCollapsed}
+						{#each g.perms as p (p)}
+							<div
+								class="grid items-center gap-3 border-b border-border/40 px-5 py-2.5 hover:bg-[var(--row-hover)]"
+								style:grid-template-columns={gridTemplate}
+							>
+								<div class="min-w-0">
+									<div class="text-[13px] text-text">{p}</div>
+								</div>
+								{#each internalOrgRoles as r (r.id)}
+									{@render bodyCell(r, p)}
+								{/each}
+								{#if dividerBetweenOrg}
+									<div class="w-px self-stretch bg-border" aria-hidden="true"></div>
+								{/if}
+								{#each tenantOrgRoles as r (r.id)}
+									{@render bodyCell(r, p)}
+								{/each}
+								{#if dividerBeforeProject}
+									<div class="w-px self-stretch bg-border" aria-hidden="true"></div>
+								{/if}
+								{#each projectRoles as r (r.id)}
+									{@render bodyCell(r, p)}
+								{/each}
+							</div>
+						{/each}
+					{/if}
+				{/each}
 			</div>
 		</div>
 
-		<p class="mt-4 text-[11.5px] text-text-4 max-w-2xl">
-			{m.admin_roles_internal_note_before()}<Icon name="shield" size={11} />{m.admin_roles_internal_note_after()}
+		<p class="mt-4 max-w-2xl text-[11.5px] text-text-4">
+			{m.admin_roles_internal_note_before()}<Icon
+				name="shield"
+				size={11}
+			/>{m.admin_roles_internal_note_after()}
 		</p>
 	</div>
 </div>

@@ -103,9 +103,12 @@ export const actions: Actions = {
 
 		if (!orgId) return fail(400, { message: m.tickets_org_required() });
 		if (!subject) return fail(400, { message: m.tickets_subject_required() });
-		if (!TICKET_PRIORITY_SET.has(priority)) return fail(400, { message: m.tickets_invalid_priority() });
-		if (!TICKET_CATEGORY_SET.has(category)) return fail(400, { message: m.tickets_invalid_category() });
-		if (!TICKET_CHANNEL_SET.has(channel)) return fail(400, { message: m.tickets_invalid_channel() });
+		if (!TICKET_PRIORITY_SET.has(priority))
+			return fail(400, { message: m.tickets_invalid_priority() });
+		if (!TICKET_CATEGORY_SET.has(category))
+			return fail(400, { message: m.tickets_invalid_category() });
+		if (!TICKET_CHANNEL_SET.has(channel))
+			return fail(400, { message: m.tickets_invalid_channel() });
 
 		await assertCan(locals, 'org.tickets.create', { orgId });
 

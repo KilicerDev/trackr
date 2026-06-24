@@ -5,15 +5,132 @@ import { getLocale } from '$lib/paraglide/runtime';
 export const TODAY = '2026-05-12';
 
 export const TRACKR_USERS: User[] = [
-	{ id: 'u1', name: 'Maja Schmidt', initials: 'MS', color: '#e0775f', email: 'maja.schmidt@trackr.dev', role: 'admin', team: 'Design', status: 'active', lastSeen: '2 hours ago', joinedAt: '2024-08-14', mfa: true, tasks: 8 },
-	{ id: 'u2', name: 'Leon Vogel', initials: 'LV', color: '#7a9cf0', email: 'leon.vogel@trackr.dev', role: 'member', team: 'Engineering', status: 'active', lastSeen: '15 minutes ago', joinedAt: '2024-09-02', mfa: true, tasks: 12 },
-	{ id: 'u3', name: 'Ines Krüger', initials: 'IK', color: '#7fc8a9', email: 'ines.krueger@trackr.dev', role: 'member', team: 'Engineering', status: 'active', lastSeen: 'Online now', joinedAt: '2025-01-21', mfa: true, tasks: 5 },
-	{ id: 'u4', name: 'Tomás Reyes', initials: 'TR', color: '#c08bd6', email: 'tomas.reyes@trackr.dev', role: 'member', team: 'Operations', status: 'active', lastSeen: 'Yesterday', joinedAt: '2025-02-08', mfa: false, tasks: 3 },
-	{ id: 'u5', name: 'Hana Weiss', initials: 'HW', color: '#e9c46a', email: 'hana.weiss@trackr.dev', role: 'member', team: 'Marketing', status: 'active', lastSeen: '4 days ago', joinedAt: '2024-11-19', mfa: true, tasks: 6 },
-	{ id: 'u6', name: 'Yusuf Aydın', initials: 'YA', color: '#8fb6c4', email: 'yusuf.aydin@trackr.dev', role: 'owner', team: 'Engineering', status: 'active', lastSeen: 'Online now', joinedAt: '2024-06-01', mfa: true, tasks: 14 },
-	{ id: 'u7', name: 'Renée Carter', initials: 'RC', color: '#7a9cf0', email: 'renee.carter@trackr.dev', role: 'viewer', team: 'Operations', status: 'invited', lastSeen: '—', joinedAt: '2026-05-10', mfa: false, tasks: 0 },
-	{ id: 'u8', name: 'Pieter Janssen', initials: 'PJ', color: '#ef7a6d', email: 'pieter.janssen@trackr.dev', role: 'member', team: 'Design', status: 'invited', lastSeen: '—', joinedAt: '2026-05-08', mfa: false, tasks: 0 },
-	{ id: 'u9', name: 'Old Account', initials: 'OA', color: '#7c7c84', email: 'old.account@trackr.dev', role: 'member', team: 'Engineering', status: 'disabled', lastSeen: '3 months ago', joinedAt: '2023-05-30', mfa: false, tasks: 0 }
+	{
+		id: 'u1',
+		name: 'Maja Schmidt',
+		initials: 'MS',
+		color: '#e0775f',
+		email: 'maja.schmidt@trackr.dev',
+		role: 'admin',
+		team: 'Design',
+		status: 'active',
+		lastSeen: '2 hours ago',
+		joinedAt: '2024-08-14',
+		mfa: true,
+		tasks: 8
+	},
+	{
+		id: 'u2',
+		name: 'Leon Vogel',
+		initials: 'LV',
+		color: '#7a9cf0',
+		email: 'leon.vogel@trackr.dev',
+		role: 'member',
+		team: 'Engineering',
+		status: 'active',
+		lastSeen: '15 minutes ago',
+		joinedAt: '2024-09-02',
+		mfa: true,
+		tasks: 12
+	},
+	{
+		id: 'u3',
+		name: 'Ines Krüger',
+		initials: 'IK',
+		color: '#7fc8a9',
+		email: 'ines.krueger@trackr.dev',
+		role: 'member',
+		team: 'Engineering',
+		status: 'active',
+		lastSeen: 'Online now',
+		joinedAt: '2025-01-21',
+		mfa: true,
+		tasks: 5
+	},
+	{
+		id: 'u4',
+		name: 'Tomás Reyes',
+		initials: 'TR',
+		color: '#c08bd6',
+		email: 'tomas.reyes@trackr.dev',
+		role: 'member',
+		team: 'Operations',
+		status: 'active',
+		lastSeen: 'Yesterday',
+		joinedAt: '2025-02-08',
+		mfa: false,
+		tasks: 3
+	},
+	{
+		id: 'u5',
+		name: 'Hana Weiss',
+		initials: 'HW',
+		color: '#e9c46a',
+		email: 'hana.weiss@trackr.dev',
+		role: 'member',
+		team: 'Marketing',
+		status: 'active',
+		lastSeen: '4 days ago',
+		joinedAt: '2024-11-19',
+		mfa: true,
+		tasks: 6
+	},
+	{
+		id: 'u6',
+		name: 'Yusuf Aydın',
+		initials: 'YA',
+		color: '#8fb6c4',
+		email: 'yusuf.aydin@trackr.dev',
+		role: 'owner',
+		team: 'Engineering',
+		status: 'active',
+		lastSeen: 'Online now',
+		joinedAt: '2024-06-01',
+		mfa: true,
+		tasks: 14
+	},
+	{
+		id: 'u7',
+		name: 'Renée Carter',
+		initials: 'RC',
+		color: '#7a9cf0',
+		email: 'renee.carter@trackr.dev',
+		role: 'viewer',
+		team: 'Operations',
+		status: 'invited',
+		lastSeen: '—',
+		joinedAt: '2026-05-10',
+		mfa: false,
+		tasks: 0
+	},
+	{
+		id: 'u8',
+		name: 'Pieter Janssen',
+		initials: 'PJ',
+		color: '#ef7a6d',
+		email: 'pieter.janssen@trackr.dev',
+		role: 'member',
+		team: 'Design',
+		status: 'invited',
+		lastSeen: '—',
+		joinedAt: '2026-05-08',
+		mfa: false,
+		tasks: 0
+	},
+	{
+		id: 'u9',
+		name: 'Old Account',
+		initials: 'OA',
+		color: '#7c7c84',
+		email: 'old.account@trackr.dev',
+		role: 'member',
+		team: 'Engineering',
+		status: 'disabled',
+		lastSeen: '3 months ago',
+		joinedAt: '2023-05-30',
+		mfa: false,
+		tasks: 0
+	}
 ];
 
 export const CURRENT_USER_ID = 'u6';
@@ -21,7 +138,12 @@ export const currentUser = () => TRACKR_USERS.find((u) => u.id === CURRENT_USER_
 export const userById = (id: string) => TRACKR_USERS.find((u) => u.id === id);
 
 export const USER_ROLES: { id: RoleId; label: string; color: string; perm: string }[] = [
-	{ id: 'owner', label: 'Owner', color: '#ef7a6d', perm: 'Full access · billing · members · settings' },
+	{
+		id: 'owner',
+		label: 'Owner',
+		color: '#ef7a6d',
+		perm: 'Full access · billing · members · settings'
+	},
 	{ id: 'admin', label: 'Admin', color: '#c08bd6', perm: 'Members, settings, all projects' },
 	{ id: 'member', label: 'Member', color: '#7a9cf0', perm: 'Create & edit in assigned projects' },
 	{ id: 'viewer', label: 'Viewer', color: '#7fc8a9', perm: 'Read-only access to shared projects' }
@@ -39,47 +161,151 @@ export const ROLE_PERMISSIONS = [
 	{
 		group: 'Projects',
 		items: [
-			{ id: 'project.create', label: 'Create projects', perms: { owner: true, admin: true, member: true, viewer: false } },
-			{ id: 'project.edit', label: 'Edit project settings', perms: { owner: true, admin: true, member: false, viewer: false } },
-			{ id: 'project.archive', label: 'Archive projects', perms: { owner: true, admin: true, member: true, viewer: false } },
-			{ id: 'project.delete', label: 'Delete projects', perms: { owner: true, admin: true, member: false, viewer: false } }
+			{
+				id: 'project.create',
+				label: 'Create projects',
+				perms: { owner: true, admin: true, member: true, viewer: false }
+			},
+			{
+				id: 'project.edit',
+				label: 'Edit project settings',
+				perms: { owner: true, admin: true, member: false, viewer: false }
+			},
+			{
+				id: 'project.archive',
+				label: 'Archive projects',
+				perms: { owner: true, admin: true, member: true, viewer: false }
+			},
+			{
+				id: 'project.delete',
+				label: 'Delete projects',
+				perms: { owner: true, admin: true, member: false, viewer: false }
+			}
 		]
 	},
 	{
 		group: 'Tasks',
 		items: [
-			{ id: 'task.create', label: 'Create tasks', perms: { owner: true, admin: true, member: true, viewer: false } },
-			{ id: 'task.edit_any', label: 'Edit any task', perms: { owner: true, admin: true, member: false, viewer: false } },
-			{ id: 'task.edit_own', label: 'Edit own tasks', perms: { owner: true, admin: true, member: true, viewer: false } },
-			{ id: 'task.delete_any', label: 'Delete any task', perms: { owner: true, admin: true, member: false, viewer: false } },
-			{ id: 'task.comment', label: 'Comment on tasks', perms: { owner: true, admin: true, member: true, viewer: true } },
-			{ id: 'task.assign', label: 'Assign tasks to others', perms: { owner: true, admin: true, member: true, viewer: false } }
+			{
+				id: 'task.create',
+				label: 'Create tasks',
+				perms: { owner: true, admin: true, member: true, viewer: false }
+			},
+			{
+				id: 'task.edit_any',
+				label: 'Edit any task',
+				perms: { owner: true, admin: true, member: false, viewer: false }
+			},
+			{
+				id: 'task.edit_own',
+				label: 'Edit own tasks',
+				perms: { owner: true, admin: true, member: true, viewer: false }
+			},
+			{
+				id: 'task.delete_any',
+				label: 'Delete any task',
+				perms: { owner: true, admin: true, member: false, viewer: false }
+			},
+			{
+				id: 'task.comment',
+				label: 'Comment on tasks',
+				perms: { owner: true, admin: true, member: true, viewer: true }
+			},
+			{
+				id: 'task.assign',
+				label: 'Assign tasks to others',
+				perms: { owner: true, admin: true, member: true, viewer: false }
+			}
 		]
 	},
 	{
 		group: 'Members',
 		items: [
-			{ id: 'member.invite', label: 'Invite users', perms: { owner: true, admin: true, member: false, viewer: false } },
-			{ id: 'member.roles', label: 'Manage roles', perms: { owner: true, admin: true, member: false, viewer: false } },
-			{ id: 'member.disable', label: 'Disable users', perms: { owner: true, admin: false, member: false, viewer: false } }
+			{
+				id: 'member.invite',
+				label: 'Invite users',
+				perms: { owner: true, admin: true, member: false, viewer: false }
+			},
+			{
+				id: 'member.roles',
+				label: 'Manage roles',
+				perms: { owner: true, admin: true, member: false, viewer: false }
+			},
+			{
+				id: 'member.disable',
+				label: 'Disable users',
+				perms: { owner: true, admin: false, member: false, viewer: false }
+			}
 		]
 	},
 	{
 		group: 'Workspace',
 		items: [
-			{ id: 'ws.settings', label: 'Edit workspace settings', perms: { owner: true, admin: true, member: false, viewer: false } },
-			{ id: 'ws.billing', label: 'Manage billing', perms: { owner: true, admin: false, member: false, viewer: false } },
-			{ id: 'ws.integrations', label: 'Connect integrations', perms: { owner: true, admin: true, member: false, viewer: false } },
-			{ id: 'ws.audit', label: 'View audit log', perms: { owner: true, admin: true, member: false, viewer: false } }
+			{
+				id: 'ws.settings',
+				label: 'Edit workspace settings',
+				perms: { owner: true, admin: true, member: false, viewer: false }
+			},
+			{
+				id: 'ws.billing',
+				label: 'Manage billing',
+				perms: { owner: true, admin: false, member: false, viewer: false }
+			},
+			{
+				id: 'ws.integrations',
+				label: 'Connect integrations',
+				perms: { owner: true, admin: true, member: false, viewer: false }
+			},
+			{
+				id: 'ws.audit',
+				label: 'View audit log',
+				perms: { owner: true, admin: true, member: false, viewer: false }
+			}
 		]
 	}
 ];
 
 export const TRACKR_PROJECTS: Record<ProjectId, Project> = {
-	SIWEB: { name: 'Siweb Marketplace', color: '#e07a5f', description: 'B2B parts marketplace with SKU search, inventory sync, and German localization.', status: 'active', lead: 'u2', members: ['u1', 'u2', 'u3', 'u4', 'u5'], updated: '2 hours ago', icon: 'S' },
-	TRACKR: { name: 'Trackr Internal', color: '#7a9cf0', description: 'Our own task system — Linear-style workspace for small teams.', status: 'active', lead: 'u6', members: ['u2', 'u3', 'u6'], updated: '5 hours ago', icon: 'T' },
-	MAJA: { name: 'Maja Demo', color: '#c08bd6', description: 'Demo workspace for the Maja onboarding flow and translation gaps.', status: 'prospect', lead: 'u1', members: ['u1', 'u4'], updated: 'Yesterday', icon: 'M' },
-	WEBIM: { name: 'Webim Campaign', color: '#7fc8a9', description: 'Q2 paid acquisition campaign — landing page, Google ads, copy variants.', status: 'paused', lead: 'u5', members: ['u5', 'u6'], updated: '3 days ago', icon: 'W' }
+	SIWEB: {
+		name: 'Siweb Marketplace',
+		color: '#e07a5f',
+		description: 'B2B parts marketplace with SKU search, inventory sync, and German localization.',
+		status: 'active',
+		lead: 'u2',
+		members: ['u1', 'u2', 'u3', 'u4', 'u5'],
+		updated: '2 hours ago',
+		icon: 'S'
+	},
+	TRACKR: {
+		name: 'Trackr Internal',
+		color: '#7a9cf0',
+		description: 'Our own task system — Linear-style workspace for small teams.',
+		status: 'active',
+		lead: 'u6',
+		members: ['u2', 'u3', 'u6'],
+		updated: '5 hours ago',
+		icon: 'T'
+	},
+	MAJA: {
+		name: 'Maja Demo',
+		color: '#c08bd6',
+		description: 'Demo workspace for the Maja onboarding flow and translation gaps.',
+		status: 'prospect',
+		lead: 'u1',
+		members: ['u1', 'u4'],
+		updated: 'Yesterday',
+		icon: 'M'
+	},
+	WEBIM: {
+		name: 'Webim Campaign',
+		color: '#7fc8a9',
+		description: 'Q2 paid acquisition campaign — landing page, Google ads, copy variants.',
+		status: 'paused',
+		lead: 'u5',
+		members: ['u5', 'u6'],
+		updated: '3 days ago',
+		icon: 'W'
+	}
 };
 
 export const PROJECT_STATUS = {
@@ -121,8 +347,18 @@ export const TRACKR_LABELS: Record<string, { label: string; color: string }> = {
 export const TICKET_STATUSES = [
 	{ id: 'open', label: 'Open', dot: '#7a9cf0', tint: 'rgba(122,156,240,0.14)' },
 	{ id: 'in_progress', label: 'In Progress', dot: '#f0a85c', tint: 'rgba(240,168,92,0.16)' },
-	{ id: 'waiting_on_customer', label: 'Waiting on customer', dot: '#b591e3', tint: 'rgba(181,145,227,0.14)' },
-	{ id: 'waiting_on_agent', label: 'Waiting on agent', dot: '#ef7a6d', tint: 'rgba(239,122,109,0.14)' },
+	{
+		id: 'waiting_on_customer',
+		label: 'Waiting on customer',
+		dot: '#b591e3',
+		tint: 'rgba(181,145,227,0.14)'
+	},
+	{
+		id: 'waiting_on_agent',
+		label: 'Waiting on agent',
+		dot: '#ef7a6d',
+		tint: 'rgba(239,122,109,0.14)'
+	},
 	{ id: 'paused', label: 'Paused', dot: '#e9c46a', tint: 'rgba(233,196,106,0.14)' },
 	{ id: 'resolved', label: 'Resolved', dot: '#7fc8a9', tint: 'rgba(127,200,169,0.16)' },
 	{ id: 'closed', label: 'Closed', dot: '#7c7c84', tint: 'rgba(124,124,132,0.14)' }
@@ -173,26 +409,172 @@ export const TRACKR_TASKS: Task[] = [
 		tags: [],
 		createdBy: 'u3',
 		createdAt: '2026-04-21 17:45',
-		description: 'Die Darstellung gelöschter Artikel im System soll verbessert werden, damit sie besser erkennbar sind.',
+		description:
+			'Die Darstellung gelöschter Artikel im System soll verbessert werden, damit sie besser erkennbar sind.',
 		attachments: [],
 		comments: [
-			{ user: 'u3', date: '2026-04-29', text: 'Lösung mit Mike abgesprochen: Gelöschte Spare Parts aus der allgemeinen Suche entfernen und nur in seperater Suche im "Deleted" Tab anzeigen' }
+			{
+				user: 'u3',
+				date: '2026-04-29',
+				text: 'Lösung mit Mike abgesprochen: Gelöschte Spare Parts aus der allgemeinen Suche entfernen und nur in seperater Suche im "Deleted" Tab anzeigen'
+			}
 		]
 	},
-	{ id: 'MAJA-13', title: 'German translation not complete', status: 'paused', priority: 'low', assignee: 'u1', project: 'MAJA', labels: ['i18n'], due: null, updated: '2026-05-09', description: 'Missing strings on /pricing, /support and confirmation emails.' },
-	{ id: 'SIWEB-27', title: 'Webseite auf Deutsch übersetzen', status: 'paused', priority: 'medium', assignee: 'u1', project: 'SIWEB', labels: ['web', 'i18n'], due: null, updated: '2026-05-08' },
-	{ id: 'SIWEB-20', title: 'Condition: 2 Buttons gleichzeitig anklickbar machen', status: 'paused', priority: 'medium', assignee: 'u2', project: 'SIWEB', labels: ['bug'], due: null, updated: '2026-05-06' },
-	{ id: 'SIWEB-18', title: 'SKU-Suche reparieren (inkonsistente Trefferanzeige)', status: 'paused', priority: 'low', assignee: 'u2', project: 'SIWEB', labels: ['bug'], due: null, updated: '2026-05-05' },
-	{ id: 'SIWEB-16', title: 'Feld für alte & neue Nummern + Discontinued-Feld hinzufügen', status: 'paused', priority: 'medium', assignee: 'u4', project: 'SIWEB', labels: [], due: null, updated: '2026-05-04' },
-	{ id: 'SIWEB-8', title: 'Credibility stärken: „Made in Germany" und Expertise kommunizieren', status: 'paused', priority: 'high', assignee: 'u5', project: 'SIWEB', labels: ['web', 'copy'], due: null, updated: '2026-05-02' },
-	{ id: 'TRACKR-68', title: 'Plan Current Week Feature', status: 'in_review', priority: 'low', assignee: 'u6', project: 'TRACKR', labels: [], due: null, updated: '2026-05-12' },
-	{ id: 'TRACKR-66', title: "Saved Filters doesn't save the Assignee?", status: 'in_review', priority: 'urgent', assignee: 'u2', project: 'TRACKR', labels: ['bug'], due: '2026-05-06', updated: '2026-05-11' },
-	{ id: 'WEBIM-3', title: 'Plan erstellen / Angebot Google Bewerbung', status: 'in_review', priority: 'medium', assignee: 'u5', project: 'WEBIM', labels: ['web'], due: '2026-05-14', updated: '2026-05-10' },
-	{ id: 'MAJA-16', title: 'Josie Maja Demo Version bereitstellen', status: 'in_review', priority: 'urgent', assignee: 'u1', project: 'MAJA', labels: [], due: null, updated: '2026-05-11' },
-	{ id: 'SIWEB-21', title: 'Status-Filter (All / Published / Draft / Deleted) für Artikel und SKUs', status: 'in_review', priority: 'none', assignee: 'u4', project: 'SIWEB', labels: ['admin'], due: null, updated: '2026-05-09' },
-	{ id: 'SIWEB-19', title: '"Refurbished (Generalüberholt)" zu "Checked (Geprüft)" umbenennen', status: 'in_review', priority: 'none', assignee: 'u3', project: 'SIWEB', labels: ['copy'], due: null, updated: '2026-05-08' },
-	{ id: 'SIWEB-17', title: 'Tetra Pak Nummer immer vorne anzeigen', status: 'in_review', priority: 'none', assignee: 'u2', project: 'SIWEB', labels: [], due: null, updated: '2026-05-07' },
-	{ id: 'TRACKR-71', title: 'Add keyboard shortcut palette (⌘K → command list)', status: 'todo', priority: 'medium', assignee: 'u6', project: 'TRACKR', labels: ['ux'], due: '2026-05-19', updated: '2026-05-11' },
+	{
+		id: 'MAJA-13',
+		title: 'German translation not complete',
+		status: 'paused',
+		priority: 'low',
+		assignee: 'u1',
+		project: 'MAJA',
+		labels: ['i18n'],
+		due: null,
+		updated: '2026-05-09',
+		description: 'Missing strings on /pricing, /support and confirmation emails.'
+	},
+	{
+		id: 'SIWEB-27',
+		title: 'Webseite auf Deutsch übersetzen',
+		status: 'paused',
+		priority: 'medium',
+		assignee: 'u1',
+		project: 'SIWEB',
+		labels: ['web', 'i18n'],
+		due: null,
+		updated: '2026-05-08'
+	},
+	{
+		id: 'SIWEB-20',
+		title: 'Condition: 2 Buttons gleichzeitig anklickbar machen',
+		status: 'paused',
+		priority: 'medium',
+		assignee: 'u2',
+		project: 'SIWEB',
+		labels: ['bug'],
+		due: null,
+		updated: '2026-05-06'
+	},
+	{
+		id: 'SIWEB-18',
+		title: 'SKU-Suche reparieren (inkonsistente Trefferanzeige)',
+		status: 'paused',
+		priority: 'low',
+		assignee: 'u2',
+		project: 'SIWEB',
+		labels: ['bug'],
+		due: null,
+		updated: '2026-05-05'
+	},
+	{
+		id: 'SIWEB-16',
+		title: 'Feld für alte & neue Nummern + Discontinued-Feld hinzufügen',
+		status: 'paused',
+		priority: 'medium',
+		assignee: 'u4',
+		project: 'SIWEB',
+		labels: [],
+		due: null,
+		updated: '2026-05-04'
+	},
+	{
+		id: 'SIWEB-8',
+		title: 'Credibility stärken: „Made in Germany" und Expertise kommunizieren',
+		status: 'paused',
+		priority: 'high',
+		assignee: 'u5',
+		project: 'SIWEB',
+		labels: ['web', 'copy'],
+		due: null,
+		updated: '2026-05-02'
+	},
+	{
+		id: 'TRACKR-68',
+		title: 'Plan Current Week Feature',
+		status: 'in_review',
+		priority: 'low',
+		assignee: 'u6',
+		project: 'TRACKR',
+		labels: [],
+		due: null,
+		updated: '2026-05-12'
+	},
+	{
+		id: 'TRACKR-66',
+		title: "Saved Filters doesn't save the Assignee?",
+		status: 'in_review',
+		priority: 'urgent',
+		assignee: 'u2',
+		project: 'TRACKR',
+		labels: ['bug'],
+		due: '2026-05-06',
+		updated: '2026-05-11'
+	},
+	{
+		id: 'WEBIM-3',
+		title: 'Plan erstellen / Angebot Google Bewerbung',
+		status: 'in_review',
+		priority: 'medium',
+		assignee: 'u5',
+		project: 'WEBIM',
+		labels: ['web'],
+		due: '2026-05-14',
+		updated: '2026-05-10'
+	},
+	{
+		id: 'MAJA-16',
+		title: 'Josie Maja Demo Version bereitstellen',
+		status: 'in_review',
+		priority: 'urgent',
+		assignee: 'u1',
+		project: 'MAJA',
+		labels: [],
+		due: null,
+		updated: '2026-05-11'
+	},
+	{
+		id: 'SIWEB-21',
+		title: 'Status-Filter (All / Published / Draft / Deleted) für Artikel und SKUs',
+		status: 'in_review',
+		priority: 'none',
+		assignee: 'u4',
+		project: 'SIWEB',
+		labels: ['admin'],
+		due: null,
+		updated: '2026-05-09'
+	},
+	{
+		id: 'SIWEB-19',
+		title: '"Refurbished (Generalüberholt)" zu "Checked (Geprüft)" umbenennen',
+		status: 'in_review',
+		priority: 'none',
+		assignee: 'u3',
+		project: 'SIWEB',
+		labels: ['copy'],
+		due: null,
+		updated: '2026-05-08'
+	},
+	{
+		id: 'SIWEB-17',
+		title: 'Tetra Pak Nummer immer vorne anzeigen',
+		status: 'in_review',
+		priority: 'none',
+		assignee: 'u2',
+		project: 'SIWEB',
+		labels: [],
+		due: null,
+		updated: '2026-05-07'
+	},
+	{
+		id: 'TRACKR-71',
+		title: 'Add keyboard shortcut palette (⌘K → command list)',
+		status: 'todo',
+		priority: 'medium',
+		assignee: 'u6',
+		project: 'TRACKR',
+		labels: ['ux'],
+		due: '2026-05-19',
+		updated: '2026-05-11'
+	},
 	{
 		id: 'TRACKR-70',
 		title: 'Inline edit task title from list view',
@@ -219,20 +601,98 @@ export const TRACKR_TASKS: Task[] = [
 			{ name: 'figma-flow.png', size: '1.4 MB' }
 		],
 		comments: [
-			{ user: 'u6', date: '2026-05-09', text: 'Spec attached. Lets get this in before the next release window — should be a quick win for power users.' },
-			{ user: 'u3', date: '2026-05-10', text: 'I can take a first pass tomorrow. One question: do we want the edit affordance to show on hover or only on focus?' }
+			{
+				user: 'u6',
+				date: '2026-05-09',
+				text: 'Spec attached. Lets get this in before the next release window — should be a quick win for power users.'
+			},
+			{
+				user: 'u3',
+				date: '2026-05-10',
+				text: 'I can take a first pass tomorrow. One question: do we want the edit affordance to show on hover or only on focus?'
+			}
 		],
 		timeLogs: [
-			{ user: 'u3', date: '2026-05-11', minutes: 45, note: 'Sketched out keyboard interactions for cancel/commit.' },
-			{ user: 'u2', date: '2026-05-12', minutes: 30, note: 'Wired up double-click and contenteditable scaffold.' }
+			{
+				user: 'u3',
+				date: '2026-05-11',
+				minutes: 45,
+				note: 'Sketched out keyboard interactions for cancel/commit.'
+			},
+			{
+				user: 'u2',
+				date: '2026-05-12',
+				minutes: 30,
+				note: 'Wired up double-click and contenteditable scaffold.'
+			}
 		]
 	},
-	{ id: 'SIWEB-31', title: 'Sticky table headers when scrolling long lists', status: 'todo', priority: 'low', assignee: 'u3', project: 'SIWEB', labels: ['web'], due: null, updated: '2026-05-09' },
-	{ id: 'WEBIM-7', title: 'Landing page hero copy — A/B variants', status: 'todo', priority: 'medium', assignee: 'u5', project: 'WEBIM', labels: ['copy'], due: '2026-05-20', updated: '2026-05-08' },
-	{ id: 'MAJA-22', title: 'Onboarding checklist for new demo accounts', status: 'todo', priority: 'medium', assignee: 'u4', project: 'MAJA', labels: ['ux'], due: '2026-05-22', updated: '2026-05-07' },
-	{ id: 'TRACKR-95', title: 'Calendar / timeline view for cross-project planning', status: 'backlog', priority: 'low', assignee: 'u6', project: 'TRACKR', labels: [], due: null, updated: '2026-04-29' },
-	{ id: 'TRACKR-93', title: 'Bulk edit selected rows (status, assignee, priority)', status: 'backlog', priority: 'medium', assignee: 'u2', project: 'TRACKR', labels: ['ux'], due: null, updated: '2026-04-27' },
-	{ id: 'SIWEB-44', title: 'Export filtered tasks to CSV', status: 'backlog', priority: 'low', assignee: 'u3', project: 'SIWEB', labels: [], due: null, updated: '2026-04-25' }
+	{
+		id: 'SIWEB-31',
+		title: 'Sticky table headers when scrolling long lists',
+		status: 'todo',
+		priority: 'low',
+		assignee: 'u3',
+		project: 'SIWEB',
+		labels: ['web'],
+		due: null,
+		updated: '2026-05-09'
+	},
+	{
+		id: 'WEBIM-7',
+		title: 'Landing page hero copy — A/B variants',
+		status: 'todo',
+		priority: 'medium',
+		assignee: 'u5',
+		project: 'WEBIM',
+		labels: ['copy'],
+		due: '2026-05-20',
+		updated: '2026-05-08'
+	},
+	{
+		id: 'MAJA-22',
+		title: 'Onboarding checklist for new demo accounts',
+		status: 'todo',
+		priority: 'medium',
+		assignee: 'u4',
+		project: 'MAJA',
+		labels: ['ux'],
+		due: '2026-05-22',
+		updated: '2026-05-07'
+	},
+	{
+		id: 'TRACKR-95',
+		title: 'Calendar / timeline view for cross-project planning',
+		status: 'backlog',
+		priority: 'low',
+		assignee: 'u6',
+		project: 'TRACKR',
+		labels: [],
+		due: null,
+		updated: '2026-04-29'
+	},
+	{
+		id: 'TRACKR-93',
+		title: 'Bulk edit selected rows (status, assignee, priority)',
+		status: 'backlog',
+		priority: 'medium',
+		assignee: 'u2',
+		project: 'TRACKR',
+		labels: ['ux'],
+		due: null,
+		updated: '2026-04-27'
+	},
+	{
+		id: 'SIWEB-44',
+		title: 'Export filtered tasks to CSV',
+		status: 'backlog',
+		priority: 'low',
+		assignee: 'u3',
+		project: 'SIWEB',
+		labels: [],
+		due: null,
+		updated: '2026-04-25'
+	}
 ];
 
 export const WIKI_PAGES: WikiPage[] = [
@@ -245,15 +705,37 @@ export const WIKI_PAGES: WikiPage[] = [
 		author: 'u6',
 		body: [
 			{ kind: 'h1', text: 'Welcome to the Trackr workspace' },
-			{ kind: 'p', text: 'This is our shared brain. Anything that helps the team move faster — playbooks, decisions, onboarding — belongs here.' },
-			{ kind: 'callout', tone: 'info', text: 'Edit any page inline. Slash-commands ( / ) drop in headings, callouts, tables, code blocks.' },
+			{
+				kind: 'p',
+				text: 'This is our shared brain. Anything that helps the team move faster — playbooks, decisions, onboarding — belongs here.'
+			},
+			{
+				kind: 'callout',
+				tone: 'info',
+				text: 'Edit any page inline. Slash-commands ( / ) drop in headings, callouts, tables, code blocks.'
+			},
 			{ kind: 'h2', text: 'Start here' },
-			{ kind: 'list', items: ['New hire? See Engineering → Onboarding.', 'Need a quick way to file a bug? Read How we ship.', 'Looking for policies? Open the People & Ops folder.'] },
+			{
+				kind: 'list',
+				items: [
+					'New hire? See Engineering → Onboarding.',
+					'Need a quick way to file a bug? Read How we ship.',
+					'Looking for policies? Open the People & Ops folder.'
+				]
+			},
 			{ kind: 'h2', text: 'Conventions' },
 			{ kind: 'p', text: 'Keep page titles short. Link generously. Archive instead of delete.' }
 		]
 	},
-	{ id: 'w-eng', parent: null, title: 'Engineering', icon: 'folder', updated: 'Yesterday', author: 'u2', body: [] },
+	{
+		id: 'w-eng',
+		parent: null,
+		title: 'Engineering',
+		icon: 'folder',
+		updated: 'Yesterday',
+		author: 'u2',
+		body: []
+	},
 	{
 		id: 'w-onboard',
 		parent: 'w-eng',
@@ -263,12 +745,34 @@ export const WIKI_PAGES: WikiPage[] = [
 		author: 'u2',
 		body: [
 			{ kind: 'h1', text: 'Engineering Onboarding' },
-			{ kind: 'p', text: 'Two weeks. End state: you can ship a small feature end-to-end with confidence.' },
+			{
+				kind: 'p',
+				text: 'Two weeks. End state: you can ship a small feature end-to-end with confidence.'
+			},
 			{ kind: 'h2', text: 'Week 1 — get oriented' },
-			{ kind: 'list', items: ['Day 1 · Laptop setup, repos, secrets, code of conduct sign-off.', 'Day 2 · Architecture walkthrough with your buddy.', 'Day 3-4 · First PR — pick a "good first issue".', 'Day 5 · Demo what you shipped at the Friday review.'] },
+			{
+				kind: 'list',
+				items: [
+					'Day 1 · Laptop setup, repos, secrets, code of conduct sign-off.',
+					'Day 2 · Architecture walkthrough with your buddy.',
+					'Day 3-4 · First PR — pick a "good first issue".',
+					'Day 5 · Demo what you shipped at the Friday review.'
+				]
+			},
 			{ kind: 'h2', text: 'Week 2 — own a slice' },
-			{ kind: 'list', items: ['Take on a real task from the current sprint.', 'Pair with someone outside your team for half a day.', 'Write up one thing you learned for the wiki.'] },
-			{ kind: 'callout', tone: 'warn', text: 'Stuck? You are encouraged to ask. Avoid burning more than 30 min before reaching out.' }
+			{
+				kind: 'list',
+				items: [
+					'Take on a real task from the current sprint.',
+					'Pair with someone outside your team for half a day.',
+					'Write up one thing you learned for the wiki.'
+				]
+			},
+			{
+				kind: 'callout',
+				tone: 'warn',
+				text: 'Stuck? You are encouraged to ask. Avoid burning more than 30 min before reaching out.'
+			}
 		]
 	},
 	{
@@ -282,12 +786,35 @@ export const WIKI_PAGES: WikiPage[] = [
 			{ kind: 'h1', text: 'How we ship' },
 			{ kind: 'p', text: 'Small batches, fast feedback, kind code review.' },
 			{ kind: 'h2', text: 'The flow' },
-			{ kind: 'list', items: ['Pick (or create) a task in Trackr. Status → In Progress.', 'Branch from main. Open the PR early as a draft.', 'Ask for review when CI is green.', 'Squash-merge once approved. Status → Done.'] },
+			{
+				kind: 'list',
+				items: [
+					'Pick (or create) a task in Trackr. Status → In Progress.',
+					'Branch from main. Open the PR early as a draft.',
+					'Ask for review when CI is green.',
+					'Squash-merge once approved. Status → Done.'
+				]
+			},
 			{ kind: 'h2', text: 'Standards' },
-			{ kind: 'list', items: ['PRs under 400 lines whenever possible.', 'Tests for non-trivial logic. Snapshot tests are a smell.', 'No magic constants — name everything.'] }
+			{
+				kind: 'list',
+				items: [
+					'PRs under 400 lines whenever possible.',
+					'Tests for non-trivial logic. Snapshot tests are a smell.',
+					'No magic constants — name everything.'
+				]
+			}
 		]
 	},
-	{ id: 'w-design', parent: null, title: 'Design', icon: 'folder', updated: '1 week ago', author: 'u1', body: [] },
+	{
+		id: 'w-design',
+		parent: null,
+		title: 'Design',
+		icon: 'folder',
+		updated: '1 week ago',
+		author: 'u1',
+		body: []
+	},
 	{
 		id: 'w-tokens',
 		parent: 'w-design',
@@ -297,12 +824,26 @@ export const WIKI_PAGES: WikiPage[] = [
 		author: 'u1',
 		body: [
 			{ kind: 'h1', text: 'Design tokens' },
-			{ kind: 'p', text: 'Source of truth for color, type, spacing. If a value needs a new name, propose it here first.' },
+			{
+				kind: 'p',
+				text: 'Source of truth for color, type, spacing. If a value needs a new name, propose it here first.'
+			},
 			{ kind: 'h2', text: 'Color' },
-			{ kind: 'p', text: 'Warm-toned neutrals on top of a coral accent. We avoid pure black; the base is oklch(0.16 0.005 270).' }
+			{
+				kind: 'p',
+				text: 'Warm-toned neutrals on top of a coral accent. We avoid pure black; the base is oklch(0.16 0.005 270).'
+			}
 		]
 	},
-	{ id: 'w-people', parent: null, title: 'People & Ops', icon: 'folder', updated: '2 weeks ago', author: 'u4', body: [] },
+	{
+		id: 'w-people',
+		parent: null,
+		title: 'People & Ops',
+		icon: 'folder',
+		updated: '2 weeks ago',
+		author: 'u4',
+		body: []
+	},
 	{
 		id: 'w-pto',
 		parent: 'w-people',
@@ -312,8 +853,15 @@ export const WIKI_PAGES: WikiPage[] = [
 		author: 'u4',
 		body: [
 			{ kind: 'h1', text: 'Time off & holidays' },
-			{ kind: 'p', text: 'Unlimited time off with a minimum: please take at least 4 weeks per year. Block your calendar early so others can plan around you.' },
-			{ kind: 'callout', tone: 'info', text: 'Statutory holidays follow your country of residence.' }
+			{
+				kind: 'p',
+				text: 'Unlimited time off with a minimum: please take at least 4 weeks per year. Block your calendar early so others can plan around you.'
+			},
+			{
+				kind: 'callout',
+				tone: 'info',
+				text: 'Statutory holidays follow your country of residence.'
+			}
 		]
 	}
 ];
@@ -325,7 +873,12 @@ export const LOG_EVENT_TYPES: Record<
 	// auth
 	'login.success': { label: 'Signed in', icon: 'check', color: '#7fc8a9', kind: 'auth' },
 	'login.fail': { label: 'Sign-in failed', icon: 'x', color: '#ef4f5e', kind: 'auth' },
-	'user.password_reset': { label: 'Password reset sent', icon: 'refresh', color: '#e9c46a', kind: 'auth' },
+	'user.password_reset': {
+		label: 'Password reset sent',
+		icon: 'refresh',
+		color: '#e9c46a',
+		kind: 'auth'
+	},
 	// members
 	'user.create': { label: 'User created', icon: 'plus', color: '#7fc8a9', kind: 'member' },
 	'user.invite': { label: 'User invited', icon: 'plus', color: '#7a9cf0', kind: 'member' },
@@ -333,26 +886,66 @@ export const LOG_EVENT_TYPES: Record<
 	'user.role_change': { label: 'Role changed', icon: 'shield', color: '#c08bd6', kind: 'member' },
 	'user.disable': { label: 'User disabled', icon: 'x', color: '#ef7a6d', kind: 'member' },
 	'user.delete': { label: 'User deleted', icon: 'trash', color: '#ef4f5e', kind: 'member' },
-	'user.impersonate': { label: 'Impersonation started', icon: 'users', color: '#c08bd6', kind: 'member' },
+	'user.impersonate': {
+		label: 'Impersonation started',
+		icon: 'users',
+		color: '#c08bd6',
+		kind: 'member'
+	},
 	// projects
 	'project.create': { label: 'Project created', icon: 'folder', color: '#7fc8a9', kind: 'project' },
-	'project.update': { label: 'Project updated', icon: 'settings', color: '#7a9cf0', kind: 'project' },
-	'project.archive': { label: 'Project archived', icon: 'folder', color: '#9aa4b2', kind: 'project' },
+	'project.update': {
+		label: 'Project updated',
+		icon: 'settings',
+		color: '#7a9cf0',
+		kind: 'project'
+	},
+	'project.archive': {
+		label: 'Project archived',
+		icon: 'folder',
+		color: '#9aa4b2',
+		kind: 'project'
+	},
 	'project.delete': { label: 'Project deleted', icon: 'trash', color: '#ef4f5e', kind: 'project' },
-	'project.member': { label: 'Project membership changed', icon: 'users', color: '#7a9cf0', kind: 'project' },
+	'project.member': {
+		label: 'Project membership changed',
+		icon: 'users',
+		color: '#7a9cf0',
+		kind: 'project'
+	},
 	// tasks
 	'task.create': { label: 'Task created', icon: 'plus', color: '#7fc8a9', kind: 'task' },
-	'task.status': { label: 'Task status changed', icon: 'check-square', color: '#7a9cf0', kind: 'task' },
+	'task.status': {
+		label: 'Task status changed',
+		icon: 'check-square',
+		color: '#7a9cf0',
+		kind: 'task'
+	},
 	'task.comment': { label: 'Task comment', icon: 'msg', color: '#9aa4b2', kind: 'task' },
 	'task.delete': { label: 'Task deleted', icon: 'x', color: '#ef7a6d', kind: 'task' },
 	// tickets
 	'ticket.create': { label: 'Ticket created', icon: 'ticket', color: '#7fc8a9', kind: 'ticket' },
-	'ticket.update': { label: 'Ticket status changed', icon: 'ticket', color: '#7a9cf0', kind: 'ticket' },
+	'ticket.update': {
+		label: 'Ticket status changed',
+		icon: 'ticket',
+		color: '#7a9cf0',
+		kind: 'ticket'
+	},
 	'ticket.message': { label: 'Ticket reply', icon: 'msg', color: '#7fc8a9', kind: 'ticket' },
 	'ticket.delete': { label: 'Ticket deleted', icon: 'trash', color: '#ef7a6d', kind: 'ticket' },
-	'ticket.convert': { label: 'Ticket converted to task', icon: 'arrow-up', color: '#7a9cf0', kind: 'ticket' },
+	'ticket.convert': {
+		label: 'Ticket converted to task',
+		icon: 'arrow-up',
+		color: '#7a9cf0',
+		kind: 'ticket'
+	},
 	// settings
-	'settings.update': { label: 'Settings changed', icon: 'settings', color: '#e9c46a', kind: 'settings' },
+	'settings.update': {
+		label: 'Settings changed',
+		icon: 'settings',
+		color: '#e9c46a',
+		kind: 'settings'
+	},
 	'api.token': { label: 'API token created', icon: 'shield', color: '#7a9cf0', kind: 'settings' }
 };
 

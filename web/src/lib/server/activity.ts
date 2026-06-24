@@ -9,7 +9,11 @@
 // they describe.
 
 import { db } from './db';
-import { projectActivity, type ProjectActivityType, type ProjectActivityMeta } from './db/app.schema';
+import {
+	projectActivity,
+	type ProjectActivityType,
+	type ProjectActivityMeta
+} from './db/app.schema';
 
 type Db = typeof db;
 // Drizzle's transaction callback parameter — structurally a subset of `db`.

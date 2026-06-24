@@ -38,7 +38,9 @@
 			class="rounded-[14px] border border-border bg-bg-elev px-7 pt-7 pb-6"
 			style:box-shadow="0 1px 0 rgba(255,255,255,0.03) inset, 0 24px 60px -28px rgba(0,0,0,0.55)"
 		>
-			<h1 class="text-[19px] font-semibold tracking-[-0.012em] text-text">{m.auth_login_welcome()}</h1>
+			<h1 class="text-[19px] font-semibold tracking-[-0.012em] text-text">
+				{m.auth_login_welcome()}
+			</h1>
 			<p class="mt-1 text-[13.5px] text-text-3">
 				{m.auth_login_subtitle()}
 			</p>
@@ -79,7 +81,7 @@
 						spellcheck="false"
 						bind:value={email}
 						placeholder="you@example.com"
-						class="h-10 rounded-[8px] border border-border bg-surface px-3 text-[14px] text-text placeholder:text-text-4 transition-colors focus:border-border-strong focus:bg-surface-2"
+						class="h-10 rounded-[8px] border border-border bg-surface px-3 text-[14px] text-text transition-colors placeholder:text-text-4 focus:border-border-strong focus:bg-surface-2"
 					/>
 				</label>
 
@@ -100,7 +102,7 @@
 							required
 							autocomplete="current-password"
 							placeholder="••••••••"
-							class="h-10 w-full rounded-[8px] border border-border bg-surface pr-10 pl-3 text-[14px] text-text placeholder:text-text-4 transition-colors focus:border-border-strong focus:bg-surface-2"
+							class="h-10 w-full rounded-[8px] border border-border bg-surface pr-10 pl-3 text-[14px] text-text transition-colors placeholder:text-text-4 focus:border-border-strong focus:bg-surface-2"
 						/>
 						<button
 							type="button"
@@ -147,7 +149,7 @@
 					type="submit"
 					disabled={submitting}
 					class="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[13.5px] font-semibold text-white transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-default disabled:opacity-70"
-					style:box-shadow="0 1px 0 rgba(255,255,255,0.18) inset, 0 6px 18px -4px rgba(239,122,109,0.35)"
+					style:box-shadow="var(--shadow-btn-lg)"
 				>
 					{#if submitting}
 						<span

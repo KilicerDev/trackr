@@ -43,8 +43,10 @@
 	let pop = $state<'project' | 'task' | 'date' | null>(null);
 	const selectedProject = $derived(projects.find((p) => p.id === projectId) ?? null);
 	const memberProjectIds = $derived(
-		Object.keys((page.data as { memberRoles?: { projects?: Record<string, string> } }).memberRoles
-			?.projects ?? {})
+		Object.keys(
+			(page.data as { memberRoles?: { projects?: Record<string, string> } }).memberRoles
+				?.projects ?? {}
+		)
 	);
 	const allAccess = $derived(!!(page.data as { isTrackrTeam?: boolean }).isTrackrTeam);
 
@@ -79,9 +81,7 @@
 
 	// Tasks for the chosen project. Clear the selection if it no longer belongs.
 	const projectKey = $derived(projects.find((p) => p.id === projectId)?.key ?? '');
-	const projectTasks = $derived(
-		projectId ? tasks.filter((t) => t.projectId === projectId) : []
-	);
+	const projectTasks = $derived(projectId ? tasks.filter((t) => t.projectId === projectId) : []);
 	$effect(() => {
 		// In locked mode the task is preset and the picker list isn't loaded, so
 		// don't treat the preset id as "invalid".
@@ -114,7 +114,7 @@
 
 {#if open}
 	<div
-		class="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm p-4"
+		class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 backdrop-blur-sm"
 		role="presentation"
 		onclick={(e) => {
 			if (e.target === e.currentTarget) close();
@@ -125,12 +125,12 @@
 			role="dialog"
 			aria-modal="true"
 		>
-			<div class="flex items-center justify-between px-5 py-4 border-b border-border/70">
+			<div class="flex items-center justify-between border-b border-border/70 px-5 py-4">
 				<h2 class="text-[15px] font-semibold text-text">{m.notes_new_meeting()}</h2>
 				<button
 					type="button"
 					onclick={close}
-					class="grid place-items-center w-7 h-7 rounded-md text-text-3 hover:text-text hover:bg-surface-2"
+					class="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text"
 					aria-label={m.common_cancel()}
 				>
 					<Icon name="x" size={15} />
@@ -152,7 +152,7 @@
 						}
 					};
 				}}
-				class="px-5 py-4 grid gap-4"
+				class="grid gap-4 px-5 py-4"
 			>
 				<label class="grid gap-1.5">
 					<span class="text-[12px] font-medium text-text-3">{m.notes_field_title()}</span>
@@ -161,7 +161,7 @@
 						oninput={() => (titleDirty = true)}
 						maxlength="120"
 						placeholder={m.notes_field_title_placeholder()}
-						class="bg-surface border border-border rounded-lg px-3 py-2 text-[14px] text-text outline-none focus:border-accent"
+						class="rounded-lg border border-border bg-surface px-3 py-2 text-[14px] text-text outline-none focus:border-accent"
 					/>
 				</label>
 
@@ -171,50 +171,48 @@
 					>
 					{#if locked}
 						<div
-							class="flex items-center gap-2 w-full h-9 bg-surface border border-border rounded-lg px-3 text-[13px] text-text-2"
+							class="flex h-9 w-full items-center gap-2 rounded-lg border border-border bg-surface px-3 text-[13px] text-text-2"
 						>
 							{#if selectedProject}
-								<span
-									class="w-2 h-2 rounded-full shrink-0"
-									style:background={selectedProject.color}
+								<span class="h-2 w-2 shrink-0 rounded-full" style:background={selectedProject.color}
 								></span>
 								<span class="truncate">{selectedProject.name}</span>
 							{/if}
 						</div>
 					{:else}
 						<div class="relative">
-						<button
-							type="button"
-							onclick={() => (pop = pop === 'project' ? null : 'project')}
-							class="flex items-center justify-between gap-2 w-full h-9 bg-surface border rounded-lg px-3 text-[13px] transition-colors {pop ===
-							'project'
-								? 'border-border-strong ring-2 ring-accent/30'
-								: 'border-border hover:border-border-strong'}"
-						>
-							{#if selectedProject}
-								<span class="flex items-center gap-2 truncate">
-									<span
-										class="w-2 h-2 rounded-full shrink-0"
-										style:background={selectedProject.color}
-									></span>
-									<span class="truncate text-text">{selectedProject.name}</span>
-								</span>
-							{:else}
-								<span class="text-text-3">{m.notes_field_project_placeholder()}</span>
+							<button
+								type="button"
+								onclick={() => (pop = pop === 'project' ? null : 'project')}
+								class="flex h-9 w-full items-center justify-between gap-2 rounded-lg border bg-surface px-3 text-[13px] transition-colors {pop ===
+								'project'
+									? 'border-border-strong ring-2 ring-accent/30'
+									: 'border-border hover:border-border-strong'}"
+							>
+								{#if selectedProject}
+									<span class="flex items-center gap-2 truncate">
+										<span
+											class="h-2 w-2 shrink-0 rounded-full"
+											style:background={selectedProject.color}
+										></span>
+										<span class="truncate text-text">{selectedProject.name}</span>
+									</span>
+								{:else}
+									<span class="text-text-3">{m.notes_field_project_placeholder()}</span>
+								{/if}
+								<Icon name="chevron" size={12} class="shrink-0 text-text-3" />
+							</button>
+							{#if pop === 'project'}
+								<ProjectPopover
+									value={(selectedProject?.key ?? '') as ProjectId}
+									onchange={(key) => (projectId = projects.find((p) => p.key === key)?.id ?? '')}
+									onclose={() => (pop = null)}
+									{projects}
+									{memberProjectIds}
+									{allAccess}
+								/>
 							{/if}
-							<Icon name="chevron" size={12} class="text-text-3 shrink-0" />
-						</button>
-						{#if pop === 'project'}
-							<ProjectPopover
-								value={(selectedProject?.key ?? '') as ProjectId}
-								onchange={(key) => (projectId = projects.find((p) => p.key === key)?.id ?? '')}
-								onclose={() => (pop = null)}
-								{projects}
-								{memberProjectIds}
-								{allAccess}
-							/>
-						{/if}
-					</div>
+						</div>
 					{/if}
 					<input type="hidden" name="projectId" value={projectId} />
 				</div>
@@ -223,50 +221,52 @@
 					<span class="text-[12px] font-medium text-text-3">{m.notes_field_task()}</span>
 					{#if locked}
 						<div
-							class="flex items-center gap-1.5 w-full h-9 bg-surface border border-border rounded-lg px-3 text-[13px] text-text-2"
+							class="flex h-9 w-full items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[13px] text-text-2"
 						>
 							{#if presetTaskRef}
-								<span class="font-mono text-[11.5px] text-text-3 shrink-0">{presetTaskRef}</span>
+								<span class="shrink-0 font-mono text-[11.5px] text-text-3">{presetTaskRef}</span>
 							{/if}
 							<span class="truncate">{presetTaskTitle}</span>
 						</div>
 					{:else}
 						<div class="relative">
-						<button
-							type="button"
-							disabled={!projectId || projectTasks.length === 0}
-							onclick={() => (pop = pop === 'task' ? null : 'task')}
-							class="flex items-center justify-between gap-2 w-full h-9 bg-surface border rounded-lg px-3 text-[13px] transition-colors disabled:opacity-50 {pop ===
-							'task'
-								? 'border-border-strong ring-2 ring-accent/30'
-								: 'border-border hover:border-border-strong'}"
-						>
-							{#if selectedTask}
-								<span class="flex items-center gap-1.5 truncate">
-									<span class="font-mono text-[11.5px] text-text-3 shrink-0">{selectedTask.ref}</span>
-									<span class="truncate text-text">{selectedTask.title}</span>
-								</span>
-							{:else}
-								<span class="text-text-3 truncate">
-									{!projectId
-										? m.notes_field_task_pick_project_first()
-										: projectTasks.length === 0
-											? m.notes_field_task_none_in_project()
-											: m.notes_field_task_placeholder()}
-								</span>
+							<button
+								type="button"
+								disabled={!projectId || projectTasks.length === 0}
+								onclick={() => (pop = pop === 'task' ? null : 'task')}
+								class="flex h-9 w-full items-center justify-between gap-2 rounded-lg border bg-surface px-3 text-[13px] transition-colors disabled:opacity-50 {pop ===
+								'task'
+									? 'border-border-strong ring-2 ring-accent/30'
+									: 'border-border hover:border-border-strong'}"
+							>
+								{#if selectedTask}
+									<span class="flex items-center gap-1.5 truncate">
+										<span class="shrink-0 font-mono text-[11.5px] text-text-3"
+											>{selectedTask.ref}</span
+										>
+										<span class="truncate text-text">{selectedTask.title}</span>
+									</span>
+								{:else}
+									<span class="truncate text-text-3">
+										{!projectId
+											? m.notes_field_task_pick_project_first()
+											: projectTasks.length === 0
+												? m.notes_field_task_none_in_project()
+												: m.notes_field_task_placeholder()}
+									</span>
+								{/if}
+								<Icon name="chevron" size={12} class="shrink-0 text-text-3" />
+							</button>
+							{#if pop === 'task'}
+								<TaskPopover
+									value={taskId}
+									onchange={(v) => (taskId = v)}
+									onclose={() => (pop = null)}
+									tasks={taskRows}
+									noneLabel={m.notes_field_task_placeholder()}
+								/>
 							{/if}
-							<Icon name="chevron" size={12} class="text-text-3 shrink-0" />
-						</button>
-						{#if pop === 'task'}
-							<TaskPopover
-								value={taskId}
-								onchange={(v) => (taskId = v)}
-								onclose={() => (pop = null)}
-								tasks={taskRows}
-								noneLabel={m.notes_field_task_placeholder()}
-							/>
-						{/if}
-					</div>
+						</div>
 					{/if}
 					<input type="hidden" name="taskId" value={taskId} />
 				</div>
@@ -278,13 +278,13 @@
 							<button
 								type="button"
 								onclick={() => (pop = pop === 'date' ? null : 'date')}
-								class="flex items-center justify-between gap-2 w-full h-9 bg-surface border rounded-lg px-3 text-[13px] transition-colors {pop ===
+								class="flex h-9 w-full items-center justify-between gap-2 rounded-lg border bg-surface px-3 text-[13px] transition-colors {pop ===
 								'date'
 									? 'border-border-strong ring-2 ring-accent/30'
 									: 'border-border hover:border-border-strong'}"
 							>
 								<span class="truncate text-text">{formatDateLong(meetingDate)}</span>
-								<Icon name="calendar" size={13} class="text-text-3 shrink-0" />
+								<Icon name="calendar" size={13} class="shrink-0 text-text-3" />
 							</button>
 							{#if pop === 'date'}
 								<DatePopover
@@ -314,14 +314,14 @@
 					<button
 						type="button"
 						onclick={close}
-						class="px-3 py-1.5 rounded-lg text-[13px] text-text-2 hover:bg-surface-2"
+						class="rounded-lg px-3 py-1.5 text-[13px] text-text-2 hover:bg-surface-2"
 					>
 						{m.common_cancel()}
 					</button>
 					<button
 						type="submit"
 						disabled={submitting || !projectId}
-						class="px-3.5 py-1.5 rounded-lg bg-accent text-white text-[13px] font-medium hover:opacity-90 disabled:opacity-50"
+						class="rounded-lg bg-accent px-3.5 py-1.5 text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-50"
 					>
 						{m.notes_create()}
 					</button>

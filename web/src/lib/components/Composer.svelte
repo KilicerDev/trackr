@@ -44,7 +44,7 @@
 </script>
 
 <div
-	class="rounded-xl bg-surface border transition-colors {accent === 'warning'
+	class="rounded-xl border bg-surface transition-colors {accent === 'warning'
 		? 'border-[#e9c46a]/40 focus-within:border-[#e9c46a]/70'
 		: 'border-border focus-within:border-border-strong'}"
 >
@@ -55,7 +55,7 @@
 		{placeholder}
 		rows={2}
 		disabled={disabled || sending}
-		class="w-full resize-none bg-transparent border-0 px-3.5 pt-3 pb-1 text-[13px] leading-relaxed outline-none placeholder:text-text-3 disabled:opacity-60"
+		class="w-full resize-none border-0 bg-transparent px-3.5 pt-3 pb-1 text-[13px] leading-relaxed outline-none placeholder:text-text-3 disabled:opacity-60"
 	/>
 	<div class="flex items-center gap-1 px-2 pb-2">
 		<div class="ml-auto flex items-center gap-1">
@@ -65,10 +65,11 @@
 				aria-label={m.composer_send()}
 				onclick={onsend}
 				disabled={sending || !value.trim()}
-				class="w-8 h-8 grid place-items-center rounded-lg bg-accent hover:bg-accent-strong text-white shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+				class="grid h-8 w-8 place-items-center rounded-lg bg-accent text-white shadow-btn transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if sending}
-					<span class="w-3 h-3 rounded-full border border-white border-t-transparent animate-spin"></span>
+					<span class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"
+					></span>
 				{:else}
 					<Icon name="send" size={13} />
 				{/if}

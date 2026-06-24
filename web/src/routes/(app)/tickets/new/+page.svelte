@@ -61,15 +61,17 @@
 
 <Topbar crumbs={[{ label: data.org.name }, { label: m.tickets_new_title() }]} />
 
-<div class="flex-1 min-h-0 overflow-auto">
-	<div class="max-w-[720px] mx-auto px-6 py-8">
-		<div class="flex items-center gap-2 text-[11.5px] text-text-3 mb-3">
+<div class="min-h-0 flex-1 overflow-auto">
+	<div class="mx-auto max-w-[720px] px-6 py-8">
+		<div class="mb-3 flex items-center gap-2 text-[11.5px] text-text-3">
 			<span class="inline-flex items-center gap-1.5">
-				<span class="w-1.5 h-1.5 rounded-full" style:background={data.org.color}></span>
+				<span class="h-1.5 w-1.5 rounded-full" style:background={data.org.color}></span>
 				<span>{data.org.name}</span>
 			</span>
 		</div>
-		<h1 class="text-[22px] font-semibold tracking-[-0.012em] mb-5">{m.tickets_new_open_heading()}</h1>
+		<h1 class="mb-5 text-[22px] font-semibold tracking-[-0.012em]">
+			{m.tickets_new_open_heading()}
+		</h1>
 
 		<form
 			bind:this={formEl}
@@ -88,7 +90,8 @@
 					} else if (result.type === 'failure') {
 						showToast(
 							'err',
-							(result.data as { message?: string } | undefined)?.message ?? m.tickets_create_failed()
+							(result.data as { message?: string } | undefined)?.message ??
+								m.tickets_create_failed()
 						);
 					} else if (result.type === 'error') {
 						showToast('err', result.error?.message ?? m.tickets_create_failed());
@@ -104,14 +107,14 @@
 						bind:value={subject}
 						required
 						placeholder={m.tickets_subject_placeholder()}
-						class="block w-full bg-transparent border-0 outline-none text-[19px] font-semibold tracking-[-0.01em] text-text placeholder:text-text-3 mb-3"
+						class="mb-3 block w-full border-0 bg-transparent text-[19px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
 					/>
 					<textarea
 						name="description"
 						bind:value={description}
 						placeholder={m.tickets_description_placeholder()}
 						rows="6"
-						class="w-full resize-none bg-transparent border-0 outline-none text-[14px] leading-relaxed text-text-2 placeholder:text-text-3 mb-4"
+						class="mb-4 w-full resize-none border-0 bg-transparent text-[14px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
 					></textarea>
 
 					<div class="flex flex-wrap gap-2">
@@ -120,7 +123,7 @@
 							<button
 								type="button"
 								onclick={() => (pop = pop === 'priority' ? null : 'priority')}
-								class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
+								class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
 							>
 								<PriorityBars {priority} />
 								<span>{priorityLabel(priority)}</span>
@@ -130,7 +133,7 @@
 								<div
 									use:clickOutside={() => (pop = null)}
 									in:fly={POPOVER_IN}
-									class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[160px]"
+									class="absolute top-full z-50 mt-1.5 min-w-[160px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 									style:box-shadow="var(--shadow-lg)"
 								>
 									{#each TICKET_PRIORITIES as p (p.id)}
@@ -140,11 +143,15 @@
 												priority = p.id as Priority;
 												pop = null;
 											}}
-											class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+											class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 										>
 											<PriorityBars priority={p.id} />
 											<span class="text-[13px]">{priorityLabel(p.id)}</span>
-											<span class="ml-auto text-accent {priority === p.id ? 'opacity-100' : 'opacity-0'}">
+											<span
+												class="ml-auto text-accent {priority === p.id
+													? 'opacity-100'
+													: 'opacity-0'}"
+											>
 												<Icon name="check" size={13} />
 											</span>
 										</button>
@@ -158,9 +165,9 @@
 							<button
 								type="button"
 								onclick={() => (pop = pop === 'category' ? null : 'category')}
-								class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
+								class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
 							>
-								<span class="w-2 h-2 rounded-full" style:background={categoryMeta.color}></span>
+								<span class="h-2 w-2 rounded-full" style:background={categoryMeta.color}></span>
 								<span>{ticketCategoryLabel(category)}</span>
 								<Icon name="chevron" size={11} class="text-text-3" />
 							</button>
@@ -168,7 +175,7 @@
 								<div
 									use:clickOutside={() => (pop = null)}
 									in:fly={POPOVER_IN}
-									class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[180px]"
+									class="absolute top-full z-50 mt-1.5 min-w-[180px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 									style:box-shadow="var(--shadow-lg)"
 								>
 									{#each TICKET_CATEGORIES as c (c.id)}
@@ -178,11 +185,15 @@
 												category = c.id as Category;
 												pop = null;
 											}}
-											class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+											class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 										>
-											<span class="w-2 h-2 rounded-full" style:background={c.color}></span>
+											<span class="h-2 w-2 rounded-full" style:background={c.color}></span>
 											<span class="text-[13px]">{ticketCategoryLabel(c.id)}</span>
-											<span class="ml-auto text-accent {category === c.id ? 'opacity-100' : 'opacity-0'}">
+											<span
+												class="ml-auto text-accent {category === c.id
+													? 'opacity-100'
+													: 'opacity-0'}"
+											>
 												<Icon name="check" size={13} />
 											</span>
 										</button>
@@ -194,7 +205,7 @@
 						<button
 							type="button"
 							onclick={() => fileInput?.click()}
-							class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed border-border hover:border-border-strong text-[12.5px] text-text-3 hover:text-text transition-colors"
+							class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[12.5px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
 						>
 							<Icon name="paperclip" size={13} />
 							<span>{m.tickets_attach_files()}</span>
@@ -219,14 +230,14 @@
 				</div>
 			</AttachmentDropzone>
 
-			<div class="flex items-center gap-2 mt-4">
+			<div class="mt-4 flex items-center gap-2">
 				<span class="text-[11.5px] text-text-3"><Kbd>⌘↵</Kbd> {m.tickets_kbd_to_submit()}</span>
 				<div class="ml-auto flex items-center gap-2">
 					<Button variant="default" onclick={() => history.back()}>{m.common_cancel()}</Button>
 					<button
 						type="submit"
 						disabled={submitting || !subject.trim()}
-						class="inline-flex items-center gap-1.5 rounded-lg font-medium text-[13px] transition-[background,border-color,transform] duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px] px-[13px] py-[8px] bg-accent text-white border border-transparent hover:bg-accent-strong shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)]"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[13px] py-[8px] text-[13px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{submitting ? m.common_creating() : m.tickets_create()}
 					</button>

@@ -68,9 +68,13 @@
 		type="button"
 		disabled={uploading}
 		onclick={() => input?.click()}
-		class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-dashed border-border hover:border-border-strong text-[12.5px] text-text-2 hover:text-text transition-colors disabled:opacity-60"
+		class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border bg-surface px-2.5 py-1.5 text-[12.5px] text-text-2 transition-colors hover:border-border-strong hover:text-text disabled:opacity-60"
 	>
-		<Icon name={uploading ? 'refresh' : 'paperclip'} size={13} class={uploading ? 'animate-spin' : ''} />
+		<Icon
+			name={uploading ? 'refresh' : 'paperclip'}
+			size={13}
+			class={uploading ? 'animate-spin' : ''}
+		/>
 		<span>{uploading ? m.attach_uploading() : label}</span>
 	</button>
 	<input bind:this={input} type="file" multiple hidden onchange={onPick} />

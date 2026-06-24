@@ -39,9 +39,7 @@
 
 	const ROLES = $derived(data.allowedRoles as OrgRole[]);
 	// Default role for newly-added members: lowest available for the org type.
-	const DEFAULT_ROLE = $derived(
-		data.org.isInternal ? 'org.staff' : 'org.member'
-	);
+	const DEFAULT_ROLE = $derived(data.org.isInternal ? 'org.staff' : 'org.member');
 	const PALETTE = [
 		'#ef7a6d',
 		'#e07a5f',
@@ -121,9 +119,9 @@
 			}
 			const msg =
 				result.type === 'failure'
-					? (result.data as { message?: string } | undefined)?.message ?? m.admin_action_failed()
+					? ((result.data as { message?: string } | undefined)?.message ?? m.admin_action_failed())
 					: result.type === 'error'
-						? result.error?.message ?? m.admin_action_failed()
+						? (result.error?.message ?? m.admin_action_failed())
 						: m.admin_action_failed();
 			showToast('err', msg);
 		} catch {
@@ -195,41 +193,45 @@
 	]}
 />
 
-<div class="flex-1 min-h-0 overflow-y-auto">
+<div class="min-h-0 flex-1 overflow-y-auto">
 	<div class="px-6 py-6">
 		<a
 			href="/admin/organizations"
-			class="inline-flex items-center gap-1.5 text-[12.5px] text-text-3 hover:text-text mb-5"
+			class="mb-5 inline-flex items-center gap-1.5 text-[12.5px] text-text-3 hover:text-text"
 		>
-			<Icon name="chevron-r" size={11} class="rotate-180" /> {m.admin_organizations_title()}
+			<Icon name="chevron-r" size={11} class="rotate-180" />
+			{m.admin_organizations_title()}
 		</a>
 
 		<!-- hero -->
-		<div class="flex items-start gap-4 mb-6">
+		<div class="mb-6 flex items-start gap-4">
 			<div
-				class="w-12 h-12 rounded-xl grid place-items-center text-white font-semibold text-[16px] shrink-0"
+				class="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-[16px] font-semibold text-white"
 				style:background="linear-gradient(140deg, {data.org.color}, color-mix(in oklch, {data.org
 					.color} 70%, #000) 85%)"
 				style:box-shadow="0 1px 0 rgba(255,255,255,0.18) inset"
-			>{initials(data.org.name)}</div>
-			<div class="flex-1 min-w-0">
+			>
+				{initials(data.org.name)}
+			</div>
+			<div class="min-w-0 flex-1">
 				<div class="flex items-center gap-2">
 					<h1 class="text-[26px] font-semibold tracking-[-0.014em] text-text">{data.org.name}</h1>
 					{#if data.org.archivedAt}
 						<span
-							class="text-[10.5px] uppercase tracking-[0.06em] px-1.5 py-0.5 rounded text-text-3"
+							class="rounded px-1.5 py-0.5 text-[10.5px] tracking-[0.06em] text-text-3 uppercase"
 							style:background="rgba(154,164,178,0.16)"
 						>
 							{m.admin_org_archived_badge()}
 						</span>
 					{/if}
 				</div>
-				<div class="text-[12.5px] text-text-3 font-mono mt-1">{data.org.slug}</div>
+				<div class="mt-1 font-mono text-[12.5px] text-text-3">{data.org.slug}</div>
 			</div>
 			<div class="flex items-center gap-2">
 				{#if !editing}
 					<Button variant="default" size="sm" onclick={() => (editing = true)}>
-						<Icon name="settings" size={13} /> {m.common_edit()}
+						<Icon name="settings" size={13} />
+						{m.common_edit()}
 					</Button>
 				{/if}
 				<Button variant="default" size="sm" onclick={onArchive}>
@@ -259,12 +261,12 @@
 						}
 					};
 				}}
-				class="bg-bg-elev border border-border rounded-2xl p-5 mb-6 space-y-4"
+				class="mb-6 space-y-4 rounded-2xl border border-border bg-bg-elev p-5"
 			>
 				<div>
 					<label
 						for="o-name"
-						class="text-[11px] uppercase tracking-[0.08em] text-text-4 block mb-1.5"
+						class="mb-1.5 block text-[11px] tracking-[0.08em] text-text-4 uppercase"
 					>
 						{m.admin_name()}
 					</label>
@@ -273,13 +275,13 @@
 						name="name"
 						bind:value={name}
 						required
-						class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-[13px] outline-none focus:border-border-strong"
+						class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-[13px] outline-none focus:border-border-strong"
 					/>
 				</div>
 				<div>
 					<label
 						for="o-slug"
-						class="text-[11px] uppercase tracking-[0.08em] text-text-4 block mb-1.5"
+						class="mb-1.5 block text-[11px] tracking-[0.08em] text-text-4 uppercase"
 					>
 						{m.admin_slug()}
 					</label>
@@ -287,13 +289,13 @@
 						id="o-slug"
 						name="slug"
 						bind:value={slug}
-						class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-[13px] font-mono outline-none focus:border-border-strong"
+						class="w-full rounded-lg border border-border bg-surface px-3 py-2 font-mono text-[13px] outline-none focus:border-border-strong"
 					/>
 				</div>
 				<div>
 					<label
 						for="o-desc"
-						class="text-[11px] uppercase tracking-[0.08em] text-text-4 block mb-1.5"
+						class="mb-1.5 block text-[11px] tracking-[0.08em] text-text-4 uppercase"
 					>
 						{m.admin_org_description_label()}
 					</label>
@@ -302,18 +304,20 @@
 						name="description"
 						bind:value={description}
 						rows="3"
-						class="w-full resize-none bg-surface border border-border rounded-lg px-3 py-2 text-[13px] outline-none focus:border-border-strong"
+						class="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-[13px] outline-none focus:border-border-strong"
 					></textarea>
 				</div>
 				<div>
-					<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-2">{m.admin_color()}</div>
+					<div class="mb-2 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+						{m.admin_color()}
+					</div>
 					<div class="flex flex-wrap gap-1.5">
 						{#each PALETTE as c (c)}
 							<button
 								type="button"
 								onclick={() => (color = c)}
 								aria-label={m.admin_pick_color({ color: c })}
-								class="relative w-7 h-7 rounded-lg"
+								class="relative h-7 w-7 rounded-lg"
 								style:background="linear-gradient(140deg, {c}, color-mix(in oklch, {c} 70%, #000) 85%)"
 								style:box-shadow={color === c
 									? `0 0 0 2px var(--bg-elev), 0 0 0 4px ${c}`
@@ -333,7 +337,7 @@
 						{serverError}
 					</div>
 				{/if}
-				<div class="flex items-center gap-2 justify-end pt-1">
+				<div class="flex items-center justify-end gap-2 pt-1">
 					<Button
 						variant="default"
 						onclick={() => {
@@ -346,25 +350,27 @@
 					<button
 						type="submit"
 						disabled={saving || !name.trim()}
-						class="inline-flex items-center gap-1.5 rounded-lg font-medium text-[13px] disabled:opacity-50 disabled:cursor-not-allowed px-[11px] py-[7px] bg-accent text-white border border-transparent hover:bg-accent-strong"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[11px] py-[7px] text-[13px] font-medium text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{saving ? m.common_saving() : m.common_save_changes()}
 					</button>
 				</div>
 			</form>
 		{:else if data.org.description}
-			<div class="bg-bg-elev border border-border rounded-2xl p-4 mb-6">
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-1.5">{m.admin_org_about()}</div>
-				<p class="text-[13.5px] text-text-2 leading-relaxed">{data.org.description}</p>
+			<div class="mb-6 rounded-2xl border border-border bg-bg-elev p-4">
+				<div class="mb-1.5 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+					{m.admin_org_about()}
+				</div>
+				<p class="text-[13.5px] leading-relaxed text-text-2">{data.org.description}</p>
 			</div>
 		{/if}
 
 		<!-- members -->
-		<div class="bg-bg-elev border border-border rounded-2xl mb-5 relative">
-			<div class="flex items-center gap-2.5 px-4 py-3 border-b border-border">
+		<div class="relative mb-5 rounded-2xl border border-border bg-bg-elev">
+			<div class="flex items-center gap-2.5 border-b border-border px-4 py-3">
 				<span class="text-[14px] font-semibold">{m.admin_members()}</span>
 				<span class="font-mono text-[11px] text-text-3">{data.members.length}</span>
-				<div class="ml-auto relative">
+				<div class="relative ml-auto">
 					<Button
 						variant="default"
 						size="sm"
@@ -373,23 +379,24 @@
 							memberSearch = '';
 						}}
 					>
-						<Icon name="plus" size={13} /> {m.admin_org_add_member()}
+						<Icon name="plus" size={13} />
+						{m.admin_org_add_member()}
 					</Button>
 					{#if addingMember}
 						<div
 							use:clickOutside={() => (addingMember = false)}
 							use:autoPlace
 							in:fly={POPOVER_IN}
-							class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 w-[280px]"
+							class="absolute top-full z-50 mt-1.5 w-[280px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 							style:box-shadow="var(--shadow-lg)"
 						>
-							<div class="flex items-center gap-2 px-2 pt-1 pb-2 border-b border-border mb-1.5">
+							<div class="mb-1.5 flex items-center gap-2 border-b border-border px-2 pt-1 pb-2">
 								<span class="text-text-3"><Icon name="search" size={13} /></span>
 								<input
 									type="text"
 									bind:value={memberSearch}
 									placeholder={m.admin_org_add_user_placeholder()}
-									class="flex-1 bg-transparent border-0 outline-none text-[13px] placeholder:text-text-3"
+									class="flex-1 border-0 bg-transparent text-[13px] outline-none placeholder:text-text-3"
 								/>
 							</div>
 							<div class="max-h-[280px] overflow-y-auto">
@@ -398,12 +405,13 @@
 										type="button"
 										onclick={() => addMember(u.id)}
 										disabled={busyMember === `memberAdd:${u.id}`}
-										class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text disabled:opacity-50"
+										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
 									>
 										<Avatar user={u} size={22} />
 										<span class="min-w-0 flex-1">
-											<span class="block text-[13px] truncate">{u.name}</span>
-											<span class="block text-[11px] text-text-3 truncate font-mono">{u.email}</span>
+											<span class="block truncate text-[13px]">{u.name}</span>
+											<span class="block truncate font-mono text-[11px] text-text-3">{u.email}</span
+											>
 										</span>
 									</button>
 								{/each}
@@ -424,25 +432,27 @@
 				</div>
 			{:else}
 				{#each data.members as member (member.id)}
-					{@const role = (ROLES.includes(member.role as OrgRole) ? member.role : DEFAULT_ROLE) as OrgRole}
+					{@const role = (
+						ROLES.includes(member.role as OrgRole) ? member.role : DEFAULT_ROLE
+					) as OrgRole}
 					{@const meta = ROLE_META[role] ?? { label: orgRoleLabel(role), color: '#7c7c84' }}
 					<div
-						class="flex items-center gap-3 px-5 py-2.5 border-b border-border/40 last:border-b-0 text-[13px]"
+						class="flex items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[13px] last:border-b-0"
 					>
 						<Avatar user={member} size={28} />
 						<div class="min-w-0 flex-1">
-							<div class="font-medium text-text truncate">{member.name}</div>
-							<div class="text-[11.5px] text-text-3 truncate font-mono">{member.email}</div>
+							<div class="truncate font-medium text-text">{member.name}</div>
+							<div class="truncate font-mono text-[11.5px] text-text-3">{member.email}</div>
 						</div>
 						<div class="relative">
 							<button
 								type="button"
 								onclick={() => (openRoleMenu = openRoleMenu === member.id ? null : member.id)}
-								class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11.5px] font-medium hover:bg-surface"
+								class="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11.5px] font-medium hover:bg-surface"
 								style:color={meta.color}
 								style:background={meta.color + '22'}
 							>
-								<span class="w-1.5 h-1.5 rounded-full" style:background={meta.color}></span>
+								<span class="h-1.5 w-1.5 rounded-full" style:background={meta.color}></span>
 								{orgRoleLabel(role)}
 								<Icon name="chevron" size={10} />
 							</button>
@@ -451,18 +461,16 @@
 									use:clickOutside={() => (openRoleMenu = null)}
 									use:autoPlace
 									in:fly={POPOVER_IN}
-									class="absolute top-full mt-1.5 z-40 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[140px]"
+									class="absolute top-full z-40 mt-1.5 min-w-[140px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 									style:box-shadow="var(--shadow-lg)"
 								>
 									{#each ROLES as r (r)}
 										<button
 											type="button"
 											onclick={() => setRole(member.id, r)}
-											class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+											class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 										>
-											<span
-												class="w-1.5 h-1.5 rounded-full"
-												style:background={ROLE_META[r].color}
+											<span class="h-1.5 w-1.5 rounded-full" style:background={ROLE_META[r].color}
 											></span>
 											<span class="text-[12.5px]">{orgRoleLabel(r)}</span>
 											{#if r === role}
@@ -480,7 +488,7 @@
 						>
 							{#if busyMember === `memberRemove:${member.id}`}
 								<span
-									class="w-3 h-3 rounded-full border-2 border-text-3 border-t-transparent animate-spin"
+									class="h-3 w-3 animate-spin rounded-full border-2 border-text-3 border-t-transparent"
 								></span>
 							{:else}
 								<Icon name="x" size={13} />
@@ -492,8 +500,8 @@
 		</div>
 
 		<!-- projects -->
-		<div class="bg-bg-elev border border-border rounded-2xl overflow-hidden">
-			<div class="flex items-center gap-2.5 px-4 py-3 border-b border-border">
+		<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
+			<div class="flex items-center gap-2.5 border-b border-border px-4 py-3">
 				<span class="text-[14px] font-semibold">{m.admin_projects()}</span>
 				<span class="font-mono text-[11px] text-text-3">{data.projects.length}</span>
 			</div>
@@ -507,18 +515,19 @@
 				{#each data.projects as p (p.id)}
 					<a
 						href="/projects/{p.id}"
-						class="flex items-center gap-3 px-5 py-2.5 border-b border-border/40 last:border-b-0 hover:bg-[var(--row-hover)] transition-colors text-[13px]"
+						class="flex items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[13px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)]"
 					>
 						<span
-							class="w-7 h-7 rounded-md grid place-items-center text-white font-semibold text-[12px] shrink-0"
-							style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%, #000) 85%)"
-						>{p.icon}</span>
+							class="grid h-7 w-7 shrink-0 place-items-center rounded-md text-[12px] font-semibold text-white"
+							style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%,
+							#000) 85%)">{p.icon}</span
+						>
 						<span class="min-w-0 flex-1">
-							<span class="block font-medium text-text truncate">{p.name}</span>
-							<span class="block text-[11.5px] text-text-3 font-mono">{p.key}</span>
+							<span class="block truncate font-medium text-text">{p.name}</span>
+							<span class="block font-mono text-[11.5px] text-text-3">{p.key}</span>
 						</span>
-						<span class="text-text-2 text-[12.5px]">{projectStatusLabel(p.status)}</span>
-						<span class="text-text-3 grid place-items-center"
+						<span class="text-[12.5px] text-text-2">{projectStatusLabel(p.status)}</span>
+						<span class="grid place-items-center text-text-3"
 							><Icon name="chevron-r" size={12} /></span
 						>
 					</a>

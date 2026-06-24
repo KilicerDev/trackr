@@ -33,7 +33,7 @@
 	></button>
 	<aside
 		transition:fly={{ x: width + 20, duration: 280, easing: cubicOut, opacity: 1 }}
-		class="fixed right-0 top-0 bottom-0 z-50 bg-bg-elev border-l border-border flex flex-col overflow-hidden"
+		class="fixed top-0 right-0 bottom-0 z-50 flex flex-col overflow-hidden border-l border-border bg-bg-elev"
 		style:width="{width}px"
 		style:box-shadow="var(--shadow-lg)"
 	>

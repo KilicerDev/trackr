@@ -30,34 +30,36 @@
 	}
 </script>
 
-<div class="flex-1 min-h-0 overflow-x-auto overflow-y-hidden">
+<div class="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
 	<div class="flex h-full">
 		{#each columns as col (col.key)}
-			<div class="flex flex-col w-[320px] shrink-0 border-r border-border last:border-r-0">
-				<div class="flex items-center gap-2 px-4 py-3 border-b border-border">
-					<span class="w-2.5 h-2.5 rounded-full" style:background={col.color}></span>
+			<div class="flex w-[320px] shrink-0 flex-col border-r border-border last:border-r-0">
+				<div class="flex items-center gap-2 border-b border-border px-4 py-3">
+					<span class="h-2.5 w-2.5 rounded-full" style:background={col.color}></span>
 					<span class="text-[13px] font-semibold text-text">{col.label}</span>
 					<span class="font-mono text-[11px] text-text-3">{col.projects.length}</span>
 				</div>
-				<div class="flex-1 overflow-y-auto space-y-2.5 px-3.5 py-3">
+				<div class="flex-1 space-y-2.5 overflow-y-auto px-3.5 py-3">
 					{#each col.projects as p (p.id)}
-						{@const st = PROJECT_STATUS[p.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.active}
+						{@const st =
+							PROJECT_STATUS[p.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.active}
 						<a
 							href="/projects/{p.id}"
-							class="block bg-bg-elev border border-border rounded-xl p-3.5 hover:border-border-strong hover:bg-surface/40 transition-colors"
+							class="block rounded-xl border border-border bg-bg-elev p-3.5 transition-colors hover:border-border-strong hover:bg-surface/40"
 						>
-							<div class="flex items-start gap-2.5 mb-2.5">
+							<div class="mb-2.5 flex items-start gap-2.5">
 								<span
-									class="inline-grid place-items-center text-white font-semibold shrink-0"
+									class="inline-grid shrink-0 place-items-center font-semibold text-white"
 									style:width="30px"
 									style:height="30px"
 									style:border-radius="9px"
 									style:font-size="15px"
-									style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%, #000) 85%)"
-								>{p.icon}</span>
+									style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%,
+									#000) 85%)">{p.icon}</span
+								>
 								<div class="min-w-0 flex-1">
-									<div class="text-[13px] font-semibold text-text truncate">{p.name}</div>
-									<div class="font-mono text-[10.5px] text-text-3 flex items-center gap-1.5">
+									<div class="truncate text-[13px] font-semibold text-text">{p.name}</div>
+									<div class="flex items-center gap-1.5 font-mono text-[10.5px] text-text-3">
 										<span>{p.key}</span>
 										{#if p.org}
 											<span class="text-text-4">·</span>
@@ -67,7 +69,7 @@
 								</div>
 							</div>
 							{#if p.description}
-								<p class="text-[11.5px] text-text-3 leading-snug line-clamp-2 mb-2.5">
+								<p class="mb-2.5 line-clamp-2 text-[11.5px] leading-snug text-text-3">
 									{p.description}
 								</p>
 							{/if}
@@ -77,15 +79,17 @@
 									class="ml-auto inline-flex items-center gap-1 text-[10.5px]"
 									style:color={st.color}
 								>
-									<span class="w-1.5 h-1.5 rounded-full" style:background={st.color}></span>
+									<span class="h-1.5 w-1.5 rounded-full" style:background={st.color}></span>
 									{projectStatusLabel(p.status)}
 								</span>
 							</div>
-							<div class="text-[10px] text-text-4 mt-1.5">{m.projects_updated_relative({ time: relative(p.updatedAt) })}</div>
+							<div class="mt-1.5 text-[10px] text-text-4">
+								{m.projects_updated_relative({ time: relative(p.updatedAt) })}
+							</div>
 						</a>
 					{/each}
 					{#if col.projects.length === 0}
-						<div class="text-center text-[11.5px] text-text-4 py-6">{m.projects_no_projects()}</div>
+						<div class="py-6 text-center text-[11.5px] text-text-4">{m.projects_no_projects()}</div>
 					{/if}
 				</div>
 			</div>

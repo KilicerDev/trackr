@@ -282,10 +282,7 @@ export const actions: Actions = {
 		await db
 			.delete(projectFavorite)
 			.where(
-				and(
-					eq(projectFavorite.userId, locals.user.id),
-					eq(projectFavorite.projectId, params.id)
-				)
+				and(eq(projectFavorite.userId, locals.user.id), eq(projectFavorite.projectId, params.id))
 			);
 		return { success: true };
 	},
@@ -379,9 +376,7 @@ export const actions: Actions = {
 			const [member] = await db
 				.select({ userId: projectMember.userId })
 				.from(projectMember)
-				.where(
-					and(eq(projectMember.projectId, params.id), eq(projectMember.userId, userId))
-				)
+				.where(and(eq(projectMember.projectId, params.id), eq(projectMember.userId, userId)))
 				.limit(1);
 			if (!member) {
 				return fail(400, { message: m.projects_lead_must_be_member() });
@@ -415,9 +410,7 @@ export const actions: Actions = {
 		await db
 			.update(projectMember)
 			.set({ role })
-			.where(
-				and(eq(projectMember.projectId, params.id), eq(projectMember.userId, userId))
-			);
+			.where(and(eq(projectMember.projectId, params.id), eq(projectMember.userId, userId)));
 		logActivityFF({
 			projectId: params.id,
 			actorId: locals.user.id,
@@ -453,19 +446,11 @@ export const actions: Actions = {
 					.where(eq(project.id, params.id!))
 					.limit(1);
 				if (proj?.leadId === userId) {
-					await tx
-						.update(project)
-						.set({ leadId: null })
-						.where(eq(project.id, params.id!));
+					await tx.update(project).set({ leadId: null }).where(eq(project.id, params.id!));
 				}
 				await tx
 					.delete(projectMember)
-					.where(
-						and(
-							eq(projectMember.projectId, params.id!),
-							eq(projectMember.userId, userId)
-						)
-					);
+					.where(and(eq(projectMember.projectId, params.id!), eq(projectMember.userId, userId)));
 			});
 		} catch (err) {
 			console.error('project memberRemove failed', err);

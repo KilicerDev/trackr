@@ -25,9 +25,7 @@ const PAGE_CONTENT_WIDTH = 515; // A4 width (595pt) minus default 40pt margins.
 /** Flatten a node's text content into a single plain string (for code blocks). */
 function plainText(nodes: Node[] | undefined): string {
 	if (!nodes) return '';
-	return nodes
-		.map((n) => (n.type === 'text' ? (n.text ?? '') : plainText(n.content)))
-		.join('');
+	return nodes.map((n) => (n.type === 'text' ? (n.text ?? '') : plainText(n.content))).join('');
 }
 
 /** Map inline content (text nodes + marks, hard breaks) to pdfmake text runs. */
@@ -107,7 +105,19 @@ function taskItemContent(item: Node): Content {
 					{ type: 'line', x1: 2.5, y1: 7.5, x2: 4.7, y2: 10, lineWidth: 1.3, lineColor: '#ffffff' },
 					{ type: 'line', x1: 4.7, y1: 10, x2: 8.7, y2: 4.5, lineWidth: 1.3, lineColor: '#ffffff' }
 				]
-			: [{ type: 'rect', x: 0, y: 1.5, w: 11, h: 11, r: 2.5, lineWidth: 1, lineColor: '#c0c6cc', color: '#f6f8fa' }]
+			: [
+					{
+						type: 'rect',
+						x: 0,
+						y: 1.5,
+						w: 11,
+						h: 11,
+						r: 2.5,
+						lineWidth: 1,
+						lineColor: '#c0c6cc',
+						color: '#f6f8fa'
+					}
+				]
 	} as Content;
 
 	const row: Content = {
@@ -141,7 +151,9 @@ function mapNodes(nodes: Node[] | undefined): Content[] {
 				out.push({
 					table: {
 						widths: ['*'],
-						body: [[{ stack: mapNodes(n.content), style: 'quote', border: [true, false, false, false] }]]
+						body: [
+							[{ stack: mapNodes(n.content), style: 'quote', border: [true, false, false, false] }]
+						]
 					},
 					layout: {
 						defaultBorder: false,
@@ -171,7 +183,15 @@ function mapNodes(nodes: Node[] | undefined): Content[] {
 			case 'horizontalRule':
 				out.push({
 					canvas: [
-						{ type: 'line', x1: 0, y1: 0, x2: PAGE_CONTENT_WIDTH, y2: 0, lineWidth: 0.5, lineColor: '#d0d7de' }
+						{
+							type: 'line',
+							x1: 0,
+							y1: 0,
+							x2: PAGE_CONTENT_WIDTH,
+							y2: 0,
+							lineWidth: 0.5,
+							lineColor: '#d0d7de'
+						}
 					],
 					margin: [0, 6, 0, 12]
 				});
@@ -191,10 +211,7 @@ export function buildDocDefinition(title: string, doc: Doc): TDocumentDefinition
 		info: { title: safeTitle },
 		pageSize: 'A4',
 		pageMargins: [40, 48, 40, 48],
-		content: [
-			{ text: safeTitle, style: 'docTitle' },
-			...mapNodes(doc.content)
-		],
+		content: [{ text: safeTitle, style: 'docTitle' }, ...mapNodes(doc.content)],
 		styles: {
 			docTitle: { fontSize: 24, bold: true, margin: [0, 0, 0, 16] },
 			h1: { fontSize: 18, bold: true, margin: [0, 12, 0, 6] },

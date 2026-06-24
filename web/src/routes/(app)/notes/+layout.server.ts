@@ -3,7 +3,12 @@ import { asc, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { task } from '$lib/server/db/app.schema';
 import { isTrackrTeam } from '$lib/server/permissions';
-import { listMeetingNotes, listQuickNotes, listSharedWithMe, listTemplates } from '$lib/server/notes';
+import {
+	listMeetingNotes,
+	listQuickNotes,
+	listSharedWithMe,
+	listTemplates
+} from '$lib/server/notes';
 import { getPreferences } from '$lib/server/preferences';
 import { m } from '$lib/paraglide/messages';
 import type { LayoutServerLoad } from './$types';

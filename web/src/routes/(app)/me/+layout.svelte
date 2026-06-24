@@ -20,22 +20,22 @@
 
 <svelte:head><title>Trackr · {currentLabel}</title></svelte:head>
 
-<Topbar crumbs={[{ label: m.settings_nav_account_short(), href: '/me/profile' }, { label: currentLabel }]} />
+<Topbar
+	crumbs={[{ label: m.settings_nav_account_short(), href: '/me/profile' }, { label: currentLabel }]}
+/>
 
-<div class="flex-1 min-h-0 overflow-y-auto">
-	<div class="px-6 py-6 mx-auto max-w-[960px] grid grid-cols-[200px_1fr] gap-8">
+<div class="min-h-0 flex-1 overflow-y-auto">
+	<div class="mx-auto grid max-w-[960px] grid-cols-[200px_1fr] gap-8 px-6 py-6">
 		<aside class="pt-1">
 			<nav class="flex flex-col gap-0.5">
 				{#each items as item (item.href)}
 					{@const active = current.startsWith(item.href)}
 					<a
 						href={item.href}
-						class="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[13px] leading-none transition-colors
-							{active
-							? 'bg-surface-2 text-text font-medium'
-							: 'text-text-2 hover:text-text hover:bg-surface'}"
+						class="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] leading-none transition-colors
+							{active ? 'bg-surface-2 font-medium text-text' : 'text-text-2 hover:bg-surface hover:text-text'}"
 					>
-						<span class="grid place-items-center w-4 h-4 {active ? 'text-text' : 'text-text-3'}">
+						<span class="grid h-4 w-4 place-items-center {active ? 'text-text' : 'text-text-3'}">
 							<Icon name={item.icon} size={14} />
 						</span>
 						<span>{item.label}</span>

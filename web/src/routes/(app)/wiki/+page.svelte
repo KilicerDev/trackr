@@ -24,14 +24,14 @@
 	}
 </script>
 
-<div class="h-full flex justify-center px-6">
+<div class="flex h-full justify-center px-6">
 	<div class="w-full max-w-[640px] pt-[14vh]">
-		<h1 class="text-[28px] font-semibold tracking-[-0.02em] text-text mb-6">
+		<h1 class="mb-6 text-[28px] font-semibold tracking-[-0.02em] text-text">
 			{m.wiki_welcome_back({ name: firstName })}
 		</h1>
 
 		{#if data.recent.length > 0}
-			<div class="mb-3 px-0.5 font-mono text-[10.5px] uppercase tracking-[0.14em] text-text-4">
+			<div class="mb-3 px-0.5 font-mono text-[10.5px] tracking-[0.14em] text-text-4 uppercase">
 				{m.wiki_recent()}
 			</div>
 			<div class="grid gap-2">
@@ -63,11 +63,7 @@
 				{/each}
 			</div>
 		{:else}
-			<EmptyState
-				icon="file"
-				title={m.wiki_no_pages_title()}
-				hint={m.wiki_no_pages_hint()}
-			/>
+			<EmptyState icon="file" title={m.wiki_no_pages_title()} hint={m.wiki_no_pages_hint()} />
 		{/if}
 	</div>
 </div>

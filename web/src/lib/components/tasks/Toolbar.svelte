@@ -162,8 +162,10 @@
 	// human label shown in the chip. Falls back to the raw value if no match —
 	// better to surface a stale id than to blank the chip out.
 	function valueLabel(field: string, value: string): string {
-		if (field === 'status') return TRACKR_STATUSES.find((s) => s.id === value) ? statusLabel(value) : value;
-		if (field === 'priority') return TRACKR_PRIORITIES.find((p) => p.id === value) ? priorityLabel(value) : value;
+		if (field === 'status')
+			return TRACKR_STATUSES.find((s) => s.id === value) ? statusLabel(value) : value;
+		if (field === 'priority')
+			return TRACKR_PRIORITIES.find((p) => p.id === value) ? priorityLabel(value) : value;
 		if (field === 'assignee') {
 			const u = ((page.data as LayoutData).users ?? []).find((x) => x.id === value);
 			return u?.name ?? value;
@@ -184,7 +186,7 @@
 			<button
 				type="button"
 				onclick={() => toggleValue('status', s.id)}
-				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<StatusDot status={s.id} />
 				<span class="text-[13px]">{statusLabel(s.id)}</span>
@@ -198,7 +200,7 @@
 			<button
 				type="button"
 				onclick={() => toggleValue('priority', p.id)}
-				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<PriorityBars priority={p.id} />
 				<span class="text-[13px]">{priorityLabel(p.id)}</span>
@@ -208,12 +210,14 @@
 			</button>
 		{/each}
 	{:else if field === 'assignee'}
-		{@const dbUsers = ((page.data as LayoutData).users ?? []).filter((u) => u.status !== 'disabled')}
+		{@const dbUsers = ((page.data as LayoutData).users ?? []).filter(
+			(u) => u.status !== 'disabled'
+		)}
 		{#each dbUsers as u (u.id)}
 			<button
 				type="button"
 				onclick={() => toggleValue('assignee', u.id)}
-				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<Avatar user={u} size={20} />
 				<span class="text-[13px]">{u.name}</span>
@@ -228,9 +232,9 @@
 			<button
 				type="button"
 				onclick={() => toggleValue('project', p.key)}
-				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
-				<span class="w-2 h-2 rounded-full" style:background={p.color}></span>
+				<span class="h-2 w-2 rounded-full" style:background={p.color}></span>
 				<span class="text-[13px]">{p.name}</span>
 				<span class="ml-auto text-accent {values.includes(p.key) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
@@ -243,10 +247,10 @@
 			<button
 				type="button"
 				onclick={() => toggleValue('tags', id)}
-				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
-				<span class="w-2 h-2 rounded-full" style:background={l.color}></span>
-				<span class="text-[13px] truncate">{l.label}</span>
+				<span class="h-2 w-2 rounded-full" style:background={l.color}></span>
+				<span class="truncate text-[13px]">{l.label}</span>
 				<span class="ml-auto text-accent {values.includes(id) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
 				</span>
@@ -255,100 +259,70 @@
 	{/if}
 {/snippet}
 
-<div class="flex items-center gap-2 px-5 py-2.5 border-b border-border bg-bg shrink-0">
+<div class="flex shrink-0 items-center gap-2 border-b border-border bg-bg px-5 py-2.5">
 	<!-- Controls strip: scrolls horizontally as a last resort on very narrow
 	     widths instead of wrapping or squeezing. New task stays pinned outside. -->
-	<div class="tb-scroll flex items-center gap-2 flex-1 min-w-0 overflow-x-auto">
-	<div class="inline-flex shrink-0 items-center h-7 bg-surface border border-border rounded-lg p-0.5 text-[12.5px]">
-		<button
-			type="button"
-			onclick={() => setView('list')}
-			class="inline-flex items-center gap-1.5 px-2 h-full rounded-md transition-colors {view === 'list' ? 'bg-bg-elev text-text' : 'text-text-3 hover:text-text'}"
+	<div class="tb-scroll flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+		<div
+			class="inline-flex h-7 shrink-0 items-center rounded-lg border border-border bg-surface p-0.5 text-[12.5px]"
 		>
-			<Icon name="list" size={13} /> {m.tasks_view_list()}
-		</button>
-		<button
-			type="button"
-			onclick={() => setView('board')}
-			class="inline-flex items-center gap-1.5 px-2 h-full rounded-md transition-colors {view === 'board' ? 'bg-bg-elev text-text' : 'text-text-3 hover:text-text'}"
-		>
-			<Icon name="board" size={13} /> {m.tasks_view_board()}
-		</button>
-	</div>
-
-	<div class="w-px h-5 bg-border shrink-0"></div>
-
-	<!-- Group -->
-	<div class="shrink-0">
-		<button
-			type="button"
-			onclick={(e) => openPop('group', e.currentTarget)}
-			class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] whitespace-nowrap transition-colors"
-		>
-			<span class="text-text-3">{m.tasks_group_by()}</span>
-			<span class="text-text font-medium">{groupLabel(group)}</span>
-			<Icon name="chevron" size={10} class="text-text-3" />
-		</button>
-		{#if pop === 'group' && popPos}
-			<div
-				use:clickOutside={() => (pop = null)}
-				in:fly={POPOVER_IN}
-				class="fixed z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[170px]"
-				style:left="{popPos.left}px"
-				style:top="{popPos.top}px"
-				style:box-shadow="var(--shadow-lg)"
+			<button
+				type="button"
+				onclick={() => setView('list')}
+				class="inline-flex h-full items-center gap-1.5 rounded-md px-2 transition-colors {view ===
+				'list'
+					? 'bg-bg-elev text-text'
+					: 'text-text-3 hover:text-text'}"
 			>
-				{#each GROUP_OPTIONS as o (o.id)}
-					<button
-						type="button"
-						onclick={() => {
-							setGroup?.(o.id);
-							pop = null;
-						}}
-						class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text text-[13px]"
-					>
-						<span>{o.label()}</span>
-						<span class="ml-auto text-accent {group === o.id ? 'opacity-100' : 'opacity-0'}">
-							<Icon name="check" size={12} />
-						</span>
-					</button>
-				{/each}
-			</div>
-		{/if}
-	</div>
+				<Icon name="list" size={13} />
+				{m.tasks_view_list()}
+			</button>
+			<button
+				type="button"
+				onclick={() => setView('board')}
+				class="inline-flex h-full items-center gap-1.5 rounded-md px-2 transition-colors {view ===
+				'board'
+					? 'bg-bg-elev text-text'
+					: 'text-text-3 hover:text-text'}"
+			>
+				<Icon name="board" size={13} />
+				{m.tasks_view_board()}
+			</button>
+		</div>
 
-	<!-- Sub (board view only) -->
-	{#if view === 'board'}
+		<div class="h-5 w-px shrink-0 bg-border"></div>
+
+		<!-- Group -->
 		<div class="shrink-0">
 			<button
 				type="button"
-				onclick={(e) => openPop('sub', e.currentTarget)}
-				class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] whitespace-nowrap transition-colors"
+				onclick={(e) => openPop('group', e.currentTarget)}
+				class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[12.5px] whitespace-nowrap transition-colors hover:bg-surface-2"
 			>
-				<span class="text-text-3">{m.tasks_sub_group()}</span>
-				<span class="text-text font-medium">{subLabel(sub)}</span>
+				<span class="text-text-3">{m.tasks_group_by()}</span>
+				<span class="font-medium text-text">{groupLabel(group)}</span>
 				<Icon name="chevron" size={10} class="text-text-3" />
 			</button>
-			{#if pop === 'sub' && popPos}
+			{#if pop === 'group' && popPos}
 				<div
 					use:clickOutside={() => (pop = null)}
 					in:fly={POPOVER_IN}
-					class="fixed z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[170px]"
+					class="fixed z-50 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 					style:left="{popPos.left}px"
 					style:top="{popPos.top}px"
 					style:box-shadow="var(--shadow-lg)"
 				>
-					{#each SUB_OPTIONS as o (o.id)}
+					{#each GROUP_OPTIONS as o (o.id)}
 						<button
 							type="button"
 							onclick={() => {
-								setSub?.(o.id);
+								setGroup?.(o.id);
 								pop = null;
 							}}
-							class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text text-[13px]"
+							class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text"
 						>
 							<span>{o.label()}</span>
-							<span class="ml-auto text-accent {sub === o.id ? 'opacity-100' : 'opacity-0'}">
+							<span class="ml-auto text-accent {group === o.id ? 'opacity-100' : 'opacity-0'}">
 								<Icon name="check" size={12} />
 							</span>
 						</button>
@@ -356,80 +330,121 @@
 				</div>
 			{/if}
 		</div>
-	{/if}
 
-	<div class="w-px h-5 bg-border shrink-0"></div>
-
-	<!-- Time window: forward horizon for end/planned dates (past always shown) -->
-	<div class="shrink-0">
-		<button
-			type="button"
-			onclick={(e) => openPop('time', e.currentTarget)}
-			class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] whitespace-nowrap transition-colors"
-		>
-			<Icon name="calendar" size={13} class="text-text-3" />
-			<span class="text-text-3">{m.tasks_time()}</span>
-			<span class="text-text font-medium">{timeLabel(time)}</span>
-			<Icon name="chevron" size={10} class="text-text-3" />
-		</button>
-		{#if pop === 'time' && popPos}
-			<div
-				use:clickOutside={() => (pop = null)}
-				in:fly={POPOVER_IN}
-				class="fixed z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[170px]"
-				style:left="{popPos.left}px"
-				style:top="{popPos.top}px"
-				style:box-shadow="var(--shadow-lg)"
-			>
-				{#each TIME_OPTIONS as o (o.id)}
-					<button
-						type="button"
-						onclick={() => {
-							setTime?.(o.id);
-							pop = null;
-						}}
-						class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text text-[13px]"
+		<!-- Sub (board view only) -->
+		{#if view === 'board'}
+			<div class="shrink-0">
+				<button
+					type="button"
+					onclick={(e) => openPop('sub', e.currentTarget)}
+					class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[12.5px] whitespace-nowrap transition-colors hover:bg-surface-2"
+				>
+					<span class="text-text-3">{m.tasks_sub_group()}</span>
+					<span class="font-medium text-text">{subLabel(sub)}</span>
+					<Icon name="chevron" size={10} class="text-text-3" />
+				</button>
+				{#if pop === 'sub' && popPos}
+					<div
+						use:clickOutside={() => (pop = null)}
+						in:fly={POPOVER_IN}
+						class="fixed z-50 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5"
+						style:left="{popPos.left}px"
+						style:top="{popPos.top}px"
+						style:box-shadow="var(--shadow-lg)"
 					>
-						<span>{o.label()}</span>
-						<span class="ml-auto text-accent {time === o.id ? 'opacity-100' : 'opacity-0'}">
-							<Icon name="check" size={12} />
-						</span>
-					</button>
-				{/each}
+						{#each SUB_OPTIONS as o (o.id)}
+							<button
+								type="button"
+								onclick={() => {
+									setSub?.(o.id);
+									pop = null;
+								}}
+								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text"
+							>
+								<span>{o.label()}</span>
+								<span class="ml-auto text-accent {sub === o.id ? 'opacity-100' : 'opacity-0'}">
+									<Icon name="check" size={12} />
+								</span>
+							</button>
+						{/each}
+					</div>
+				{/if}
 			</div>
 		{/if}
-	</div>
 
-	<div class="w-px h-5 bg-border shrink-0"></div>
+		<div class="h-5 w-px shrink-0 bg-border"></div>
 
-	<!-- Filter chips expand to fit their active chips; the "+ Filter" chip stays
+		<!-- Time window: forward horizon for end/planned dates (past always shown) -->
+		<div class="shrink-0">
+			<button
+				type="button"
+				onclick={(e) => openPop('time', e.currentTarget)}
+				class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[12.5px] whitespace-nowrap transition-colors hover:bg-surface-2"
+			>
+				<Icon name="calendar" size={13} class="text-text-3" />
+				<span class="text-text-3">{m.tasks_time()}</span>
+				<span class="font-medium text-text">{timeLabel(time)}</span>
+				<Icon name="chevron" size={10} class="text-text-3" />
+			</button>
+			{#if pop === 'time' && popPos}
+				<div
+					use:clickOutside={() => (pop = null)}
+					in:fly={POPOVER_IN}
+					class="fixed z-50 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5"
+					style:left="{popPos.left}px"
+					style:top="{popPos.top}px"
+					style:box-shadow="var(--shadow-lg)"
+				>
+					{#each TIME_OPTIONS as o (o.id)}
+						<button
+							type="button"
+							onclick={() => {
+								setTime?.(o.id);
+								pop = null;
+							}}
+							class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text"
+						>
+							<span>{o.label()}</span>
+							<span class="ml-auto text-accent {time === o.id ? 'opacity-100' : 'opacity-0'}">
+								<Icon name="check" size={12} />
+							</span>
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</div>
+
+		<div class="h-5 w-px shrink-0 bg-border"></div>
+
+		<!-- Filter chips expand to fit their active chips; the "+ Filter" chip stays
 	     pinned at the left edge (min width). On very narrow widths the whole strip
 	     scrolls (its popovers are fixed, so no clipping). -->
-	<div class="shrink-0 min-w-[84px]">
-		<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
-	</div>
+		<div class="min-w-[84px] shrink-0">
+			<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
+		</div>
 
-	<!-- Search stays compact and right-aligned (ml-auto eats the slack), but is
+		<!-- Search stays compact and right-aligned (ml-auto eats the slack), but is
 	     allowed to shrink as the toolbar narrows so the controls never squeeze
 	     or wrap; past its min the whole strip scrolls instead. -->
-	<div class="relative w-44 min-w-[120px] shrink ml-auto">
-		<span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none">
-			<Icon name="search" size={13} />
-		</span>
-		<input
-			type="text"
-			placeholder={m.common_search()}
-			value={search}
-			oninput={(e) => setSearch((e.target as HTMLInputElement).value)}
-			class="h-7 w-full pl-7 pr-2.5 rounded-lg bg-surface border border-border text-[12.5px] text-text placeholder:text-text-3 outline-none focus:border-border-strong"
-		/>
-	</div>
+		<div class="relative ml-auto w-44 min-w-[120px] shrink">
+			<span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-3">
+				<Icon name="search" size={13} />
+			</span>
+			<input
+				type="text"
+				placeholder={m.common_search()}
+				value={search}
+				oninput={(e) => setSearch((e.target as HTMLInputElement).value)}
+				class="h-7 w-full rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[12.5px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
+			/>
+		</div>
 	</div>
 
 	{#if canCreate}
 		<div class="shrink-0">
 			<Button variant="primary" size="sm" onclick={onNewTask}>
-				<Icon name="plus" size={13} /> {m.tasks_new_task()}
+				<Icon name="plus" size={13} />
+				{m.tasks_new_task()}
 			</Button>
 		</div>
 	{/if}

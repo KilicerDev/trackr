@@ -15,10 +15,13 @@
 </script>
 
 <Topbar
-	crumbs={[{ label: m.notes_breadcrumb_workspace(), href: '/tasks' }, { label: m.shell_nav_notes() }]}
+	crumbs={[
+		{ label: m.notes_breadcrumb_workspace(), href: '/tasks' },
+		{ label: m.shell_nav_notes() }
+	]}
 />
 
-<div class="flex flex-1 min-h-0 overflow-hidden">
+<div class="flex min-h-0 flex-1 overflow-hidden">
 	<NotesSidebar
 		mine={data.mine}
 		shared={data.shared}
@@ -26,7 +29,7 @@
 		initialTab={data.viewTab}
 		onNewMeeting={() => (meetingOpen = true)}
 	/>
-	<div class="flex-1 min-w-0 overflow-y-auto">
+	<div class="min-w-0 flex-1 overflow-y-auto">
 		{@render children()}
 	</div>
 </div>

@@ -42,7 +42,7 @@
 </script>
 
 <div
-	class="flex items-center gap-3 px-5 h-9 text-[12.5px] border-b"
+	class="flex h-9 items-center gap-3 border-b px-5 text-[12.5px]"
 	style:background="rgba(240,168,92,0.14)"
 	style:border-color="rgba(240,168,92,0.35)"
 	style:color="#f0a85c"
@@ -59,18 +59,22 @@
 		stroke-linejoin="round"
 	>
 		<path d="M12 9v4M12 17h.01" />
-		<path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+		<path
+			d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+		/>
 	</svg>
 	<span class="text-text">
 		{m.shell_impersonation_label()} <span class="font-semibold">{targetName ?? targetEmail}</span>
 		<span class="text-text-3"> · </span>
-		<span class="text-text-3">{m.shell_impersonation_signed_in_as({ name: impersonatorName ?? impersonatorEmail })}</span>
+		<span class="text-text-3"
+			>{m.shell_impersonation_signed_in_as({ name: impersonatorName ?? impersonatorEmail })}</span
+		>
 	</span>
 	<button
 		type="button"
 		onclick={stop}
 		disabled={stopping}
-		class="ml-auto inline-flex items-center h-6 px-2.5 rounded-md text-[12px] font-semibold transition-colors disabled:opacity-60"
+		class="ml-auto inline-flex h-6 items-center rounded-md px-2.5 text-[12px] font-semibold transition-colors disabled:opacity-60"
 		style:background="rgba(240,168,92,0.22)"
 		style:color="#f0a85c"
 	>

@@ -55,9 +55,7 @@
 	const filtered = $derived.by(() => {
 		const q = search.trim().toLowerCase();
 		if (!q) return null;
-		return new Set(
-			tree.filter((n) => n.title.toLowerCase().includes(q)).map((n) => n.id)
-		);
+		return new Set(tree.filter((n) => n.title.toLowerCase().includes(q)).map((n) => n.id));
 	});
 
 	function visible(node: Node, matched: Set<string> | null): boolean {
@@ -205,7 +203,7 @@
 			>
 				{#if dropping === 'before' || dropping === 'after'}
 					<span
-						class="pointer-events-none absolute left-2 right-2 z-10 h-0.5 rounded-full"
+						class="pointer-events-none absolute right-2 left-2 z-10 h-0.5 rounded-full"
 						style:top={dropping === 'before' ? '-1px' : undefined}
 						style:bottom={dropping === 'after' ? '-1px' : undefined}
 						style:background-color="var(--accent)"
@@ -247,7 +245,7 @@
 								e.stopPropagation();
 								createForId = createForId === p.id ? null : p.id;
 							}}
-							class="grid h-[22px] w-[22px] place-items-center rounded-md text-text-4 opacity-0 transition hover:bg-bg-elev hover:text-text group-hover:opacity-100 {createForId ===
+							class="grid h-[22px] w-[22px] place-items-center rounded-md text-text-4 opacity-0 transition group-hover:opacity-100 hover:bg-bg-elev hover:text-text {createForId ===
 							p.id
 								? 'opacity-100'
 								: ''}"
@@ -272,7 +270,9 @@
 								}}
 								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 							>
-								<span class="grid h-4 w-4 place-items-center text-text-3"><Icon name="file" size={13} /></span>
+								<span class="grid h-4 w-4 place-items-center text-text-3"
+									><Icon name="file" size={13} /></span
+								>
 								<span>{m.wiki_new_page()}</span>
 							</button>
 							<button
@@ -286,7 +286,9 @@
 								}}
 								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 							>
-								<span class="grid h-4 w-4 place-items-center text-text-3"><Icon name="folder" size={13} /></span>
+								<span class="grid h-4 w-4 place-items-center text-text-3"
+									><Icon name="folder" size={13} /></span
+								>
 								<span>{m.wiki_new_folder()}</span>
 							</button>
 						</Popover>
@@ -305,7 +307,7 @@
 {/snippet}
 
 <aside class="flex min-h-0 flex-col border-r border-border bg-bg-elev" style:width="260px">
-	<div class="flex items-center gap-2 px-4 pb-2.5 pt-4">
+	<div class="flex items-center gap-2 px-4 pt-4 pb-2.5">
 		<span class="wiki-eyebrow">{m.wiki_breadcrumb_root()}</span>
 		{#if pageCount > 0}
 			<span class="wiki-count">{pageCount}</span>
@@ -319,28 +321,32 @@
 				<Icon name="plus" size={14} />
 			</button>
 			<Popover open={createOpen} onclose={() => (createOpen = false)} align="right" minWidth={180}>
-			<button
-				type="button"
-				onclick={() => {
-					createOpen = false;
-					oncreate(null, false);
-				}}
-				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
-			>
-				<span class="grid h-4 w-4 place-items-center text-text-3"><Icon name="file" size={13} /></span>
-				<span>{m.wiki_new_page()}</span>
-			</button>
-			<button
-				type="button"
-				onclick={() => {
-					createOpen = false;
-					oncreate(null, true);
-				}}
-				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
-			>
-				<span class="grid h-4 w-4 place-items-center text-text-3"><Icon name="folder" size={13} /></span>
-				<span>{m.wiki_new_folder()}</span>
-			</button>
+				<button
+					type="button"
+					onclick={() => {
+						createOpen = false;
+						oncreate(null, false);
+					}}
+					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+				>
+					<span class="grid h-4 w-4 place-items-center text-text-3"
+						><Icon name="file" size={13} /></span
+					>
+					<span>{m.wiki_new_page()}</span>
+				</button>
+				<button
+					type="button"
+					onclick={() => {
+						createOpen = false;
+						oncreate(null, true);
+					}}
+					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+				>
+					<span class="grid h-4 w-4 place-items-center text-text-3"
+						><Icon name="folder" size={13} /></span
+					>
+					<span>{m.wiki_new_folder()}</span>
+				</button>
 			</Popover>
 		</div>
 	</div>
@@ -357,7 +363,7 @@
 		</div>
 	</div>
 
-	<div class="min-h-0 flex-1 overflow-y-auto px-2 pb-4 pt-1">
+	<div class="min-h-0 flex-1 overflow-y-auto px-2 pt-1 pb-4">
 		{#if topLevel.length === 0}
 			<div class="px-3 py-6 text-center text-[12.5px] text-text-4">{m.wiki_tree_no_pages()}</div>
 		{:else}

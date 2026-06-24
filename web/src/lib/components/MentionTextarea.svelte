@@ -70,7 +70,9 @@
 		if (!query) return all.slice(0, 6);
 		const needle = query.toLowerCase();
 		return all
-			.filter((u) => u.name.toLowerCase().includes(needle) || u.email.toLowerCase().includes(needle))
+			.filter(
+				(u) => u.name.toLowerCase().includes(needle) || u.email.toLowerCase().includes(needle)
+			)
 			.slice(0, 6);
 	});
 
@@ -252,7 +254,7 @@
 	{#if open && candidates.length}
 		<div
 			use:autoPlace
-			class="absolute top-full left-0 mt-1 z-50 bg-bg-elev border border-border rounded-[10px] p-1 min-w-[220px] max-w-[280px]"
+			class="absolute top-full left-0 z-50 mt-1 max-w-[280px] min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1"
 			style:box-shadow="var(--shadow-lg)"
 		>
 			{#each candidates as u, i (u.id)}
@@ -263,12 +265,13 @@
 						void choose(u);
 					}}
 					onmouseenter={() => (activeIndex = i)}
-					class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left {i === activeIndex
+					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left {i ===
+					activeIndex
 						? 'bg-surface-2 text-text'
 						: 'text-text-2'}"
 				>
 					<Avatar user={u} size={20} />
-					<span class="text-[13px] truncate">{u.name}</span>
+					<span class="truncate text-[13px]">{u.name}</span>
 				</button>
 			{/each}
 		</div>

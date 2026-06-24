@@ -81,7 +81,9 @@
 
 	function valueLabel(field: string, value: string): string {
 		if (field === 'status')
-			return PROJECT_STATUS[value as keyof typeof PROJECT_STATUS] ? projectStatusLabel(value) : value;
+			return PROJECT_STATUS[value as keyof typeof PROJECT_STATUS]
+				? projectStatusLabel(value)
+				: value;
 		if (field === 'org') {
 			if (value === INTERNAL) return m.projects_internal();
 			return orgs.find((o) => o.id === value)?.name ?? value;
@@ -98,9 +100,9 @@
 			<button
 				type="button"
 				onclick={() => toggleValue('status', id)}
-				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
-				<span class="w-2 h-2 rounded-full" style:background={meta.color}></span>
+				<span class="h-2 w-2 rounded-full" style:background={meta.color}></span>
 				<span class="text-[13px]">{projectStatusLabel(id)}</span>
 				<span class="ml-auto text-accent {values.includes(id) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
@@ -111,7 +113,7 @@
 		<button
 			type="button"
 			onclick={() => toggleValue('org', INTERNAL)}
-			class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+			class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 		>
 			<span class="text-text-3"><Icon name="org" size={13} /></span>
 			<span class="text-[13px]">{m.projects_internal()}</span>
@@ -123,10 +125,10 @@
 			<button
 				type="button"
 				onclick={() => toggleValue('org', o.id)}
-				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
-				<span class="w-2 h-2 rounded-full" style:background={o.color}></span>
-				<span class="text-[13px] truncate">{o.name}</span>
+				<span class="h-2 w-2 rounded-full" style:background={o.color}></span>
+				<span class="truncate text-[13px]">{o.name}</span>
 				<span class="ml-auto text-accent {values.includes(o.id) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
 				</span>
@@ -137,10 +139,10 @@
 			<button
 				type="button"
 				onclick={() => toggleValue('assignee', u.id)}
-				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<Avatar user={u} size={20} />
-				<span class="text-[13px] truncate">{u.name}</span>
+				<span class="truncate text-[13px]">{u.name}</span>
 				<span class="ml-auto text-accent {values.includes(u.id) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
 				</span>
@@ -149,37 +151,43 @@
 	{/if}
 {/snippet}
 
-<div class="flex items-center gap-2 px-5 py-2.5 border-b border-border bg-bg shrink-0">
+<div class="flex shrink-0 items-center gap-2 border-b border-border bg-bg px-5 py-2.5">
 	<!-- View toggle -->
-	<div class="inline-flex items-center h-7 bg-surface border border-border rounded-lg p-0.5 text-[12.5px]">
+	<div
+		class="inline-flex h-7 items-center rounded-lg border border-border bg-surface p-0.5 text-[12.5px]"
+	>
 		{#each VIEWS as v (v.id)}
 			<button
 				type="button"
 				onclick={() => setView(v.id)}
-				class="inline-flex items-center gap-1.5 px-2 h-full rounded-md transition-colors {view === v.id ? 'bg-bg-elev text-text' : 'text-text-3 hover:text-text'}"
+				class="inline-flex h-full items-center gap-1.5 rounded-md px-2 transition-colors {view ===
+				v.id
+					? 'bg-bg-elev text-text'
+					: 'text-text-3 hover:text-text'}"
 			>
-				<Icon name={v.icon} size={13} /> {v.label}
+				<Icon name={v.icon} size={13} />
+				{v.label}
 			</button>
 		{/each}
 	</div>
 
 	<!-- Group (all views) -->
-	<div class="w-px h-5 bg-border"></div>
+	<div class="h-5 w-px bg-border"></div>
 	<div class="relative">
 		<button
 			type="button"
 			onclick={() => (pop = pop === 'group' ? null : 'group')}
-			class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] transition-colors"
+			class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[12.5px] transition-colors hover:bg-surface-2"
 		>
 			<span class="text-text-3">{m.projects_group_label()}</span>
-			<span class="text-text font-medium">{groupLabel(group)}</span>
+			<span class="font-medium text-text">{groupLabel(group)}</span>
 			<Icon name="chevron" size={10} class="text-text-3" />
 		</button>
 		{#if pop === 'group'}
 			<div
 				use:clickOutside={() => (pop = null)}
 				in:fly={POPOVER_IN}
-				class="absolute top-full left-0 mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[170px]"
+				class="absolute top-full left-0 z-50 mt-1.5 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 				style:box-shadow="var(--shadow-lg)"
 			>
 				{#each GROUP_OPTIONS as o (o.id)}
@@ -189,7 +197,7 @@
 							setGroup(o.id);
 							pop = null;
 						}}
-						class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text text-[13px]"
+						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text"
 					>
 						<span>{o.label}</span>
 						<span class="ml-auto text-accent {group === o.id ? 'opacity-100' : 'opacity-0'}">
@@ -201,13 +209,13 @@
 		{/if}
 	</div>
 
-	<div class="w-px h-5 bg-border"></div>
+	<div class="h-5 w-px bg-border"></div>
 
 	<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
 
-	<div class="ml-auto flex items-center gap-2 shrink-0">
+	<div class="ml-auto flex shrink-0 items-center gap-2">
 		<div class="relative">
-			<span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none">
+			<span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-3">
 				<Icon name="search" size={13} />
 			</span>
 			<input
@@ -215,12 +223,13 @@
 				placeholder={m.projects_search_placeholder()}
 				value={search}
 				oninput={(e) => setSearch((e.target as HTMLInputElement).value)}
-				class="h-7 pl-7 pr-2.5 rounded-lg bg-surface border border-border text-[12.5px] text-text placeholder:text-text-3 outline-none focus:border-border-strong w-44"
+				class="h-7 w-44 rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[12.5px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
 			/>
 		</div>
 		{#if canCreate}
 			<Button variant="primary" size="sm" onclick={onNew}>
-				<Icon name="plus" size={13} /> {m.projects_new_project()}
+				<Icon name="plus" size={13} />
+				{m.projects_new_project()}
 			</Button>
 		{/if}
 	</div>

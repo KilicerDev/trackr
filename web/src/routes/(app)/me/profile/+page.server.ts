@@ -30,10 +30,7 @@ export const actions: Actions = {
 		if (!name) return fail(400, { message: m.profile_err_name_required() });
 		if (name.length > 80) return fail(400, { message: m.profile_err_name_too_long() });
 
-		await db
-			.update(userTable)
-			.set({ name, image })
-			.where(eq(userTable.id, locals.user.id));
+		await db.update(userTable).set({ name, image }).where(eq(userTable.id, locals.user.id));
 
 		return { success: true };
 	}

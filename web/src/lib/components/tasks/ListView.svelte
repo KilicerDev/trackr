@@ -103,7 +103,7 @@
 	});
 </script>
 
-<div class="flex flex-col min-h-0 flex-1 overflow-auto">
+<div class="flex min-h-0 flex-1 flex-col overflow-auto">
 	{#each groups as g (g.id)}
 		{@const isCollapsed = collapsed.has(g.id)}
 		{@const done = g.tasks.filter((t) => t.status === 'done' || t.status === 'in_review').length}
@@ -112,38 +112,38 @@
 			{#if g.label}
 				{@const href = group === 'project' ? projectHref(g.id) : undefined}
 				<div
-					class="sticky top-0 z-[5] flex items-center gap-2.5 w-full pl-5 pr-3 h-10 bg-surface border-y border-border"
+					class="sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-y border-border bg-surface pr-3 pl-5"
 				>
 					<button
 						type="button"
 						onclick={() => toggle(g.id)}
 						aria-label={g.label}
-						class="group flex items-center gap-2.5 shrink-0 h-full"
+						class="group flex h-full shrink-0 items-center gap-2.5"
 					>
-						<span class="transition-transform text-text-3 {isCollapsed ? '-rotate-90' : ''}">
+						<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
 							<Icon name="chevron" size={12} />
 						</span>
-						<span class="w-2 h-2 rounded-full" style:background={g.dot}></span>
+						<span class="h-2 w-2 rounded-full" style:background={g.dot}></span>
 					</button>
 					{#if href}
 						<a
 							{href}
-							class="text-[13px] font-semibold text-text hover:underline truncate"
+							class="truncate text-[13px] font-semibold text-text hover:underline"
 							title={m.tasks_open_project({ name: g.label })}
 						>
 							{g.label}
 						</a>
 					{:else}
-						<span class="text-[13px] font-semibold text-text truncate">{g.label}</span>
+						<span class="truncate text-[13px] font-semibold text-text">{g.label}</span>
 					{/if}
 					<button
 						type="button"
 						onclick={() => toggle(g.id)}
 						aria-label={g.label}
-						class="flex items-center gap-2.5 flex-1 min-w-0 h-full text-left"
+						class="flex h-full min-w-0 flex-1 items-center gap-2.5 text-left"
 					>
 						<span class="font-mono text-[11px] text-text-3">{g.tasks.length}</span>
-						<div class="w-24 h-1 rounded-full bg-surface overflow-hidden">
+						<div class="h-1 w-24 overflow-hidden rounded-full bg-surface">
 							<div class="h-full" style:width="{pct}%" style:background={g.dot}></div>
 						</div>
 						<span class="font-mono text-[10px] text-text-4">{pct}%</span>
@@ -168,9 +168,10 @@
 						<button
 							type="button"
 							onclick={() => onAddInProject?.(g.id as ProjectId)}
-							class="flex items-center gap-1.5 w-full px-5 h-9 text-left text-[12px] text-text-3 hover:text-text hover:bg-surface transition-colors border-b border-border"
+							class="flex h-9 w-full items-center gap-1.5 border-b border-border px-5 text-left text-[12px] text-text-3 transition-colors hover:bg-surface hover:text-text"
 						>
-							<Icon name="plus" size={12} /> {m.tasks_new_task()}
+							<Icon name="plus" size={12} />
+							{m.tasks_new_task()}
 						</button>
 					{/if}
 				</div>

@@ -1,12 +1,7 @@
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
 import { eq, desc, isNull, inArray, and } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import {
-	project,
-	projectMember,
-	organization,
-	type Project
-} from '$lib/server/db/app.schema';
+import { project, projectMember, organization, type Project } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
 import { accessibleProjectIds, assertCan } from '$lib/server/permissions';
 import { getPreferences } from '$lib/server/preferences';
@@ -110,10 +105,7 @@ export const load: ServerLoad = async ({ locals }) => {
 		: [];
 
 	const leadRows = leadIds.length
-		? await db
-				.select({ id: user.id, name: user.name })
-				.from(user)
-				.where(inArray(user.id, leadIds))
+		? await db.select({ id: user.id, name: user.name }).from(user).where(inArray(user.id, leadIds))
 		: [];
 
 	const orgRows = orgIds.length
@@ -185,12 +177,19 @@ export const actions: Actions = {
 		const status = String(form.get('status') ?? 'active') as Project['status'];
 		const leadId = String(form.get('lead') ?? '') || null;
 		const orgId = String(form.get('orgId') ?? '').trim() || null;
-		const memberIds = form.getAll('members').map((v) => String(v)).filter(Boolean);
+		const memberIds = form
+			.getAll('members')
+			.map((v) => String(v))
+			.filter(Boolean);
 
 		if (!name) return fail(400, { message: m.projects_name_required() });
 		if (!key) return fail(400, { message: m.projects_key_required() });
 
-		const [existing] = await db.select({ id: project.id }).from(project).where(eq(project.key, key)).limit(1);
+		const [existing] = await db
+			.select({ id: project.id })
+			.from(project)
+			.where(eq(project.key, key))
+			.limit(1);
 		if (existing) return fail(409, { message: m.projects_key_in_use({ key }) });
 
 		// Validate org id (if provided) actually points at an existing row.

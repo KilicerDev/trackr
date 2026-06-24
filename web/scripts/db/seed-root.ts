@@ -149,9 +149,7 @@ try {
 	const msg = err instanceof Error ? err.message : String(err);
 	if (/column .* does not exist|relation .* does not exist/i.test(msg)) {
 		console.error(`\x1b[31m✗\x1b[0m Database schema is out of date.`);
-		console.error(
-			`  Run: \x1b[1mbun run db:push\x1b[0m (or migrate) and try again.`
-		);
+		console.error(`  Run: \x1b[1mbun run db:push\x1b[0m (or migrate) and try again.`);
 		console.error(`  (underlying error: ${msg})`);
 	} else {
 		console.error(`\x1b[31m✗\x1b[0m Failed to seed:`, err);

@@ -73,7 +73,14 @@
 			color: string;
 			status: 'active' | 'invited' | 'disabled';
 		}[];
-		projects?: { id: string; key: string; name: string; color: string; icon: string; status: string }[];
+		projects?: {
+			id: string;
+			key: string;
+			name: string;
+			color: string;
+			icon: string;
+			status: string;
+		}[];
 		memberRoles?: { projects?: Record<string, string> };
 		isTrackrTeam?: boolean;
 		currentUserId?: string;
@@ -356,28 +363,28 @@
 
 <div class="relative min-h-full">
 	<header
-		class="sticky top-0 z-20 flex items-center gap-3 px-8 h-[52px] border-b border-border/70 bg-bg/80 backdrop-blur-md"
+		class="sticky top-0 z-20 flex h-[52px] items-center gap-3 border-b border-border/70 bg-bg/80 px-8 backdrop-blur-md"
 	>
 		{#if note.kind === 'meeting'}
 			{#if project}
 				<a
 					href="/projects/{project.id}"
-					class="flex items-center gap-1.5 h-7 text-[12px] text-text-2 rounded-md bg-surface px-2 hover:text-text transition-colors"
+					class="flex h-7 items-center gap-1.5 rounded-md bg-surface px-2 text-[12px] text-text-2 transition-colors hover:text-text"
 					title={m.notes_meeting_project({ name: project.name })}
 				>
-					<span class="w-2 h-2 rounded-[2.5px] shrink-0" style:background={project.color}></span>
-					<span class="truncate max-w-[160px]">{project.name}</span>
+					<span class="h-2 w-2 shrink-0 rounded-[2.5px]" style:background={project.color}></span>
+					<span class="max-w-[160px] truncate">{project.name}</span>
 				</a>
 			{/if}
 			{#if task && taskRef}
 				<a
 					href="/tasks?task={taskRef}"
-					class="flex items-center gap-1.5 h-7 text-[12px] text-text-3 rounded-md bg-surface px-2 hover:text-text transition-colors"
+					class="flex h-7 items-center gap-1.5 rounded-md bg-surface px-2 text-[12px] text-text-3 transition-colors hover:text-text"
 					title={task.title}
 				>
 					<Icon name="check-square" size={12} class="shrink-0" />
-					<span class="font-mono shrink-0">{taskRef}</span>
-					<span class="truncate max-w-[140px]">{task.title}</span>
+					<span class="shrink-0 font-mono">{taskRef}</span>
+					<span class="max-w-[140px] truncate">{task.title}</span>
 				</a>
 			{/if}
 			{#if meetingDateLabel}
@@ -390,7 +397,7 @@
 
 		{#if !canEdit}
 			<span
-				class="flex items-center gap-1.5 text-[11.5px] text-text-3 rounded-md bg-surface px-2 py-0.5"
+				class="flex items-center gap-1.5 rounded-md bg-surface px-2 py-0.5 text-[11.5px] text-text-3"
 			>
 				<Icon name="link" size={12} />
 				{m.notes_read_only()}
@@ -439,18 +446,18 @@
 					<button
 						type="button"
 						onclick={() => void onSaveAsTemplate()}
-						class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 text-left text-[13px] leading-none"
+						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2"
 					>
-						<span class="grid place-items-center w-4 h-4"><Icon name="bookmark" size={13} /></span>
+						<span class="grid h-4 w-4 place-items-center"><Icon name="bookmark" size={13} /></span>
 						<span>{m.notes_save_as_template()}</span>
 					</button>
 					{#if isOwner}
 						<button
 							type="button"
 							onclick={() => void onDelete()}
-							class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-accent text-left text-[13px] leading-none"
+							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-accent hover:bg-surface-2"
 						>
-							<span class="grid place-items-center w-4 h-4"><Icon name="trash" size={13} /></span>
+							<span class="grid h-4 w-4 place-items-center"><Icon name="trash" size={13} /></span>
 							<span>{m.notes_delete()}</span>
 						</button>
 					{/if}
@@ -460,7 +467,7 @@
 	</header>
 
 	<div class="mx-auto max-w-[760px] px-8 pt-12 pb-28">
-		<div class="flex items-start gap-3.5 mb-8">
+		<div class="mb-8 flex items-start gap-3.5">
 			<span class="notes-doc__icon shrink-0">
 				<Icon name={note.icon || 'file'} size={20} stroke={1.75} />
 			</span>
@@ -472,7 +479,7 @@
 				oninput={onTitleInput}
 				onblur={() => void saveTitle()}
 				onkeydown={onTitleKeydown}
-				class="w-full bg-transparent border-0 outline-none text-[33px] font-semibold tracking-[-0.02em] text-text leading-[1.12] placeholder:text-text-4 pt-1 read-only:cursor-default"
+				class="w-full border-0 bg-transparent pt-1 text-[33px] leading-[1.12] font-semibold tracking-[-0.02em] text-text outline-none placeholder:text-text-4 read-only:cursor-default"
 			/>
 		</div>
 
@@ -503,7 +510,7 @@
 						data-todo-action
 						onclick={openConvert}
 						title={m.notes_todo_to_task()}
-						class="absolute right-1 z-10 inline-flex items-center gap-1 h-6 px-1.5 rounded-md border border-border bg-bg-elev text-[11px] text-text-3 hover:text-text hover:border-border-strong shadow-sm transition-colors"
+						class="absolute right-1 z-10 inline-flex h-6 items-center gap-1 rounded-md border border-border bg-bg-elev px-1.5 text-[11px] text-text-3 shadow-sm transition-colors hover:border-border-strong hover:text-text"
 						style:top="{hoverTodoTop}px"
 					>
 						<Icon name="check-square" size={12} />

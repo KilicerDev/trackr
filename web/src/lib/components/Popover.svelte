@@ -17,7 +17,7 @@
 	<div
 		use:clickOutside={onclose}
 		in:fly={POPOVER_IN}
-		class="absolute z-50 top-full mt-1.5 bg-bg-elev border border-border rounded-[10px] p-1.5 text-[13px]
+		class="absolute top-full z-50 mt-1.5 rounded-[10px] border border-border bg-bg-elev p-1.5 text-[13px]
 		{align === 'right' ? 'right-0' : 'left-0'}"
 		style:min-width="{minWidth}px"
 		style:box-shadow="var(--shadow-lg)"

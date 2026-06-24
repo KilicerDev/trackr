@@ -11,7 +11,7 @@
 
 {#if user}
 	<span
-		class="inline-grid place-items-center rounded-full text-[10px] font-semibold text-white shrink-0 select-none {cls}"
+		class="inline-grid shrink-0 place-items-center rounded-full text-[10px] font-semibold text-white select-none {cls}"
 		style:width="{size}px"
 		style:height="{size}px"
 		style:background={user.color}
@@ -23,7 +23,7 @@
 	</span>
 {:else}
 	<span
-		class="inline-grid place-items-center rounded-full bg-surface-2 text-text-3 text-[10px] {cls}"
+		class="inline-grid place-items-center rounded-full bg-surface-2 text-[10px] text-text-3 {cls}"
 		style:width="{size}px"
 		style:height="{size}px">?</span
 	>

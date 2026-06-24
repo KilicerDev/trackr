@@ -224,7 +224,7 @@
 </script>
 
 <div
-	class="bg-surface border-2 rounded-xl p-2.5 mx-3.5 my-2 shadow-[0_8px_20px_-12px_rgba(0,0,0,0.4)] transition-colors {focused
+	class="mx-3.5 my-2 rounded-xl border-2 bg-surface p-2.5 shadow-[0_8px_20px_-12px_rgba(0,0,0,0.4)] transition-colors {focused
 		? 'border-accent'
 		: 'border-border'}"
 >
@@ -238,7 +238,7 @@
 			onfocus={() => (focused = true)}
 			onblur={() => (focused = false)}
 			placeholder={m.week_composer_placeholder()}
-			class="flex-1 bg-transparent border-0 outline-none text-[13.5px] placeholder:text-text-3"
+			class="flex-1 border-0 bg-transparent text-[13.5px] outline-none placeholder:text-text-3"
 		/>
 		<Kbd>⌘↵</Kbd>
 		<IconButton size={26} ariaLabel={m.week_open_in_modal()} onclick={expand}>
@@ -248,7 +248,7 @@
 			<Icon name="x" size={12} />
 		</IconButton>
 	</div>
-	<div class="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t border-border/60">
+	<div class="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border/60 pt-2">
 		<!-- Project chip -->
 		<div class="relative">
 			<button
@@ -258,7 +258,7 @@
 				class={chipClass(projectActive)}
 				style:background={projectActive ? 'rgba(239,122,109,0.14)' : undefined}
 			>
-				<span class="w-2 h-2 rounded-full" style:background={projectMeta.color}></span>
+				<span class="h-2 w-2 rounded-full" style:background={projectMeta.color}></span>
 				{projectMeta.name}
 			</button>
 			{#if pop === 'project'}

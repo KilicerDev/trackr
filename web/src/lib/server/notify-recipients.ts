@@ -8,12 +8,7 @@
 
 import { eq, inArray } from 'drizzle-orm';
 import { db } from './db';
-import {
-	organization,
-	organizationMember,
-	projectMember,
-	rolePermission
-} from './db/app.schema';
+import { organization, organizationMember, projectMember, rolePermission } from './db/app.schema';
 import type { Permission } from '../permissions';
 
 async function rolesGranting(perms: Permission[]): Promise<Set<string>> {
@@ -26,10 +21,7 @@ async function rolesGranting(perms: Permission[]): Promise<Set<string>> {
 }
 
 // Members of `orgId` whose role grants any of `perms`.
-async function orgMembersWithAnyPerm(
-	orgId: string,
-	perms: Permission[]
-): Promise<Set<string>> {
+async function orgMembersWithAnyPerm(orgId: string, perms: Permission[]): Promise<Set<string>> {
 	const allowedRoles = await rolesGranting(perms);
 	if (allowedRoles.size === 0) return new Set();
 	const rows = await db

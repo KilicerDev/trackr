@@ -122,10 +122,16 @@
 	{:else if name === 'home'}
 		<path d="m3 11 9-8 9 8" /><path d="M5 10v10h14V10" />
 	{:else if name === 'refresh'}
-		<path d="M3 12a9 9 0 0 1 15.5-6.4L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-15.5 6.4L3 16" /><path d="M3 21v-5h5" />
+		<path d="M3 12a9 9 0 0 1 15.5-6.4L21 8" /><path d="M21 3v5h-5" /><path
+			d="M21 12a9 9 0 0 1-15.5 6.4L3 16"
+		/><path d="M3 21v-5h5" />
 	{:else if name === 'logout'}
-		<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" />
+		<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5" /><path
+			d="M21 12H9"
+		/>
 	{:else if name === 'trash'}
-		<path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M10 11v6" /><path d="M14 11v6" />
+		<path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path
+			d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"
+		/><path d="M10 11v6" /><path d="M14 11v6" />
 	{/if}
 </svg>

@@ -13,9 +13,7 @@ function collabDev(): Plugin {
 		configureServer(server) {
 			if (!server.httpServer) return;
 			server.httpServer.once('listening', async () => {
-				const { attachCollab } = await server.ssrLoadModule(
-					'/src/lib/server/collab/handler.ts'
-				);
+				const { attachCollab } = await server.ssrLoadModule('/src/lib/server/collab/handler.ts');
 				attachCollab(server.httpServer);
 			});
 		}

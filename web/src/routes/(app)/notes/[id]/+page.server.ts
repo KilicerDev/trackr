@@ -37,13 +37,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const shareLinks = isOwner ? await listShareLinks(note.id) : [];
 
 	const updatedBy = note.updatedById
-		? (
+		? ((
 				await db
 					.select({ id: userTable.id, name: userTable.name })
 					.from(userTable)
 					.where(eq(userTable.id, note.updatedById))
 					.limit(1)
-			)[0] ?? null
+			)[0] ?? null)
 		: null;
 
 	return { note, role, isOwner, me, shareLinks, updatedBy };

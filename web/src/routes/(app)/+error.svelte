@@ -62,10 +62,10 @@
 
 <Topbar crumbs={[{ label: m.shell_workspace_crumb(), href: '/tasks' }, { label: meta.title }]} />
 
-<div class="flex-1 min-h-0 grid place-items-center px-6 py-12">
-	<div class="flex flex-col items-center text-center max-w-md">
+<div class="grid min-h-0 flex-1 place-items-center px-6 py-12">
+	<div class="flex max-w-md flex-col items-center text-center">
 		<div
-			class="relative grid place-items-center w-16 h-16 rounded-2xl bg-bg-elev border border-border mb-5"
+			class="relative mb-5 grid h-16 w-16 place-items-center rounded-2xl border border-border bg-bg-elev"
 			style:box-shadow="0 0 0 1px {accent}22, 0 8px 24px {accent}15"
 		>
 			<span
@@ -77,11 +77,11 @@
 			</span>
 		</div>
 
-		<div class="font-mono text-[11px] uppercase tracking-[0.12em] text-text-4 mb-1">
+		<div class="mb-1 font-mono text-[11px] tracking-[0.12em] text-text-4 uppercase">
 			{m.shell_error_label({ status })}
 		</div>
-		<h1 class="text-[20px] font-semibold tracking-[-0.012em] text-text mb-2">{meta.title}</h1>
-		<p class="text-[13.5px] leading-relaxed text-text-3 mb-6">{meta.hint}</p>
+		<h1 class="mb-2 text-[20px] font-semibold tracking-[-0.012em] text-text">{meta.title}</h1>
+		<p class="mb-6 text-[13.5px] leading-relaxed text-text-3">{meta.hint}</p>
 
 		<div class="flex items-center gap-2">
 			<Button variant="default" onclick={back}>

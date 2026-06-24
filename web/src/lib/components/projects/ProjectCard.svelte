@@ -20,34 +20,39 @@
 		if (mins < 1) return m.projects_just_now();
 		if (mins < 60) return m.projects_min_ago({ n: mins });
 		const h = Math.round(mins / 60);
-		if (h < 24) return h === 1 ? m.projects_hour_ago_one({ n: h }) : m.projects_hours_ago_other({ n: h });
+		if (h < 24)
+			return h === 1 ? m.projects_hour_ago_one({ n: h }) : m.projects_hours_ago_other({ n: h });
 		const days = Math.round(h / 24);
-		if (days < 7) return days === 1 ? m.projects_day_ago_one({ n: days }) : m.projects_days_ago_other({ n: days });
+		if (days < 7)
+			return days === 1
+				? m.projects_day_ago_one({ n: days })
+				: m.projects_days_ago_other({ n: days });
 		return d.toISOString().slice(0, 10);
 	}
 </script>
 
 <a
 	href="/projects/{project.id}"
-	class="block bg-bg-elev border border-border rounded-2xl p-5 hover:border-border-strong hover:bg-surface/40 transition-colors shadow-[0_1px_0_rgba(255,255,255,0.025)_inset]"
+	class="block rounded-2xl border border-border bg-bg-elev p-5 shadow-[0_1px_0_rgba(255,255,255,0.025)_inset] transition-colors hover:border-border-strong hover:bg-surface/40"
 >
-	<div class="flex items-start gap-3 mb-3">
+	<div class="mb-3 flex items-start gap-3">
 		<span
-			class="inline-grid place-items-center text-white font-semibold shrink-0 relative"
+			class="relative inline-grid shrink-0 place-items-center font-semibold text-white"
 			style:width="40px"
 			style:height="40px"
 			style:border-radius="11px"
 			style:font-size="20px"
-			style:background="linear-gradient(140deg, {project.color}, color-mix(in oklch, {project.color} 70%, #000) 85%)"
+			style:background="linear-gradient(140deg, {project.color}, color-mix(in oklch, {project.color} 70%,
+			#000) 85%)"
 			style:box-shadow="0 1px 0 rgba(255,255,255,0.16) inset"
 		>
 			{project.icon}
 		</span>
 		<div class="min-w-0 flex-1">
 			<div class="flex items-center gap-2">
-				<div class="text-[15px] font-semibold text-text truncate">{project.name}</div>
+				<div class="truncate text-[15px] font-semibold text-text">{project.name}</div>
 			</div>
-			<div class="font-mono text-[11px] text-text-3 flex items-center gap-1.5">
+			<div class="flex items-center gap-1.5 font-mono text-[11px] text-text-3">
 				<span>{project.key}</span>
 				{#if project.org}
 					<span class="text-text-4">·</span>
@@ -55,24 +60,25 @@
 				{/if}
 			</div>
 		</div>
-		<div class="flex items-center gap-1.5 text-[12px] text-text-2 shrink-0">
-			<span class="w-2 h-2 rounded-full" style:background={st.color}></span>
+		<div class="flex shrink-0 items-center gap-1.5 text-[12px] text-text-2">
+			<span class="h-2 w-2 rounded-full" style:background={st.color}></span>
 			{projectStatusLabel(project.status)}
 		</div>
 	</div>
 
-	<p class="text-[12.5px] text-text-3 leading-snug mb-5 line-clamp-2 min-h-[2.4em]">
+	<p class="mb-5 line-clamp-2 min-h-[2.4em] text-[12.5px] leading-snug text-text-3">
 		{project.description ?? m.projects_no_description()}
 	</p>
 
-	<div class="h-1 rounded-full mb-4" style:background={project.color}></div>
+	<div class="mb-4 h-1 rounded-full" style:background={project.color}></div>
 
 	<div class="flex items-center gap-3">
 		<AvatarStack users={project.members} size={22} max={4} />
-		<div class="ml-auto text-[11px] text-text-3 text-right">
+		<div class="ml-auto text-right text-[11px] text-text-3">
 			{#if project.lead}
-				{m.projects_lead_label()} <span class="text-text-2 font-medium">{project.lead.name.split(' ')[0]}</span>
-				<span class="text-text-4 mx-1">·</span>
+				{m.projects_lead_label()}
+				<span class="font-medium text-text-2">{project.lead.name.split(' ')[0]}</span>
+				<span class="mx-1 text-text-4">·</span>
 			{/if}
 			{m.projects_updated_relative({ time: relative(project.updatedAt) })}
 		</div>

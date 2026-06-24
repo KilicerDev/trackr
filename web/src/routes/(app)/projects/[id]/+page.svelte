@@ -61,14 +61,20 @@
 		if (mins < 1) return m.projects_just_now();
 		if (mins < 60) return m.projects_min_ago({ n: mins });
 		const h = Math.round(mins / 60);
-		if (h < 24) return h === 1 ? m.projects_hour_ago_one({ n: h }) : m.projects_hours_ago_other({ n: h });
+		if (h < 24)
+			return h === 1 ? m.projects_hour_ago_one({ n: h }) : m.projects_hours_ago_other({ n: h });
 		const days = Math.round(h / 24);
-		if (days < 7) return days === 1 ? m.projects_day_ago_one({ n: days }) : m.projects_days_ago_other({ n: days });
+		if (days < 7)
+			return days === 1
+				? m.projects_day_ago_one({ n: days })
+				: m.projects_days_ago_other({ n: days });
 		return d.toISOString().slice(0, 10);
 	}
 
 	let selectedId = $state<string | null>(null);
-	let selected = $derived(selectedId ? data.tasks.find((t) => t.id === selectedId) ?? null : null);
+	let selected = $derived(
+		selectedId ? (data.tasks.find((t) => t.id === selectedId) ?? null) : null
+	);
 	let creating = $state(false);
 
 	let addingMember = $state(false);
@@ -79,7 +85,9 @@
 	let settingsOpen = $state(false);
 	let editing = $state(false);
 	let historyOpen = $state(false);
-	let projectBusy = $state<'archive' | 'unarchive' | 'delete' | 'favoriteAdd' | 'favoriteRemove' | null>(null);
+	let projectBusy = $state<
+		'archive' | 'unarchive' | 'delete' | 'favoriteAdd' | 'favoriteRemove' | null
+	>(null);
 
 	type LayoutFav = { favoriteProjectIds?: string[] };
 	const isFavorite = $derived(
@@ -177,9 +185,10 @@
 			}
 			const msg =
 				result.type === 'failure'
-					? (result.data as { message?: string } | undefined)?.message ?? m.projects_action_failed()
+					? ((result.data as { message?: string } | undefined)?.message ??
+						m.projects_action_failed())
 					: result.type === 'error'
-						? result.error?.message ?? m.projects_action_failed()
+						? (result.error?.message ?? m.projects_action_failed())
 						: m.projects_action_failed();
 			showToast('err', msg);
 		} catch {
@@ -245,33 +254,37 @@
 	]}
 />
 
-<div class="flex-1 min-h-0 overflow-y-auto">
+<div class="min-h-0 flex-1 overflow-y-auto">
 	<div class="px-6 py-6">
 		<a
 			href="/projects"
-			class="inline-flex items-center gap-1.5 text-[12.5px] text-text-3 hover:text-text mb-5"
+			class="mb-5 inline-flex items-center gap-1.5 text-[12.5px] text-text-3 hover:text-text"
 		>
-			<Icon name="chevron-r" size={11} class="rotate-180" /> {m.projects_back_to_projects()}
+			<Icon name="chevron-r" size={11} class="rotate-180" />
+			{m.projects_back_to_projects()}
 		</a>
 
 		<!-- hero -->
-		<div class="flex items-start gap-4 mb-5">
+		<div class="mb-5 flex items-start gap-4">
 			<div
-				class="w-12 h-12 rounded-xl grid place-items-center text-white font-semibold text-[20px] shrink-0"
-				style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%, #000) 85%)"
+				class="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-[20px] font-semibold text-white"
+				style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%, #000)
+				85%)"
 				style:box-shadow="0 1px 0 rgba(255,255,255,0.18) inset"
-			>{p.icon}</div>
-			<div class="flex-1 min-w-0">
+			>
+				{p.icon}
+			</div>
+			<div class="min-w-0 flex-1">
 				<div class="flex items-center gap-2">
 					<h1 class="text-[26px] font-semibold tracking-[-0.014em] text-text">{p.name}</h1>
 				</div>
-				<div class="flex items-center gap-2 mt-1.5 text-[12.5px] text-text-3">
+				<div class="mt-1.5 flex items-center gap-2 text-[12.5px] text-text-3">
 					<span
-						class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11.5px]"
+						class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11.5px]"
 						style:background={st.color + '24'}
 						style:color={st.color}
 					>
-						<span class="w-1.5 h-1.5 rounded-full" style:background={st.color}></span>
+						<span class="h-1.5 w-1.5 rounded-full" style:background={st.color}></span>
 						{projectStatusLabel(p.status)}
 					</span>
 					<span class="text-text-4">·</span>
@@ -301,7 +314,7 @@
 							use:clickOutside={() => (settingsOpen = false)}
 							use:autoPlace
 							in:fly={POPOVER_IN}
-							class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[200px]"
+							class="absolute top-full z-50 mt-1.5 min-w-[200px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 							style:box-shadow="var(--shadow-lg)"
 						>
 							<button
@@ -310,16 +323,17 @@
 									settingsOpen = false;
 									editing = true;
 								}}
-								class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text"
+								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2 hover:text-text"
 							>
-								<Icon name="settings" size={12} /> {m.projects_edit_details()}
+								<Icon name="settings" size={12} />
+								{m.projects_edit_details()}
 							</button>
 							<div class="my-1 border-t border-border/60"></div>
 							<button
 								type="button"
 								onclick={toggleFavorite}
 								disabled={projectBusy !== null}
-								class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text disabled:opacity-50"
+								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
 							>
 								<span class={isFavorite ? 'text-accent' : ''}>
 									<Icon name="star" size={12} />
@@ -338,20 +352,24 @@
 									type="button"
 									onclick={unarchiveProject}
 									disabled={projectBusy !== null}
-									class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text disabled:opacity-50"
+									class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
 								>
 									<Icon name="refresh" size={12} />
-									{projectBusy === 'unarchive' ? m.projects_unarchiving() : m.projects_unarchive_project()}
+									{projectBusy === 'unarchive'
+										? m.projects_unarchiving()
+										: m.projects_unarchive_project()}
 								</button>
 							{:else}
 								<button
 									type="button"
 									onclick={archiveProject}
 									disabled={projectBusy !== null}
-									class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text disabled:opacity-50"
+									class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
 								>
 									<Icon name="bookmark" size={12} />
-									{projectBusy === 'archive' ? m.projects_archiving() : m.projects_archive_project()}
+									{projectBusy === 'archive'
+										? m.projects_archiving()
+										: m.projects_archive_project()}
 								</button>
 							{/if}
 							<div class="my-1 border-t border-border/60"></div>
@@ -359,7 +377,7 @@
 								type="button"
 								onclick={deleteProject}
 								disabled={projectBusy !== null}
-								class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] disabled:opacity-50"
+								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] hover:bg-surface-2 disabled:opacity-50"
 								style:color="#ef7a6d"
 							>
 								<Icon name="x" size={12} />
@@ -369,21 +387,24 @@
 					{/if}
 				</div>
 				<Button variant="primary" size="sm" onclick={() => (creating = true)}>
-					<Icon name="plus" size={13} /> {m.projects_new_task()}
+					<Icon name="plus" size={13} />
+					{m.projects_new_task()}
 				</Button>
 			</div>
 		</div>
 
 		<!-- summary + members -->
-		<div class="grid gap-5 mb-6" style:grid-template-columns="1fr 1fr">
-			<div class="bg-bg-elev border border-border rounded-2xl p-4">
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-1.5">{m.projects_about()}</div>
-				<p class="text-[13.5px] text-text-2 leading-relaxed">
+		<div class="mb-6 grid gap-5" style:grid-template-columns="1fr 1fr">
+			<div class="rounded-2xl border border-border bg-bg-elev p-4">
+				<div class="mb-1.5 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+					{m.projects_about()}
+				</div>
+				<p class="text-[13.5px] leading-relaxed text-text-2">
 					{p.description ?? m.projects_no_description()}
 				</p>
 			</div>
-			<div class="bg-bg-elev border border-border rounded-2xl p-4 relative">
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-2.5">
+			<div class="relative rounded-2xl border border-border bg-bg-elev p-4">
+				<div class="mb-2.5 text-[11px] tracking-[0.08em] text-text-4 uppercase">
 					{m.projects_members_label()} · {data.members.length}
 				</div>
 				<div class="flex flex-wrap gap-1.5">
@@ -392,13 +413,13 @@
 							<button
 								type="button"
 								onclick={() => (openMemberMenu = openMemberMenu === mem.id ? null : mem.id)}
-								class="inline-flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full bg-surface border border-border text-[12px] hover:border-border-strong transition-colors"
+								class="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface py-1 pr-2.5 pl-1 text-[12px] transition-colors hover:border-border-strong"
 							>
 								<Avatar user={mem} size={18} />
 								<span class="text-text">{mem.name.split(' ')[0]}</span>
 								{#if mem.id === p.leadId}
 									<span
-										class="text-[10px] uppercase tracking-[0.06em] px-1.5 py-0.5 rounded text-accent"
+										class="rounded px-1.5 py-0.5 text-[10px] tracking-[0.06em] text-accent uppercase"
 										style:background="rgba(239,122,109,0.14)"
 									>
 										{m.projects_lead_badge()}
@@ -410,10 +431,10 @@
 									use:clickOutside={() => (openMemberMenu = null)}
 									use:autoPlace
 									in:fly={POPOVER_IN}
-									class="absolute top-full mt-1.5 z-40 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[200px]"
+									class="absolute top-full z-40 mt-1.5 min-w-[200px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 									style:box-shadow="var(--shadow-lg)"
 								>
-									<div class="px-2 pt-1 pb-1 text-[10.5px] uppercase tracking-[0.08em] text-text-4">
+									<div class="px-2 pt-1 pb-1 text-[10.5px] tracking-[0.08em] text-text-4 uppercase">
 										{m.projects_role_label()}
 									</div>
 									{#each PROJECT_ROLES as r (r.id)}
@@ -422,10 +443,10 @@
 											type="button"
 											onclick={() => setRole(mem.id, r.id)}
 											disabled={busy === `memberSetRole:${mem.id}` || active}
-											class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text disabled:opacity-100 disabled:cursor-default"
+											class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2 hover:text-text disabled:cursor-default disabled:opacity-100"
 										>
-											<span class="w-1.5 h-1.5 rounded-full" style:background={r.color}></span>
-											<span class={active ? 'text-text font-medium' : ''}>{r.label}</span>
+											<span class="h-1.5 w-1.5 rounded-full" style:background={r.color}></span>
+											<span class={active ? 'font-medium text-text' : ''}>{r.label}</span>
 											{#if active}
 												<span class="ml-auto text-text-3"><Icon name="check" size={12} /></span>
 											{/if}
@@ -437,18 +458,20 @@
 											type="button"
 											onclick={clearLead}
 											disabled={busy === 'leadSet:'}
-											class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text disabled:opacity-50"
+											class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
 										>
-											<Icon name="star" size={12} /> {m.projects_remove_as_lead()}
+											<Icon name="star" size={12} />
+											{m.projects_remove_as_lead()}
 										</button>
 									{:else}
 										<button
 											type="button"
 											onclick={() => setLead(mem.id)}
 											disabled={busy === `leadSet:${mem.id}`}
-											class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text disabled:opacity-50"
+											class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
 										>
-											<Icon name="star" size={12} /> {m.projects_set_as_lead()}
+											<Icon name="star" size={12} />
+											{m.projects_set_as_lead()}
 										</button>
 									{/if}
 									<div class="my-1 border-t border-border/60"></div>
@@ -456,9 +479,10 @@
 										type="button"
 										onclick={() => removeMember(mem.id, mem.name)}
 										disabled={busy === `memberRemove:${mem.id}`}
-										class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-[12.5px] text-text-2 hover:text-text disabled:opacity-50"
+										class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
 									>
-										<Icon name="x" size={12} /> {m.common_remove()}
+										<Icon name="x" size={12} />
+										{m.common_remove()}
 									</button>
 								</div>
 							{/if}
@@ -472,25 +496,26 @@
 								addingMember = !addingMember;
 								memberSearch = '';
 							}}
-							class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-dashed border-border text-[12px] text-text-3 hover:text-text hover:border-border-strong transition-colors"
+							class="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2.5 py-1 text-[12px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
 						>
-							<Icon name="plus" size={11} /> {m.common_add()}
+							<Icon name="plus" size={11} />
+							{m.common_add()}
 						</button>
 						{#if addingMember}
 							<div
 								use:clickOutside={() => (addingMember = false)}
 								use:autoPlace
 								in:fly={POPOVER_IN}
-								class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 w-[280px]"
+								class="absolute top-full z-50 mt-1.5 w-[280px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 								style:box-shadow="var(--shadow-lg)"
 							>
-								<div class="flex items-center gap-2 px-2 pt-1 pb-2 border-b border-border mb-1.5">
+								<div class="mb-1.5 flex items-center gap-2 border-b border-border px-2 pt-1 pb-2">
 									<span class="text-text-3"><Icon name="search" size={13} /></span>
 									<input
 										type="text"
 										bind:value={memberSearch}
 										placeholder={m.projects_add_teammate_placeholder()}
-										class="flex-1 bg-transparent border-0 outline-none text-[13px] placeholder:text-text-3"
+										class="flex-1 border-0 bg-transparent text-[13px] outline-none placeholder:text-text-3"
 									/>
 								</div>
 								<div class="max-h-[280px] overflow-y-auto">
@@ -499,12 +524,12 @@
 											type="button"
 											onclick={() => addMember(u.id)}
 											disabled={busy === `memberAdd:${u.id}`}
-											class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text disabled:opacity-50"
+											class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
 										>
 											<Avatar user={u} size={22} />
 											<span class="min-w-0 flex-1">
-												<span class="block text-[13px] truncate">{u.name}</span>
-												<span class="block text-[11px] text-text-3 truncate font-mono"
+												<span class="block truncate text-[13px]">{u.name}</span>
+												<span class="block truncate font-mono text-[11px] text-text-3"
 													>{u.email}</span
 												>
 											</span>
@@ -520,38 +545,45 @@
 						{/if}
 					</div>
 				</div>
-
 			</div>
 		</div>
 
 		<!-- stats -->
-		<div class="grid grid-cols-4 gap-3 mb-7">
-			<div class="bg-bg-elev border border-border rounded-2xl p-4">
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{m.projects_total_tasks()}</div>
-				<div class="font-mono text-[24px] font-semibold mt-1.5">{total}</div>
-			</div>
-			<div class="bg-bg-elev border border-border rounded-2xl p-4">
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{m.projects_in_progress()}</div>
-				<div class="font-mono text-[24px] font-semibold mt-1.5 text-[#f0a85c]">{active}</div>
-			</div>
-			<div class="bg-bg-elev border border-border rounded-2xl p-4">
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{m.projects_completed()}</div>
-				<div class="font-mono text-[24px] font-semibold mt-1.5 text-[#7fc8a9]">{done}</div>
-			</div>
-			<div class="bg-bg-elev border border-border rounded-2xl p-4">
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-1.5">{m.projects_progress()}</div>
-				<div class="font-mono text-[24px] font-semibold mb-2">
-					{pct}<span class="text-text-3 text-[14px]">%</span>
+		<div class="mb-7 grid grid-cols-4 gap-3">
+			<div class="rounded-2xl border border-border bg-bg-elev p-4">
+				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">
+					{m.projects_total_tasks()}
 				</div>
-				<div class="h-1.5 rounded-full bg-surface overflow-hidden">
+				<div class="mt-1.5 font-mono text-[24px] font-semibold">{total}</div>
+			</div>
+			<div class="rounded-2xl border border-border bg-bg-elev p-4">
+				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">
+					{m.projects_in_progress()}
+				</div>
+				<div class="mt-1.5 font-mono text-[24px] font-semibold text-[#f0a85c]">{active}</div>
+			</div>
+			<div class="rounded-2xl border border-border bg-bg-elev p-4">
+				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">
+					{m.projects_completed()}
+				</div>
+				<div class="mt-1.5 font-mono text-[24px] font-semibold text-[#7fc8a9]">{done}</div>
+			</div>
+			<div class="rounded-2xl border border-border bg-bg-elev p-4">
+				<div class="mb-1.5 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+					{m.projects_progress()}
+				</div>
+				<div class="mb-2 font-mono text-[24px] font-semibold">
+					{pct}<span class="text-[14px] text-text-3">%</span>
+				</div>
+				<div class="h-1.5 overflow-hidden rounded-full bg-surface">
 					<div class="h-full" style:width="{pct}%" style:background={p.color}></div>
 				</div>
 			</div>
 		</div>
 
 		<!-- tasks -->
-		<div class="bg-bg-elev border border-border rounded-2xl overflow-hidden">
-			<div class="flex items-center gap-2.5 px-4 py-3 border-b border-border">
+		<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
+			<div class="flex items-center gap-2.5 border-b border-border px-4 py-3">
 				<span class="text-[14px] font-semibold">{m.projects_tasks()}</span>
 				<span class="font-mono text-[11px] text-text-3">{tasks.length}</span>
 			</div>
@@ -563,8 +595,8 @@
 				/>
 			{:else}
 				{#each groups as g (g.id)}
-					<div class="flex items-center gap-2 px-4 py-2 bg-surface/30 border-b border-border">
-						<span class="w-2 h-2 rounded-full" style:background={g.dot}></span>
+					<div class="flex items-center gap-2 border-b border-border bg-surface/30 px-4 py-2">
+						<span class="h-2 w-2 rounded-full" style:background={g.dot}></span>
 						<span class="text-[12px] font-semibold text-text">{statusLabel(g.id)}</span>
 						<span class="font-mono text-[11px] text-text-3">{g.tasks.length}</span>
 					</div>

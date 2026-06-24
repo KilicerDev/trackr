@@ -217,9 +217,7 @@ export async function moveWikiPage(input: MoveWikiInput): Promise<void> {
 		await tx.update(wikiPage).set({ parentId, updatedById }).where(eq(wikiPage.id, id));
 		// Renumber siblings without bumping updatedAt (raw SQL bypasses $onUpdate).
 		for (let i = 0; i < orderedIds.length; i++) {
-			await tx.execute(
-				sql`update wiki_page set sort_order = ${i} where id = ${orderedIds[i]}`
-			);
+			await tx.execute(sql`update wiki_page set sort_order = ${i} where id = ${orderedIds[i]}`);
 		}
 	});
 }

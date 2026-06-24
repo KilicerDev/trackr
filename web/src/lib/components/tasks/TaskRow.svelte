@@ -34,19 +34,19 @@
 <button
 	type="button"
 	{onclick}
-	class="group grid items-center gap-3 w-full text-left border-b border-border/60 px-5 transition-colors
+	class="group grid w-full items-center gap-3 border-b border-border/60 px-5 text-left transition-colors
 	{selected ? 'bg-[var(--row-active)]' : 'hover:bg-[var(--row-hover)]'}"
 	style:grid-template-columns="22px 88px 1fr 110px 88px 88px 96px 30px"
 	style:height="var(--row-h)"
 >
 	<StatusDot status={task.status} />
-	<span class="font-mono text-[12px] text-text-3 truncate">{task.id}</span>
-	<span class="flex items-center gap-2 min-w-0">
+	<span class="truncate font-mono text-[12px] text-text-3">{task.id}</span>
+	<span class="flex min-w-0 items-center gap-2">
 		<span class="shrink-0"><TypeBadge type={task.type ?? 'task'} showLabel={false} /></span>
 		<span class="truncate text-[13.5px] text-text">{task.title}</span>
 		{#if task.plannedFor || task.inMyPlan}
 			<span
-				class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] text-accent shrink-0"
+				class="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] text-accent"
 				style:background="rgba(239,122,109,0.14)"
 				title={task.plannedFor
 					? m.tasks_planned_for({ date: formatDateShort(task.plannedFor) })
@@ -72,7 +72,9 @@
 				title={m.tasks_checklist()}
 			>
 				<Icon name="check-square" size={11} />
-				<span class="font-mono">{task.checklist.filter((i) => i.done).length}/{task.checklist.length}</span>
+				<span class="font-mono"
+					>{task.checklist.filter((i) => i.done).length}/{task.checklist.length}</span
+				>
 			</span>
 		{/if}
 	</span>
@@ -99,7 +101,7 @@
 	<span class="flex justify-start">
 		<Avatar user={assignee} size={22} />
 	</span>
-	<span class="opacity-0 group-hover:opacity-100 text-text-3 transition-opacity">
+	<span class="text-text-3 opacity-0 transition-opacity group-hover:opacity-100">
 		<Icon name="chevron-r" size={14} />
 	</span>
 </button>

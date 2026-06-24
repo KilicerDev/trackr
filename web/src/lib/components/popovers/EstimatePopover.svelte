@@ -41,18 +41,21 @@
 	use:clickOutside={commit}
 	use:autoPlace
 	in:fly={POPOVER_IN}
-	class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-2.5 w-[260px]"
+	class="absolute top-full z-50 mt-1.5 w-[260px] rounded-[10px] border border-border bg-bg-elev p-2.5"
 	style:box-shadow="var(--shadow-lg)"
 >
-	<div class="grid grid-cols-2 gap-2 mb-2">
+	<div class="mb-2 grid grid-cols-2 gap-2">
 		<div class="relative">
 			<input
 				type="number"
 				min="0"
 				bind:value={h}
-				class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-[14px] font-mono text-center outline-none focus:border-border-strong"
+				class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-center font-mono text-[14px] outline-none focus:border-border-strong"
 			/>
-			<span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11.5px] text-text-3 font-mono pointer-events-none">h</span>
+			<span
+				class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[11.5px] text-text-3"
+				>h</span
+			>
 		</div>
 		<div class="relative">
 			<input
@@ -60,9 +63,12 @@
 				min="0"
 				max="59"
 				bind:value={m}
-				class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-[14px] font-mono text-center outline-none focus:border-border-strong"
+				class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-center font-mono text-[14px] outline-none focus:border-border-strong"
 			/>
-			<span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11.5px] text-text-3 font-mono pointer-events-none">m</span>
+			<span
+				class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[11.5px] text-text-3"
+				>m</span
+			>
 		</div>
 	</div>
 	<div class="grid grid-cols-3 gap-1.5">
@@ -70,7 +76,7 @@
 			<button
 				type="button"
 				onclick={() => preset(p)}
-				class="bg-surface hover:bg-surface-2 border border-border text-text rounded-md py-1.5 text-[12.5px] font-medium transition-colors"
+				class="rounded-md border border-border bg-surface py-1.5 text-[12.5px] font-medium text-text transition-colors hover:bg-surface-2"
 			>
 				{labels[p]}
 			</button>

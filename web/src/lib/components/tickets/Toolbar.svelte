@@ -65,9 +65,12 @@
 	const groupLabel = (id: GroupBy) => GROUP_OPTIONS.find((g) => g.id === id)?.label ?? '';
 
 	function valueLabel(field: string, v: string) {
-		if (field === 'status') return TICKET_STATUSES.some((s) => s.id === v) ? ticketStatusLabel(v) : v;
-		if (field === 'priority') return TICKET_PRIORITIES.some((p) => p.id === v) ? priorityLabel(v) : v;
-		if (field === 'category') return TICKET_CATEGORIES.some((c) => c.id === v) ? ticketCategoryLabel(v) : v;
+		if (field === 'status')
+			return TICKET_STATUSES.some((s) => s.id === v) ? ticketStatusLabel(v) : v;
+		if (field === 'priority')
+			return TICKET_PRIORITIES.some((p) => p.id === v) ? priorityLabel(v) : v;
+		if (field === 'category')
+			return TICKET_CATEGORIES.some((c) => c.id === v) ? ticketCategoryLabel(v) : v;
 		if (field === 'org') return orgs.find((o) => o.id === v)?.name ?? v;
 		return v;
 	}
@@ -80,9 +83,9 @@
 			<button
 				type="button"
 				onclick={() => toggleValue('status', s.id)}
-				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
-				<span class="w-2 h-2 rounded-full" style:background={s.dot}></span>
+				<span class="h-2 w-2 rounded-full" style:background={s.dot}></span>
 				<span class="text-[13px]">{ticketStatusLabel(s.id)}</span>
 				<span class="ml-auto text-accent {values.includes(s.id) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
@@ -94,7 +97,7 @@
 			<button
 				type="button"
 				onclick={() => toggleValue('priority', p.id)}
-				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<PriorityBars priority={p.id} />
 				<span class="text-[13px]">{priorityLabel(p.id)}</span>
@@ -108,9 +111,9 @@
 			<button
 				type="button"
 				onclick={() => toggleValue('category', c.id)}
-				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
-				<span class="w-2 h-2 rounded-full" style:background={c.color}></span>
+				<span class="h-2 w-2 rounded-full" style:background={c.color}></span>
 				<span class="text-[13px]">{ticketCategoryLabel(c.id)}</span>
 				<span class="ml-auto text-accent {values.includes(c.id) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
@@ -122,10 +125,10 @@
 			<button
 				type="button"
 				onclick={() => toggleValue('org', o.id)}
-				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
-				<span class="w-2 h-2 rounded-full" style:background={o.color}></span>
-				<span class="text-[13px] truncate">{o.name}</span>
+				<span class="h-2 w-2 rounded-full" style:background={o.color}></span>
+				<span class="truncate text-[13px]">{o.name}</span>
 				<span class="ml-auto text-accent {values.includes(o.id) ? 'opacity-100' : 'opacity-0'}">
 					<Icon name="check" size={13} />
 				</span>
@@ -137,16 +140,16 @@
 	{/if}
 {/snippet}
 
-<div class="flex items-center gap-2 px-5 py-2.5 border-b border-border bg-bg shrink-0">
+<div class="flex shrink-0 items-center gap-2 border-b border-border bg-bg px-5 py-2.5">
 	<!-- Group -->
 	<div class="relative">
 		<button
 			type="button"
 			onclick={() => (pop = pop === 'group' ? null : 'group')}
-			class="inline-flex items-center h-7 px-2.5 gap-1.5 rounded-lg border border-border bg-surface hover:bg-surface-2 text-[12.5px] transition-colors"
+			class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[12.5px] transition-colors hover:bg-surface-2"
 		>
 			<span class="text-text-3">{m.tickets_group()}</span>
-			<span class="text-text font-medium">{groupLabel(group)}</span>
+			<span class="font-medium text-text">{groupLabel(group)}</span>
 			<Icon name="chevron" size={10} class="text-text-3" />
 		</button>
 		{#if pop === 'group'}
@@ -154,7 +157,7 @@
 				use:clickOutside={() => (pop = null)}
 				use:autoPlace
 				in:fly={POPOVER_IN}
-				class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[170px]"
+				class="absolute top-full z-50 mt-1.5 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 				style:box-shadow="var(--shadow-lg)"
 			>
 				{#each GROUP_OPTIONS as o (o.id)}
@@ -164,7 +167,7 @@
 							setGroup(o.id);
 							pop = null;
 						}}
-						class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text text-[13px]"
+						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text"
 					>
 						<span>{o.label}</span>
 						<span class="ml-auto text-accent {group === o.id ? 'opacity-100' : 'opacity-0'}">
@@ -176,13 +179,13 @@
 		{/if}
 	</div>
 
-	<div class="w-px h-5 bg-border"></div>
+	<div class="h-5 w-px bg-border"></div>
 
 	<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
 
-	<div class="ml-auto flex items-center gap-2 shrink-0">
+	<div class="ml-auto flex shrink-0 items-center gap-2">
 		<div class="relative">
-			<span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none">
+			<span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-3">
 				<Icon name="search" size={13} />
 			</span>
 			<input
@@ -190,12 +193,13 @@
 				placeholder={m.tickets_search_placeholder()}
 				value={search}
 				oninput={(e) => setSearch((e.target as HTMLInputElement).value)}
-				class="h-7 pl-7 pr-2.5 rounded-lg bg-surface border border-border text-[12.5px] text-text placeholder:text-text-3 outline-none focus:border-border-strong w-56"
+				class="h-7 w-56 rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[12.5px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
 			/>
 		</div>
 		{#if canCreate}
 			<Button variant="primary" size="sm" onclick={() => onNew?.()}>
-				<Icon name="plus" size={13} /> {m.tickets_new_title()}
+				<Icon name="plus" size={13} />
+				{m.tickets_new_title()}
 			</Button>
 		{/if}
 	</div>

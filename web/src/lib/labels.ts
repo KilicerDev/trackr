@@ -7,11 +7,7 @@
 import { m } from '$lib/paraglide/messages';
 import type { Locale } from '$lib/paraglide/runtime';
 
-function pick<T extends string>(
-	map: Record<T, () => string>,
-	id: T,
-	fallback?: string
-): string {
+function pick<T extends string>(map: Record<T, () => string>, id: T, fallback?: string): string {
 	return map[id]?.() ?? fallback ?? id;
 }
 

@@ -186,7 +186,9 @@ export async function createAttachment(input: CreateAttachmentInput): Promise<At
 
 	// For images, trust the decoded format over the client MIME; otherwise keep
 	// the declared type (falling back to a safe default).
-	const mimeType = image ? MIME_BY_FORMAT[image.format] : input.mimeType || 'application/octet-stream';
+	const mimeType = image
+		? MIME_BY_FORMAT[image.format]
+		: input.mimeType || 'application/octet-stream';
 
 	const [row] = await db
 		.insert(attachment)
@@ -315,11 +317,10 @@ export async function getAttachment(id: string): Promise<Attachment | null> {
  * first (it stops being served immediately); files go after (an orphaned file
  * is harmless). Idempotent.
  */
-export async function deleteAttachment(row: Pick<Attachment, 'id' | 'storageKey' | 'hasThumbnail'>) {
-	await db
-		.update(attachment)
-		.set({ deletedAt: new Date() })
-		.where(eq(attachment.id, row.id));
+export async function deleteAttachment(
+	row: Pick<Attachment, 'id' | 'storageKey' | 'hasThumbnail'>
+) {
+	await db.update(attachment).set({ deletedAt: new Date() }).where(eq(attachment.id, row.id));
 	await storage.delete(originalKey(row));
 	if (row.hasThumbnail) await storage.delete(thumbKey(row));
 }

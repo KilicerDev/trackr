@@ -70,7 +70,7 @@
 
 <header class="mb-6">
 	<h1 class="text-[22px] font-semibold tracking-[-0.014em]">{m.settings_title()}</h1>
-	<p class="text-[12.5px] text-text-3 mt-1">{m.settings_subtitle()}</p>
+	<p class="mt-1 text-[12.5px] text-text-3">{m.settings_subtitle()}</p>
 </header>
 
 <form
@@ -92,22 +92,28 @@
 				showToast('ok', m.settings_toast_saved());
 				await invalidateAll();
 			} else if (result.type === 'failure') {
-				showToast('err', (result.data as { message?: string } | undefined)?.message ?? m.settings_toast_could_not_save());
+				showToast(
+					'err',
+					(result.data as { message?: string } | undefined)?.message ??
+						m.settings_toast_could_not_save()
+				);
 			}
 		};
 	}}
 	class="space-y-5"
 >
-	<section class="bg-bg-elev border border-border rounded-2xl p-5">
-		<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-4">{m.settings_appearance()}</div>
-		<div class="grid grid-cols-[140px_1fr] items-center gap-y-4 gap-x-4 text-[13px]">
+	<section class="rounded-2xl border border-border bg-bg-elev p-5">
+		<div class="mb-4 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+			{m.settings_appearance()}
+		</div>
+		<div class="grid grid-cols-[140px_1fr] items-center gap-x-4 gap-y-4 text-[13px]">
 			<div class="text-text-3">{m.settings_theme()}</div>
-			<div class="inline-flex items-center h-8 bg-surface border border-border rounded-lg p-0.5">
+			<div class="inline-flex h-8 items-center rounded-lg border border-border bg-surface p-0.5">
 				{#each themes as t (t.value)}
 					<button
 						type="button"
 						onclick={() => (theme = t.value)}
-						class="px-3 h-full rounded-md text-[12.5px] {theme === t.value
+						class="h-full rounded-md px-3 text-[12.5px] {theme === t.value
 							? 'bg-bg-elev text-text shadow-sm'
 							: 'text-text-3 hover:text-text'}"
 					>
@@ -117,12 +123,12 @@
 			</div>
 
 			<div class="text-text-3">{m.settings_density()}</div>
-			<div class="inline-flex items-center h-8 bg-surface border border-border rounded-lg p-0.5">
+			<div class="inline-flex h-8 items-center rounded-lg border border-border bg-surface p-0.5">
 				{#each densities as d (d.value)}
 					<button
 						type="button"
 						onclick={() => (density = d.value)}
-						class="px-3 h-full rounded-md text-[12.5px] {density === d.value
+						class="h-full rounded-md px-3 text-[12.5px] {density === d.value
 							? 'bg-bg-elev text-text shadow-sm'
 							: 'text-text-3 hover:text-text'}"
 					>
@@ -138,7 +144,8 @@
 						type="button"
 						onclick={() => (accent = c)}
 						aria-label={m.settings_accent_color()}
-						class="w-7 h-7 rounded-md grid place-items-center transition-transform hover:scale-110 {accent === c
+						class="grid h-7 w-7 place-items-center rounded-md transition-transform hover:scale-110 {accent ===
+						c
 							? 'ring-2 ring-text/20'
 							: ''}"
 						style:background={c}
@@ -153,19 +160,25 @@
 		</div>
 	</section>
 
-	<section class="bg-bg-elev border border-border rounded-2xl p-5">
-		<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-4">{m.settings_defaults()}</div>
-		<div class="grid grid-cols-[140px_1fr] items-center gap-y-4 gap-x-4 text-[13px]">
+	<section class="rounded-2xl border border-border bg-bg-elev p-5">
+		<div class="mb-4 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+			{m.settings_defaults()}
+		</div>
+		<div class="grid grid-cols-[140px_1fr] items-center gap-x-4 gap-y-4 text-[13px]">
 			<span class="text-text-3">{m.settings_landing_page()}</span>
-			<Select bind:value={defaultLanding} options={landings} ariaLabel={m.settings_landing_page()} />
+			<Select
+				bind:value={defaultLanding}
+				options={landings}
+				ariaLabel={m.settings_landing_page()}
+			/>
 
 			<div class="text-text-3">{m.settings_week_starts_on()}</div>
-			<div class="inline-flex items-center h-8 bg-surface border border-border rounded-lg p-0.5">
+			<div class="inline-flex h-8 items-center rounded-lg border border-border bg-surface p-0.5">
 				{#each [{ v: 1, l: m.settings_week_monday() }, { v: 0, l: m.settings_week_sunday() }] as opt (opt.v)}
 					<button
 						type="button"
 						onclick={() => (weekStartsOn = opt.v)}
-						class="px-3 h-full rounded-md text-[12.5px] {weekStartsOn === opt.v
+						class="h-full rounded-md px-3 text-[12.5px] {weekStartsOn === opt.v
 							? 'bg-bg-elev text-text shadow-sm'
 							: 'text-text-3 hover:text-text'}"
 					>

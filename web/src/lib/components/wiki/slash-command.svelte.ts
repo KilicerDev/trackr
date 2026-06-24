@@ -54,8 +54,7 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 			return m.wiki_slash_text_hint();
 		},
 		icon: '¶',
-		run: ({ editor, range }) =>
-			editor.chain().focus().deleteRange(range).setParagraph().run()
+		run: ({ editor, range }) => editor.chain().focus().deleteRange(range).setParagraph().run()
 	},
 	{
 		id: 'ul',
@@ -66,8 +65,7 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 			return m.wiki_slash_ul_hint();
 		},
 		icon: '•',
-		run: ({ editor, range }) =>
-			editor.chain().focus().deleteRange(range).toggleBulletList().run()
+		run: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleBulletList().run()
 	},
 	{
 		id: 'ol',
@@ -78,8 +76,7 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 			return m.wiki_slash_ol_hint();
 		},
 		icon: '1.',
-		run: ({ editor, range }) =>
-			editor.chain().focus().deleteRange(range).toggleOrderedList().run()
+		run: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleOrderedList().run()
 	},
 	{
 		id: 'task',
@@ -90,8 +87,7 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 			return m.wiki_slash_task_hint();
 		},
 		icon: '☐',
-		run: ({ editor, range }) =>
-			editor.chain().focus().deleteRange(range).toggleTaskList().run()
+		run: ({ editor, range }) => editor.chain().focus().deleteRange(range).toggleTaskList().run()
 	},
 	{
 		id: 'quote',
@@ -102,8 +98,7 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 			return m.wiki_slash_quote_hint();
 		},
 		icon: '“',
-		run: ({ editor, range }) =>
-			editor.chain().focus().deleteRange(range).setBlockquote().run()
+		run: ({ editor, range }) => editor.chain().focus().deleteRange(range).setBlockquote().run()
 	},
 	{
 		id: 'code',
@@ -114,8 +109,7 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 			return m.wiki_slash_code_hint();
 		},
 		icon: '</>',
-		run: ({ editor, range }) =>
-			editor.chain().focus().deleteRange(range).setCodeBlock().run()
+		run: ({ editor, range }) => editor.chain().focus().deleteRange(range).setCodeBlock().run()
 	},
 	{
 		id: 'hr',
@@ -126,8 +120,7 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 			return m.wiki_slash_hr_hint();
 		},
 		icon: '—',
-		run: ({ editor, range }) =>
-			editor.chain().focus().deleteRange(range).setHorizontalRule().run()
+		run: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHorizontalRule().run()
 	},
 	{
 		id: 'image',

@@ -54,18 +54,18 @@
 		transition:fade={{ duration: 160 }}
 		class="fixed inset-0 z-[60] bg-black/60 backdrop-blur-[3px]"
 	></button>
-	<div class="fixed inset-0 z-[61] grid place-items-center p-4 pointer-events-none">
+	<div class="pointer-events-none fixed inset-0 z-[61] grid place-items-center p-4">
 		<div
 			role="alertdialog"
 			aria-modal="true"
 			aria-labelledby="confirm-title"
 			transition:fly={{ y: 10, duration: 200, easing: cubicOut }}
-			class="bg-bg-elev border border-border rounded-2xl pointer-events-auto w-full max-w-[420px] overflow-hidden"
+			class="pointer-events-auto w-full max-w-[420px] overflow-hidden rounded-2xl border border-border bg-bg-elev"
 			style:box-shadow="var(--shadow-lg), 0 0 0 1px rgba(255,255,255,0.02) inset"
 		>
-			<div class="px-5 pt-5 pb-4 flex gap-3.5">
+			<div class="flex gap-3.5 px-5 pt-5 pb-4">
 				<span
-					class="shrink-0 w-9 h-9 grid place-items-center rounded-xl"
+					class="grid h-9 w-9 shrink-0 place-items-center rounded-xl"
 					style:background={t.ring}
 					style:color={t.accent}
 				>
@@ -98,7 +98,9 @@
 							stroke-linejoin="round"
 							aria-hidden="true"
 						>
-							<path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+							<path
+								d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+							/>
 							<path d="M12 9v4M12 17h.01" />
 						</svg>
 					{:else}
@@ -123,15 +125,13 @@
 						{top.title}
 					</div>
 					{#if top.message}
-						<div class="text-[12.5px] text-text-3 mt-1.5 leading-relaxed whitespace-pre-line">
+						<div class="mt-1.5 text-[12.5px] leading-relaxed whitespace-pre-line text-text-3">
 							{top.message}
 						</div>
 					{/if}
 				</div>
 			</div>
-			<div
-				class="flex items-center justify-end gap-2 px-5 py-3 border-t border-border/80 bg-bg/40"
-			>
+			<div class="flex items-center justify-end gap-2 border-t border-border/80 bg-bg/40 px-5 py-3">
 				{#if top.kind === 'confirm'}
 					<Button variant="default" onclick={onCancel}>{top.cancelLabel ?? 'Cancel'}</Button>
 				{/if}
@@ -139,7 +139,7 @@
 					<button
 						type="button"
 						onclick={onConfirm}
-						class="inline-flex items-center gap-1.5 rounded-lg font-medium text-[13px] transition-[background,border-color,transform] duration-150 hover:brightness-110 active:translate-y-[1px] px-[11px] py-[7px] text-white border border-transparent"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent px-[11px] py-[7px] text-[13px] font-medium text-white transition-[background,border-color,transform] duration-150 hover:brightness-110 active:translate-y-[1px]"
 						style:background="#ef4f5e"
 						style:box-shadow="0 1px 0 rgba(255,255,255,0.18) inset, 0 4px 12px rgba(239,79,94,0.28)"
 					>
@@ -149,7 +149,7 @@
 					<button
 						type="button"
 						onclick={onConfirm}
-						class="inline-flex items-center gap-1.5 rounded-lg font-medium text-[13px] transition-[background,border-color,transform] duration-150 hover:brightness-110 active:translate-y-[1px] px-[11px] py-[7px] text-white border border-transparent"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent px-[11px] py-[7px] text-[13px] font-medium text-white transition-[background,border-color,transform] duration-150 hover:brightness-110 active:translate-y-[1px]"
 						style:background="#f0a85c"
 						style:box-shadow="0 1px 0 rgba(255,255,255,0.18) inset, 0 4px 12px rgba(240,168,92,0.28)"
 					>

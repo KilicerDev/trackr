@@ -167,7 +167,7 @@ try {
 			continue;
 		}
 
-		const creator = t.createdBy ? userIdMap.get(t.createdBy) ?? null : null;
+		const creator = t.createdBy ? (userIdMap.get(t.createdBy) ?? null) : null;
 		const dueDate = t.due ? new Date(t.due) : null;
 		const startDate = t.startDate ? new Date(t.startDate) : null;
 		const endDate = t.endDate ? new Date(t.endDate) : null;
@@ -208,15 +208,13 @@ try {
 
 		// Reconcile assignees.
 		const wantedAssignees = new Set<string>(
-			(t.assignees ?? [t.assignee])
-				.map((aid) => userIdMap.get(aid))
-				.filter((x): x is string => !!x)
+			(t.assignees ?? [t.assignee]).map((aid) => userIdMap.get(aid)).filter((x): x is string => !!x)
 		);
 		await db.delete(schema.taskAssignee).where(eq(schema.taskAssignee.taskId, taskId));
 		if (wantedAssignees.size > 0) {
-			await db.insert(schema.taskAssignee).values(
-				[...wantedAssignees].map((userId) => ({ taskId, userId }))
-			);
+			await db
+				.insert(schema.taskAssignee)
+				.values([...wantedAssignees].map((userId) => ({ taskId, userId })));
 		}
 
 		const prev = maxNumberByProject.get(projectId) ?? 0;

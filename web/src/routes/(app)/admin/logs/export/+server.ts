@@ -31,9 +31,13 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 	const lines = [COLUMNS.join(',')];
 	for (const r of rows) {
-		const actor = r.actor ? (actors[r.actor]?.name ?? r.actorLabel ?? r.actor) : (r.actorLabel ?? 'Anonymous');
+		const actor = r.actor
+			? (actors[r.actor]?.name ?? r.actorLabel ?? r.actor)
+			: (r.actorLabel ?? 'Anonymous');
 		lines.push(
-			[r.at, r.type, r.kind, actor, r.target, r.ip, r.device].map((v) => csvCell(String(v ?? ''))).join(',')
+			[r.at, r.type, r.kind, actor, r.target, r.ip, r.device]
+				.map((v) => csvCell(String(v ?? '')))
+				.join(',')
 		);
 	}
 

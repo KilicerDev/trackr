@@ -21,14 +21,17 @@
 	use:clickOutside={onclose}
 	use:autoPlace
 	in:fly={POPOVER_IN}
-	class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[180px]"
+	class="absolute top-full z-50 mt-1.5 min-w-[180px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 	style:box-shadow="var(--shadow-lg)"
 >
 	{#each TRACKR_TYPES as t (t.id)}
 		<button
 			type="button"
-			onclick={() => { onchange(t.id); onclose(); }}
-			class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+			onclick={() => {
+				onchange(t.id);
+				onclose();
+			}}
+			class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 		>
 			<TypeBadge type={t.id} showLabel={false} />
 			<span class="text-[13px]">{typeLabel(t.id)}</span>

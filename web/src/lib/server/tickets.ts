@@ -18,7 +18,12 @@ export const TICKET_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 export type TicketPriority = (typeof TICKET_PRIORITIES)[number];
 export const TICKET_PRIORITY_SET = new Set<string>(TICKET_PRIORITIES);
 
-export const TICKET_CATEGORIES = ['billing', 'technical_issue', 'feature_request', 'general'] as const;
+export const TICKET_CATEGORIES = [
+	'billing',
+	'technical_issue',
+	'feature_request',
+	'general'
+] as const;
 export type TicketCategory = (typeof TICKET_CATEGORIES)[number];
 export const TICKET_CATEGORY_SET = new Set<string>(TICKET_CATEGORIES);
 

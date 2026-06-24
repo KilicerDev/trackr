@@ -84,7 +84,7 @@
 
 {#if open}
 	<div
-		class="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm p-4"
+		class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 backdrop-blur-sm"
 		role="presentation"
 		onclick={(e) => {
 			if (e.target === e.currentTarget) open = false;
@@ -95,27 +95,27 @@
 			role="dialog"
 			aria-modal="true"
 		>
-			<div class="flex items-center justify-between px-5 py-4 border-b border-border/70">
+			<div class="flex items-center justify-between border-b border-border/70 px-5 py-4">
 				<h2 class="text-[15px] font-semibold text-text">{m.notes_share_title()}</h2>
 				<button
 					type="button"
 					onclick={() => (open = false)}
-					class="grid place-items-center w-7 h-7 rounded-md text-text-3 hover:text-text hover:bg-surface-2"
+					class="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text"
 					aria-label={m.common_cancel()}
 				>
 					<Icon name="x" size={15} />
 				</button>
 			</div>
 
-			<div class="px-5 py-4 grid gap-4">
-				<p class="text-[12.5px] text-text-3 leading-relaxed">{m.notes_share_hint()}</p>
+			<div class="grid gap-4 px-5 py-4">
+				<p class="text-[12.5px] leading-relaxed text-text-3">{m.notes_share_hint()}</p>
 
 				<div class="flex gap-2">
 					<button
 						type="button"
 						disabled={busy}
 						onclick={() => createLink('read')}
-						class="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-text-2 hover:border-border-strong disabled:opacity-50"
+						class="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-text-2 hover:border-border-strong disabled:opacity-50"
 					>
 						<Icon name="link" size={13} />
 						{m.notes_share_create_read()}
@@ -124,7 +124,7 @@
 						type="button"
 						disabled={busy}
 						onclick={() => createLink('write')}
-						class="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-text-2 hover:border-border-strong disabled:opacity-50"
+						class="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-[13px] text-text-2 hover:border-border-strong disabled:opacity-50"
 					>
 						<Icon name="link" size={13} />
 						{m.notes_share_create_write()}
@@ -136,21 +136,21 @@
 						{#each activeLinks as link (link.id)}
 							<div class="flex items-center gap-2 rounded-lg bg-surface px-3 py-2">
 								<span
-									class="text-[10.5px] font-mono uppercase tracking-wide rounded px-1.5 py-0.5 {link.role ===
+									class="rounded px-1.5 py-0.5 font-mono text-[10.5px] tracking-wide uppercase {link.role ===
 									'write'
 										? 'bg-accent/15 text-accent'
 										: 'bg-surface-2 text-text-3'}"
 								>
 									{link.role === 'write' ? m.notes_role_write() : m.notes_role_read()}
 								</span>
-								<span class="flex-1 truncate text-[12px] text-text-4 font-mono">
+								<span class="flex-1 truncate font-mono text-[12px] text-text-4">
 									/notes/shared/{link.token.slice(0, 10)}…
 								</span>
 								<button
 									type="button"
 									onclick={() => copyLink(link.token)}
 									aria-label={m.notes_toast_link_copied()}
-									class="grid place-items-center w-6 h-6 rounded text-text-3 hover:text-text hover:bg-surface-2"
+									class="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-text"
 								>
 									<Icon name="paperclip" size={13} />
 								</button>
@@ -158,7 +158,7 @@
 									type="button"
 									onclick={() => revoke(link.id)}
 									aria-label={m.notes_revoke()}
-									class="grid place-items-center w-6 h-6 rounded text-text-3 hover:text-accent hover:bg-surface-2"
+									class="grid h-6 w-6 place-items-center rounded text-text-3 hover:bg-surface-2 hover:text-accent"
 								>
 									<Icon name="trash" size={13} />
 								</button>
@@ -166,7 +166,7 @@
 						{/each}
 					</div>
 				{:else}
-					<p class="text-[12px] text-text-4 text-center py-2">{m.notes_share_no_links()}</p>
+					<p class="py-2 text-center text-[12px] text-text-4">{m.notes_share_no_links()}</p>
 				{/if}
 			</div>
 		</div>

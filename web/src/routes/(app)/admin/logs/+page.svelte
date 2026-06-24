@@ -50,7 +50,8 @@
 		if (kind !== 'all') parts.push(`kind=${encodeURIComponent(kind)}`);
 		if (range !== '30') parts.push(`range=${encodeURIComponent(range)}`);
 		if (search.trim()) parts.push(`q=${encodeURIComponent(search.trim())}`);
-		if (extra) for (const [k, v] of Object.entries(extra)) parts.push(`${k}=${encodeURIComponent(v)}`);
+		if (extra)
+			for (const [k, v] of Object.entries(extra)) parts.push(`${k}=${encodeURIComponent(v)}`);
 		return parts.join('&');
 	}
 
@@ -93,50 +94,63 @@
 
 <svelte:head><title>{m.admin_logs_page_title()}</title></svelte:head>
 
-<Topbar crumbs={[{ label: m.admin_crumb_workspace(), href: '/tasks' }, { label: m.admin_logs_title() }]} />
+<Topbar
+	crumbs={[{ label: m.admin_crumb_workspace(), href: '/tasks' }, { label: m.admin_logs_title() }]}
+/>
 
-<div class="flex-1 min-h-0 overflow-y-auto">
+<div class="min-h-0 flex-1 overflow-y-auto">
 	<div class="px-6 py-6">
-		<div class="flex items-end gap-4 mb-6">
+		<div class="mb-6 flex items-end gap-4">
 			<div>
 				<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.admin_logs_title()}</h1>
-				<p class="text-[12.5px] text-text-3 mt-1 max-w-xl">
+				<p class="mt-1 max-w-xl text-[12.5px] text-text-3">
 					{m.admin_logs_subtitle()}
 				</p>
 			</div>
 			<div class="ml-auto">
 				<Button variant="default" size="sm" onclick={() => (window.location.href = exportHref)}>
-					<Icon name="logs" size={13} /> {m.admin_logs_export_csv()}
+					<Icon name="logs" size={13} />
+					{m.admin_logs_export_csv()}
 				</Button>
 			</div>
 		</div>
 
-		<div class="flex items-center gap-2.5 mb-4 flex-wrap">
-			<div class="inline-flex items-center h-8 bg-surface border border-border rounded-lg p-0.5">
+		<div class="mb-4 flex flex-wrap items-center gap-2.5">
+			<div class="inline-flex h-8 items-center rounded-lg border border-border bg-surface p-0.5">
 				{#each LOG_KINDS as k (k.id)}
 					<button
 						type="button"
-						onclick={() => { kind = k.id; navigate(); }}
-						class="px-2.5 h-full rounded-md text-[12.5px] {kind === k.id ? 'bg-bg-elev text-text shadow-sm' : 'text-text-3 hover:text-text'}"
+						onclick={() => {
+							kind = k.id;
+							navigate();
+						}}
+						class="h-full rounded-md px-2.5 text-[12.5px] {kind === k.id
+							? 'bg-bg-elev text-text shadow-sm'
+							: 'text-text-3 hover:text-text'}"
 					>
 						{logKindLabel(k.id)}
 					</button>
 				{/each}
 			</div>
-			<div class="w-px h-5 bg-border"></div>
-			<div class="inline-flex items-center h-8 bg-surface border border-border rounded-lg p-0.5">
+			<div class="h-5 w-px bg-border"></div>
+			<div class="inline-flex h-8 items-center rounded-lg border border-border bg-surface p-0.5">
 				{#each [{ id: '1', label: m.admin_logs_range_24h() }, { id: '7', label: m.admin_logs_range_7days() }, { id: '30', label: m.admin_logs_range_30days() }, { id: 'all', label: m.admin_logs_range_all_time() }] as r (r.id)}
 					<button
 						type="button"
-						onclick={() => { range = r.id; navigate(); }}
-						class="px-2.5 h-full rounded-md text-[12.5px] {range === r.id ? 'bg-bg-elev text-text shadow-sm' : 'text-text-3 hover:text-text'}"
+						onclick={() => {
+							range = r.id;
+							navigate();
+						}}
+						class="h-full rounded-md px-2.5 text-[12.5px] {range === r.id
+							? 'bg-bg-elev text-text shadow-sm'
+							: 'text-text-3 hover:text-text'}"
 					>
 						{r.label}
 					</button>
 				{/each}
 			</div>
-			<div class="ml-auto relative">
-				<span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-3 pointer-events-none">
+			<div class="relative ml-auto">
+				<span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-3">
 					<Icon name="search" size={13} />
 				</span>
 				<input
@@ -144,17 +158,17 @@
 					bind:value={search}
 					oninput={onSearchInput}
 					placeholder={m.admin_logs_search_placeholder()}
-					class="h-8 pl-8 pr-3 rounded-lg bg-surface border border-border text-[12.5px] outline-none focus:border-border-strong w-56"
+					class="h-8 w-56 rounded-lg border border-border bg-surface pr-3 pl-8 text-[12.5px] outline-none focus:border-border-strong"
 				/>
 			</div>
 		</div>
 
-		<div class="bg-bg-elev border border-border rounded-2xl overflow-hidden">
+		<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
 			{#if rows.length === 0}
 				<EmptyState icon="logs" title={m.admin_logs_empty_title()} />
 			{:else}
 				<div
-					class="grid items-center gap-3 px-5 h-9 text-[11px] uppercase tracking-[0.08em] text-text-4 border-b border-border"
+					class="grid h-9 items-center gap-3 border-b border-border px-5 text-[11px] tracking-[0.08em] text-text-4 uppercase"
 					style:grid-template-columns="1.6fr 1fr 2fr 1.4fr 1.2fr 30px"
 				>
 					<span>{m.admin_logs_col_event()}</span>
@@ -165,40 +179,54 @@
 					<span></span>
 				</div>
 				{#each rows as e (e.id)}
-					{@const meta = LOG_EVENT_TYPES[e.type] ?? { icon: 'logs', color: '#9aa4b2', kind: 'settings', label: e.type }}
+					{@const meta = LOG_EVENT_TYPES[e.type] ?? {
+						icon: 'logs',
+						color: '#9aa4b2',
+						kind: 'settings',
+						label: e.type
+					}}
 					{@const actor = e.actor ? actors[e.actor] : undefined}
 					<button
 						type="button"
 						onclick={() => (selected = e)}
-						class="group grid items-center gap-3 w-full px-5 py-2.5 border-b border-border/40 last:border-b-0 hover:bg-[var(--row-hover)] transition-colors text-[12.5px] text-left"
+						class="group grid w-full items-center gap-3 border-b border-border/40 px-5 py-2.5 text-left text-[12.5px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)]"
 						style:grid-template-columns="1.6fr 1fr 2fr 1.4fr 1.2fr 30px"
 					>
-						<span class="flex items-center gap-2 min-w-0">
-							<span class="w-6 h-6 rounded-md grid place-items-center shrink-0" style:background={meta.color + '24'} style:color={meta.color}>
+						<span class="flex min-w-0 items-center gap-2">
+							<span
+								class="grid h-6 w-6 shrink-0 place-items-center rounded-md"
+								style:background={meta.color + '24'}
+								style:color={meta.color}
+							>
 								<Icon name={meta.icon} size={13} />
 							</span>
-							<span class="text-text truncate">{logEventLabel(e.type)}</span>
+							<span class="truncate text-text">{logEventLabel(e.type)}</span>
 						</span>
-						<span class="flex items-center gap-1.5 min-w-0">
+						<span class="flex min-w-0 items-center gap-1.5">
 							{#if actor}
 								<Avatar user={actor} size={18} />
 								<span class="truncate">{actor.name.split(' ')[0]}</span>
 							{:else}
-								<span class="w-[18px] h-[18px] rounded-full bg-surface-2 grid place-items-center text-text-3 text-[10px]">?</span>
-								<span class="text-text-3 truncate">{e.actorLabel ?? m.admin_logs_anon()}</span>
+								<span
+									class="grid h-[18px] w-[18px] place-items-center rounded-full bg-surface-2 text-[10px] text-text-3"
+									>?</span
+								>
+								<span class="truncate text-text-3">{e.actorLabel ?? m.admin_logs_anon()}</span>
 							{/if}
 						</span>
-						<span class="text-text-2 truncate">{e.target}</span>
-						<span class="text-text-3 min-w-0">
+						<span class="truncate text-text-2">{e.target}</span>
+						<span class="min-w-0 text-text-3">
 							<span class="font-mono">{e.ip}</span>
-							<span class="block text-[11px] text-text-4 truncate">{e.device}</span>
+							<span class="block truncate text-[11px] text-text-4">{e.device}</span>
 						</span>
-						<span class="text-text-3 font-mono">{e.at}</span>
-						<span class="text-text-3 opacity-0 group-hover:opacity-100"><Icon name="chevron-r" size={11} /></span>
+						<span class="font-mono text-text-3">{e.at}</span>
+						<span class="text-text-3 opacity-0 group-hover:opacity-100"
+							><Icon name="chevron-r" size={11} /></span
+						>
 					</button>
 				{/each}
 				{#if more}
-					<div class="px-5 py-3 border-t border-border flex justify-center">
+					<div class="flex justify-center border-t border-border px-5 py-3">
 						<Button variant="default" size="sm" onclick={loadMore} disabled={loading}>
 							{loading ? m.common_loading() : m.admin_logs_load_more()}
 						</Button>
@@ -211,32 +239,47 @@
 
 <Drawer open={!!selected} onclose={() => (selected = null)} width={420}>
 	{#if selected}
-		{@const meta = LOG_EVENT_TYPES[selected.type] ?? { icon: 'logs', color: '#9aa4b2', kind: 'settings', label: selected.type }}
+		{@const meta = LOG_EVENT_TYPES[selected.type] ?? {
+			icon: 'logs',
+			color: '#9aa4b2',
+			kind: 'settings',
+			label: selected.type
+		}}
 		{@const actor = selected.actor ? actors[selected.actor] : undefined}
-		<div class="flex items-center gap-2 px-5 pt-4 pb-3 border-b border-border">
-			<span class="font-mono text-[10.5px] uppercase tracking-[0.08em] text-text-4">{m.admin_logs_event_label({ id: selected.id.slice(0, 8).toUpperCase() })}</span>
+		<div class="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3">
+			<span class="font-mono text-[10.5px] tracking-[0.08em] text-text-4 uppercase"
+				>{m.admin_logs_event_label({ id: selected.id.slice(0, 8).toUpperCase() })}</span
+			>
 			<div class="ml-auto">
-				<IconButton size={28} ariaLabel={m.common_close()} onclick={() => (selected = null)}><Icon name="x" size={14} /></IconButton>
+				<IconButton size={28} ariaLabel={m.common_close()} onclick={() => (selected = null)}
+					><Icon name="x" size={14} /></IconButton
+				>
 			</div>
 		</div>
 		<div class="flex-1 overflow-y-auto px-5 py-5">
-			<div class="flex items-center gap-3 mb-5">
-				<span class="w-12 h-12 rounded-xl grid place-items-center shrink-0" style:background={meta.color + '24'} style:color={meta.color}>
+			<div class="mb-5 flex items-center gap-3">
+				<span
+					class="grid h-12 w-12 shrink-0 place-items-center rounded-xl"
+					style:background={meta.color + '24'}
+					style:color={meta.color}
+				>
 					<Icon name={meta.icon} size={20} />
 				</span>
 				<div class="min-w-0">
 					<div class="text-[16px] font-semibold text-text">{logEventLabel(selected.type)}</div>
-					<div class="text-[11.5px] font-mono text-text-3">{selected.type}</div>
+					<div class="font-mono text-[11.5px] text-text-3">{selected.type}</div>
 				</div>
 			</div>
 
-			<div class="grid grid-cols-[100px_1fr] gap-y-3 gap-x-3 text-[12.5px] mb-6">
+			<div class="mb-6 grid grid-cols-[100px_1fr] gap-x-3 gap-y-3 text-[12.5px]">
 				<div class="text-text-4">{m.admin_logs_col_actor()}</div>
 				<div class="flex items-center gap-1.5">
-					{#if actor}<Avatar user={actor} size={16} /><span>{actor.name}</span>{:else}<span class="text-text-3">{selected.actorLabel ?? m.admin_logs_anonymous()}</span>{/if}
+					{#if actor}<Avatar user={actor} size={16} /><span>{actor.name}</span>{:else}<span
+							class="text-text-3">{selected.actorLabel ?? m.admin_logs_anonymous()}</span
+						>{/if}
 				</div>
 				<div class="text-text-4">{m.admin_logs_col_target()}</div>
-				<div class="text-text break-all">{selected.target || '—'}</div>
+				<div class="break-all text-text">{selected.target || '—'}</div>
 				<div class="text-text-4">{m.admin_logs_timestamp()}</div>
 				<div class="font-mono text-text">{selected.at}</div>
 				<div class="text-text-4">{m.admin_logs_ip()}</div>
@@ -248,8 +291,15 @@
 			</div>
 
 			<div>
-				<div class="text-[10.5px] uppercase tracking-[0.08em] text-text-4 mb-2">{m.admin_logs_raw_payload()}</div>
-				<pre class="text-[11.5px] font-mono bg-surface border border-border rounded-lg p-3 overflow-x-auto text-text-2">{JSON.stringify(selected, null, 2)}</pre>
+				<div class="mb-2 text-[10.5px] tracking-[0.08em] text-text-4 uppercase">
+					{m.admin_logs_raw_payload()}
+				</div>
+				<pre
+					class="overflow-x-auto rounded-lg border border-border bg-surface p-3 font-mono text-[11.5px] text-text-2">{JSON.stringify(
+						selected,
+						null,
+						2
+					)}</pre>
 			</div>
 		</div>
 	{/if}

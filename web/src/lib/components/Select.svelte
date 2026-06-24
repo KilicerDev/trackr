@@ -32,12 +32,12 @@
 		aria-haspopup="listbox"
 		aria-expanded={open}
 		onclick={() => (open = !open)}
-		class="flex items-center justify-between gap-2 w-full h-9 bg-surface border rounded-lg px-3 text-[13px] text-text transition-colors {open
+		class="flex h-9 w-full items-center justify-between gap-2 rounded-lg border bg-surface px-3 text-[13px] text-text transition-colors {open
 			? 'border-border-strong ring-2 ring-accent/30'
 			: 'border-border hover:border-border-strong'}"
 	>
 		<span class="truncate">{selected?.label ?? ''}</span>
-		<Icon name="chevron" size={12} class="text-text-3 shrink-0" />
+		<Icon name="chevron" size={12} class="shrink-0 text-text-3" />
 	</button>
 	<Popover {open} onclose={() => (open = false)} minWidth={maxWidth}>
 		<div role="listbox" aria-label={ariaLabel}>
@@ -47,7 +47,7 @@
 					role="option"
 					aria-selected={o.value === value}
 					onclick={() => pick(o.value)}
-					class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text transition-colors"
+					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 transition-colors hover:bg-surface-2 hover:text-text"
 				>
 					<span class="text-[13px]">{o.label}</span>
 					<span class="ml-auto text-accent {o.value === value ? 'opacity-100' : 'opacity-0'}">

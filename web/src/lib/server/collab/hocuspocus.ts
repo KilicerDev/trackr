@@ -114,7 +114,11 @@ function build(): Hocuspocus {
 					}
 					await db
 						.update(document)
-						.set({ ydoc: state, ...(html !== null ? { bodyHtml: html } : {}), updatedAt: new Date() })
+						.set({
+							ydoc: state,
+							...(html !== null ? { bodyHtml: html } : {}),
+							updatedAt: new Date()
+						})
 						.where(eq(document.id, documentName));
 					// Keep the owning row's "edited" signal fresh for list/recent views,
 					// attributed to the most recent editor. The document belongs to either

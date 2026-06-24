@@ -64,7 +64,7 @@
 	// Portal users (external ticket-only) belonging to multiple orgs get an
 	// organization switcher in place of the (inert) "Switch workspace" item.
 	const portalOrgs = $derived(
-		(page.data?.isPortalUser ? ((page.data?.orgs as PortalOrg[] | undefined) ?? []) : [])
+		page.data?.isPortalUser ? ((page.data?.orgs as PortalOrg[] | undefined) ?? []) : []
 	);
 	const activeOrgId = $derived((page.data?.activeOrgId as string | null | undefined) ?? null);
 	const showOrgSwitcher = $derived(portalOrgs.length > 1);
@@ -82,14 +82,14 @@
 	}
 </script>
 
-<header class="flex items-center gap-3.5 px-[22px] py-3 border-b border-border bg-bg shrink-0">
+<header class="flex shrink-0 items-center gap-3.5 border-b border-border bg-bg px-[22px] py-3">
 	{#if sidebarUi}
 		<button
 			type="button"
 			onclick={() => sidebarUi.toggle()}
 			title={sidebarUi.collapsed ? m.shell_expand_sidebar() : m.shell_collapse_sidebar()}
 			aria-label={sidebarUi.collapsed ? m.shell_expand_sidebar() : m.shell_collapse_sidebar()}
-			class="-ml-1 grid place-items-center w-8 h-8 rounded-lg text-text-3 hover:text-text hover:bg-surface transition-colors shrink-0"
+			class="-ml-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
 		>
 			<Icon name="sidebar" size={16} />
 		</button>
@@ -100,7 +100,7 @@
 			{#if c.href}
 				<a href={c.href} class="text-text-3 hover:text-text">{c.label}</a>
 			{:else}
-				<span class="text-text font-medium">{c.label}</span>
+				<span class="font-medium text-text">{c.label}</span>
 			{/if}
 		{/each}
 	</div>
@@ -118,56 +118,59 @@
 				<div class="flex items-center justify-between px-2 pt-1 pb-2">
 					<span class="text-[12px] font-medium">{m.shell_notifications()}</span>
 					{#if notifications.unreadCount > 0}
-						<span class="text-[10.5px] uppercase tracking-[0.08em] text-text-3">
+						<span class="text-[10.5px] tracking-[0.08em] text-text-3 uppercase">
 							{m.shell_notifications_unread({ n: notifications.unreadCount })}
 						</span>
 					{/if}
 				</div>
-				<div class="h-px bg-border -mx-0.5 mb-1"></div>
+				<div class="-mx-0.5 mb-1 h-px bg-border"></div>
 				{#if notifications.items.length === 0}
-					<div class="px-2 py-6 text-center text-[12px] text-text-3">{m.shell_notifications_empty()}</div>
+					<div class="px-2 py-6 text-center text-[12px] text-text-3">
+						{m.shell_notifications_empty()}
+					</div>
 				{:else}
-					<div class="max-h-[360px] overflow-y-auto -mx-0.5">
+					<div class="-mx-0.5 max-h-[360px] overflow-y-auto">
 						{#each notifications.items as n (n.id)}
 							<a
 								href={n.url}
 								onclick={() => (bellOpen = false)}
-								class="flex items-start gap-2 px-2 py-2 rounded-md hover:bg-surface-2 {n.readAt
+								class="flex items-start gap-2 rounded-md px-2 py-2 hover:bg-surface-2 {n.readAt
 									? 'text-text-2'
 									: 'text-text'}"
 							>
 								{#if !n.readAt}
-									<span class="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0"></span>
+									<span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent"></span>
 								{:else}
-									<span class="mt-1.5 w-1.5 h-1.5 shrink-0"></span>
+									<span class="mt-1.5 h-1.5 w-1.5 shrink-0"></span>
 								{/if}
 								<div class="min-w-0 flex-1">
-									<div class="text-[12.5px] font-medium truncate">{n.title}</div>
+									<div class="truncate text-[12.5px] font-medium">{n.title}</div>
 									{#if n.body}
-										<div class="text-[11.5px] text-text-3 line-clamp-2 mt-0.5">{n.body}</div>
+										<div class="mt-0.5 line-clamp-2 text-[11.5px] text-text-3">{n.body}</div>
 									{/if}
 								</div>
-								<span class="text-[10.5px] text-text-4 shrink-0 mt-0.5">{timeAgo(n.createdAt)}</span>
+								<span class="mt-0.5 shrink-0 text-[10.5px] text-text-4">{timeAgo(n.createdAt)}</span
+								>
 							</a>
 						{/each}
 					</div>
-					<div class="h-px bg-border -mx-0.5 mt-1"></div>
+					<div class="-mx-0.5 mt-1 h-px bg-border"></div>
 					<a
 						href="/me/notifications"
 						onclick={() => (bellOpen = false)}
-						class="block text-center text-[11.5px] text-text-3 hover:text-text px-2 py-1.5"
+						class="block px-2 py-1.5 text-center text-[11.5px] text-text-3 hover:text-text"
 					>
 						{m.shell_notifications_view_all()}
 					</a>
 				{/if}
 			</Popover>
 		</div>
-		<div class="w-px h-5 bg-border mx-1"></div>
+		<div class="mx-1 h-5 w-px bg-border"></div>
 		<div class="relative">
 			<button
 				type="button"
 				onclick={() => (acctOpen = !acctOpen)}
-				class="w-8 h-8 rounded-full grid place-items-center hover:shadow-[0_0_0_2px_var(--border-strong)] transition-shadow"
+				class="grid h-8 w-8 place-items-center rounded-full transition-shadow hover:shadow-[0_0_0_2px_var(--border-strong)]"
 				aria-label={m.shell_account()}
 			>
 				<Avatar user={me} size={28} />
@@ -176,47 +179,57 @@
 				{#if me}
 					<div class="flex items-center gap-2.5 px-2 pt-2 pb-3">
 						<Avatar user={me} size={32} />
-						<div class="flex flex-col min-w-0">
-							<span class="text-[13px] font-medium truncate">{me.name}</span>
-							<span class="text-[11.5px] text-text-3 truncate">{me.email}</span>
+						<div class="flex min-w-0 flex-col">
+							<span class="truncate text-[13px] font-medium">{me.name}</span>
+							<span class="truncate text-[11.5px] text-text-3">{me.email}</span>
 						</div>
 					</div>
-					<div class="h-px bg-border -mx-0.5 mb-1"></div>
+					<div class="-mx-0.5 mb-1 h-px bg-border"></div>
 				{/if}
 				<a
 					href="/me/profile"
 					onclick={() => (acctOpen = false)}
-					class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
+					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 				>
-					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="user" size={14} /></span>
+					<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
+						><Icon name="user" size={14} /></span
+					>
 					<span>{m.shell_account_profile()}</span>
 				</a>
 				<a
 					href="/me/settings"
 					onclick={() => (acctOpen = false)}
-					class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
+					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 				>
-					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="settings" size={14} /></span>
+					<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
+						><Icon name="settings" size={14} /></span
+					>
 					<span>{m.shell_account_settings()}</span>
 				</a>
 				<a
 					href="/me/notifications"
 					onclick={() => (acctOpen = false)}
-					class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
+					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 				>
-					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="bell" size={14} /></span>
+					<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
+						><Icon name="bell" size={14} /></span
+					>
 					<span>{m.shell_notifications()}</span>
 				</a>
-				<div class="h-px bg-border -mx-0.5 my-1"></div>
+				<div class="-mx-0.5 my-1 h-px bg-border"></div>
 				{#if showOrgSwitcher}
 					<button
 						type="button"
 						onclick={() => (orgListOpen = !orgListOpen)}
-						class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
+						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 					>
-						<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="org" size={14} /></span>
+						<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
+							><Icon name="org" size={14} /></span
+						>
 						<span>{m.shell_switch_organization()}</span>
-						<span class="ml-auto text-text-3"><Icon name={orgListOpen ? 'chevron' : 'chevron-r'} size={12} /></span>
+						<span class="ml-auto text-text-3"
+							><Icon name={orgListOpen ? 'chevron' : 'chevron-r'} size={12} /></span
+						>
 					</button>
 					{#if orgListOpen}
 						<div class="pl-1.5">
@@ -227,11 +240,13 @@
 										acctOpen = false;
 										if (o.id !== activeOrgId) void setActiveOrg(o.id);
 									}}
-									class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[12.5px] leading-none"
+									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[12.5px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 								>
-									<span class="w-2 h-2 rounded-full shrink-0" style:background={o.color}></span>
+									<span class="h-2 w-2 shrink-0 rounded-full" style:background={o.color}></span>
 									<span class="truncate">{o.name}</span>
-									<span class="ml-auto text-accent {o.id === activeOrgId ? 'opacity-100' : 'opacity-0'}">
+									<span
+										class="ml-auto text-accent {o.id === activeOrgId ? 'opacity-100' : 'opacity-0'}"
+									>
 										<Icon name="check" size={13} />
 									</span>
 								</button>
@@ -239,8 +254,12 @@
 						</div>
 					{/if}
 				{:else if !page.data?.isPortalUser}
-					<button class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none">
-						<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="home" size={14} /></span>
+					<button
+						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+					>
+						<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
+							><Icon name="home" size={14} /></span
+						>
 						<span>{m.shell_switch_workspace()}</span>
 						<span class="ml-auto"><Kbd>⌘O</Kbd></span>
 					</button>
@@ -251,19 +270,23 @@
 						acctOpen = false;
 						feedbackOpen = true;
 					}}
-					class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left text-[13px] leading-none"
+					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 				>
-					<span class="grid place-items-center w-4 h-4 text-text-3 shrink-0"><Icon name="send" size={14} /></span>
+					<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
+						><Icon name="send" size={14} /></span
+					>
 					<span>{m.shell_send_feedback()}</span>
 				</button>
-				<div class="h-px bg-border -mx-0.5 my-1"></div>
+				<div class="-mx-0.5 my-1 h-px bg-border"></div>
 				<form method="post" action="/logout" class="contents">
 					<button
 						type="submit"
-						class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-[13px] leading-none hover:bg-[#ef4f5e]/10"
+						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none hover:bg-[#ef4f5e]/10"
 						style:color="#ef4f5e"
 					>
-						<span class="grid place-items-center w-4 h-4 shrink-0"><Icon name="logout" size={14} /></span>
+						<span class="grid h-4 w-4 shrink-0 place-items-center"
+							><Icon name="logout" size={14} /></span
+						>
 						<span>{m.shell_sign_out()}</span>
 					</button>
 				</form>

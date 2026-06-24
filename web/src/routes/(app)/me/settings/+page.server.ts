@@ -23,11 +23,16 @@ export const actions: Actions = {
 		const locale = String(form.get('locale') ?? '');
 
 		if (!ALLOWED_THEMES.has(theme)) return fail(400, { message: m.settings_err_invalid_theme() });
-		if (!ALLOWED_DENSITIES.has(density)) return fail(400, { message: m.settings_err_invalid_density() });
-		if (!ALLOWED_LANDINGS.has(defaultLanding)) return fail(400, { message: m.settings_err_invalid_landing() });
-		if (!/^#[0-9a-fA-F]{6}$/.test(accent)) return fail(400, { message: m.settings_err_invalid_accent() });
-		if (![0, 1].includes(weekStartsOn)) return fail(400, { message: m.settings_err_invalid_week_start() });
-		if (!ALLOWED_LOCALES.has(locale)) return fail(400, { message: m.settings_err_invalid_language() });
+		if (!ALLOWED_DENSITIES.has(density))
+			return fail(400, { message: m.settings_err_invalid_density() });
+		if (!ALLOWED_LANDINGS.has(defaultLanding))
+			return fail(400, { message: m.settings_err_invalid_landing() });
+		if (!/^#[0-9a-fA-F]{6}$/.test(accent))
+			return fail(400, { message: m.settings_err_invalid_accent() });
+		if (![0, 1].includes(weekStartsOn))
+			return fail(400, { message: m.settings_err_invalid_week_start() });
+		if (!ALLOWED_LOCALES.has(locale))
+			return fail(400, { message: m.settings_err_invalid_language() });
 
 		await upsertPreferences(locals.user.id, {
 			theme,

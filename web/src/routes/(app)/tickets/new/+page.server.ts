@@ -6,8 +6,7 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ parent }) => {
 	const data = await parent();
 	if (!data.isPortalUser) throw redirect(302, '/tickets');
-	const org =
-		data.orgs.find((o) => o.id === data.activeOrgId) ?? data.orgs[0] ?? null;
+	const org = data.orgs.find((o) => o.id === data.activeOrgId) ?? data.orgs[0] ?? null;
 	if (!org) throw redirect(302, '/tickets');
 	return { org };
 };

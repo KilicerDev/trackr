@@ -38,9 +38,7 @@ function adoptTaskLists(html: string): string {
 	const doc = new DOMParser().parseFromString(html, 'text/html');
 	for (const ul of doc.querySelectorAll('ul')) {
 		const items = [...ul.children].filter((el): el is HTMLLIElement => el.tagName === 'LI');
-		const hasCheckbox = items.some((li) =>
-			li.querySelector(':scope > input[type="checkbox"]')
-		);
+		const hasCheckbox = items.some((li) => li.querySelector(':scope > input[type="checkbox"]'));
 		if (!hasCheckbox) continue;
 		ul.setAttribute('data-type', 'taskList');
 		for (const li of items) {

@@ -1,10 +1,4 @@
-export type StatusId =
-	| 'backlog'
-	| 'todo'
-	| 'in_progress'
-	| 'paused'
-	| 'in_review'
-	| 'done';
+export type StatusId = 'backlog' | 'todo' | 'in_progress' | 'paused' | 'in_review' | 'done';
 
 export type PriorityId = 'none' | 'low' | 'medium' | 'high' | 'urgent';
 

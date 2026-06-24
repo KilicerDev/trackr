@@ -111,7 +111,9 @@
 			});
 			return cols;
 		}
-		return [{ key: 'all', label: m.projects_all_projects(), color: '#7a9cf0', projects: visibleProjects }];
+		return [
+			{ key: 'all', label: m.projects_all_projects(), color: '#7a9cf0', projects: visibleProjects }
+		];
 	});
 
 	// Board shows every column (incl. empty) for stable layout; list hides empties.
@@ -130,7 +132,12 @@
 
 <svelte:head><title>{m.projects_page_title()}</title></svelte:head>
 
-<Topbar crumbs={[{ label: m.projects_breadcrumb_workspace(), href: '/tasks' }, { label: m.projects_breadcrumb_projects() }]} />
+<Topbar
+	crumbs={[
+		{ label: m.projects_breadcrumb_workspace(), href: '/tasks' },
+		{ label: m.projects_breadcrumb_projects() }
+	]}
+/>
 
 <ProjectsToolbar
 	{view}
@@ -147,25 +154,32 @@
 />
 
 {#if visibleProjects.length === 0}
-	<div class="flex-1 min-h-0 overflow-y-auto px-6 py-6">
+	<div class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
 		{#if Object.keys(filters).length === 0 && !search}
-			<div class="border border-dashed border-border rounded-2xl flex flex-col items-center justify-center gap-3 py-20">
-				<div class="w-12 h-12 grid place-items-center rounded-xl bg-surface border border-border text-text-3">
+			<div
+				class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border py-20"
+			>
+				<div
+					class="grid h-12 w-12 place-items-center rounded-xl border border-border bg-surface text-text-3"
+				>
 					<Icon name="folder" size={20} />
 				</div>
 				<div class="text-[15px] font-semibold text-text">{m.projects_empty_title()}</div>
-				<div class="text-[12.5px] text-text-3 max-w-[320px] text-center">
+				<div class="max-w-[320px] text-center text-[12.5px] text-text-3">
 					{m.projects_empty_hint()}
 				</div>
 				{#if canCreate}
 					<Button variant="primary" size="sm" onclick={() => (createOpen = true)}>
-						<Icon name="plus" size={13} /> {m.projects_create_project()}
+						<Icon name="plus" size={13} />
+						{m.projects_create_project()}
 					</Button>
 				{/if}
 			</div>
 		{:else}
-			<div class="border border-dashed border-border rounded-2xl flex flex-col items-center justify-center gap-2 py-16 text-text-3">
-				<div class="w-10 h-10 grid place-items-center rounded-xl bg-surface border border-border">
+			<div
+				class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border py-16 text-text-3"
+			>
+				<div class="grid h-10 w-10 place-items-center rounded-xl border border-border bg-surface">
 					<Icon name="folder" size={16} />
 				</div>
 				<div class="text-[13.5px] font-medium text-text">{m.projects_no_matching_title()}</div>
@@ -176,7 +190,7 @@
 {:else if view === 'board'}
 	<ProjectsBoard {columns} />
 {:else if view === 'grid'}
-	<div class="flex-1 min-h-0 overflow-y-auto px-6 py-6">
+	<div class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
 		{#if group === 'none'}
 			<div class="grid gap-4" style:grid-template-columns="repeat(auto-fill, minmax(340px, 1fr))">
 				{#each visibleProjects as p (p.id)}
@@ -186,9 +200,11 @@
 					<button
 						type="button"
 						onclick={() => (createOpen = true)}
-						class="border border-dashed border-border rounded-2xl flex flex-col items-center justify-center gap-2 py-12 text-text-3 hover:text-text hover:border-border-strong transition-colors"
+						class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border py-12 text-text-3 transition-colors hover:border-border-strong hover:text-text"
 					>
-						<div class="w-10 h-10 grid place-items-center rounded-xl bg-surface border border-border">
+						<div
+							class="grid h-10 w-10 place-items-center rounded-xl border border-border bg-surface"
+						>
 							<Icon name="plus" size={16} />
 						</div>
 						<div class="text-[13.5px] font-medium">{m.projects_new_project()}</div>
@@ -204,17 +220,20 @@
 						<button
 							type="button"
 							onclick={() => toggleCollapsed(col.key)}
-							class="flex items-center gap-2 mb-3 w-full text-left group/hdr"
+							class="group/hdr mb-3 flex w-full items-center gap-2 text-left"
 						>
 							<span class="text-text-4 transition-transform {isCollapsed ? '-rotate-90' : ''}">
 								<Icon name="chevron" size={12} />
 							</span>
-							<span class="w-2 h-2 rounded-full" style:background={col.color}></span>
+							<span class="h-2 w-2 rounded-full" style:background={col.color}></span>
 							<h2 class="text-[13px] font-semibold text-text">{col.label}</h2>
 							<span class="font-mono text-[11px] text-text-3">{col.projects.length}</span>
 						</button>
 						{#if !isCollapsed}
-							<div class="grid gap-4" style:grid-template-columns="repeat(auto-fill, minmax(340px, 1fr))">
+							<div
+								class="grid gap-4"
+								style:grid-template-columns="repeat(auto-fill, minmax(340px, 1fr))"
+							>
 								{#each col.projects as p (p.id)}
 									<ProjectCard project={p} />
 								{/each}
@@ -227,10 +246,10 @@
 	</div>
 {:else}
 	<!-- list -->
-	<div class="flex-1 min-h-0 overflow-y-auto px-6 py-6">
-		<div class="bg-bg-elev border border-border rounded-2xl overflow-hidden">
+	<div class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+		<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
 			<div
-				class="grid items-center gap-3 px-5 py-2.5 text-[11px] uppercase tracking-[0.08em] text-text-4 border-b border-border"
+				class="grid items-center gap-3 border-b border-border px-5 py-2.5 text-[11px] tracking-[0.08em] text-text-4 uppercase"
 				style:grid-template-columns="1.5fr 1fr 1fr 0.6fr 1fr"
 			>
 				<span>{m.projects_col_project()}</span>
@@ -239,18 +258,18 @@
 				<span>{m.projects_col_key()}</span>
 				<span>{m.projects_col_updated()}</span>
 			</div>
-			{#each (group === 'none' ? [{ key: 'all', label: '', color: '', projects: visibleProjects }] : listColumns) as col (col.key)}
+			{#each group === 'none' ? [{ key: 'all', label: '', color: '', projects: visibleProjects }] : listColumns as col (col.key)}
 				{@const isCollapsed = collapsed.has(col.key)}
 				{#if col.label}
 					<button
 						type="button"
 						onclick={() => toggleCollapsed(col.key)}
-						class="w-full flex items-center gap-2 px-5 py-2 bg-surface/30 border-b border-border text-left hover:bg-surface/50 transition-colors"
+						class="flex w-full items-center gap-2 border-b border-border bg-surface/30 px-5 py-2 text-left transition-colors hover:bg-surface/50"
 					>
 						<span class="text-text-4 transition-transform {isCollapsed ? '-rotate-90' : ''}">
 							<Icon name="chevron" size={11} />
 						</span>
-						<span class="w-2 h-2 rounded-full" style:background={col.color}></span>
+						<span class="h-2 w-2 rounded-full" style:background={col.color}></span>
 						<span class="text-[12px] font-semibold text-text">{col.label}</span>
 						<span class="font-mono text-[11px] text-text-3">{col.projects.length}</span>
 					</button>
@@ -258,22 +277,24 @@
 				{#if !isCollapsed}
 					<div transition:slide={{ duration: 180, easing: cubicOut }}>
 						{#each col.projects as p (p.id)}
-							{@const st = PROJECT_STATUS[p.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.active}
+							{@const st =
+								PROJECT_STATUS[p.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.active}
 							<a
 								href="/projects/{p.id}"
-								class="grid items-center gap-3 px-5 py-3 hover:bg-[var(--row-hover)] transition-colors text-[13px]"
+								class="grid items-center gap-3 px-5 py-3 text-[13px] transition-colors hover:bg-[var(--row-hover)]"
 								style:grid-template-columns="1.5fr 1fr 1fr 0.6fr 1fr"
 							>
-								<span class="flex items-center gap-2.5 min-w-0">
+								<span class="flex min-w-0 items-center gap-2.5">
 									<span
-										class="w-7 h-7 rounded-md grid place-items-center text-white font-semibold text-[12px] shrink-0"
-										style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%, #000) 85%)"
-									>{p.icon}</span>
+										class="grid h-7 w-7 shrink-0 place-items-center rounded-md text-[12px] font-semibold text-white"
+										style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color}
+										70%, #000) 85%)">{p.icon}</span
+									>
 									<span class="truncate font-medium">{p.name}</span>
 								</span>
-								<span class="text-text-2 truncate">{p.lead?.name ?? '—'}</span>
+								<span class="truncate text-text-2">{p.lead?.name ?? '—'}</span>
 								<span class="inline-flex items-center gap-1.5 text-text-2">
-									<span class="w-1.5 h-1.5 rounded-full" style:background={st.color}></span>
+									<span class="h-1.5 w-1.5 rounded-full" style:background={st.color}></span>
 									{projectStatusLabel(p.status)}
 								</span>
 								<span class="font-mono text-text-3">{p.key}</span>

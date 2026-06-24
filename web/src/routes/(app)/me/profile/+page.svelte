@@ -30,14 +30,13 @@
 	});
 	const previewUser = $derived({ name: name || '', initials, color: userColor });
 	const dirty = $derived(
-		(name ?? '') !== (data.profile?.name ?? '') ||
-			(image ?? '') !== (data.profile?.image ?? '')
+		(name ?? '') !== (data.profile?.name ?? '') || (image ?? '') !== (data.profile?.image ?? '')
 	);
 </script>
 
 <header class="mb-6">
 	<h1 class="text-[22px] font-semibold tracking-[-0.014em]">{m.profile_title()}</h1>
-	<p class="text-[12.5px] text-text-3 mt-1">{m.profile_subtitle()}</p>
+	<p class="mt-1 text-[12.5px] text-text-3">{m.profile_subtitle()}</p>
 </header>
 
 <form
@@ -51,27 +50,33 @@
 				showToast('ok', m.profile_toast_updated());
 				await invalidateAll();
 			} else if (result.type === 'failure') {
-				showToast('err', (result.data as { message?: string } | undefined)?.message ?? m.profile_toast_could_not_save());
+				showToast(
+					'err',
+					(result.data as { message?: string } | undefined)?.message ??
+						m.profile_toast_could_not_save()
+				);
 			}
 		};
 	}}
 	class="space-y-5"
 >
-	<section class="bg-bg-elev border border-border rounded-2xl p-5">
-		<div class="text-[11px] uppercase tracking-[0.08em] text-text-4 mb-4">{m.profile_identity()}</div>
+	<section class="rounded-2xl border border-border bg-bg-elev p-5">
+		<div class="mb-4 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+			{m.profile_identity()}
+		</div>
 		<div class="flex items-start gap-5">
 			<div class="flex flex-col items-center gap-2 pt-1">
 				<Avatar user={previewUser} size={64} />
 				<span class="text-[11px] text-text-4">{m.profile_preview()}</span>
 			</div>
-			<div class="flex-1 grid grid-cols-[120px_1fr] items-center gap-y-3 gap-x-4 text-[13px]">
+			<div class="grid flex-1 grid-cols-[120px_1fr] items-center gap-x-4 gap-y-3 text-[13px]">
 				<label for="pf-name" class="text-text-3">{m.profile_name()}</label>
 				<input
 					id="pf-name"
 					name="name"
 					bind:value={name}
 					maxlength="80"
-					class="bg-surface border border-border rounded-lg px-3 py-2 outline-none focus:border-border-strong"
+					class="rounded-lg border border-border bg-surface px-3 py-2 outline-none focus:border-border-strong"
 				/>
 				<label for="pf-image" class="text-text-3">{m.profile_avatar_url()}</label>
 				<input
@@ -79,7 +84,7 @@
 					name="image"
 					placeholder="https://…"
 					bind:value={image}
-					class="bg-surface border border-border rounded-lg px-3 py-2 outline-none focus:border-border-strong font-mono text-[12px]"
+					class="rounded-lg border border-border bg-surface px-3 py-2 font-mono text-[12px] outline-none focus:border-border-strong"
 				/>
 				<div class="text-text-3">{m.profile_email()}</div>
 				<div class="font-mono text-[12.5px] text-text-2">{data.profile?.email ?? '—'}</div>

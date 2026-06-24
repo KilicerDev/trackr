@@ -26,7 +26,7 @@
 		/>
 	{:else}
 		<div
-			class="grid h-9 items-center gap-3 border-b border-border px-5 text-[11px] uppercase tracking-[0.08em] text-text-4"
+			class="grid h-9 items-center gap-3 border-b border-border px-5 text-[11px] tracking-[0.08em] text-text-4 uppercase"
 			style:grid-template-columns={cols}
 		>
 			<span>{m.schedules_col_job()}</span>

@@ -72,7 +72,12 @@
 
 <svelte:head><title>{m.tickets_page_title()}</title></svelte:head>
 
-<Topbar crumbs={[{ label: m.tickets_breadcrumb_workspace(), href: '/tasks' }, { label: m.tickets_breadcrumb_support() }]} />
+<Topbar
+	crumbs={[
+		{ label: m.tickets_breadcrumb_workspace(), href: '/tasks' },
+		{ label: m.tickets_breadcrumb_support() }
+	]}
+/>
 
 <Toolbar
 	{search}
@@ -87,7 +92,7 @@
 />
 
 {#if data.tickets.length === 0}
-	<div class="flex-1 min-h-0 grid place-items-center">
+	<div class="grid min-h-0 flex-1 place-items-center">
 		<EmptyState
 			icon="ticket"
 			title={m.tickets_empty_title()}
@@ -97,11 +102,7 @@
 		/>
 	</div>
 {:else}
-	<ListView
-		tickets={filtered}
-		{group}
-		onSelect={(t) => goto(`/tickets/${t.id}`)}
-	/>
+	<ListView tickets={filtered} {group} onSelect={(t) => goto(`/tickets/${t.id}`)} />
 {/if}
 
 <CreateTicketModal open={createOpen} onclose={() => (createOpen = false)} {orgs} />

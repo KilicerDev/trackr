@@ -27,8 +27,7 @@
 	const summaryOrder = ['queued', 'running', 'succeeded', 'failed', 'cancelled'] as const;
 
 	const isCancellable = (s: string) => s === 'queued' || s === 'running';
-	const isRetryable = (s: string) =>
-		s === 'succeeded' || s === 'failed' || s === 'cancelled';
+	const isRetryable = (s: string) => s === 'succeeded' || s === 'failed' || s === 'cancelled';
 
 	const cols = '2fr 1fr 0.7fr 1.2fr 1.2fr 0.8fr';
 </script>
@@ -54,7 +53,11 @@
 		<span
 			class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg-elev px-2.5 py-1.5 text-[12.5px] text-text-3"
 		>
-			<span class="inline-flex rounded-full px-2 py-0.5 text-[11.5px] font-medium {statusStyles[status]}">
+			<span
+				class="inline-flex rounded-full px-2 py-0.5 text-[11.5px] font-medium {statusStyles[
+					status
+				]}"
+			>
 				{statusLabels[status]()}
 			</span>
 			<span class="font-semibold text-text">{data.counts[status]}</span>
@@ -93,7 +96,7 @@
 		<EmptyState icon="list" title={m.jobs_empty_title()} hint={m.jobs_empty_description()} />
 	{:else}
 		<div
-			class="grid h-9 items-center gap-3 border-b border-border px-5 text-[11px] uppercase tracking-[0.08em] text-text-4"
+			class="grid h-9 items-center gap-3 border-b border-border px-5 text-[11px] tracking-[0.08em] text-text-4 uppercase"
 			style:grid-template-columns={cols}
 		>
 			<span>{m.jobs_col_job()}</span>
@@ -120,7 +123,9 @@
 					{/if}
 					<span class="block truncate font-mono text-[11px] text-text-4">{j.id}</span>
 					{#if j.lastError}
-						<span class="mt-0.5 block max-w-md truncate text-[12px] text-red-400">{j.lastError}</span>
+						<span class="mt-0.5 block max-w-md truncate text-[12px] text-red-400"
+							>{j.lastError}</span
+						>
 					{/if}
 				</div>
 				<div>

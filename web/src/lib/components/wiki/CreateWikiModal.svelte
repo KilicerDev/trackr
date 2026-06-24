@@ -67,14 +67,16 @@
 </script>
 
 <Modal {open} {onclose} maxWidth={420}>
-	<div class="px-5 pt-4 pb-3 border-b border-border">
+	<div class="border-b border-border px-5 pt-4 pb-3">
 		<h2 class="text-[15px] font-semibold tracking-[-0.005em]">
 			{isFolder ? m.wiki_new_folder() : m.wiki_new_page()}
 		</h2>
 	</div>
-	<form onsubmit={submit} class="px-5 py-4 space-y-4">
+	<form onsubmit={submit} class="space-y-4 px-5 py-4">
 		<div>
-			<label for="wiki-title" class="block text-[11.5px] text-text-3 mb-1.5">{m.wiki_title_label()}</label>
+			<label for="wiki-title" class="mb-1.5 block text-[11.5px] text-text-3"
+				>{m.wiki_title_label()}</label
+			>
 			<!-- svelte-ignore a11y_autofocus -->
 			<input
 				id="wiki-title"
@@ -82,7 +84,7 @@
 				autofocus
 				maxlength="120"
 				placeholder={isFolder ? m.wiki_folder_placeholder() : m.wiki_page_placeholder()}
-				class="w-full bg-surface border border-border rounded-lg px-3 py-2 outline-none focus:border-border-strong text-[13px]"
+				class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-[13px] outline-none focus:border-border-strong"
 			/>
 		</div>
 		<div class="flex items-center justify-end gap-2 pt-1">

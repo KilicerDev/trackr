@@ -75,7 +75,7 @@
 				<a
 					href="/forgot-password"
 					class="mt-6 inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-accent px-4 text-[13px] font-semibold text-white transition-colors hover:bg-accent-strong"
-					style:box-shadow="0 1px 0 rgba(255,255,255,0.18) inset, 0 6px 18px -4px rgba(239,122,109,0.35)"
+					style:box-shadow="var(--shadow-btn-lg)"
 				>
 					{m.auth_reset_request_new_link()}
 				</a>
@@ -85,7 +85,9 @@
 				class="rounded-[14px] border border-border bg-bg-elev px-7 pt-7 pb-6"
 				style:box-shadow="0 1px 0 rgba(255,255,255,0.03) inset, 0 24px 60px -28px rgba(0,0,0,0.55)"
 			>
-				<h1 class="text-[19px] font-semibold tracking-[-0.012em] text-text">{m.auth_reset_set_new_password()}</h1>
+				<h1 class="text-[19px] font-semibold tracking-[-0.012em] text-text">
+					{m.auth_reset_set_new_password()}
+				</h1>
 				<p class="mt-1 text-[13.5px] leading-relaxed text-text-3">
 					{m.auth_reset_subtitle({ min: minLength })}
 				</p>
@@ -126,7 +128,7 @@
 								minlength={minLength}
 								autocomplete="new-password"
 								placeholder={m.auth_password_min_placeholder({ min: minLength })}
-								class="h-10 w-full rounded-[8px] border border-border bg-surface pr-10 pl-3 text-[14px] text-text placeholder:text-text-4 transition-colors focus:border-border-strong focus:bg-surface-2"
+								class="h-10 w-full rounded-[8px] border border-border bg-surface pr-10 pl-3 text-[14px] text-text transition-colors placeholder:text-text-4 focus:border-border-strong focus:bg-surface-2"
 							/>
 							<button
 								type="button"
@@ -172,14 +174,16 @@
 					</label>
 
 					<label class="flex flex-col gap-1.5">
-						<span class="text-[12.5px] font-medium text-text-2">{m.auth_confirm_password_label()}</span>
+						<span class="text-[12.5px] font-medium text-text-2"
+							>{m.auth_confirm_password_label()}</span
+						>
 						<input
 							bind:value={confirmPassword}
 							type={showPassword ? 'text' : 'password'}
 							required
 							autocomplete="new-password"
 							placeholder={m.auth_reenter_password_placeholder()}
-							class="h-10 rounded-[8px] border border-border bg-surface px-3 text-[14px] text-text placeholder:text-text-4 transition-colors focus:border-border-strong focus:bg-surface-2"
+							class="h-10 rounded-[8px] border border-border bg-surface px-3 text-[14px] text-text transition-colors placeholder:text-text-4 focus:border-border-strong focus:bg-surface-2"
 						/>
 					</label>
 
@@ -196,7 +200,7 @@
 						type="submit"
 						disabled={submitting}
 						class="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[13.5px] font-semibold text-white transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-default disabled:opacity-70"
-						style:box-shadow="0 1px 0 rgba(255,255,255,0.18) inset, 0 6px 18px -4px rgba(239,122,109,0.35)"
+						style:box-shadow="var(--shadow-btn-lg)"
 					>
 						{#if submitting}
 							<span
@@ -211,7 +215,9 @@
 			</div>
 
 			<p class="mt-5 text-center text-[12px]">
-				<a href="/login" class="text-text-3 transition-colors hover:text-text">{m.auth_back_to_sign_in()}</a>
+				<a href="/login" class="text-text-3 transition-colors hover:text-text"
+					>{m.auth_back_to_sign_in()}</a
+				>
 			</p>
 		{/if}
 	</div>

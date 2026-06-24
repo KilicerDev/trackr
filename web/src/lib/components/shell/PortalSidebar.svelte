@@ -38,7 +38,7 @@
 </script>
 
 <aside
-	class="bg-bg-elev border-r border-border flex flex-col min-h-0"
+	class="flex min-h-0 flex-col border-r border-border bg-bg-elev"
 	style:width="var(--sidebar-w)"
 >
 	<!-- Org / workspace header -->
@@ -47,37 +47,48 @@
 			<button
 				type="button"
 				onclick={() => orgs.length > 1 && (switcherOpen = !switcherOpen)}
-				class="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-surface transition-colors text-left {orgs.length >
+				class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface {orgs.length >
 				1
 					? 'cursor-pointer'
 					: 'cursor-default'}"
 			>
 				<span
-					class="grid place-items-center w-6 h-6 rounded-md shrink-0 text-[11px] font-semibold text-white"
+					class="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[11px] font-semibold text-white"
 					style:background={activeOrg?.color ?? '#7c7c84'}
 				>
 					{(activeOrg?.name ?? '?').slice(0, 1).toUpperCase()}
 				</span>
 				<span class="min-w-0 flex-1">
-					<span class="block text-[13.5px] font-semibold truncate">{activeOrg?.name ?? m.shell_portal_support()}</span>
-					<span class="block text-[11px] text-text-3 leading-tight">{m.shell_portal_support_portal()}</span>
+					<span class="block truncate text-[13.5px] font-semibold"
+						>{activeOrg?.name ?? m.shell_portal_support()}</span
+					>
+					<span class="block text-[11px] leading-tight text-text-3"
+						>{m.shell_portal_support_portal()}</span
+					>
 				</span>
-				{#if orgs.length > 1}<Icon name="chevron" size={12} class="text-text-3 shrink-0" />{/if}
+				{#if orgs.length > 1}<Icon name="chevron" size={12} class="shrink-0 text-text-3" />{/if}
 			</button>
 			{#if orgs.length > 1}
-				<Popover open={switcherOpen} onclose={() => (switcherOpen = false)} align="left" minWidth={232}>
-					<div class="px-2 pt-1 pb-1.5 text-[10.5px] uppercase tracking-[0.08em] text-text-4">
+				<Popover
+					open={switcherOpen}
+					onclose={() => (switcherOpen = false)}
+					align="left"
+					minWidth={232}
+				>
+					<div class="px-2 pt-1 pb-1.5 text-[10.5px] tracking-[0.08em] text-text-4 uppercase">
 						{m.shell_switch_organization()}
 					</div>
 					{#each orgs as o (o.id)}
 						<button
 							type="button"
 							onclick={() => choose(o.id)}
-							class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 						>
-							<span class="w-2 h-2 rounded-full shrink-0" style:background={o.color}></span>
-							<span class="text-[13px] truncate">{o.name}</span>
-							<span class="ml-auto text-accent {o.id === activeOrgId ? 'opacity-100' : 'opacity-0'}">
+							<span class="h-2 w-2 shrink-0 rounded-full" style:background={o.color}></span>
+							<span class="truncate text-[13px]">{o.name}</span>
+							<span
+								class="ml-auto text-accent {o.id === activeOrgId ? 'opacity-100' : 'opacity-0'}"
+							>
 								<Icon name="check" size={13} />
 							</span>
 						</button>
@@ -91,9 +102,9 @@
 	<div class="px-3 pb-1">
 		<a
 			href="/tickets/new"
-			class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-surface border border-border hover:border-border-strong text-[13.5px] text-text-2 hover:text-text transition-colors {page
+			class="flex items-center gap-2.5 rounded-lg border border-border bg-surface px-2.5 py-2 text-[13.5px] text-text-2 transition-colors hover:border-border-strong hover:text-text {page
 				.url.pathname === '/tickets/new'
-				? '!text-text border-border-strong'
+				? 'border-border-strong !text-text'
 				: ''}"
 		>
 			<Icon name="plus" size={15} class="text-text-3" />
@@ -101,11 +112,13 @@
 		</a>
 	</div>
 
-	<div class="flex-1 overflow-y-auto px-2 pb-2 mt-1">
+	<div class="mt-1 flex-1 overflow-y-auto px-2 pb-2">
 		<!-- Pinned -->
 		{#if pinned.length}
 			<div class="py-1.5">
-				<div class="px-3 pt-1.5 pb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-text-4">
+				<div
+					class="px-3 pt-1.5 pb-1.5 text-[11px] font-medium tracking-[0.08em] text-text-4 uppercase"
+				>
 					{m.shell_portal_pinned()}
 				</div>
 				{#each pinned as t (t.id)}
@@ -116,14 +129,16 @@
 
 		<!-- Recents -->
 		<div class="py-1.5">
-			<div class="px-3 pt-1.5 pb-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-text-4">
+			<div
+				class="px-3 pt-1.5 pb-1.5 text-[11px] font-medium tracking-[0.08em] text-text-4 uppercase"
+			>
 				{m.shell_portal_recents()}
 			</div>
 			{#each recents as t (t.id)}
 				{@render ticketRow(t)}
 			{/each}
 			{#if recents.length === 0}
-				<div class="px-3 py-1.5 text-[12px] text-text-4 leading-snug">
+				<div class="px-3 py-1.5 text-[12px] leading-snug text-text-4">
 					{m.shell_portal_recents_empty()}
 				</div>
 			{/if}
@@ -138,12 +153,12 @@
 	<a
 		href="/tickets/{t.id}"
 		title={t.subject}
-		class="relative flex items-center gap-2.5 px-3 py-[7px] rounded-[7px] mx-1 my-[1px] text-text-2 hover:bg-[var(--row-hover)] hover:text-text transition-colors text-[13.5px]
+		class="relative mx-1 my-[1px] flex items-center gap-2.5 rounded-[7px] px-3 py-[7px] text-[13.5px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text
 		{active ? 'bg-[var(--row-active)] !text-text' : ''}"
 	>
-		<span class="grid place-items-center w-4 h-4 shrink-0" title={ticketStatusLabel(t.status)}>
+		<span class="grid h-4 w-4 shrink-0 place-items-center" title={ticketStatusLabel(t.status)}>
 			<span
-				class="w-[11px] h-[11px] rounded-full border-[1.5px]"
+				class="h-[11px] w-[11px] rounded-full border-[1.5px]"
 				style:border-color={dot}
 				style:background={filled ? dot : 'transparent'}
 			></span>

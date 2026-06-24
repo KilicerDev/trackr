@@ -13,11 +13,7 @@
 import { Extension, type Editor } from '@tiptap/core';
 import { Plugin } from '@tiptap/pm/state';
 import { showToast } from '$lib/toast.svelte';
-import {
-	MAX_UPLOAD_BYTES,
-	formatBytes,
-	type AttachmentEntityType
-} from '$lib/attachments/config';
+import { MAX_UPLOAD_BYTES, formatBytes, type AttachmentEntityType } from '$lib/attachments/config';
 
 declare module '@tiptap/core' {
 	interface Commands<ReturnType> {

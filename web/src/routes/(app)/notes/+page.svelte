@@ -9,13 +9,13 @@
 
 <svelte:head><title>{m.notes_page_title()}</title></svelte:head>
 
-<div class="grid place-items-center min-h-full px-8 py-16">
-	<div class="text-center max-w-[360px]">
-		<span class="grid place-items-center w-12 h-12 mx-auto mb-4 rounded-2xl bg-surface text-text-3">
+<div class="grid min-h-full place-items-center px-8 py-16">
+	<div class="max-w-[360px] text-center">
+		<span class="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-surface text-text-3">
 			<Icon name="file" size={22} stroke={1.6} />
 		</span>
-		<h1 class="text-[17px] font-semibold text-text mb-1.5">{m.notes_landing_title()}</h1>
-		<p class="text-[13px] text-text-3 leading-relaxed mb-5">{m.notes_landing_hint()}</p>
+		<h1 class="mb-1.5 text-[17px] font-semibold text-text">{m.notes_landing_title()}</h1>
+		<p class="mb-5 text-[13px] leading-relaxed text-text-3">{m.notes_landing_hint()}</p>
 		<form
 			method="POST"
 			action="?/create"
@@ -31,7 +31,7 @@
 			<button
 				type="submit"
 				disabled={creating}
-				class="inline-flex items-center gap-1.5 bg-accent text-white rounded-lg px-3.5 py-2 text-[13px] font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+				class="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-[13px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
 			>
 				<Icon name="plus" size={14} />
 				{m.notes_new_note()}

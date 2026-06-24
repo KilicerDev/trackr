@@ -63,12 +63,14 @@
 	// Stored as ISO dates; the per-week collapsed indices are derived from it.
 	let collapsedDates = $state<Set<string>>(new Set(saved.collapsedDates ?? []));
 	const collapsed = $derived(
-		new Set(data.weekDates.map((iso, i) => (collapsedDates.has(iso) ? i : -1)).filter((i) => i >= 0))
+		new Set(
+			data.weekDates.map((iso, i) => (collapsedDates.has(iso) ? i : -1)).filter((i) => i >= 0)
+		)
 	);
 	let composerDay = $state<number | null>(null);
 	let selectedId = $state<string | null>(null);
 	let selected = $derived(
-		selectedId ? data.tasks.find((t) => t.id === selectedId) ?? null : null
+		selectedId ? (data.tasks.find((t) => t.id === selectedId) ?? null) : null
 	);
 
 	let creating = $state(false);
@@ -82,7 +84,7 @@
 	}>({});
 
 	function expandComposer(d: ComposerDraft) {
-		const iso = composerDay !== null ? data.weekDates[composerDay] ?? null : null;
+		const iso = composerDay !== null ? (data.weekDates[composerDay] ?? null) : null;
 		createPrefill = {
 			title: d.title,
 			project: d.project,
@@ -138,7 +140,6 @@
 		return out;
 	});
 
-
 	const weekMinutes = $derived.by(() => {
 		let total = 0;
 		for (let i = 0; i < 5; i++) {
@@ -180,7 +181,9 @@
 			// don't forget the overdue work. Oldest first.
 			return data.tasks
 				.filter((t) => isOpen(t) && !!t.plannedFor && t.plannedFor < data.weekStartIso)
-				.sort((a, b) => (a.plannedFor! < b.plannedFor! ? -1 : a.plannedFor! > b.plannedFor! ? 1 : 0))
+				.sort((a, b) =>
+					a.plannedFor! < b.plannedFor! ? -1 : a.plannedFor! > b.plannedFor! ? 1 : 0
+				)
 				.slice(0, 16);
 		}
 
@@ -193,9 +196,7 @@
 
 		// Others: every other open task without a specific date — including
 		// ones assigned to someone else. Bookmarked rows sort to the top.
-		const rest = data.tasks.filter(
-			(t) => isOpen(t) && !t.plannedFor && !(t.inMyPlan && mine(t))
-		);
+		const rest = data.tasks.filter((t) => isOpen(t) && !t.plannedFor && !(t.inMyPlan && mine(t)));
 		const planned = rest.filter((t) => t.inMyPlan);
 		const others = rest.filter((t) => !t.inMyPlan);
 		return [...planned, ...others].slice(0, 16);
@@ -205,7 +206,11 @@
 		if (data.weekDates.length === 0) return '';
 		const first = new Date(data.weekDates[0] + 'T00:00:00Z');
 		const last = new Date(data.weekDates[6] + 'T00:00:00Z');
-		const f = first.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+		const f = first.toLocaleDateString('en-US', {
+			month: 'short',
+			day: 'numeric',
+			timeZone: 'UTC'
+		});
 		const l = last.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 		return `${f} — ${l}`;
 	}
@@ -226,12 +231,8 @@
 	const currentWeekStart = $derived(startOfWeekIso(data.todayIso));
 	const weekDelta = $derived(
 		Math.round(
-			(Date.UTC(
-				...(data.weekStartIso.split('-').map(Number) as [number, number, number])
-			) -
-				Date.UTC(
-					...(currentWeekStart.split('-').map(Number) as [number, number, number])
-				)) /
+			(Date.UTC(...(data.weekStartIso.split('-').map(Number) as [number, number, number])) -
+				Date.UTC(...(currentWeekStart.split('-').map(Number) as [number, number, number]))) /
 				86400000 /
 				7
 		)
@@ -269,17 +270,17 @@
 
 <Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: m.week_title() }]} />
 
-<div class="flex-1 min-h-0 overflow-y-auto">
-	<div class="flex items-center gap-3 px-6 py-3 border-b border-border">
+<div class="min-h-0 flex-1 overflow-y-auto">
+	<div class="flex items-center gap-3 border-b border-border px-6 py-3">
 		<Button size="sm" variant="default" onclick={() => gotoWeek(null)} disabled={weekDelta === 0}>
 			{m.common_today()}
 		</Button>
-		<div class="inline-flex bg-surface border border-border rounded-lg overflow-hidden">
+		<div class="inline-flex overflow-hidden rounded-lg border border-border bg-surface">
 			<button
 				type="button"
 				aria-label={m.week_previous_week()}
 				onclick={() => gotoWeek(addDays(data.weekStartIso, -7))}
-				class="w-7 h-7 grid place-items-center text-text-3 hover:text-text hover:bg-surface-2"
+				class="grid h-7 w-7 place-items-center text-text-3 hover:bg-surface-2 hover:text-text"
 			>
 				<Icon name="chevron-r" size={12} class="rotate-180" />
 			</button>
@@ -287,28 +288,30 @@
 				type="button"
 				aria-label={m.week_next_week()}
 				onclick={() => gotoWeek(addDays(data.weekStartIso, 7))}
-				class="w-7 h-7 grid place-items-center text-text-3 hover:text-text hover:bg-surface-2"
+				class="grid h-7 w-7 place-items-center text-text-3 hover:bg-surface-2 hover:text-text"
 			>
 				<Icon name="chevron-r" size={12} />
 			</button>
 		</div>
-		<div class="text-[13.5px] text-text-2 flex items-center gap-2">
-			<span class="text-text font-mono font-medium tracking-tight">{weekLabel}</span>
+		<div class="flex items-center gap-2 text-[13.5px] text-text-2">
+			<span class="font-mono font-medium tracking-tight text-text">{weekLabel}</span>
 			{#if weekDelta === 0}
 				<span
-					class="px-1.5 py-0.5 text-[10px] uppercase tracking-[0.06em] font-medium rounded-full text-accent"
+					class="rounded-full px-1.5 py-0.5 text-[10px] font-medium tracking-[0.06em] text-accent uppercase"
 					style:background="rgba(239,122,109,0.14)">{m.week_now()}</span
 				>
 			{/if}
 			<span class="text-text-4">·</span>
-			<span class="text-text-3 font-mono text-[12.5px]">{weekRangeLabel()}</span>
+			<span class="font-mono text-[12.5px] text-text-3">{weekRangeLabel()}</span>
 		</div>
-		<div class="ml-auto flex items-center gap-3 bg-bg-elev border border-border rounded-xl px-3.5 py-2">
+		<div
+			class="ml-auto flex items-center gap-3 rounded-xl border border-border bg-bg-elev px-3.5 py-2"
+		>
 			<div class="text-right">
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{m.week_capacity()}</div>
+				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">{m.week_capacity()}</div>
 				<div class="font-mono text-[13px] text-text">{Math.round(weekMinutes / 60)}h / 40h</div>
 			</div>
-			<div class="w-24 h-1.5 rounded-full bg-surface overflow-hidden">
+			<div class="h-1.5 w-24 overflow-hidden rounded-full bg-surface">
 				<div
 					class="h-full bg-accent"
 					style:width="{Math.min(100, (weekMinutes / WEEK_CAPACITY) * 100)}%"
@@ -328,40 +331,38 @@
 				{@const pct = Math.min(100, (mins / CAPACITY) * 100)}
 				{@const over = mins > CAPACITY}
 				<div
-					class="bg-bg-elev border rounded-2xl transition-colors {isToday
+					class="rounded-2xl border bg-bg-elev transition-colors {isToday
 						? 'border-accent/40'
 						: 'border-border'} {isWeekend ? 'opacity-85' : ''}"
 				>
 					<button
 						type="button"
 						onclick={() => toggle(i)}
-						class="flex items-center gap-2.5 w-full px-4 py-3 hover:bg-surface/40 text-left rounded-t-2xl {isCollapsed ? 'rounded-b-2xl' : ''}"
+						class="flex w-full items-center gap-2.5 rounded-t-2xl px-4 py-3 text-left hover:bg-surface/40 {isCollapsed
+							? 'rounded-b-2xl'
+							: ''}"
 					>
-						<span class="transition-transform text-text-3 {isCollapsed ? '-rotate-90' : ''}">
+						<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
 							<Icon name="chevron" size={12} />
 						</span>
 						<span class="text-[14px] font-semibold text-text">{WEEK_DAY_LABELS[i]()}</span>
-						<span class="text-text-4 font-mono text-[12px]">{dayLabels[i].dayOfMonth}</span>
+						<span class="font-mono text-[12px] text-text-4">{dayLabels[i].dayOfMonth}</span>
 						{#if isToday}
 							<span
-								class="px-2 py-0.5 text-[10.5px] uppercase tracking-[0.06em] font-medium rounded-full text-accent"
+								class="rounded-full px-2 py-0.5 text-[10.5px] font-medium tracking-[0.06em] text-accent uppercase"
 								style:background="rgba(239,122,109,0.14)">{m.common_today()}</span
 							>
 						{/if}
 						<span class="font-mono text-[11px] text-text-3">{tasks.length}</span>
 						<div class="ml-auto flex items-center gap-2.5">
-							<div class="w-28 h-1 rounded-full bg-surface overflow-hidden">
+							<div class="h-1 w-28 overflow-hidden rounded-full bg-surface">
 								<div
 									class="h-full"
 									style:width="{pct}%"
-									style:background={over
-										? '#ef4f5e'
-										: isToday
-											? 'var(--accent)'
-											: 'var(--text-3)'}
+									style:background={over ? '#ef4f5e' : isToday ? 'var(--accent)' : 'var(--text-3)'}
 								></div>
 							</div>
-							<span class="font-mono text-[11px] text-text-3 w-12 text-right">
+							<span class="w-12 text-right font-mono text-[11px] text-text-3">
 								{Math.floor(mins / 60)}h{mins % 60 > 0 ? `${mins % 60}m` : ''}
 							</span>
 						</div>
@@ -383,13 +384,14 @@
 									onexpand={expandComposer}
 								/>
 							{:else}
-								<div class="px-3.5 py-2 flex items-center gap-1.5">
+								<div class="flex items-center gap-1.5 px-3.5 py-2">
 									<button
 										type="button"
 										onclick={() => (composerDay = i)}
-										class="flex items-center gap-1.5 text-[12px] text-text-3 hover:text-text px-2 py-1 rounded-md hover:bg-surface transition-colors"
+										class="flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] text-text-3 transition-colors hover:bg-surface hover:text-text"
 									>
-										<Icon name="plus" size={12} /> {m.week_add_task()}
+										<Icon name="plus" size={12} />
+										{m.week_add_task()}
 									</button>
 								</div>
 							{/if}
@@ -399,23 +401,23 @@
 			{/each}
 		</div>
 
-		<aside class="bg-bg-elev border border-border rounded-2xl flex flex-col self-start">
+		<aside class="flex flex-col self-start rounded-2xl border border-border bg-bg-elev">
 			<div class="px-4 pt-4 pb-2">
 				<div class="flex items-center gap-2">
 					<span class="text-[13px] font-semibold text-text">{m.week_unscheduled()}</span>
 					<span class="font-mono text-[11px] text-text-3">{unscheduled.length}</span>
 				</div>
-				<p class="text-[11.5px] text-text-4 mt-1">{m.week_unscheduled_hint()}</p>
+				<p class="mt-1 text-[11.5px] text-text-4">{m.week_unscheduled_hint()}</p>
 			</div>
 			<div class="px-4 pb-2">
 				<div
-					class="inline-flex items-center h-7 bg-surface border border-border rounded-lg p-0.5 text-[11.5px] w-full"
+					class="inline-flex h-7 w-full items-center rounded-lg border border-border bg-surface p-0.5 text-[11.5px]"
 				>
 					{#each [['past', m.week_tab_past()], ['mine', m.week_tab_my_tasks()], ['others', m.week_tab_others()]] as [k, lbl] (k)}
 						<button
 							type="button"
 							onclick={() => setUnscheduledTab(k as UnscheduledTab)}
-							class="flex-1 h-full rounded-md transition-colors {unscheduledTab === k
+							class="h-full flex-1 rounded-md transition-colors {unscheduledTab === k
 								? 'bg-bg-elev text-text'
 								: 'text-text-3 hover:text-text'}"
 						>
@@ -424,38 +426,36 @@
 					{/each}
 				</div>
 			</div>
-			<div class="px-2 pb-3 space-y-1">
+			<div class="space-y-1 px-2 pb-3">
 				{#each unscheduled as t (t.id)}
 					{@const proj = resolveProject(t.project)}
 					<button
 						type="button"
 						onclick={() => (selectedId = t.id)}
-						class="w-full text-left flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-surface transition-colors leading-none"
+						class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left leading-none transition-colors hover:bg-surface"
 					>
-						<span class="inline-flex items-center justify-center w-3 h-3 shrink-0">
+						<span class="inline-flex h-3 w-3 shrink-0 items-center justify-center">
 							{#if t.inMyPlan}
-								<span class="text-accent inline-flex" title={m.week_in_your_week()}>
+								<span class="inline-flex text-accent" title={m.week_in_your_week()}>
 									<Icon name="bookmark" size={11} />
 								</span>
 							{:else}
-								<span
-									class="w-2 h-2 rounded-full"
-									style:background={proj?.color ?? '#7c7c84'}
+								<span class="h-2 w-2 rounded-full" style:background={proj?.color ?? '#7c7c84'}
 								></span>
 							{/if}
 						</span>
 						<span class="font-mono text-[10.5px] text-text-3">{t.id}</span>
 						<PriorityBars priority={t.priority} />
-						<span class="text-[12.5px] text-text truncate flex-1">{t.title}</span>
+						<span class="flex-1 truncate text-[12.5px] text-text">{t.title}</span>
 						<span class="font-mono text-[10px] {t.estimate ? 'text-text-4' : 'text-text-4/60'}">
 							{t.estimate ? formatEstimate(t.estimate) : '—'}
 						</span>
 					</button>
 				{/each}
 				{#if unscheduled.length === 0}
-					<div class="text-center py-8 text-text-3">
+					<div class="py-8 text-center text-text-3">
 						<div
-							class="inline-grid place-items-center w-9 h-9 rounded-xl bg-surface border border-border mb-2"
+							class="mb-2 inline-grid h-9 w-9 place-items-center rounded-xl border border-border bg-surface"
 						>
 							<Icon name="check" size={15} />
 						</div>

@@ -70,7 +70,11 @@
 	}
 	const updaterAvatar = $derived(
 		updatedBy
-			? { name: updatedBy.name, initials: initialsOf(updatedBy.name), color: userColor(updatedBy.id) }
+			? {
+					name: updatedBy.name,
+					initials: initialsOf(updatedBy.name),
+					color: userColor(updatedBy.id)
+				}
 			: undefined
 	);
 	const collabUser = $derived(
@@ -235,7 +239,9 @@
 
 	async function onDelete() {
 		const ok = await confirm({
-			title: pg.isFolder ? m.wiki_confirm_delete_folder_title() : m.wiki_confirm_delete_page_title(),
+			title: pg.isFolder
+				? m.wiki_confirm_delete_folder_title()
+				: m.wiki_confirm_delete_page_title(),
 			message: pg.isFolder
 				? m.wiki_confirm_delete_folder_message()
 				: m.wiki_confirm_delete_page_message(),
@@ -284,18 +290,20 @@
 	<div class="wiki-doc__glow" aria-hidden="true"></div>
 
 	<header
-		class="sticky top-0 z-20 flex items-center gap-3 px-8 h-[52px] border-b border-border/70 bg-bg/80 backdrop-blur-md"
+		class="sticky top-0 z-20 flex h-[52px] items-center gap-3 border-b border-border/70 bg-bg/80 px-8 backdrop-blur-md"
 	>
-		<nav class="flex items-center gap-1.5 text-[12.5px] min-w-0">
-			<a href="/wiki" class="text-text-3 hover:text-text transition-colors">{m.wiki_breadcrumb_root()}</a>
+		<nav class="flex min-w-0 items-center gap-1.5 text-[12.5px]">
+			<a href="/wiki" class="text-text-3 transition-colors hover:text-text"
+				>{m.wiki_breadcrumb_root()}</a
+			>
 			{#each breadcrumbs as crumb, i (crumb.id)}
 				<span class="text-text-4 select-none">/</span>
 				{#if i === breadcrumbs.length - 1}
-					<span class="text-text-2 font-medium truncate max-w-[240px]">{crumb.title}</span>
+					<span class="max-w-[240px] truncate font-medium text-text-2">{crumb.title}</span>
 				{:else}
 					<a
 						href="/wiki/{crumb.id}"
-						class="text-text-3 hover:text-text transition-colors truncate max-w-[160px]"
+						class="max-w-[160px] truncate text-text-3 transition-colors hover:text-text"
 					>
 						{crumb.title}
 					</a>
@@ -321,7 +329,7 @@
 					{/each}
 					{#if others.length > 4}
 						<span
-							class="grid place-items-center rounded-full bg-surface-2 text-text-3 text-[9.5px] font-semibold"
+							class="grid place-items-center rounded-full bg-surface-2 text-[9.5px] font-semibold text-text-3"
 							style:width="22px"
 							style:height="22px"
 							style:box-shadow="0 0 0 2px var(--bg)"
@@ -341,7 +349,9 @@
 
 			<div class="h-4 w-px bg-border"></div>
 
-			<IconButton ariaLabel={m.wiki_aria_copy_link()} onclick={copyLink}><Icon name="link" size={14} /></IconButton>
+			<IconButton ariaLabel={m.wiki_aria_copy_link()} onclick={copyLink}
+				><Icon name="link" size={14} /></IconButton
+			>
 			<div class="relative">
 				<IconButton ariaLabel={m.wiki_aria_more()} onclick={() => (menuOpen = !menuOpen)}>
 					<Icon name="settings" size={14} />
@@ -352,9 +362,10 @@
 							type="button"
 							disabled={exporting}
 							onclick={() => void onExportPdf()}
-							class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 text-left text-[13px] leading-none disabled:opacity-50"
+							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 disabled:opacity-50"
 						>
-							<span class="grid place-items-center w-4 h-4"><Icon name="download" size={13} /></span>
+							<span class="grid h-4 w-4 place-items-center"><Icon name="download" size={13} /></span
+							>
 							<span>{exporting ? m.wiki_exporting() : m.wiki_export_pdf()}</span>
 						</button>
 					{/if}
@@ -364,9 +375,9 @@
 							menuOpen = false;
 							void onDelete();
 						}}
-						class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-accent text-left text-[13px] leading-none"
+						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-accent hover:bg-surface-2"
 					>
-						<span class="grid place-items-center w-4 h-4"><Icon name="x" size={13} /></span>
+						<span class="grid h-4 w-4 place-items-center"><Icon name="x" size={13} /></span>
 						<span>{pg.isFolder ? m.wiki_delete_folder() : m.wiki_delete_page()}</span>
 					</button>
 				</Popover>
@@ -375,11 +386,11 @@
 	</header>
 
 	<div
-		class="relative z-10 mx-auto max-w-[1080px] px-8 pt-12 pb-28 lg:grid lg:gap-14 lg:[grid-template-columns:minmax(0,1fr)_212px]"
+		class="relative z-10 mx-auto max-w-[1080px] px-8 pt-12 pb-28 lg:grid lg:[grid-template-columns:minmax(0,1fr)_212px] lg:gap-14"
 	>
-		<article class="min-w-0 max-w-[720px]">
+		<article class="max-w-[720px] min-w-0">
 			<!-- Document title block -->
-			<div class="flex items-start gap-3.5 mb-5">
+			<div class="mb-5 flex items-start gap-3.5">
 				<span class="wiki-doc__icon shrink-0">
 					<Icon name={pg.isFolder ? 'folder' : 'file'} size={20} stroke={1.75} />
 				</span>
@@ -390,23 +401,28 @@
 					oninput={onTitleInput}
 					onblur={onTitleBlur}
 					onkeydown={onTitleKeydown}
-					class="w-full bg-transparent border-0 outline-none text-[33px] font-semibold tracking-[-0.02em] text-text leading-[1.12] placeholder:text-text-4 pt-1"
+					class="w-full border-0 bg-transparent pt-1 text-[33px] leading-[1.12] font-semibold tracking-[-0.02em] text-text outline-none placeholder:text-text-4"
 				/>
 			</div>
 
 			<!-- Byline -->
-			<div class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[12.5px] text-text-3 mb-8 pl-[54px]">
+			<div
+				class="mb-8 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 pl-[54px] text-[12.5px] text-text-3"
+			>
 				{#if updaterAvatar}
 					<span class="flex items-center gap-2">
 						<Avatar user={updaterAvatar} size={20} />
-						<span>{m.wiki_byline_edited_by()} <span class="text-text-2 font-medium">{updatedBy?.name}</span></span>
+						<span
+							>{m.wiki_byline_edited_by()}
+							<span class="font-medium text-text-2">{updatedBy?.name}</span></span
+						>
 					</span>
 					<span class="text-text-4 select-none">·</span>
 				{/if}
 				<span>{m.wiki_byline_updated({ time: relativeTime(pg.updatedAt) })}</span>
 			</div>
 
-			<div class="h-px bg-gradient-to-r from-border to-transparent mb-8"></div>
+			<div class="mb-8 h-px bg-gradient-to-r from-border to-transparent"></div>
 
 			{#if browser && pg.documentId}
 				{#key pg.documentId}
@@ -414,7 +430,9 @@
 						documentId={pg.documentId}
 						pageId={pg.id}
 						user={collabUser}
-						placeholder={pg.isFolder ? m.wiki_placeholder_description() : m.wiki_placeholder_write_or_commands()}
+						placeholder={pg.isFolder
+							? m.wiki_placeholder_description()
+							: m.wiki_placeholder_write_or_commands()}
 						onUpdate={onEditorUpdate}
 						onReady={onEditorReady}
 						onStatus={(s) => (collabStatus = s)}
@@ -433,10 +451,10 @@
 							{#each children as child (child.id)}
 								<a
 									href="/wiki/{child.id}"
-									class="group flex items-center gap-3 rounded-xl border border-border/70 bg-bg-elev/40 px-3.5 py-3 hover:border-border-strong hover:bg-surface transition-all"
+									class="group flex items-center gap-3 rounded-xl border border-border/70 bg-bg-elev/40 px-3.5 py-3 transition-all hover:border-border-strong hover:bg-surface"
 								>
 									<span
-										class="grid place-items-center w-8 h-8 rounded-lg bg-surface text-text-3 group-hover:text-accent transition-colors"
+										class="grid h-8 w-8 place-items-center rounded-lg bg-surface text-text-3 transition-colors group-hover:text-accent"
 									>
 										<Icon name={child.isFolder ? 'folder' : 'file'} size={15} stroke={1.75} />
 									</span>
@@ -444,7 +462,7 @@
 										{child.title}
 									</span>
 									<span
-										class="text-text-4 -translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all"
+										class="-translate-x-1 text-text-4 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100"
 									>
 										<Icon name="chevron" size={14} />
 									</span>

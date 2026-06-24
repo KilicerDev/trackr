@@ -18,9 +18,7 @@
 
 	// Reconcile previews with the current files: add new image files, drop gone ones.
 	$effect(() => {
-		const wanted = files.filter(
-			(f) => f.type.startsWith('image/') && f.type !== 'image/svg+xml'
-		);
+		const wanted = files.filter((f) => f.type.startsWith('image/') && f.type !== 'image/svg+xml');
 		for (const file of wanted) {
 			if (!previews.has(file)) previews.set(file, URL.createObjectURL(file));
 		}
@@ -42,22 +40,22 @@
 {#if files.length}
 	<ul class="flex flex-col gap-1.5">
 		{#each files as file, i (file.name + file.size + i)}
-			<li
-				class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg bg-surface border border-border"
-			>
+			<li class="flex items-center gap-2.5 rounded-lg border border-border bg-surface px-2 py-1.5">
 				{#if previews.get(file)}
 					<img
 						src={previews.get(file)}
 						alt=""
-						class="w-8 h-8 rounded-md object-cover shrink-0 border border-border"
+						class="h-8 w-8 shrink-0 rounded-md border border-border object-cover"
 					/>
 				{:else}
-					<span class="w-8 h-8 grid place-items-center rounded-md bg-surface-2 text-text-3 shrink-0">
+					<span
+						class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-surface-2 text-text-3"
+					>
 						<Icon name="file" size={15} />
 					</span>
 				{/if}
 				<div class="min-w-0 flex-1">
-					<div class="text-[12.5px] text-text truncate">{file.name}</div>
+					<div class="truncate text-[12.5px] text-text">{file.name}</div>
 					<div class="text-[11px] text-text-3">{formatBytes(file.size)}</div>
 				</div>
 				<button
@@ -65,7 +63,7 @@
 					{disabled}
 					onclick={() => onremove(i)}
 					aria-label={m.attach_remove_file({ filename: file.name })}
-					class="w-7 h-7 grid place-items-center rounded-md text-text-3 hover:text-text hover:bg-surface-2 transition-colors disabled:opacity-50"
+					class="grid h-7 w-7 place-items-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text disabled:opacity-50"
 				>
 					<Icon name="x" size={13} />
 				</button>

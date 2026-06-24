@@ -112,25 +112,27 @@
 			};
 		}}
 	>
-		<div class="flex items-center px-5 pt-4 pb-3 border-b border-border">
+		<div class="flex items-center border-b border-border px-5 pt-4 pb-3">
 			<div>
-				<div class="text-[11px] uppercase tracking-[0.08em] text-text-4">{m.projects_settings_eyebrow()}</div>
+				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">
+					{m.projects_settings_eyebrow()}
+				</div>
 				<div class="text-[15px] font-semibold">{m.projects_edit_title()}</div>
 			</div>
 			<button
 				type="button"
 				onclick={onclose}
 				aria-label={m.common_close()}
-				class="ml-auto w-8 h-8 grid place-items-center rounded-lg text-text-3 hover:text-text hover:bg-surface transition-colors"
+				class="ml-auto grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
 			>
 				<Icon name="x" size={14} />
 			</button>
 		</div>
 
 		<div class="px-5 pt-5 pb-3">
-			<div class="flex items-start gap-3.5 mb-4">
+			<div class="mb-4 flex items-start gap-3.5">
 				<span
-					class="shrink-0 grid place-items-center text-white font-semibold relative transition-[background] duration-200"
+					class="relative grid shrink-0 place-items-center font-semibold text-white transition-[background] duration-200"
 					style:width="48px"
 					style:height="48px"
 					style:border-radius="13px"
@@ -147,12 +149,14 @@
 						bind:value={name}
 						required
 						placeholder={m.projects_name_placeholder()}
-						class="block w-full bg-transparent border-0 outline-none text-[19px] font-semibold tracking-[-0.01em] text-text placeholder:text-text-3"
+						class="block w-full border-0 bg-transparent text-[19px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
 					/>
-					<div class="flex items-center gap-1.5 mt-1">
-						<span class="text-[10.5px] uppercase tracking-[0.08em] text-text-4">{m.projects_key_label()}</span>
+					<div class="mt-1 flex items-center gap-1.5">
+						<span class="text-[10.5px] tracking-[0.08em] text-text-4 uppercase"
+							>{m.projects_key_label()}</span
+						>
 						<span class="font-mono text-[11.5px] text-text-2">{project.key}</span>
-						<span class="text-text-4 text-[11.5px]">·</span>
+						<span class="text-[11.5px] text-text-4">·</span>
 						<span class="text-[11.5px] text-text-3">{m.projects_key_cannot_change()}</span>
 					</div>
 				</div>
@@ -163,18 +167,20 @@
 				bind:value={description}
 				placeholder={m.projects_description_placeholder()}
 				rows="2"
-				class="w-full resize-none bg-transparent border-0 outline-none text-[13.5px] leading-relaxed text-text-2 placeholder:text-text-3 mb-4"
+				class="mb-4 w-full resize-none border-0 bg-transparent text-[13.5px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
 			></textarea>
 
 			<div class="mb-4">
-				<div class="text-[10.5px] uppercase tracking-[0.08em] text-text-4 mb-2">{m.projects_color_label()}</div>
+				<div class="mb-2 text-[10.5px] tracking-[0.08em] text-text-4 uppercase">
+					{m.projects_color_label()}
+				</div>
 				<div class="flex flex-wrap gap-1.5">
 					{#each PALETTE as c (c)}
 						<button
 							type="button"
 							onclick={() => (color = c)}
 							aria-label={m.projects_pick_color({ color: c })}
-							class="relative w-7 h-7 rounded-lg grid place-items-center transition-transform hover:scale-105 active:scale-95"
+							class="relative grid h-7 w-7 place-items-center rounded-lg transition-transform hover:scale-105 active:scale-95"
 							style:background="linear-gradient(140deg, {c}, color-mix(in oklch, {c} 70%, #000) 85%)"
 							style:box-shadow={color === c
 								? `0 0 0 2px var(--bg-elev), 0 0 0 4px ${c}`
@@ -204,9 +210,9 @@
 				<button
 					type="button"
 					onclick={() => (pop = !pop)}
-					class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface border border-border hover:border-border-strong text-[12.5px] transition-colors"
+					class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
 				>
-					<span class="w-2 h-2 rounded-full" style:background={statusMeta.color}></span>
+					<span class="h-2 w-2 rounded-full" style:background={statusMeta.color}></span>
 					<span>{projectStatusLabel(status)}</span>
 					<Icon name="chevron" size={11} class="text-text-3" />
 				</button>
@@ -214,7 +220,7 @@
 					<div
 						use:clickOutside={() => (pop = false)}
 						in:fly={POPOVER_IN}
-						class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[180px]"
+						class="absolute top-full z-50 mt-1.5 min-w-[180px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 						style:box-shadow="var(--shadow-lg)"
 					>
 						{#each STATUSES as s (s)}
@@ -225,9 +231,9 @@
 									status = s;
 									pop = false;
 								}}
-								class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-2 text-left text-text-2 hover:text-text"
+								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 							>
-								<span class="w-2 h-2 rounded-full" style:background={meta.color}></span>
+								<span class="h-2 w-2 rounded-full" style:background={meta.color}></span>
 								<span class="text-[13px]">{projectStatusLabel(s)}</span>
 								<span class="ml-auto text-accent {status === s ? 'opacity-100' : 'opacity-0'}">
 									<Icon name="check" size={13} />
@@ -242,16 +248,17 @@
 			<input type="hidden" name="status" value={status} />
 		</div>
 
-		<div class="flex items-center gap-2 px-5 py-3 border-t border-border bg-bg/40 rounded-b-2xl">
+		<div class="flex items-center gap-2 rounded-b-2xl border-t border-border bg-bg/40 px-5 py-3">
 			<span class="text-[11.5px] text-text-3">
-				<Kbd>⌘↵</Kbd> {m.projects_kbd_to_save()}
+				<Kbd>⌘↵</Kbd>
+				{m.projects_kbd_to_save()}
 			</span>
 			<div class="ml-auto flex items-center gap-2">
 				<Button variant="default" onclick={onclose}>{m.common_cancel()}</Button>
 				<button
 					type="submit"
 					disabled={submitting || !name.trim()}
-					class="inline-flex items-center gap-1.5 rounded-lg font-medium text-[13px] transition-[background,border-color,transform] duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:translate-y-[1px] px-[11px] py-[7px] bg-accent text-white border border-transparent hover:bg-accent-strong shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_4px_12px_rgba(239,122,109,0.25)]"
+					class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[11px] py-[7px] text-[13px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{submitting ? m.common_saving() : m.common_save_changes()}
 				</button>

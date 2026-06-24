@@ -15,7 +15,13 @@
 
 import { error } from '@sveltejs/kit';
 import { db } from './db';
-import { rolePermission, organizationMember, projectMember, organization, project } from './db/app.schema';
+import {
+	rolePermission,
+	organizationMember,
+	projectMember,
+	organization,
+	project
+} from './db/app.schema';
 import { eq } from 'drizzle-orm';
 import type { Memberships, Permission, RoleId } from '../permissions';
 

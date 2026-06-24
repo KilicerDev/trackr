@@ -29,16 +29,65 @@
 	};
 
 	const ITEMS: Item[] = $derived([
-		{ id: 'nav.week', section: m.shell_palette_section_navigate(), label: m.shell_nav_week(), hint: m.shell_palette_week_hint(), icon: 'calendar' },
-		{ id: 'nav.tasks', section: m.shell_palette_section_navigate(), label: m.shell_nav_tasks(), hint: m.shell_palette_tasks_hint(), icon: 'check-square' },
-		{ id: 'nav.projects', section: m.shell_palette_section_navigate(), label: m.shell_nav_projects(), hint: m.shell_palette_projects_hint(), icon: 'folder' },
-		{ id: 'nav.tickets', section: m.shell_palette_section_navigate(), label: m.shell_nav_tickets(), hint: m.shell_palette_tickets_hint(), icon: 'ticket' },
-		{ id: 'nav.wiki', section: m.shell_palette_section_navigate(), label: m.shell_nav_wiki(), hint: m.shell_palette_wiki_hint(), icon: 'book' },
+		{
+			id: 'nav.week',
+			section: m.shell_palette_section_navigate(),
+			label: m.shell_nav_week(),
+			hint: m.shell_palette_week_hint(),
+			icon: 'calendar'
+		},
+		{
+			id: 'nav.tasks',
+			section: m.shell_palette_section_navigate(),
+			label: m.shell_nav_tasks(),
+			hint: m.shell_palette_tasks_hint(),
+			icon: 'check-square'
+		},
+		{
+			id: 'nav.projects',
+			section: m.shell_palette_section_navigate(),
+			label: m.shell_nav_projects(),
+			hint: m.shell_palette_projects_hint(),
+			icon: 'folder'
+		},
+		{
+			id: 'nav.tickets',
+			section: m.shell_palette_section_navigate(),
+			label: m.shell_nav_tickets(),
+			hint: m.shell_palette_tickets_hint(),
+			icon: 'ticket'
+		},
+		{
+			id: 'nav.wiki',
+			section: m.shell_palette_section_navigate(),
+			label: m.shell_nav_wiki(),
+			hint: m.shell_palette_wiki_hint(),
+			icon: 'book'
+		},
 
-		{ id: 'create.task', section: m.shell_palette_section_create(), label: m.shell_palette_new_task(), hint: m.shell_palette_new_task_hint(), icon: 'plus', tone: 'accent' },
-		{ id: 'create.project', section: m.shell_palette_section_create(), label: m.shell_palette_new_project(), hint: m.shell_palette_new_project_hint(), icon: 'folder' },
+		{
+			id: 'create.task',
+			section: m.shell_palette_section_create(),
+			label: m.shell_palette_new_task(),
+			hint: m.shell_palette_new_task_hint(),
+			icon: 'plus',
+			tone: 'accent'
+		},
+		{
+			id: 'create.project',
+			section: m.shell_palette_section_create(),
+			label: m.shell_palette_new_project(),
+			hint: m.shell_palette_new_project_hint(),
+			icon: 'folder'
+		},
 
-		{ id: 'me.signout', section: m.shell_palette_section_account(), label: m.shell_sign_out(), icon: 'logout', tone: 'danger' }
+		{
+			id: 'me.signout',
+			section: m.shell_palette_section_account(),
+			label: m.shell_sign_out(),
+			icon: 'logout',
+			tone: 'danger'
+		}
 	]);
 
 	let query = $state('');
@@ -135,7 +184,8 @@
 	}
 
 	function iconBgClasses(tone: Item['tone'], selected: boolean) {
-		const base = 'w-7 h-7 grid place-items-center rounded-md border border-border shrink-0 transition-colors';
+		const base =
+			'w-7 h-7 grid place-items-center rounded-md border border-border shrink-0 transition-colors';
 		if (selected) {
 			if (tone === 'accent') return `${base} bg-accent-soft text-accent border-accent/30`;
 			if (tone === 'danger') return `${base} border-[#ef7a6d]/30 text-[#ef7a6d]`;
@@ -155,24 +205,24 @@
 		role="dialog"
 		aria-modal="true"
 		aria-label={m.shell_palette_aria()}
-		class="fixed inset-0 z-50 flex justify-center px-4 pointer-events-none"
+		class="pointer-events-none fixed inset-0 z-50 flex justify-center px-4"
 		onkeydown={onKeydown}
 	>
 		<div
 			transition:fly={{ y: -8, duration: 180, easing: cubicOut }}
-			class="pointer-events-auto w-full max-w-[640px] bg-bg-elev border border-border rounded-2xl overflow-hidden flex flex-col self-start"
+			class="pointer-events-auto flex w-full max-w-[640px] flex-col self-start overflow-hidden rounded-2xl border border-border bg-bg-elev"
 			style:box-shadow="var(--shadow-lg)"
 			style:margin-top="calc(30vh - 24px)"
 		>
 			<!-- Search row -->
-			<div class="flex items-center gap-2.5 px-4 h-12 border-b border-border">
+			<div class="flex h-12 items-center gap-2.5 border-b border-border px-4">
 				<Icon name="search" size={15} class="text-text-3" />
 				<input
 					bind:this={inputEl}
 					bind:value={query}
 					type="text"
 					placeholder={m.shell_palette_search_placeholder()}
-					class="flex-1 bg-transparent border-0 outline-none text-[14px] text-text placeholder:text-text-4"
+					class="flex-1 border-0 bg-transparent text-[14px] text-text outline-none placeholder:text-text-4"
 					autocomplete="off"
 					spellcheck="false"
 				/>
@@ -183,20 +233,22 @@
 			<div bind:this={listEl} class="overflow-y-auto py-2" style:max-height="260px">
 				{#if grouped.length === 0}
 					<div class="px-6 py-10 text-center">
-						<div class="inline-grid place-items-center w-10 h-10 rounded-xl bg-surface border border-border text-text-3 mb-2">
+						<div
+							class="mb-2 inline-grid h-10 w-10 place-items-center rounded-xl border border-border bg-surface text-text-3"
+						>
 							<Icon name="search" size={16} />
 						</div>
 						<div class="text-[13px] text-text-2">{m.shell_palette_no_results()}</div>
-						<div class="text-[11.5px] text-text-4 mt-0.5">
+						<div class="mt-0.5 text-[11.5px] text-text-4">
 							{m.shell_palette_no_results_hint()}
 						</div>
 					</div>
 				{:else}
 					{#each grouped as g, gi (g.section)}
 						{#if gi > 0}
-							<div class="my-1.5 mx-3 h-px bg-border/70"></div>
+							<div class="mx-3 my-1.5 h-px bg-border/70"></div>
 						{/if}
-						<div class="px-3 pt-1.5 pb-1 text-[10.5px] uppercase tracking-[0.08em] text-text-4">
+						<div class="px-3 pt-1.5 pb-1 text-[10.5px] tracking-[0.08em] text-text-4 uppercase">
 							{g.section}
 						</div>
 						<div class="px-1.5">
@@ -208,29 +260,35 @@
 									data-idx={idx}
 									onmousemove={() => (active = idx)}
 									onclick={() => run(it.id)}
-									class="w-full flex items-center gap-3 px-2 py-1.5 rounded-lg text-left transition-colors {selected ? 'bg-surface' : 'hover:bg-surface/60'}"
+									class="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors {selected
+										? 'bg-surface'
+										: 'hover:bg-surface/60'}"
 								>
 									<span class={iconBgClasses(it.tone, selected)}>
 										<Icon name={it.icon} size={13} />
 									</span>
-									<span class="flex-1 min-w-0">
-										<span class="block text-[13.5px] leading-tight truncate {toneClasses(it.tone)}">
+									<span class="min-w-0 flex-1">
+										<span class="block truncate text-[13.5px] leading-tight {toneClasses(it.tone)}">
 											{it.label}
 										</span>
 										{#if it.hint}
-											<span class="block text-[11.5px] text-text-4 leading-tight mt-0.5 truncate">
+											<span class="mt-0.5 block truncate text-[11.5px] leading-tight text-text-4">
 												{it.hint}
 											</span>
 										{/if}
 									</span>
 									{#if it.shortcut}
-										<span class="flex items-center gap-1 shrink-0">
+										<span class="flex shrink-0 items-center gap-1">
 											{#each it.shortcut as k (k)}
 												<Kbd>{k}</Kbd>
 											{/each}
 										</span>
 									{/if}
-									<span class="shrink-0 text-text-4 opacity-0 transition-opacity {selected ? 'opacity-100' : ''}">
+									<span
+										class="shrink-0 text-text-4 opacity-0 transition-opacity {selected
+											? 'opacity-100'
+											: ''}"
+									>
 										<Icon name="chevron-r" size={12} />
 									</span>
 								</button>
@@ -241,7 +299,9 @@
 			</div>
 
 			<!-- Footer -->
-			<div class="flex items-center gap-3 px-4 h-9 border-t border-border bg-surface/40 text-[11.5px] text-text-3">
+			<div
+				class="flex h-9 items-center gap-3 border-t border-border bg-surface/40 px-4 text-[11.5px] text-text-3"
+			>
 				<div class="flex items-center gap-1.5">
 					<Kbd>↑</Kbd><Kbd>↓</Kbd>
 					<span class="text-text-4">{m.shell_palette_navigate()}</span>
@@ -251,7 +311,7 @@
 					<span class="text-text-4">{m.common_open()}</span>
 				</div>
 				<div class="ml-auto flex items-center gap-1.5 font-mono text-[10.5px] text-text-4">
-					<span class="w-1.5 h-1.5 rounded-full bg-accent"></span>
+					<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
 					Trackr
 				</div>
 			</div>

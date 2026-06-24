@@ -85,7 +85,7 @@
 	let manualSelectedId = $state<string | null>(null);
 	let selected = $derived.by(() => {
 		const id = manualSelectedId ?? page.url.searchParams.get('task');
-		return id ? data.tasks.find((t) => t.id === id) ?? null : null;
+		return id ? (data.tasks.find((t) => t.id === id) ?? null) : null;
 	});
 
 	// Closing must clear BOTH the manual selection and the `?task=` deep-link
@@ -148,9 +148,7 @@
 	}
 
 	let tasks = $derived(data.tasks.filter(matches));
-	const canCreate = $derived(
-		(data.effectivePermissions ?? []).includes('project.tasks.create')
-	);
+	const canCreate = $derived((data.effectivePermissions ?? []).includes('project.tasks.create'));
 </script>
 
 <svelte:head><title>Trackr · {m.tasks_title()}</title></svelte:head>

@@ -178,12 +178,12 @@
 	}
 </script>
 
-<div class="flex-1 min-h-0 overflow-x-auto overflow-y-hidden">
+<div class="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
 	<div class="flex h-full">
 		{#each columns as col (col.key)}
 			{@const groups = subGroupsForColumn(col)}
-			<div class="flex flex-col w-[330px] shrink-0 border-r border-border last:border-r-0">
-				<div class="flex items-center gap-2 px-4 py-3 border-b border-border">
+			<div class="flex w-[330px] shrink-0 flex-col border-r border-border last:border-r-0">
+				<div class="flex items-center gap-2 border-b border-border px-4 py-3">
 					{#if col.statusId}
 						<StatusDot status={col.statusId} size={11} />
 					{:else if col.userId}
@@ -192,18 +192,18 @@
 					{:else if col.priorityId && col.priorityId !== 'none'}
 						<PriorityBars priority={col.priorityId} />
 					{:else if col.color !== 'transparent'}
-						<span class="w-2.5 h-2.5 rounded-full" style:background={col.color}></span>
+						<span class="h-2.5 w-2.5 rounded-full" style:background={col.color}></span>
 					{/if}
 					{#if projectHref(col.project)}
 						<a
 							href={projectHref(col.project)}
-							class="text-[13px] font-semibold text-text hover:underline truncate"
+							class="truncate text-[13px] font-semibold text-text hover:underline"
 							title={m.tasks_open_project({ name: col.label })}
 						>
 							{col.label}
 						</a>
 					{:else}
-						<span class="text-[13px] font-semibold text-text truncate">{col.label}</span>
+						<span class="truncate text-[13px] font-semibold text-text">{col.label}</span>
 					{/if}
 					<span class="font-mono text-[11px] text-text-3">{col.tasks.length}</span>
 					<span class="ml-auto">
@@ -216,7 +216,7 @@
 						</IconButton>
 					</span>
 				</div>
-				<div class="flex-1 overflow-y-auto space-y-3 px-3.5 py-3">
+				<div class="flex-1 space-y-3 overflow-y-auto px-3.5 py-3">
 					{#each groups as g (g.key)}
 						{@const isCollapsed = collapsed.has(g.key)}
 						<div>
@@ -224,7 +224,7 @@
 								<button
 									type="button"
 									onclick={() => toggle(g.key)}
-									class="flex items-center gap-2 w-full px-1 py-1 text-left text-[10.5px] uppercase tracking-[0.08em] font-medium text-text-3 hover:text-text"
+									class="flex w-full items-center gap-2 px-1 py-1 text-left text-[10.5px] font-medium tracking-[0.08em] text-text-3 uppercase hover:text-text"
 								>
 									<span class="text-text-4 transition-transform {isCollapsed ? '-rotate-90' : ''}">
 										<Icon name="chevron" size={10} />
@@ -237,14 +237,17 @@
 										{@const u = resolveUser(g.userId)}
 										<Avatar user={u} size={14} />
 									{:else if g.color}
-										<span class="w-2 h-2 rounded-full" style:background={g.color}></span>
+										<span class="h-2 w-2 rounded-full" style:background={g.color}></span>
 									{/if}
 									<span>{g.label}</span>
 									<span class="ml-auto font-mono text-text-4">{g.tasks.length}</span>
 								</button>
 							{/if}
 							{#if !isCollapsed}
-								<div class="space-y-2 mt-1.5" transition:slide={{ duration: 180, easing: cubicOut }}>
+								<div
+									class="mt-1.5 space-y-2"
+									transition:slide={{ duration: 180, easing: cubicOut }}
+								>
 									{#each g.tasks as t (t.id)}
 										<BoardCard task={t} onclick={() => onSelect?.(t)} />
 									{/each}
@@ -255,9 +258,10 @@
 					<button
 						type="button"
 						onclick={() => onAddInProject?.(col.project ?? ('TRACKR' as ProjectId), col.statusId)}
-						class="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg border border-dashed border-border text-text-3 hover:text-text hover:border-border-strong transition-colors text-[12px]"
+						class="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-[12px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
 					>
-						<Icon name="plus" size={12} /> {m.tasks_new_task()}
+						<Icon name="plus" size={12} />
+						{m.tasks_new_task()}
 					</button>
 				</div>
 			</div>

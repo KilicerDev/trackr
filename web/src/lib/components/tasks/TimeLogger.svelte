@@ -25,9 +25,7 @@
 	let date = $state(todayIso());
 	let note = $state('');
 
-	let totalLogged = $derived(
-		(task.timeLogs ?? []).reduce((s, t) => s + t.minutes, 0)
-	);
+	let totalLogged = $derived((task.timeLogs ?? []).reduce((s, t) => s + t.minutes, 0));
 	let summary = $derived.by(() => {
 		if (totalLogged === 0 && !task.estimate) return m.tasks_none_logged();
 		if (totalLogged === 0) return `0 / ${formatEstimate(task.estimate)}`;
@@ -53,13 +51,17 @@
 	<button
 		type="button"
 		onclick={() => (open = !open)}
-		class="flex items-center gap-2 w-full px-3 py-2.5 rounded-xl border border-border bg-surface/40 hover:bg-surface text-left transition-colors {open ? 'invisible' : ''}"
+		class="flex w-full items-center gap-2 rounded-xl border border-border bg-surface/40 px-3 py-2.5 text-left transition-colors hover:bg-surface {open
+			? 'invisible'
+			: ''}"
 	>
-		<span class="w-7 h-7 rounded-md grid place-items-center bg-bg-elev border border-border text-text-3">
+		<span
+			class="grid h-7 w-7 place-items-center rounded-md border border-border bg-bg-elev text-text-3"
+		>
 			<Icon name="calendar" size={13} />
 		</span>
 		<span class="text-[13px] font-medium text-text">{m.tasks_log_time()}</span>
-		<span class="ml-auto text-[11.5px] text-text-3 font-mono">{summary}</span>
+		<span class="ml-auto font-mono text-[11.5px] text-text-3">{summary}</span>
 		<span class="text-text-3">
 			<Icon name="chevron" size={11} />
 		</span>
@@ -69,33 +71,38 @@
 		<!-- Expanded panel: floats over the elements below -->
 		<div
 			use:clickOutside={cancel}
-			class="absolute inset-x-0 top-0 z-30 rounded-xl border border-border bg-bg-elev overflow-hidden"
+			class="absolute inset-x-0 top-0 z-30 overflow-hidden rounded-xl border border-border bg-bg-elev"
 			style:box-shadow="var(--shadow-lg)"
 		>
 			<button
 				type="button"
 				onclick={() => (open = false)}
-				class="flex items-center gap-2 w-full px-3 py-2.5 text-left"
+				class="flex w-full items-center gap-2 px-3 py-2.5 text-left"
 			>
-				<span class="w-7 h-7 rounded-md grid place-items-center bg-surface border border-border text-text-3">
+				<span
+					class="grid h-7 w-7 place-items-center rounded-md border border-border bg-surface text-text-3"
+				>
 					<Icon name="calendar" size={13} />
 				</span>
 				<span class="text-[13px] font-medium text-text">{m.tasks_log_time()}</span>
-				<span class="ml-auto text-[11.5px] text-text-3 font-mono">{summary}</span>
-				<span class="text-text-3 rotate-180">
+				<span class="ml-auto font-mono text-[11.5px] text-text-3">{summary}</span>
+				<span class="rotate-180 text-text-3">
 					<Icon name="chevron" size={11} />
 				</span>
 			</button>
-			<div class="border-t border-border p-3 space-y-2.5">
+			<div class="space-y-2.5 border-t border-border p-3">
 				<div class="grid grid-cols-[1fr_1fr_1.4fr] gap-2">
 					<div class="relative">
 						<input
 							type="number"
 							min="0"
 							bind:value={h}
-							class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-[13px] font-mono outline-none focus:border-border-strong pr-7"
+							class="w-full rounded-lg border border-border bg-surface px-3 py-2 pr-7 font-mono text-[13px] outline-none focus:border-border-strong"
 						/>
-						<span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11.5px] text-text-3 font-mono pointer-events-none">h</span>
+						<span
+							class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[11.5px] text-text-3"
+							>h</span
+						>
 					</div>
 					<div class="relative">
 						<input
@@ -103,21 +110,24 @@
 							min="0"
 							max="59"
 							bind:value={min}
-							class="w-full bg-surface border border-border rounded-lg px-3 py-2 text-[13px] font-mono outline-none focus:border-border-strong pr-7"
+							class="w-full rounded-lg border border-border bg-surface px-3 py-2 pr-7 font-mono text-[13px] outline-none focus:border-border-strong"
 						/>
-						<span class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11.5px] text-text-3 font-mono pointer-events-none">m</span>
+						<span
+							class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[11.5px] text-text-3"
+							>m</span
+						>
 					</div>
 					<input
 						type="date"
 						bind:value={date}
-						class="bg-surface border border-border rounded-lg px-3 py-2 text-[13px] font-mono outline-none focus:border-border-strong"
+						class="rounded-lg border border-border bg-surface px-3 py-2 font-mono text-[13px] outline-none focus:border-border-strong"
 					/>
 				</div>
 				<textarea
 					bind:value={note}
 					placeholder={m.tasks_what_did_you_work_on()}
 					rows="2"
-					class="w-full resize-none bg-surface border border-border rounded-lg px-3 py-2 text-[13px] placeholder:text-text-3 outline-none focus:border-border-strong"
+					class="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-[13px] outline-none placeholder:text-text-3 focus:border-border-strong"
 				></textarea>
 				<div class="flex items-center justify-end gap-2">
 					<Button size="sm" variant="default" onclick={cancel}>{m.common_cancel()}</Button>

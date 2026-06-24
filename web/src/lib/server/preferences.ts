@@ -1,10 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import { db } from './db';
-import {
-	userPreferences,
-	type NotificationPrefs,
-	type UserPreferences
-} from './db/app.schema';
+import { userPreferences, type NotificationPrefs, type UserPreferences } from './db/app.schema';
 
 export const PREF_DEFAULTS = {
 	theme: 'dark' as const,
@@ -28,7 +24,10 @@ export const NOTIFICATION_DEFAULTS: Required<NotificationPrefs> = {
 	wikiUpdated: { email: false, inApp: false }
 };
 
-export type ResolvedPreferences = Omit<UserPreferences, 'notifications' | 'createdAt' | 'updatedAt'> & {
+export type ResolvedPreferences = Omit<
+	UserPreferences,
+	'notifications' | 'createdAt' | 'updatedAt'
+> & {
 	notifications: Required<NotificationPrefs>;
 };
 

@@ -106,12 +106,7 @@ export async function loadTasks(opts?: {
 					createdAt: projectActivity.createdAt
 				})
 				.from(projectActivity)
-				.where(
-					and(
-						eq(projectActivity.type, 'comment'),
-						inArray(projectActivity.taskId, taskIds)
-					)
-				)
+				.where(and(eq(projectActivity.type, 'comment'), inArray(projectActivity.taskId, taskIds)))
 		: [];
 	// Attachments on comments, keyed by the comment's project_activity id.
 	const commentAttachments = await listAttachmentsForMany(
@@ -170,10 +165,7 @@ export async function loadTasks(opts?: {
 			.select({ taskId: taskPlanning.taskId, plannedFor: taskPlanning.plannedFor })
 			.from(taskPlanning)
 			.where(
-				and(
-					eq(taskPlanning.userId, opts.plannerUserId),
-					inArray(taskPlanning.taskId, taskIds)
-				)
+				and(eq(taskPlanning.userId, opts.plannerUserId), inArray(taskPlanning.taskId, taskIds))
 			);
 		for (const p of planRows) {
 			const d = p.plannedFor
@@ -227,7 +219,7 @@ export async function loadTasks(opts?: {
 			due: fmtDate(t.dueDate) || null,
 			updated: fmtDate(t.updatedAt) || t.updatedAt.toISOString().slice(0, 10),
 			type: t.type as Task['type'],
-			parent: t.parentId ? displayById.get(t.parentId) ?? null : null,
+			parent: t.parentId ? (displayById.get(t.parentId) ?? null) : null,
 			startDate: fmtDate(t.startDate) || undefined,
 			endDate: fmtDate(t.endDate) || undefined,
 			estimate: t.estimateMinutes ?? undefined,
@@ -242,7 +234,7 @@ export async function loadTasks(opts?: {
 			timeLogs: logsByTask.get(t.id) ?? [],
 			plannedFor: planByTask.has(t.id) ? planByTask.get(t.id) || null : null,
 			inMyPlan: planByTask.has(t.id),
-			sourceTicket: t.sourceTicketId ? sourceTicketById.get(t.sourceTicketId) ?? null : null
+			sourceTicket: t.sourceTicketId ? (sourceTicketById.get(t.sourceTicketId) ?? null) : null
 		};
 	});
 }
@@ -316,9 +308,7 @@ export async function createTask(
 		for (const u of usersFound) validAssignees.push(u.id);
 		if (validAssignees.length === 0) validAssignees.push(input.createdBy);
 
-		await tx
-			.insert(taskAssignee)
-			.values(validAssignees.map((userId) => ({ taskId: id, userId })));
+		await tx.insert(taskAssignee).values(validAssignees.map((userId) => ({ taskId: id, userId })));
 
 		if (input.plannedForUserId && input.plannedFor) {
 			await tx.insert(taskPlanning).values({

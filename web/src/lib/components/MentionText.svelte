@@ -16,7 +16,7 @@
 	 display name is the fallback when the id no longer resolves. -->
 <span class={cls}
 	>{#each segments as seg, i (i)}{#if seg.type === 'mention'}<span
-				class="inline-flex items-center rounded px-1 -mx-0.5 font-medium text-accent bg-accent/10 align-baseline"
+				class="-mx-0.5 inline-flex items-center rounded bg-accent/10 px-1 align-baseline font-medium text-accent"
 				>@{resolveUser(seg.id)?.name ?? seg.name}</span
 			>{:else}{seg.value}{/if}{/each}</span
 >

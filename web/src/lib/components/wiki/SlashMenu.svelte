@@ -24,7 +24,7 @@
 </script>
 
 <div
-	class="z-[60] w-[260px] bg-bg-elev border border-border rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.25)] p-1"
+	class="z-[60] w-[260px] rounded-xl border border-border bg-bg-elev p-1 shadow-[0_10px_30px_rgba(0,0,0,0.25)]"
 	style={styleStr}
 	role="listbox"
 >
@@ -42,18 +42,18 @@
 					state.onSelect(i);
 				}}
 				onmouseenter={() => (state.activeIndex = i)}
-				class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-[13px] leading-none transition-colors {active
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none transition-colors {active
 					? 'bg-surface-2 text-text'
 					: 'text-text-2 hover:text-text'}"
 			>
 				<span
-					class="grid place-items-center w-7 h-7 rounded-md bg-surface border border-border text-[11.5px] font-medium text-text-2 shrink-0"
+					class="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border bg-surface text-[11.5px] font-medium text-text-2"
 				>
 					{item.icon}
 				</span>
-				<div class="flex-1 min-w-0">
+				<div class="min-w-0 flex-1">
 					<div class="text-text">{item.label}</div>
-					<div class="text-[11px] text-text-4 mt-0.5">{item.hint}</div>
+					<div class="mt-0.5 text-[11px] text-text-4">{item.hint}</div>
 				</div>
 			</button>
 		{/each}

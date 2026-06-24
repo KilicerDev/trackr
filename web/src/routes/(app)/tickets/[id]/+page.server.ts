@@ -4,12 +4,7 @@ import { db } from '$lib/server/db';
 import { project, task, ticketFavorite } from '$lib/server/db/app.schema';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import { assertCan, can, isPortalUser, isTrackrTeam } from '$lib/server/permissions';
-import {
-	addTicketMessage,
-	getTicket,
-	loadTicketMessages,
-	updateTicket
-} from '$lib/server/tickets';
+import { addTicketMessage, getTicket, loadTicketMessages, updateTicket } from '$lib/server/tickets';
 import { createTask } from '$lib/server/tasks';
 import { recordAudit } from '$lib/server/audit';
 import { markEntityRead, notify } from '$lib/server/notify';
@@ -17,7 +12,14 @@ import { listAttachments, listAttachmentsForMany } from '$lib/server/attachments
 import { m } from '$lib/paraglide/messages';
 
 const ALLOWED_TASK_TYPE = new Set(['task', 'bug', 'improvement', 'feature', 'chore']);
-const ALLOWED_TASK_STATUS = new Set(['backlog', 'todo', 'in_progress', 'paused', 'in_review', 'done']);
+const ALLOWED_TASK_STATUS = new Set([
+	'backlog',
+	'todo',
+	'in_progress',
+	'paused',
+	'in_review',
+	'done'
+]);
 const ALLOWED_TASK_PRIORITY = new Set(['none', 'low', 'medium', 'high', 'urgent']);
 
 function initials(name: string): string {
@@ -44,8 +46,10 @@ export const load: ServerLoad = async ({ params, locals }) => {
 	if (!ticket) throw error(404, m.tickets_not_found_404());
 
 	const isAgent = await can(locals, 'org.tickets.edit.any', { orgId: ticket.orgId });
-	const canReadAny = isTrackrTeam(locals) || isAgent
-		|| (await can(locals, 'org.tickets.read.any', { orgId: ticket.orgId }));
+	const canReadAny =
+		isTrackrTeam(locals) ||
+		isAgent ||
+		(await can(locals, 'org.tickets.read.any', { orgId: ticket.orgId }));
 
 	if (!canReadAny) {
 		const ownAllowed =
@@ -162,7 +166,10 @@ export const actions: Actions = {
 		const priorityRaw = String(form.get('priority') ?? 'medium');
 		const due = String(form.get('due') ?? '').trim();
 		const estimateRaw = String(form.get('estimate') ?? '').trim();
-		const assigneeIds = form.getAll('assignees').map((v) => String(v)).filter(Boolean);
+		const assigneeIds = form
+			.getAll('assignees')
+			.map((v) => String(v))
+			.filter(Boolean);
 
 		if (!title) return fail(400, { message: m.tasks_err_title_required() });
 		if (!projectKey) return fail(400, { message: m.tasks_err_project_required() });

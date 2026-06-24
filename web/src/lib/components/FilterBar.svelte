@@ -93,11 +93,12 @@
 
 <div
 	bind:this={scroller}
-	class="filter-scroll flex items-center gap-2 flex-1 min-w-0 overflow-x-auto"
+	class="filter-scroll flex min-w-0 flex-1 items-center gap-2 overflow-x-auto"
 >
 	<div data-pop-trigger="add" class="shrink-0">
 		<Chip variant="add" onclick={() => (pop = pop?.startsWith('add:') ? null : 'add:fields')}>
-			<Icon name="plus" size={12} /> {m.tasks_filter()}
+			<Icon name="plus" size={12} />
+			{m.tasks_filter()}
 		</Chip>
 	</div>
 
@@ -113,7 +114,7 @@
 				}}
 			>
 				<span class="text-text-3">{fieldLabel(field)}:</span>
-				<span class="text-text font-medium">
+				<span class="font-medium text-text">
 					{#if values.length === 1}
 						{valueLabel(field, values[0])}
 					{:else}
@@ -125,10 +126,7 @@
 	{/each}
 
 	{#if activeFilters.length >= 2}
-		<button
-			onclick={clearAll}
-			class="shrink-0 text-[12px] text-text-3 hover:text-text px-2"
-		>
+		<button onclick={clearAll} class="shrink-0 px-2 text-[12px] text-text-3 hover:text-text">
 			{m.tasks_clear()}
 		</button>
 	{/if}
@@ -138,7 +136,7 @@
 	<div
 		use:clickOutside={() => (pop = null)}
 		in:fly={POPOVER_IN}
-		class="fixed z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[200px]"
+		class="fixed z-50 min-w-[200px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 		style:left="{popPos.left}px"
 		style:top="{popPos.top}px"
 		style:box-shadow="var(--shadow-lg)"
@@ -147,7 +145,7 @@
 			<button
 				type="button"
 				onclick={() => (pop = `add:${f.id}`)}
-				class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-2 text-text-2 hover:text-text text-left"
+				class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<span class="text-text-3"><Icon name={f.icon} size={13} /></span>
 				<span class="text-[13px]">{f.label}</span>
@@ -160,7 +158,7 @@
 	<div
 		use:clickOutside={() => (pop = null)}
 		in:fly={POPOVER_IN}
-		class="fixed z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[240px]"
+		class="fixed z-50 min-w-[240px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 		style:left="{popPos.left}px"
 		style:top="{popPos.top}px"
 		style:box-shadow="var(--shadow-lg)"
@@ -168,7 +166,7 @@
 		<button
 			type="button"
 			onclick={() => (pop = 'add:fields')}
-			class="w-full flex items-center gap-1.5 px-2 py-1 mb-1 rounded-md hover:bg-surface-2 text-text-3 hover:text-text text-[11.5px] uppercase tracking-[0.06em] text-left border-b border-border pb-2"
+			class="mb-1 flex w-full items-center gap-1.5 rounded-md border-b border-border px-2 py-1 pb-2 text-left text-[11.5px] tracking-[0.06em] text-text-3 uppercase hover:bg-surface-2 hover:text-text"
 		>
 			<Icon name="chevron-r" size={10} class="rotate-180" />
 			{fieldLabel(field)}
@@ -180,7 +178,7 @@
 	<div
 		use:clickOutside={() => (pop = null)}
 		in:fly={POPOVER_IN}
-		class="fixed z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[220px]"
+		class="fixed z-50 min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 		style:left="{popPos.left}px"
 		style:top="{popPos.top}px"
 		style:box-shadow="var(--shadow-lg)"

@@ -43,7 +43,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const ctx = await resolveEntityContext(entityType as AttachmentEntityType, entityId);
 	if (!ctx) return json({ message: 'Parent not found' }, { status: 404 });
-	if (!(await authorizeAttachmentAccess(locals, entityType as AttachmentEntityType, ctx, 'write'))) {
+	if (
+		!(await authorizeAttachmentAccess(locals, entityType as AttachmentEntityType, ctx, 'write'))
+	) {
 		return json({ message: 'You do not have permission to attach files here.' }, { status: 403 });
 	}
 

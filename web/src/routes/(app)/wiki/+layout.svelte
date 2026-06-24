@@ -17,11 +17,16 @@
 	}
 </script>
 
-<Topbar crumbs={[{ label: m.wiki_breadcrumb_workspace(), href: '/tasks' }, { label: m.wiki_breadcrumb_root() }]} />
+<Topbar
+	crumbs={[
+		{ label: m.wiki_breadcrumb_workspace(), href: '/tasks' },
+		{ label: m.wiki_breadcrumb_root() }
+	]}
+/>
 
-<div class="flex flex-1 min-h-0 overflow-hidden">
+<div class="flex min-h-0 flex-1 overflow-hidden">
 	<WikiTree oncreate={openCreate} />
-	<div class="flex-1 min-w-0 overflow-y-auto">
+	<div class="min-w-0 flex-1 overflow-y-auto">
 		{@render children()}
 	</div>
 </div>

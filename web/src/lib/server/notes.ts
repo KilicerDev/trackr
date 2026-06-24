@@ -11,13 +11,7 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { and, desc, eq, or } from 'drizzle-orm';
 import { db } from './db';
-import {
-	document,
-	note,
-	noteAccess,
-	noteShareLink,
-	noteTemplate
-} from './db/app.schema';
+import { document, note, noteAccess, noteShareLink, noteTemplate } from './db/app.schema';
 import { deleteAttachmentsFor } from './attachments';
 import type { Memberships } from '$lib/permissions';
 
@@ -309,7 +303,7 @@ const SYSTEM_TEMPLATES = [
 		name: 'Retro',
 		icon: 'refresh',
 		bodyHtml:
-			"<h2>What went well</h2><ul><li></li></ul><h2>What didn't</h2><ul><li></li></ul><h2>Action items</h2><ul data-type=\"taskList\"><li data-type=\"taskItem\" data-checked=\"false\"></li></ul>"
+			'<h2>What went well</h2><ul><li></li></ul><h2>What didn\'t</h2><ul><li></li></ul><h2>Action items</h2><ul data-type="taskList"><li data-type="taskItem" data-checked="false"></li></ul>'
 	}
 ] as const;
 

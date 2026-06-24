@@ -27,7 +27,9 @@ function sign(payload: string): string {
 
 /** Mint a token `{ userId, exp }` signed with the auth secret. */
 export function signCollabToken(userId: string): string {
-	const payload = b64url(JSON.stringify({ userId, exp: Math.floor(Date.now() / 1000) + TTL_SECONDS }));
+	const payload = b64url(
+		JSON.stringify({ userId, exp: Math.floor(Date.now() / 1000) + TTL_SECONDS })
+	);
 	return `${payload}.${sign(payload)}`;
 }
 
@@ -54,7 +56,8 @@ export async function resolveCollabSession(token: string | undefined): Promise<C
 	} catch {
 		throw new Error('bad payload');
 	}
-	if (typeof data.userId !== 'string' || typeof data.exp !== 'number') throw new Error('bad payload');
+	if (typeof data.userId !== 'string' || typeof data.exp !== 'number')
+		throw new Error('bad payload');
 	if (data.exp < Math.floor(Date.now() / 1000)) throw new Error('expired');
 
 	const memberships = await loadMemberships(data.userId);

@@ -59,10 +59,7 @@
 	// they've toggled it, when they belong to no projects, or when the currently
 	// selected project isn't one of theirs (so the selection stays visible).
 	const expandedAll = $derived(
-		!allAccess ||
-			showAll ||
-			memberSet.size === 0 ||
-			(!!selected && !memberSet.has(selected.id))
+		!allAccess || showAll || memberSet.size === 0 || (!!selected && !memberSet.has(selected.id))
 	);
 	const expandedInactive = $derived(showInactive || (!!selected && isDormant(selected.status)));
 
@@ -91,7 +88,10 @@
 	let activeIndex = $state(0);
 
 	$effect(() => {
-		activeIndex = Math.max(0, visible.findIndex((p) => p.key === value));
+		activeIndex = Math.max(
+			0,
+			visible.findIndex((p) => p.key === value)
+		);
 		inputEl?.focus();
 	});
 
@@ -132,9 +132,13 @@
 		data-active={i === activeIndex}
 		onclick={() => pick(p.key)}
 		onmouseenter={() => (activeIndex = i)}
-		class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left text-text-2 hover:text-text {isDormant(p.status) ? 'opacity-60' : ''} {i === activeIndex ? 'bg-surface-2 text-text' : ''}"
+		class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:text-text {isDormant(
+			p.status
+		)
+			? 'opacity-60'
+			: ''} {i === activeIndex ? 'bg-surface-2 text-text' : ''}"
 	>
-		<span class="w-2 h-2 rounded-full shrink-0" style:background={p.color}></span>
+		<span class="h-2 w-2 shrink-0 rounded-full" style:background={p.color}></span>
 		<span class="text-[13px]">{p.name}</span>
 		<span class="ml-auto text-accent {value === p.key ? 'opacity-100' : 'opacity-0'}">
 			<Icon name="check" size={13} />
@@ -146,10 +150,10 @@
 	use:clickOutside={onclose}
 	use:autoPlace
 	in:fly={POPOVER_IN}
-	class="absolute top-full mt-1.5 z-50 bg-bg-elev border border-border rounded-[10px] p-1.5 min-w-[240px]"
+	class="absolute top-full z-50 mt-1.5 min-w-[240px] rounded-[10px] border border-border bg-bg-elev p-1.5"
 	style:box-shadow="var(--shadow-lg)"
 >
-	<div class="flex items-center gap-2 px-2 pt-1 pb-2 border-b border-border mb-1.5">
+	<div class="mb-1.5 flex items-center gap-2 border-b border-border px-2 pt-1 pb-2">
 		<span class="text-text-3"><Icon name="search" size={13} /></span>
 		<input
 			type="text"
@@ -157,7 +161,7 @@
 			bind:value={q}
 			{onkeydown}
 			placeholder={m.tasks_search_projects_placeholder()}
-			class="flex-1 bg-transparent border-0 outline-none text-[13px] placeholder:text-text-3"
+			class="flex-1 border-0 bg-transparent text-[13px] outline-none placeholder:text-text-3"
 		/>
 	</div>
 
@@ -167,7 +171,9 @@
 				{@render row(p, i)}
 			{/each}
 			{#if searchResults.length === 0}
-				<div class="px-2 py-3 text-[12.5px] text-text-3 text-center">{m.tasks_no_projects_match({ q })}</div>
+				<div class="px-2 py-3 text-center text-[12.5px] text-text-3">
+					{m.tasks_no_projects_match({ q })}
+				</div>
 			{/if}
 		{:else}
 			{#each live as p, i (p.key)}
@@ -184,7 +190,7 @@
 					<button
 						type="button"
 						onclick={() => (showInactive = true)}
-						class="w-full flex items-center gap-1.5 px-2 py-1.5 text-[12px] text-text-3 hover:text-text-2 rounded-md hover:bg-surface-2"
+						class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[12px] text-text-3 hover:bg-surface-2 hover:text-text-2"
 					>
 						<Icon name="chevron" size={11} />
 						{m.tasks_show_n_inactive({ n: dormant.length })}
@@ -193,11 +199,11 @@
 			{/if}
 
 			{#if allAccess && memberSet.size > 0 && (!selected || memberSet.has(selected.id))}
-				<div class="mt-1 pt-1 border-t border-border">
+				<div class="mt-1 border-t border-border pt-1">
 					<button
 						type="button"
 						onclick={() => (showAll = !showAll)}
-						class="w-full flex items-center gap-1.5 px-2 py-1.5 text-[12px] text-text-3 hover:text-text-2 rounded-md hover:bg-surface-2"
+						class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[12px] text-text-3 hover:bg-surface-2 hover:text-text-2"
 					>
 						<Icon name="chevron" size={11} />
 						{expandedAll ? m.tasks_show_only_my_projects() : m.tasks_show_all_projects()}

@@ -10,11 +10,19 @@ import type { PageServerLoad } from './$types';
 
 // Display labels for the audit log. Best-effort; fall back to the id.
 async function orgName(id: string): Promise<string> {
-	const [o] = await db.select({ name: organization.name }).from(organization).where(eq(organization.id, id)).limit(1);
+	const [o] = await db
+		.select({ name: organization.name })
+		.from(organization)
+		.where(eq(organization.id, id))
+		.limit(1);
 	return o?.name ?? id;
 }
 async function userLabel(id: string): Promise<string> {
-	const [u] = await db.select({ name: userTable.name, email: userTable.email }).from(userTable).where(eq(userTable.id, id)).limit(1);
+	const [u] = await db
+		.select({ name: userTable.name, email: userTable.email })
+		.from(userTable)
+		.where(eq(userTable.id, id))
+		.limit(1);
 	return u ? (u.name ?? u.email) : id;
 }
 
@@ -152,7 +160,10 @@ export const actions: Actions = {
 			patch.color = String(form.get('color'));
 		}
 		if (form.has('slug')) {
-			const v = String(form.get('slug')).trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+			const v = String(form.get('slug'))
+				.trim()
+				.toLowerCase()
+				.replace(/[^a-z0-9-]/g, '');
 			if (!v) return fail(400, { message: m.admin_err_slug_empty() });
 			const [clash] = await db
 				.select({ id: organization.id })
@@ -193,10 +204,7 @@ export const actions: Actions = {
 
 	unarchive: async ({ params }) => {
 		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
-		await db
-			.update(organization)
-			.set({ archivedAt: null })
-			.where(eq(organization.id, params.id));
+		await db.update(organization).set({ archivedAt: null }).where(eq(organization.id, params.id));
 		return { success: true };
 	},
 
@@ -209,9 +217,7 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const userId = String(form.get('userId') ?? '').trim();
 		// Default to the lowest meaningful role for the org type.
-		const requestedRole = String(
-			form.get('role') ?? (org.isInternal ? 'org.staff' : 'org.member')
-		);
+		const requestedRole = String(form.get('role') ?? (org.isInternal ? 'org.staff' : 'org.member'));
 		if (!userId) return fail(400, { message: m.admin_err_missing_user() });
 		if (!allowed.has(requestedRole)) {
 			return fail(400, {
@@ -273,12 +279,7 @@ export const actions: Actions = {
 			const [current] = await db
 				.select({ role: organizationMember.role })
 				.from(organizationMember)
-				.where(
-					and(
-						eq(organizationMember.orgId, params.id),
-						eq(organizationMember.userId, userId)
-					)
-				)
+				.where(and(eq(organizationMember.orgId, params.id), eq(organizationMember.userId, userId)))
 				.limit(1);
 			if (current && tops.includes(current.role)) {
 				const remaining = await countTopRoleHolders(params.id, org.isInternal);
@@ -293,9 +294,7 @@ export const actions: Actions = {
 		await db
 			.update(organizationMember)
 			.set({ role })
-			.where(
-				and(eq(organizationMember.orgId, params.id), eq(organizationMember.userId, userId))
-			);
+			.where(and(eq(organizationMember.orgId, params.id), eq(organizationMember.userId, userId)));
 		void recordAudit({
 			type: 'user.role_change',
 			actorId: locals.user?.id ?? null,
@@ -321,9 +320,7 @@ export const actions: Actions = {
 		const [current] = await db
 			.select({ role: organizationMember.role })
 			.from(organizationMember)
-			.where(
-				and(eq(organizationMember.orgId, params.id), eq(organizationMember.userId, userId))
-			)
+			.where(and(eq(organizationMember.orgId, params.id), eq(organizationMember.userId, userId)))
 			.limit(1);
 		if (!current) return fail(404, { message: m.admin_err_member_not_found() });
 
@@ -338,9 +335,7 @@ export const actions: Actions = {
 
 		await db
 			.delete(organizationMember)
-			.where(
-				and(eq(organizationMember.orgId, params.id), eq(organizationMember.userId, userId))
-			);
+			.where(and(eq(organizationMember.orgId, params.id), eq(organizationMember.userId, userId)));
 		void recordAudit({
 			type: 'user.role_change',
 			actorId: locals.user?.id ?? null,

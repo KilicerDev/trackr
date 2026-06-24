@@ -12,7 +12,7 @@
 </script>
 
 <span
-	class="inline-flex items-end gap-[2px] shrink-0"
+	class="inline-flex shrink-0 items-end gap-[2px]"
 	style:height="12px"
 	aria-label={priorityLabel(priority)}
 	title={priorityLabel(priority)}
