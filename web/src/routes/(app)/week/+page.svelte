@@ -298,8 +298,7 @@
 			<span class="font-mono font-medium tracking-tight text-text">{weekLabel}</span>
 			{#if weekDelta === 0}
 				<span
-					class="rounded-full px-1.5 py-0.5 text-[10px] font-medium tracking-[0.06em] text-accent uppercase"
-					style:background="rgba(239,122,109,0.14)">{m.week_now()}</span
+					class="rounded-full px-1.5 py-0.5 text-[10px] font-medium tracking-[0.06em] text-accent uppercase bg-accent-soft">{m.week_now()}</span
 				>
 			{/if}
 			<span class="text-text-4">·</span>
@@ -350,8 +349,7 @@
 						<span class="font-mono text-[12px] text-text-4">{dayLabels[i].dayOfMonth}</span>
 						{#if isToday}
 							<span
-								class="rounded-full px-2 py-0.5 text-[10.5px] font-medium tracking-[0.06em] text-accent uppercase"
-								style:background="rgba(239,122,109,0.14)">{m.common_today()}</span
+								class="rounded-full px-2 py-0.5 text-[10.5px] font-medium tracking-[0.06em] text-accent uppercase bg-accent-soft">{m.common_today()}</span
 							>
 						{/if}
 						<span class="font-mono text-[11px] text-text-3">{tasks.length}</span>

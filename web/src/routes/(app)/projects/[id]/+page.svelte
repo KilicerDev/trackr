@@ -377,8 +377,7 @@
 								type="button"
 								onclick={deleteProject}
 								disabled={projectBusy !== null}
-								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] hover:bg-surface-2 disabled:opacity-50"
-								style:color="#ef7a6d"
+								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] hover:bg-surface-2 disabled:opacity-50 text-accent"
 							>
 								<Icon name="x" size={12} />
 								{projectBusy === 'delete' ? m.common_deleting() : m.projects_delete_project()}
@@ -419,8 +418,7 @@
 								<span class="text-text">{mem.name.split(' ')[0]}</span>
 								{#if mem.id === p.leadId}
 									<span
-										class="rounded px-1.5 py-0.5 text-[10px] tracking-[0.06em] text-accent uppercase"
-										style:background="rgba(239,122,109,0.14)"
+										class="rounded px-1.5 py-0.5 text-[10px] tracking-[0.06em] text-accent uppercase bg-accent-soft"
 									>
 										{m.projects_lead_badge()}
 									</span>

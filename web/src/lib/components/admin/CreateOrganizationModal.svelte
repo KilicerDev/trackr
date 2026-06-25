@@ -221,10 +221,7 @@
 
 			{#if serverError}
 				<div
-					class="mt-4 rounded-lg border px-3 py-2 text-[12.5px]"
-					style:border-color="rgba(239,79,94,0.35)"
-					style:background="rgba(239,79,94,0.08)"
-					style:color="#ef7a6d"
+					class="mt-4 rounded-lg border px-3 py-2 text-[12.5px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
 				>
 					{serverError}
 				</div>

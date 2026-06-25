@@ -28,8 +28,7 @@
 			onclose();
 		}}
 		disabled={!canDelete}
-		class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none hover:bg-[#ef4f5e]/10 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
-		style:color="#ef4f5e"
+		class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none hover:bg-[#ef4f5e]/10 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent text-prio-urgent"
 	>
 		<span class="grid h-4 w-4 shrink-0 place-items-center"><Icon name="trash" size={14} /></span>
 		<span>{m.tasks_delete_task()}</span>

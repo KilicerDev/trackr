@@ -47,8 +47,7 @@
 				style:box-shadow="0 1px 0 rgba(255,255,255,0.03) inset, 0 24px 60px -28px rgba(0,0,0,0.55)"
 			>
 				<div
-					class="mx-auto grid h-11 w-11 place-items-center rounded-full text-prio-urgent"
-					style:background="rgba(239,79,94,0.12)"
+					class="mx-auto grid h-11 w-11 place-items-center rounded-full text-prio-urgent bg-prio-urgent/12"
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -208,8 +207,7 @@
 
 					{#if clientError || form?.message}
 						<div
-							class="rounded-[8px] border border-prio-urgent/35 px-3 py-2 text-[13px] text-prio-urgent"
-							style:background="rgba(239,79,94,0.08)"
+							class="rounded-[8px] border border-prio-urgent/35 px-3 py-2 text-[13px] text-prio-urgent bg-prio-urgent/8"
 						>
 							{clientError ?? form?.message}
 						</div>

@@ -47,8 +47,7 @@
 
 			{#if justReset}
 				<div
-					class="mt-5 flex items-start gap-2 rounded-[8px] border border-status-done/30 px-3 py-2 text-[13px] text-status-done"
-					style:background="rgba(127,200,169,0.08)"
+					class="mt-5 flex items-start gap-2 rounded-[8px] border border-status-done/30 px-3 py-2 text-[13px] text-status-done bg-status-done/8"
 				>
 					<Icon name="check" size={14} stroke={2} class="mt-0.5 shrink-0" />
 					<span>{m.auth_login_reset_success()}</span>
@@ -138,8 +137,7 @@
 
 				{#if form?.message}
 					<div
-						class="rounded-[8px] border border-prio-urgent/35 px-3 py-2 text-[13px] text-prio-urgent"
-						style:background="rgba(239,79,94,0.08)"
+						class="rounded-[8px] border border-prio-urgent/35 px-3 py-2 text-[13px] text-prio-urgent bg-prio-urgent/8"
 					>
 						{form.message}
 					</div>

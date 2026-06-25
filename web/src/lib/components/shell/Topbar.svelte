@@ -281,8 +281,7 @@
 				<form method="post" action="/logout" class="contents">
 					<button
 						type="submit"
-						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none hover:bg-[#ef4f5e]/10"
-						style:color="#ef4f5e"
+						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none hover:bg-[#ef4f5e]/10 text-prio-urgent"
 					>
 						<span class="grid h-4 w-4 shrink-0 place-items-center"
 							><Icon name="logout" size={14} /></span

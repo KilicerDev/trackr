@@ -536,20 +536,16 @@
 					<span>
 						{#if banned}
 							<span
-								class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px]"
-								style:background="rgba(239,79,94,0.16)"
-								style:color="#ef4f5e"
+								class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] bg-prio-urgent/16 text-prio-urgent"
 							>
-								<span class="h-1.5 w-1.5 rounded-full" style:background="#ef4f5e"></span>
+								<span class="h-1.5 w-1.5 rounded-full bg-prio-urgent"></span>
 								{m.admin_users_status_banned()}
 							</span>
 						{:else}
 							<span
-								class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px]"
-								style:background="rgba(127,200,169,0.16)"
-								style:color="#7fc8a9"
+								class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] bg-status-done/16 text-status-done"
 							>
-								<span class="h-1.5 w-1.5 rounded-full" style:background="#7fc8a9"></span>
+								<span class="h-1.5 w-1.5 rounded-full bg-status-done"></span>
 								{m.admin_users_status_active()}
 							</span>
 						{/if}
@@ -618,9 +614,9 @@
 				<div class="text-text-4">{m.admin_users_col_status()}</div>
 				<div>
 					{#if banned}
-						<span style:color="#ef4f5e">{m.admin_users_status_banned()}</span>
+						<span class="text-prio-urgent">{m.admin_users_status_banned()}</span>
 					{:else}
-						<span style:color="#7fc8a9">{m.admin_users_status_active()}</span>
+						<span class="text-status-done">{m.admin_users_status_active()}</span>
 					{/if}
 				</div>
 				<div class="text-text-4">{m.admin_users_col_joined()}</div>
@@ -887,10 +883,7 @@
 			})}
 			{#if cError}
 				<div
-					class="rounded-lg border px-3 py-2 text-[12.5px]"
-					style:border-color="rgba(239,79,94,0.35)"
-					style:background="rgba(239,79,94,0.08)"
-					style:color="#ef7a6d"
+					class="rounded-lg border px-3 py-2 text-[12.5px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
 				>
 					{cError}
 				</div>
@@ -997,10 +990,7 @@
 			</p>
 			{#if iError}
 				<div
-					class="rounded-lg border px-3 py-2 text-[12.5px]"
-					style:border-color="rgba(239,79,94,0.35)"
-					style:background="rgba(239,79,94,0.08)"
-					style:color="#ef7a6d"
+					class="rounded-lg border px-3 py-2 text-[12.5px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
 				>
 					{iError}
 				</div>

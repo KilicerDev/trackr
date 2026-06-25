@@ -218,8 +218,7 @@
 					<h1 class="text-[26px] font-semibold tracking-[-0.014em] text-text">{data.org.name}</h1>
 					{#if data.org.archivedAt}
 						<span
-							class="rounded px-1.5 py-0.5 text-[10.5px] tracking-[0.06em] text-text-3 uppercase"
-							style:background="rgba(154,164,178,0.16)"
+							class="rounded px-1.5 py-0.5 text-[10.5px] tracking-[0.06em] text-text-3 uppercase bg-status-todo/16"
 						>
 							{m.admin_org_archived_badge()}
 						</span>
@@ -329,10 +328,7 @@
 				</div>
 				{#if serverError}
 					<div
-						class="rounded-lg border px-3 py-2 text-[12.5px]"
-						style:border-color="rgba(239,79,94,0.35)"
-						style:background="rgba(239,79,94,0.08)"
-						style:color="#ef7a6d"
+						class="rounded-lg border px-3 py-2 text-[12.5px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
 					>
 						{serverError}
 					</div>

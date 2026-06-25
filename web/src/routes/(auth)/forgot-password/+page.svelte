@@ -34,8 +34,7 @@
 		>
 			{#if form?.sent}
 				<div
-					class="mx-auto grid h-11 w-11 place-items-center rounded-full text-status-done"
-					style:background="rgba(127,200,169,0.12)"
+					class="mx-auto grid h-11 w-11 place-items-center rounded-full text-status-done bg-status-done/12"
 				>
 					<Icon name="check" size={20} stroke={2} />
 				</div>
@@ -87,8 +86,7 @@
 
 					{#if form?.message}
 						<div
-							class="rounded-[8px] border border-prio-urgent/35 px-3 py-2 text-[13px] text-prio-urgent"
-							style:background="rgba(239,79,94,0.08)"
+							class="rounded-[8px] border border-prio-urgent/35 px-3 py-2 text-[13px] text-prio-urgent bg-prio-urgent/8"
 						>
 							{form.message}
 						</div>

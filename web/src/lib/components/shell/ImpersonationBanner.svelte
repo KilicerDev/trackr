@@ -42,10 +42,7 @@
 </script>
 
 <div
-	class="flex h-9 items-center gap-3 border-b px-5 text-[12.5px]"
-	style:background="rgba(240,168,92,0.14)"
-	style:border-color="rgba(240,168,92,0.35)"
-	style:color="#f0a85c"
+	class="flex h-9 items-center gap-3 border-b px-5 text-[12.5px] bg-prio-medium/14 border-prio-medium/35 text-prio-medium"
 >
 	<svg
 		xmlns="http://www.w3.org/2000/svg"
@@ -74,9 +71,7 @@
 		type="button"
 		onclick={stop}
 		disabled={stopping}
-		class="ml-auto inline-flex h-6 items-center rounded-md px-2.5 text-[12px] font-semibold transition-colors disabled:opacity-60"
-		style:background="rgba(240,168,92,0.22)"
-		style:color="#f0a85c"
+		class="ml-auto inline-flex h-6 items-center rounded-md px-2.5 text-[12px] font-semibold transition-colors disabled:opacity-60 bg-prio-medium/22 text-prio-medium"
 	>
 		{stopping ? m.shell_impersonation_stopping() : m.shell_impersonation_stop()}
 	</button>

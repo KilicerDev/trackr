@@ -41,8 +41,7 @@
 		<span class="font-mono text-[10.5px] text-text-3">{task.id}</span>
 		{#if task.plannedFor || task.inMyPlan}
 			<span
-				class="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] text-accent"
-				style:background="rgba(239,122,109,0.14)"
+				class="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] text-accent bg-accent-soft"
 				title={task.plannedFor
 					? m.tasks_planned_for({ date: formatDateShort(task.plannedFor) })
 					: m.tasks_in_your_week_no_date()}
