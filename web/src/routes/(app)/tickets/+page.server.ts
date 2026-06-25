@@ -1,7 +1,15 @@
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { organization, ticket, message, thread, ticketFavorite } from '$lib/server/db/app.schema';
+import {
+	organization,
+	ticket,
+	message,
+	thread,
+	ticketFavorite,
+	task,
+	project
+} from '$lib/server/db/app.schema';
 import { assertCan, can, isTrackrTeam } from '$lib/server/permissions';
 import { attachFormFiles, deleteAttachmentsFor } from '$lib/server/attachments';
 import {
@@ -34,6 +42,11 @@ export const load: ServerLoad = async ({ locals }) => {
 	const trackrTeam = isTrackrTeam(locals);
 	const myOrgIds = (locals.memberships?.orgs ?? []).map((o) => o.orgId);
 
+	// Orgs where the viewer can edit tickets (status/priority/assignee/…). Drives
+	// the Inspector's per-ticket `canEdit` gate. Trackr team edits everything, so
+	// they short-circuit via `isAgent` and don't need the per-org list.
+	const editableOrgIds: string[] = [];
+
 	let tickets: TicketRow[];
 	if (trackrTeam) {
 		tickets = await loadTickets({});
@@ -41,7 +54,8 @@ export const load: ServerLoad = async ({ locals }) => {
 		tickets = [];
 	} else {
 		// Split orgs by access level: orgs where I can read all tickets vs.
-		// orgs where I can only read my own (client role).
+		// orgs where I can only read my own (client role). Also record which orgs
+		// the viewer can edit, in the same pass.
 		const anyOrgIds: string[] = [];
 		const ownOrgIds: string[] = [];
 		for (const orgId of myOrgIds) {
@@ -50,6 +64,7 @@ export const load: ServerLoad = async ({ locals }) => {
 			} else if (await can(locals, 'org.tickets.read.own', { orgId })) {
 				ownOrgIds.push(orgId);
 			}
+			if (await can(locals, 'org.tickets.edit.any', { orgId })) editableOrgIds.push(orgId);
 		}
 		const [anyRows, ownRows] = await Promise.all([
 			anyOrgIds.length ? loadTickets({ orgIds: anyOrgIds }) : Promise.resolve([]),
@@ -60,12 +75,49 @@ export const load: ServerLoad = async ({ locals }) => {
 		tickets = [...anyRows, ...ownRows];
 	}
 
+	const isAgent = trackrTeam || editableOrgIds.length > 0;
+
+	// Tasks spun up from these tickets, grouped by ticket, so the Inspector can
+	// surface existing links. Team-only (mirrors the detail page gating) and a
+	// single grouped query over the loaded ticket set — no per-ticket round trips.
+	const linkedTasksByTicket: Record<
+		string,
+		{ id: string; displayId: string; title: string; status: string }[]
+	> = {};
+	const ticketIds = tickets.map((t) => t.id);
+	if (trackrTeam && ticketIds.length) {
+		const rows = await db
+			.select({
+				ticketId: task.sourceTicketId,
+				id: task.id,
+				number: task.number,
+				title: task.title,
+				status: task.status,
+				projectKey: project.key
+			})
+			.from(task)
+			.innerJoin(project, eq(project.id, task.projectId))
+			.where(and(inArray(task.sourceTicketId, ticketIds), isNull(task.deletedAt)));
+		for (const r of rows) {
+			if (!r.ticketId) continue;
+			(linkedTasksByTicket[r.ticketId] ??= []).push({
+				id: r.id,
+				displayId: `${r.projectKey}-${r.number}`,
+				title: r.title,
+				status: r.status
+			});
+		}
+	}
+
 	const preferences = await getPreferences(locals.user.id);
 	const savedView = (preferences.viewState?.tickets ?? {}) as Record<string, unknown>;
 
 	return {
 		tickets,
 		canCreateTicket: await anyCreatePerm(locals, myOrgIds, trackrTeam),
+		isAgent,
+		editableOrgIds,
+		linkedTasksByTicket,
 		savedView
 	};
 };

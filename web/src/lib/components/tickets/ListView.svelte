@@ -9,8 +9,9 @@
 	import type { TicketRow } from '$lib/server/tickets';
 	import { m as mm } from '$lib/paraglide/messages';
 	import { ticketStatusLabel, ticketCategoryLabel, priorityLabel } from '$lib/utils/labels';
+	import { relTime, slaSignal } from '$lib/utils/ticket-sla';
 
-	type GroupBy = 'status' | 'priority' | 'category' | 'org' | 'none';
+	type GroupBy = 'status' | 'priority' | 'category' | 'org' | 'assignee' | 'none';
 
 	interface Props {
 		tickets: TicketRow[];
@@ -56,6 +57,22 @@
 				tickets: tickets.filter((t) => t.category === c.id)
 			})).filter((g) => g.tickets.length > 0);
 		}
+		if (group === 'assignee') {
+			const ids = Array.from(new Set(tickets.map((t) => t.assignedAgentId ?? '__none')));
+			return ids
+				.map((uid) => {
+					const real = uid === '__none' ? null : uid;
+					const u = real ? resolveUser(real) : undefined;
+					return {
+						id: uid,
+						label: u?.name ?? mm.common_unassigned(),
+						dot: u?.color ?? '#7c7c84',
+						tickets: tickets.filter((t) => (t.assignedAgentId ?? '__none') === uid)
+					};
+				})
+				.filter((g) => g.tickets.length > 0)
+				.sort((a, b) => a.label.localeCompare(b.label));
+		}
 		// org
 		const orgIds = Array.from(new Set(tickets.map((t) => t.orgId)));
 		return orgIds
@@ -70,20 +87,6 @@
 			})
 			.filter((g) => g.tickets.length > 0);
 	});
-
-	function relTime(iso: string | null): string {
-		if (!iso) return '';
-		const t = new Date(iso).getTime();
-		const diff = Date.now() - t;
-		const m = Math.floor(diff / 60_000);
-		if (m < 1) return mm.tickets_just_now();
-		if (m < 60) return mm.tickets_min_ago({ m });
-		const h = Math.floor(m / 60);
-		if (h < 24) return mm.tickets_hour_ago({ h });
-		const d = Math.floor(h / 24);
-		if (d < 7) return mm.tickets_day_ago({ d });
-		return new Date(iso).toLocaleDateString();
-	}
 
 	function statusDot(id: string) {
 		return TICKET_STATUSES.find((s) => s.id === id)?.dot ?? '#7c7c84';
@@ -112,6 +115,7 @@
 				<div transition:slide={{ duration: 180, easing: cubicOut }}>
 					{#each g.tickets as t (t.id)}
 						{@const assignee = resolveUser(t.assignedAgentId)}
+						{@const sla = slaSignal(t)}
 						<button
 							type="button"
 							onclick={() => onSelect?.(t)}
@@ -130,6 +134,15 @@
 								title={t.status}
 							></span>
 							<span class="flex-1 truncate text-text">{t.subject}</span>
+							{#if sla}
+								<span
+									class="hidden shrink-0 items-center gap-1.5 text-[11px] text-text-3 lg:inline-flex"
+									title={sla.label}
+								>
+									<span class="h-1.5 w-1.5 rounded-full" style:background={sla.dot}></span>
+									<span class="max-w-[180px] truncate">{sla.label}</span>
+								</span>
+							{/if}
 							<span
 								class="hidden shrink-0 items-center gap-1 rounded-md border border-border bg-surface px-1.5 py-0.5 text-[11px] text-text-3 md:inline-flex"
 								title={t.orgName}

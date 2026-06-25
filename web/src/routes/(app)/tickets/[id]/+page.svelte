@@ -77,6 +77,9 @@
 	}
 
 	const t = $derived(data.ticket);
+	// Surfaced only when arriving from the tickets overview side panel ("Open
+	// conversation"); links back to the overview with the panel reopened.
+	const fromPanel = $derived(page.url.searchParams.get('from') === 'panel');
 	const statusMeta = $derived(TICKET_STATUSES.find((s) => s.id === t.status));
 	const priorityMeta = $derived(TICKET_PRIORITIES.find((p) => p.id === t.priority));
 	const categoryMeta = $derived(TICKET_CATEGORIES.find((c) => c.id === t.category));
@@ -264,6 +267,15 @@
 
 <div class="min-h-0 flex-1 overflow-auto">
 	<div class="mx-auto max-w-[820px] px-6 py-6">
+		{#if fromPanel}
+			<a
+				href="/tickets?ticket={t.id}"
+				class="mb-3 inline-flex items-center gap-1.5 text-[12px] text-text-3 transition-colors hover:text-text"
+			>
+				<Icon name="chevron-r" size={13} class="rotate-180" />
+				{m.tickets_back_to_overview()}
+			</a>
+		{/if}
 		<!-- Header -->
 		<div class="mb-1 flex items-center gap-2 text-[11px] text-text-3">
 			<span class="font-mono text-text-4">{t.displayId}</span>

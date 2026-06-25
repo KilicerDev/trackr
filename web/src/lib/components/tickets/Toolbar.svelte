@@ -1,58 +1,127 @@
 <script lang="ts">
 	import Icon from '../Icon.svelte';
 	import Button from '../Button.svelte';
+	import Avatar from '../Avatar.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
 	import FilterBar from '../FilterBar.svelte';
 	import type { FilterField } from '../FilterBar.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
-	import { autoPlace } from '$lib/actions/autoPlace';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
+	import { page } from '$app/state';
 	import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from '$lib/config/taxonomy';
 	import { m } from '$lib/paraglide/messages';
 	import { ticketStatusLabel, ticketCategoryLabel, priorityLabel } from '$lib/utils/labels';
 
-	type GroupBy = 'status' | 'priority' | 'category' | 'org' | 'none';
+	type GroupBy = 'status' | 'priority' | 'category' | 'org' | 'assignee' | 'none';
+	type SubBy = 'none' | 'status' | 'priority' | 'category' | 'assignee';
+
+	type LayoutData = {
+		users?: { id: string; name: string; initials: string; color: string; status: string; internal?: boolean }[];
+	};
 
 	interface Props {
+		view: 'list' | 'board';
+		setView: (v: 'list' | 'board') => void;
 		filters: Record<string, string[]>;
 		setFilters: (f: Record<string, string[]>) => void;
 		search: string;
 		setSearch: (s: string) => void;
 		group: GroupBy;
 		setGroup: (g: GroupBy) => void;
+		sub?: SubBy;
+		setSub?: (s: SubBy) => void;
 		onNew?: () => void;
 		canCreate?: boolean;
 		orgs?: { id: string; name: string; color: string }[];
 	}
 	let {
+		view,
+		setView,
 		filters,
 		setFilters,
 		search,
 		setSearch,
 		group,
 		setGroup,
+		sub = 'none',
+		setSub,
 		onNew,
 		canCreate = true,
 		orgs = []
 	}: Props = $props();
 
-	const GROUP_OPTIONS: { id: GroupBy; label: string }[] = [
-		{ id: 'status', label: m.tickets_group_status() },
-		{ id: 'priority', label: m.tickets_group_priority() },
-		{ id: 'category', label: m.tickets_group_category() },
-		{ id: 'org', label: m.tickets_group_org() },
-		{ id: 'none', label: m.tickets_group_none() }
+	// Assignees offered for grouping/filtering: internal agents only (tickets are
+	// assigned to staff, not clients).
+	const agents = $derived(
+		((page.data as LayoutData).users ?? []).filter((u) => u.internal && u.status !== 'disabled')
+	);
+
+	const GROUP_OPTIONS: { id: GroupBy; label: () => string }[] = [
+		{ id: 'status', label: m.tickets_group_status },
+		{ id: 'priority', label: m.tickets_group_priority },
+		{ id: 'category', label: m.tickets_group_category },
+		{ id: 'org', label: m.tickets_group_org },
+		{ id: 'assignee', label: m.tickets_group_assignee },
+		{ id: 'none', label: m.tickets_group_none }
+	];
+	const SUB_OPTIONS: { id: SubBy; label: () => string }[] = [
+		{ id: 'status', label: m.tickets_group_status },
+		{ id: 'priority', label: m.tickets_group_priority },
+		{ id: 'category', label: m.tickets_group_category },
+		{ id: 'assignee', label: m.tickets_group_assignee },
+		{ id: 'none', label: m.tickets_group_none }
 	];
 
 	const FIELDS: FilterField[] = [
 		{ id: 'status', label: m.tickets_field_status(), icon: 'check' },
 		{ id: 'priority', label: m.tickets_field_priority(), icon: 'filter' },
 		{ id: 'category', label: m.tickets_field_category(), icon: 'bookmark' },
+		{ id: 'assignee', label: m.tickets_field_assignee(), icon: 'users' },
 		{ id: 'org', label: m.tickets_field_org(), icon: 'org' }
 	];
 
-	let pop = $state<'group' | null>(null);
+	const groupLabel = (id: GroupBy) => GROUP_OPTIONS.find((g) => g.id === id)?.label() ?? '';
+	const subLabel = (id: SubBy) => SUB_OPTIONS.find((s) => s.id === id)?.label() ?? '';
+
+	// Group / Sub menus use fixed positioning so they survive the horizontally
+	// scrollable controls strip without being clipped by its overflow.
+	let pop = $state<'group' | 'sub' | null>(null);
+	let popAnchor: HTMLElement | null = null;
+	let popPos = $state<{ left: number; top: number } | null>(null);
+
+	function openPop(name: 'group' | 'sub', el: HTMLElement) {
+		if (pop === name) {
+			pop = null;
+			popAnchor = null;
+			return;
+		}
+		pop = name;
+		popAnchor = el;
+		queueMicrotask(positionPop);
+	}
+
+	function positionPop() {
+		if (!popAnchor) {
+			popPos = null;
+			return;
+		}
+		const r = popAnchor.getBoundingClientRect();
+		const W = 190;
+		const maxLeft = Math.max(8, window.innerWidth - W - 8);
+		popPos = { left: Math.min(r.left, maxLeft), top: r.bottom + 6 };
+	}
+
+	$effect(() => {
+		if (!pop) return;
+		const on = () => positionPop();
+		window.addEventListener('resize', on);
+		window.addEventListener('scroll', on, true);
+		return () => {
+			window.removeEventListener('resize', on);
+			window.removeEventListener('scroll', on, true);
+		};
+	});
 
 	function toggleValue(field: string, value: string) {
 		const cur = filters[field] ?? [];
@@ -62,15 +131,12 @@
 		setFilters(merged);
 	}
 
-	const groupLabel = (id: GroupBy) => GROUP_OPTIONS.find((g) => g.id === id)?.label ?? '';
-
-	function valueLabel(field: string, v: string) {
-		if (field === 'status')
-			return TICKET_STATUSES.some((s) => s.id === v) ? ticketStatusLabel(v) : v;
-		if (field === 'priority')
-			return TICKET_PRIORITIES.some((p) => p.id === v) ? priorityLabel(v) : v;
+	function valueLabel(field: string, v: string): string {
+		if (field === 'status') return TICKET_STATUSES.some((s) => s.id === v) ? ticketStatusLabel(v) : v;
+		if (field === 'priority') return TICKET_PRIORITIES.some((p) => p.id === v) ? priorityLabel(v) : v;
 		if (field === 'category')
 			return TICKET_CATEGORIES.some((c) => c.id === v) ? ticketCategoryLabel(v) : v;
+		if (field === 'assignee') return agents.find((u) => u.id === v)?.name ?? v;
 		if (field === 'org') return orgs.find((o) => o.id === v)?.name ?? v;
 		return v;
 	}
@@ -120,6 +186,23 @@
 				</span>
 			</button>
 		{/each}
+	{:else if field === 'assignee'}
+		{#each agents as u (u.id)}
+			<button
+				type="button"
+				onclick={() => toggleValue('assignee', u.id)}
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
+			>
+				<Avatar user={u} size={20} />
+				<span class="truncate text-[13px]">{u.name}</span>
+				<span class="ml-auto text-accent {values.includes(u.id) ? 'opacity-100' : 'opacity-0'}">
+					<Icon name="check" size={13} />
+				</span>
+			</button>
+		{/each}
+		{#if agents.length === 0}
+			<div class="px-2 py-2 text-[11px] text-text-3">{m.tickets_no_agents()}</div>
+		{/if}
 	{:else if field === 'org'}
 		{#each orgs as o (o.id)}
 			<button
@@ -141,49 +224,120 @@
 {/snippet}
 
 <div class="flex shrink-0 items-center gap-2 border-b border-border bg-bg px-5 py-2.5">
-	<!-- Group -->
-	<div class="relative">
-		<button
-			type="button"
-			onclick={() => (pop = pop === 'group' ? null : 'group')}
-			class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[13px] transition-colors hover:bg-surface-2"
+	<div class="tb-scroll flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+		<!-- View toggle -->
+		<div
+			class="inline-flex h-7 shrink-0 items-center rounded-lg border border-border bg-surface p-0.5 text-[13px]"
 		>
-			<span class="text-text-3">{m.tickets_group()}</span>
-			<span class="font-medium text-text">{groupLabel(group)}</span>
-			<Icon name="chevron" size={10} class="text-text-3" />
-		</button>
-		{#if pop === 'group'}
-			<div
-				use:clickOutside={() => (pop = null)}
-				use:autoPlace
-				in:fly={POPOVER_IN}
-				class="absolute top-full z-50 mt-1.5 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+			<button
+				type="button"
+				onclick={() => setView('list')}
+				class="inline-flex h-full items-center gap-1.5 rounded-md px-2 transition-colors {view === 'list'
+					? 'bg-bg-elev text-text'
+					: 'text-text-3 hover:text-text'}"
 			>
-				{#each GROUP_OPTIONS as o (o.id)}
-					<button
-						type="button"
-						onclick={() => {
-							setGroup(o.id);
-							pop = null;
-						}}
-						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text"
+				<Icon name="list" size={13} />
+				{m.tasks_view_list()}
+			</button>
+			<button
+				type="button"
+				onclick={() => setView('board')}
+				class="inline-flex h-full items-center gap-1.5 rounded-md px-2 transition-colors {view === 'board'
+					? 'bg-bg-elev text-text'
+					: 'text-text-3 hover:text-text'}"
+			>
+				<Icon name="board" size={13} />
+				{m.tasks_view_board()}
+			</button>
+		</div>
+
+		<div class="h-5 w-px shrink-0 bg-border"></div>
+
+		<!-- Group -->
+		<div class="shrink-0">
+			<button
+				type="button"
+				onclick={(e) => openPop('group', e.currentTarget)}
+				class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[13px] whitespace-nowrap transition-colors hover:bg-surface-2"
+			>
+				<span class="text-text-3">{m.tickets_group()}</span>
+				<span class="font-medium text-text">{groupLabel(group)}</span>
+				<Icon name="chevron" size={10} class="text-text-3" />
+			</button>
+			{#if pop === 'group' && popPos}
+				<div
+					use:clickOutside={() => (pop = null)}
+					in:fly={POPOVER_IN}
+					class="fixed z-50 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+					style:left="{popPos.left}px"
+					style:top="{popPos.top}px"
+				>
+					{#each GROUP_OPTIONS as o (o.id)}
+						<button
+							type="button"
+							onclick={() => {
+								setGroup(o.id);
+								pop = null;
+							}}
+							class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text"
+						>
+							<span>{o.label()}</span>
+							<span class="ml-auto text-accent {group === o.id ? 'opacity-100' : 'opacity-0'}">
+								<Icon name="check" size={12} />
+							</span>
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</div>
+
+		<!-- Sub (board view only) -->
+		{#if view === 'board'}
+			<div class="shrink-0">
+				<button
+					type="button"
+					onclick={(e) => openPop('sub', e.currentTarget)}
+					class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[13px] whitespace-nowrap transition-colors hover:bg-surface-2"
+				>
+					<span class="text-text-3">{m.tasks_sub_group()}</span>
+					<span class="font-medium text-text">{subLabel(sub)}</span>
+					<Icon name="chevron" size={10} class="text-text-3" />
+				</button>
+				{#if pop === 'sub' && popPos}
+					<div
+						use:clickOutside={() => (pop = null)}
+						in:fly={POPOVER_IN}
+						class="fixed z-50 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+						style:left="{popPos.left}px"
+						style:top="{popPos.top}px"
 					>
-						<span>{o.label}</span>
-						<span class="ml-auto text-accent {group === o.id ? 'opacity-100' : 'opacity-0'}">
-							<Icon name="check" size={12} />
-						</span>
-					</button>
-				{/each}
+						{#each SUB_OPTIONS as o (o.id)}
+							<button
+								type="button"
+								onclick={() => {
+									setSub?.(o.id);
+									pop = null;
+								}}
+								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text"
+							>
+								<span>{o.label()}</span>
+								<span class="ml-auto text-accent {sub === o.id ? 'opacity-100' : 'opacity-0'}">
+									<Icon name="check" size={12} />
+								</span>
+							</button>
+						{/each}
+					</div>
+				{/if}
 			</div>
 		{/if}
-	</div>
 
-	<div class="h-5 w-px bg-border"></div>
+		<div class="h-5 w-px shrink-0 bg-border"></div>
 
-	<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
+		<div class="min-w-[84px] shrink-0">
+			<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
+		</div>
 
-	<div class="ml-auto flex shrink-0 items-center gap-2">
-		<div class="relative">
+		<div class="relative ml-auto w-44 min-w-[120px] shrink">
 			<span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-3">
 				<Icon name="search" size={13} />
 			</span>
@@ -192,14 +346,26 @@
 				placeholder={m.tickets_search_placeholder()}
 				value={search}
 				oninput={(e) => setSearch((e.target as HTMLInputElement).value)}
-				class="h-7 w-56 rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[13px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
+				class="h-7 w-full rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[13px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
 			/>
 		</div>
-		{#if canCreate}
+	</div>
+
+	{#if canCreate}
+		<div class="shrink-0">
 			<Button variant="primary" size="sm" onclick={() => onNew?.()}>
 				<Icon name="plus" size={13} />
 				{m.tickets_new_title()}
 			</Button>
-		{/if}
-	</div>
+		</div>
+	{/if}
 </div>
+
+<style>
+	.tb-scroll {
+		scrollbar-width: none;
+	}
+	.tb-scroll::-webkit-scrollbar {
+		display: none;
+	}
+</style>

@@ -27,9 +27,12 @@
 		// Restrict the org picker to a specific org and lock it (used for
 		// client-role users who can only file against their own org).
 		lockedOrgId?: string | null;
+		// Preselect an org but leave the picker editable (used when opening the
+		// modal from an org-grouped board column).
+		prefillOrgId?: string | null;
 	}
 
-	let { open, onclose, orgs = [], lockedOrgId = null }: Props = $props();
+	let { open, onclose, orgs = [], lockedOrgId = null, prefillOrgId = null }: Props = $props();
 
 	type Priority = (typeof TICKET_PRIORITIES)[number]['id'];
 	type Category = (typeof TICKET_CATEGORIES)[number]['id'];
@@ -66,7 +69,7 @@
 		if (open) {
 			subject = '';
 			description = '';
-			orgId = lockedOrgId ?? orgs[0]?.id ?? '';
+			orgId = lockedOrgId ?? prefillOrgId ?? orgs[0]?.id ?? '';
 			priority = 'medium';
 			category = 'general';
 			submitting = false;
