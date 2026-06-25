@@ -26,6 +26,8 @@
 		// MentionTextarea; the tag lands as a chip via onTagAdd, not in the text.
 		tags?: import('$lib/server/chat').ChatTag[];
 		onTagAdd?: (id: string | null, label: string) => void;
+		// Allow sending with an empty body (e.g. when files are staged).
+		hasAttachments?: boolean;
 	}
 
 	let {
@@ -38,13 +40,16 @@
 		rightActions,
 		projectId = null,
 		tags,
-		onTagAdd
+		onTagAdd,
+		hasAttachments = false
 	}: Props = $props();
+
+	const canSend = $derived(!sending && (value.trim().length > 0 || hasAttachments));
 
 	function onKey(e: KeyboardEvent) {
 		if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
 			e.preventDefault();
-			if (!sending && value.trim()) onsend();
+			if (canSend) onsend();
 		}
 	}
 </script>
@@ -72,7 +77,7 @@
 				type="button"
 				aria-label={m.composer_send()}
 				onclick={onsend}
-				disabled={sending || !value.trim()}
+				disabled={!canSend}
 				class="grid h-8 w-8 place-items-center rounded-lg bg-accent text-white shadow-btn transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{#if sending}

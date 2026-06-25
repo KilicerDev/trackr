@@ -7,12 +7,14 @@
 	import MentionTextarea from '$lib/components/MentionTextarea.svelte';
 	import MentionText from '$lib/components/MentionText.svelte';
 	import AttachmentList from '$lib/components/attachments/AttachmentList.svelte';
+	import AttachmentDropzone from '$lib/components/attachments/AttachmentDropzone.svelte';
+	import StagedFileList from '$lib/components/attachments/StagedFileList.svelte';
 	import TagSelect from '$lib/components/chat/TagSelect.svelte';
 	import { createOrgTag } from '$lib/components/chat/tags';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import type { AttachmentDTO } from '$lib/config/attachments';
+	import { selectStageable, type AttachmentDTO } from '$lib/config/attachments';
 	import type { ChatMessage, ChatTag, FeedThread } from '$lib/server/chat';
 
 	type FeedMsg = Omit<ChatMessage, 'files'> & { files: AttachmentDTO[] };
@@ -74,6 +76,8 @@
 	let newTitle = $state('');
 	let newBody = $state('');
 	let newTags = $state<string[]>([]);
+	let newFiles = $state<File[]>([]);
+	let newFileInput = $state<HTMLInputElement>();
 	let creating = $state(false);
 	// Inline `#` in the message body adds a tag chip (id given) or creates one.
 	async function handleInlineTag(id: string | null, label: string) {
@@ -91,18 +95,20 @@
 		}
 	}
 	async function submitThread() {
-		if (creating || !newTitle.trim() || !newBody.trim()) return;
+		if (creating || !newTitle.trim() || (!newBody.trim() && newFiles.length === 0)) return;
 		creating = true;
 		const ok = await post(
 			'createThread',
 			{ org: data.activeOrgId, title: newTitle.trim(), body: newBody.trim(), tags: newTags.join(',') },
-			m.chat_err_create_failed()
+			m.chat_err_create_failed(),
+			newFiles
 		);
 		creating = false;
 		if (ok) {
 			newTitle = '';
 			newBody = '';
 			newTags = [];
+			newFiles = [];
 		}
 	}
 	function newKey(e: KeyboardEvent) {
@@ -115,20 +121,34 @@
 	// ── Replies (one open at a time) ─────────────────────────────────────────────
 	let replyOpenId = $state<string | null>(null);
 	let replyBody = $state('');
+	let replyFiles = $state<File[]>([]);
+	let replyFileInput = $state<HTMLInputElement>();
 	let replySending = $state(false);
 	function openReply(id: string) {
 		replyOpenId = replyOpenId === id ? null : id;
 		replyBody = '';
+		replyFiles = [];
 	}
 	async function sendReply(threadId: string) {
-		if (replySending || !replyBody.trim()) return;
+		if (replySending || (!replyBody.trim() && replyFiles.length === 0)) return;
 		replySending = true;
-		const ok = await post('postMessage', { threadId, body: replyBody.trim() }, m.chat_err_send_failed());
+		const ok = await post(
+			'postMessage',
+			{ threadId, body: replyBody.trim() },
+			m.chat_err_send_failed(),
+			replyFiles
+		);
 		replySending = false;
 		if (ok) {
 			replyBody = '';
+			replyFiles = [];
 			replyOpenId = null;
 		}
+	}
+	function pickInto(input: HTMLInputElement | undefined, apply: (files: File[]) => void) {
+		const files = input?.files;
+		if (files?.length) apply(Array.from(files));
+		if (input) input.value = '';
 	}
 
 	// ── Per-thread tag editing ────────────────────────────────────────────────────
@@ -137,10 +157,24 @@
 		await post('setTags', { threadId, tags: ids.join(',') }, m.chat_err_tag_failed());
 	}
 
-	// Shared POST helper — form-encodes, invalidates on success, toasts on failure.
-	async function post(action: string, fields: Record<string, string>, errMsg: string): Promise<boolean> {
+	// Staging helper for a file picker / drop target.
+	function stage(current: File[], incoming: File[]): File[] {
+		const { accepted, errors } = selectStageable(incoming, current.length);
+		for (const err of errors) showToast('err', err);
+		return accepted.length ? [...current, ...accepted] : current;
+	}
+
+	// Shared POST helper — form-encodes, optionally attaches files, invalidates on
+	// success, toasts on failure.
+	async function post(
+		action: string,
+		fields: Record<string, string>,
+		errMsg: string,
+		files: File[] = []
+	): Promise<boolean> {
 		const fd = new FormData();
 		for (const [k, v] of Object.entries(fields)) fd.set(k, v);
+		for (const f of files) fd.append('attachments', f);
 		try {
 			const res = await fetch(`/chat?/${action}`, { method: 'POST', body: fd });
 			if (!res.ok) throw new Error(errMsg);
@@ -366,12 +400,41 @@
 					<!-- Reply affordance -->
 					<div class="border-t border-border px-4 py-2">
 						{#if replyOpenId === t.id}
-							<Composer
-								bind:value={replyBody}
-								onsend={() => sendReply(t.id)}
-								sending={replySending}
-								placeholder={m.chat_reply_placeholder()}
-							/>
+							<AttachmentDropzone onfiles={(f) => (replyFiles = stage(replyFiles, f))}>
+								{#if replyFiles.length}
+									<div class="mb-2">
+										<StagedFileList
+											files={replyFiles}
+											onremove={(i) => (replyFiles = replyFiles.filter((_, j) => j !== i))}
+										/>
+									</div>
+								{/if}
+								<Composer
+									bind:value={replyBody}
+									onsend={() => sendReply(t.id)}
+									sending={replySending}
+									hasAttachments={replyFiles.length > 0}
+									placeholder={m.chat_reply_placeholder()}
+								>
+									{#snippet rightActions()}
+										<button
+											type="button"
+											aria-label={m.chat_attach()}
+											onclick={() => replyFileInput?.click()}
+											class="grid h-8 w-8 place-items-center rounded-lg text-text-3 hover:bg-surface hover:text-text"
+										>
+											<Icon name="paperclip" size={15} />
+										</button>
+										<input
+											bind:this={replyFileInput}
+											type="file"
+											multiple
+											class="hidden"
+											onchange={() => pickInto(replyFileInput, (f) => (replyFiles = stage(replyFiles, f)))}
+										/>
+									{/snippet}
+								</Composer>
+							</AttachmentDropzone>
 						{:else}
 							<button
 								type="button"
@@ -391,49 +454,74 @@
 	<!-- ── New thread composer (always open) ────────────────────────────────────── -->
 	<div class="border-t border-border px-6 py-3">
 		<div class="mx-auto max-w-3xl">
-			<div
-				class="rounded-xl border border-border bg-surface transition-colors focus-within:border-border-strong"
-			>
-				<input
-					bind:value={newTitle}
-					placeholder={m.chat_title_placeholder()}
-					onkeydown={newKey}
-					class="w-full bg-transparent px-3.5 pt-3 text-[15px] font-semibold outline-none placeholder:text-text-3"
-				/>
-				<MentionTextarea
-					bind:value={newBody}
-					tags={data.tags}
-					onTagAdd={handleInlineTag}
-					onkeydown={newKey}
-					placeholder={m.chat_message_placeholder()}
-					rows={2}
-					class="w-full resize-none border-0 bg-transparent px-3.5 pt-1.5 pb-1 text-[13px] leading-relaxed outline-none placeholder:text-text-3"
-				/>
-				<div class="flex items-center gap-2 px-2.5 pt-1 pb-2.5">
-					<TagSelect
-						dropUp
-						available={data.tags}
-						selected={newTags}
-						orgId={data.activeOrgId}
-						onchange={(ids) => (newTags = ids)}
+			<AttachmentDropzone onfiles={(f) => (newFiles = stage(newFiles, f))}>
+				<div
+					class="rounded-xl border border-border bg-surface transition-colors focus-within:border-border-strong"
+				>
+					<input
+						bind:value={newTitle}
+						placeholder={m.chat_title_placeholder()}
+						onkeydown={newKey}
+						class="w-full bg-transparent px-3.5 pt-3 text-[15px] font-semibold outline-none placeholder:text-text-3"
 					/>
-					<button
-						type="button"
-						aria-label={m.chat_create_thread()}
-						onclick={submitThread}
-						disabled={creating || !newTitle.trim() || !newBody.trim()}
-						class="ml-auto grid h-8 w-8 place-items-center rounded-lg bg-accent text-white shadow-btn transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						{#if creating}
-							<span
-								class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"
-							></span>
-						{:else}
-							<Icon name="send" size={13} />
-						{/if}
-					</button>
+					<MentionTextarea
+						bind:value={newBody}
+						tags={data.tags}
+						onTagAdd={handleInlineTag}
+						onkeydown={newKey}
+						placeholder={m.chat_message_placeholder()}
+						rows={2}
+						class="w-full resize-none border-0 bg-transparent px-3.5 pt-1.5 pb-1 text-[13px] leading-relaxed outline-none placeholder:text-text-3"
+					/>
+					{#if newFiles.length}
+						<div class="px-3.5 pb-1">
+							<StagedFileList
+								files={newFiles}
+								onremove={(i) => (newFiles = newFiles.filter((_, j) => j !== i))}
+							/>
+						</div>
+					{/if}
+					<div class="flex items-center gap-2 px-2.5 pt-1 pb-2.5">
+						<button
+							type="button"
+							aria-label={m.chat_attach()}
+							onclick={() => newFileInput?.click()}
+							class="grid h-8 w-8 place-items-center rounded-lg text-text-3 hover:bg-bg-elev hover:text-text"
+						>
+							<Icon name="paperclip" size={15} />
+						</button>
+						<input
+							bind:this={newFileInput}
+							type="file"
+							multiple
+							class="hidden"
+							onchange={() => pickInto(newFileInput, (f) => (newFiles = stage(newFiles, f)))}
+						/>
+						<TagSelect
+							dropUp
+							available={data.tags}
+							selected={newTags}
+							orgId={data.activeOrgId}
+							onchange={(ids) => (newTags = ids)}
+						/>
+						<button
+							type="button"
+							aria-label={m.chat_create_thread()}
+							onclick={submitThread}
+							disabled={creating || !newTitle.trim() || (!newBody.trim() && newFiles.length === 0)}
+							class="ml-auto grid h-8 w-8 place-items-center rounded-lg bg-accent text-white shadow-btn transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							{#if creating}
+								<span
+									class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"
+								></span>
+							{:else}
+								<Icon name="send" size={13} />
+							{/if}
+						</button>
+					</div>
 				</div>
-			</div>
+			</AttachmentDropzone>
 		</div>
 	</div>
 </div>
