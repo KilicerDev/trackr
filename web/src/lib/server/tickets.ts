@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { db } from './db';
-import { organization, task, ticket, ticketMessage } from './db/app.schema';
+import { organization, task, ticket, message, thread } from './db/app.schema';
 
 export const TICKET_STATUSES = [
 	'open',
@@ -143,13 +143,20 @@ export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 	if (ids.length) {
 		const msgRows = await db
 			.select({
-				ticketId: ticketMessage.ticketId,
+				ticketId: thread.subjectId,
 				count: sql<number>`count(*)::int`,
-				last: sql<string | null>`max(${ticketMessage.createdAt})`
+				last: sql<string | null>`max(${message.createdAt})`
 			})
-			.from(ticketMessage)
-			.where(inArray(ticketMessage.ticketId, ids))
-			.groupBy(ticketMessage.ticketId);
+			.from(message)
+			.innerJoin(thread, eq(thread.id, message.threadId))
+			.where(
+				and(
+					eq(thread.subjectType, 'ticket'),
+					inArray(thread.subjectId, ids),
+					isNull(message.deletedAt)
+				)
+			)
+			.groupBy(thread.subjectId);
 		for (const m of msgRows) {
 			counts.set(m.ticketId, { count: Number(m.count), last: toIso(m.last) });
 		}
@@ -192,21 +199,33 @@ export async function loadTicketMessages(
 	ticketId: string,
 	opts: { includeInternal: boolean }
 ): Promise<TicketMessageRow[]> {
-	const conditions = [eq(ticketMessage.ticketId, ticketId)];
+	const conditions = [
+		eq(thread.subjectType, 'ticket'),
+		eq(thread.subjectId, ticketId),
+		isNull(message.deletedAt)
+	];
 	if (!opts.includeInternal) {
-		conditions.push(eq(ticketMessage.isInternalNote, false));
+		conditions.push(eq(message.internal, false));
 	}
 	const rows = await db
-		.select()
-		.from(ticketMessage)
+		.select({
+			id: message.id,
+			authorId: message.authorId,
+			body: message.body,
+			internal: message.internal,
+			createdAt: message.createdAt,
+			updatedAt: message.updatedAt
+		})
+		.from(message)
+		.innerJoin(thread, eq(thread.id, message.threadId))
 		.where(and(...conditions))
-		.orderBy(ticketMessage.createdAt);
+		.orderBy(message.createdAt);
 	return rows.map((m) => ({
 		id: m.id,
-		ticketId: m.ticketId,
+		ticketId,
 		authorId: m.authorId,
 		body: m.body,
-		isInternalNote: m.isInternalNote,
+		isInternalNote: m.internal,
 		createdAt: m.createdAt.toISOString(),
 		updatedAt: m.updatedAt.toISOString()
 	}));
@@ -322,12 +341,26 @@ type AddMessageInput = {
 export async function addTicketMessage(input: AddMessageInput): Promise<{ id: string }> {
 	const id = crypto.randomUUID();
 	await db.transaction(async (tx) => {
-		await tx.insert(ticketMessage).values({
+		// Get-or-create the ticket's thread (the backfill made one per existing
+		// ticket; new tickets create theirs lazily on first message).
+		let [th] = await tx
+			.select({ id: thread.id })
+			.from(thread)
+			.where(and(eq(thread.subjectType, 'ticket'), eq(thread.subjectId, input.ticketId)))
+			.limit(1);
+		if (!th) {
+			const tid = crypto.randomUUID();
+			await tx
+				.insert(thread)
+				.values({ id: tid, subjectType: 'ticket', subjectId: input.ticketId });
+			th = { id: tid };
+		}
+		await tx.insert(message).values({
 			id,
-			ticketId: input.ticketId,
+			threadId: th.id,
 			authorId: input.authorId,
 			body: input.body,
-			isInternalNote: input.isInternalNote
+			internal: input.isInternalNote
 		});
 
 		if (input.isInternalNote) return;
@@ -440,10 +473,17 @@ export async function getTicket(ticketId: string): Promise<TicketRow | null> {
 	const [mc] = await db
 		.select({
 			count: sql<number>`count(*)::int`,
-			last: sql<string | null>`max(${ticketMessage.createdAt})`
+			last: sql<string | null>`max(${message.createdAt})`
 		})
-		.from(ticketMessage)
-		.where(eq(ticketMessage.ticketId, ticketId));
+		.from(message)
+		.innerJoin(thread, eq(thread.id, message.threadId))
+		.where(
+			and(
+				eq(thread.subjectType, 'ticket'),
+				eq(thread.subjectId, ticketId),
+				isNull(message.deletedAt)
+			)
+		);
 	return {
 		id: t.id,
 		orgId: t.orgId,

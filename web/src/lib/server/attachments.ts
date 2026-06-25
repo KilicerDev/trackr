@@ -357,6 +357,9 @@ interface EntityContext {
 	projectId: string | null;
 	/** Owner user ids, for ticket `read.own` checks. */
 	ticketOwners: string[];
+	/** For a `message` attachment: which permission model applies (the thread's
+	 * subject). Lets one polymorphic type carry chat / ticket / task semantics. */
+	messageSubject?: 'org' | 'ticket' | 'task';
 }
 
 /**
@@ -441,16 +444,49 @@ export async function resolveEntityContext(
 			return { orgId: null, projectId: null, ticketOwners: [] };
 		}
 		case 'message': {
-			// Chat message: scope comes from its thread's subject. v1 only has
-			// org-subject threads, so resolve the org and gate on org.chat.*.
+			// A message's scope comes from its thread's subject: org chat, a ticket,
+			// or a task. Resolve it so the right permission model applies below.
 			const [row] = await db
 				.select({ subjectType: thread.subjectType, subjectId: thread.subjectId })
 				.from(message)
 				.innerJoin(thread, eq(thread.id, message.threadId))
 				.where(and(eq(message.id, entityId), isNull(message.deletedAt), isNull(thread.deletedAt)))
 				.limit(1);
-			if (!row || row.subjectType !== 'org') return null;
-			return { orgId: row.subjectId, projectId: null, ticketOwners: [] };
+			if (!row) return null;
+			if (row.subjectType === 'org') {
+				return { orgId: row.subjectId, projectId: null, ticketOwners: [], messageSubject: 'org' };
+			}
+			if (row.subjectType === 'ticket') {
+				const [t] = await db
+					.select({
+						orgId: ticket.orgId,
+						customerId: ticket.customerId,
+						createdBy: ticket.createdBy,
+						assignedAgentId: ticket.assignedAgentId
+					})
+					.from(ticket)
+					.where(and(eq(ticket.id, row.subjectId), isNull(ticket.deletedAt)))
+					.limit(1);
+				if (!t) return null;
+				return {
+					orgId: t.orgId,
+					projectId: null,
+					ticketOwners: [t.customerId, t.createdBy, t.assignedAgentId].filter(
+						(v): v is string => !!v
+					),
+					messageSubject: 'ticket'
+				};
+			}
+			if (row.subjectType === 'task') {
+				const [tk] = await db
+					.select({ projectId: task.projectId })
+					.from(task)
+					.where(and(eq(task.id, row.subjectId), isNull(task.deletedAt)))
+					.limit(1);
+				if (!tk) return null;
+				return { orgId: null, projectId: tk.projectId, ticketOwners: [], messageSubject: 'task' };
+			}
+			return null;
 		}
 	}
 }
@@ -504,6 +540,35 @@ export async function authorizeAttachmentAccess(
 			// Both read and write require Trackr-team membership.
 			return isTrackrTeam(locals);
 		case 'message': {
+			// Dispatch to the same model as the message's thread subject.
+			if (ctx.messageSubject === 'ticket') {
+				const orgId = ctx.orgId;
+				if (!orgId) return false;
+				if (mode === 'write') {
+					return (
+						(await can(locals, 'org.tickets.edit.any', { orgId })) ||
+						(await can(locals, 'org.tickets.comment', { orgId }))
+					);
+				}
+				if (await can(locals, 'org.tickets.read.any', { orgId })) return true;
+				const uid = locals.user?.id;
+				if (uid && ctx.ticketOwners.includes(uid)) {
+					return can(locals, 'org.tickets.read.own', { orgId });
+				}
+				return false;
+			}
+			if (ctx.messageSubject === 'task') {
+				const projectId = ctx.projectId;
+				if (!projectId) return false;
+				if (mode === 'write') {
+					return (
+						(await can(locals, 'project.tasks.edit.any', { projectId })) ||
+						(await can(locals, 'project.tasks.comment', { projectId }))
+					);
+				}
+				return can(locals, 'project.tasks.read', { projectId });
+			}
+			// org chat
 			const orgId = ctx.orgId;
 			if (!orgId) return false;
 			return can(locals, mode === 'write' ? 'org.chat.post' : 'org.chat.read', { orgId });
@@ -537,8 +602,17 @@ export async function authorizeAttachmentDelete(
 		case 'note':
 			return isTrackrTeam(locals);
 		case 'message': {
-			// Uploader may remove their own file; otherwise requires post rights.
+			if (ctx.messageSubject === 'ticket') {
+				return ctx.orgId ? can(locals, 'org.tickets.edit.any', { orgId: ctx.orgId }) : false;
+			}
+			// Task and org-chat: the uploader may remove their own file; otherwise
+			// requires edit/post rights on the project / org.
 			if (locals.user?.id && row.uploadedBy === locals.user.id) return true;
+			if (ctx.messageSubject === 'task') {
+				return ctx.projectId
+					? can(locals, 'project.tasks.edit.any', { projectId: ctx.projectId })
+					: false;
+			}
 			return ctx.orgId ? can(locals, 'org.chat.post', { orgId: ctx.orgId }) : false;
 		}
 	}

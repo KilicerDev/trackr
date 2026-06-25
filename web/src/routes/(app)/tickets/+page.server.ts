@@ -1,7 +1,7 @@
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
 import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { organization, ticket, ticketMessage, ticketFavorite } from '$lib/server/db/app.schema';
+import { organization, ticket, message, thread, ticketFavorite } from '$lib/server/db/app.schema';
 import { assertCan, can, isTrackrTeam } from '$lib/server/permissions';
 import { attachFormFiles, deleteAttachmentsFor } from '$lib/server/attachments';
 import {
@@ -326,10 +326,11 @@ export const actions: Actions = {
 			// to reclaim disk.
 			await deleteAttachmentsFor('ticket', id);
 			const msgs = await db
-				.select({ id: ticketMessage.id })
-				.from(ticketMessage)
-				.where(eq(ticketMessage.ticketId, id));
-			for (const m of msgs) await deleteAttachmentsFor('ticket_message', m.id);
+				.select({ id: message.id })
+				.from(message)
+				.innerJoin(thread, eq(thread.id, message.threadId))
+				.where(and(eq(thread.subjectType, 'ticket'), eq(thread.subjectId, id)));
+			for (const msg of msgs) await deleteAttachmentsFor('message', msg.id);
 			return { ok: true };
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : m.tickets_delete_failed_server();
@@ -373,7 +374,7 @@ export const actions: Actions = {
 			// Attach any files staged on the composer to the new message.
 			await attachFormFiles({
 				files: form.getAll('attachments'),
-				entityType: 'ticket_message',
+				entityType: 'message',
 				entityId: messageId,
 				orgId,
 				projectId: null,

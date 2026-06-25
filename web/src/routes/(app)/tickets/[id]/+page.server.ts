@@ -64,7 +64,7 @@ export const load: ServerLoad = async ({ params, locals }) => {
 	const [attachments, messageAttachmentMap] = await Promise.all([
 		listAttachments('ticket', id),
 		listAttachmentsForMany(
-			'ticket_message',
+			'message',
 			messages.map((m) => m.id)
 		)
 	]);

@@ -993,7 +993,14 @@ export const thread = pgTable(
 			.$onUpdate(() => /* @__PURE__ */ new Date())
 			.notNull()
 	},
-	(t) => [index('thread_subject_idx').on(t.subjectType, t.subjectId, t.updatedAt)]
+	(t) => [
+		index('thread_subject_idx').on(t.subjectType, t.subjectId, t.updatedAt),
+		// Entity-attached threads are 1:1 with their subject (a task/ticket has
+		// exactly one thread). Chat subjects (org/project/dm) are many-per-subject.
+		uniqueIndex('thread_entity_unique')
+			.on(t.subjectType, t.subjectId)
+			.where(sql`${t.subjectType} in ('ticket', 'task')`)
+	]
 );
 
 export type Thread = typeof thread.$inferSelect;
@@ -1012,6 +1019,9 @@ export const message = pgTable(
 		body: text('body').notNull(),
 		// 'comment' = human message; 'system' reserved for folded-in activity events.
 		kind: text('kind').$type<MessageKind>().notNull().default('comment'),
+		// Agents-only note on a ticket thread (hidden from the customer). Always
+		// false for org-chat / task threads. Replaces ticket_message.is_internal_note.
+		internal: boolean('internal').notNull().default(false),
 		meta: jsonb('meta').$type<Record<string, unknown>>(),
 		editedAt: timestamp('edited_at'),
 		deletedAt: timestamp('deleted_at'),
