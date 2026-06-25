@@ -131,9 +131,7 @@
 		<div class="px-5 pt-5 pb-3">
 			<div class="mb-4 flex items-start gap-3.5">
 				<span
-					class="relative grid shrink-0 place-items-center font-semibold text-white transition-[background] duration-200"
-					style:width="48px"
-					style:height="48px"
+					class="relative grid shrink-0 place-items-center font-semibold text-white transition-[background] duration-200 size-12"
 					style:border-radius="13px"
 					style:font-size="18px"
 					style:background="linear-gradient(140deg, {color}, color-mix(in oklch, {color} 70%, #000) 85%)"

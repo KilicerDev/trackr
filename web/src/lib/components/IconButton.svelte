@@ -22,8 +22,7 @@
 	{@render children()}
 	{#if dot}
 		<span
-			class="absolute top-[6px] right-[6px] h-[7px] w-[7px] rounded-full bg-accent"
-			style:box-shadow="0 0 0 2px var(--bg)"
+			class="absolute top-[6px] right-[6px] h-[7px] w-[7px] rounded-full bg-accent ring-2 ring-bg"
 		></span>
 	{/if}
 </button>

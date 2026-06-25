@@ -114,7 +114,7 @@
 	}
 </script>
 
-<aside class="flex min-h-0 flex-col border-r border-border bg-bg-elev" style:width="260px">
+<aside class="flex min-h-0 flex-col border-r border-border bg-bg-elev w-[260px]">
 	<!-- Tabs + contextual create -->
 	<div class="flex items-center gap-2 px-3 pt-3 pb-2.5">
 		<div class="flex flex-1 items-center gap-0.5 rounded-lg border border-border bg-surface p-0.5">

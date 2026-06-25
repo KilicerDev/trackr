@@ -317,9 +317,7 @@
 				<div class="flex items-center -space-x-1.5">
 					{#each others.slice(0, 4) as u (u.clientId)}
 						<span
-							class="grid place-items-center rounded-full text-[9.5px] font-semibold text-white select-none"
-							style:width="22px"
-							style:height="22px"
+							class="grid place-items-center rounded-full text-[9.5px] font-semibold text-white select-none size-[22px]"
 							style:background={u.color}
 							style:box-shadow="0 0 0 2px var(--bg), 0 0 0 3.5px {u.color}55"
 							title={m.wiki_collaborators_now({ name: u.name })}
@@ -329,10 +327,7 @@
 					{/each}
 					{#if others.length > 4}
 						<span
-							class="grid place-items-center rounded-full bg-surface-2 text-[9.5px] font-semibold text-text-3"
-							style:width="22px"
-							style:height="22px"
-							style:box-shadow="0 0 0 2px var(--bg)"
+							class="grid place-items-center rounded-full bg-surface-2 text-[9.5px] font-semibold text-text-3 size-[22px] ring-2 ring-bg"
 						>
 							+{others.length - 4}
 						</span>

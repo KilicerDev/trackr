@@ -12,26 +12,22 @@
 </script>
 
 <span
-	class="inline-flex shrink-0 items-end gap-[2px]"
-	style:height="12px"
+	class="inline-flex shrink-0 items-end gap-[2px] h-[12px]"
 	aria-label={priorityLabel(priority)}
 	title={priorityLabel(priority)}
 >
 	<span
-		class="block w-[3px] rounded-[1px]"
-		style:height="4px"
+		class="block w-[3px] rounded-[1px] h-[4px]"
 		style:background={color}
 		style:opacity={level === 0 ? 0.35 : 1}
 	></span>
 	<span
-		class="block w-[3px] rounded-[1px]"
-		style:height="7px"
+		class="block w-[3px] rounded-[1px] h-[7px]"
 		style:background={color}
 		style:opacity={level >= 2 ? 1 : 0.35}
 	></span>
 	<span
-		class="block w-[3px] rounded-[1px]"
-		style:height="10px"
+		class="block w-[3px] rounded-[1px] h-[10px]"
 		style:background={color}
 		style:opacity={level >= 3 ? 1 : 0.35}
 	></span>

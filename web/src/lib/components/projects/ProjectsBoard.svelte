@@ -49,9 +49,7 @@
 						>
 							<div class="mb-2.5 flex items-start gap-2.5">
 								<span
-									class="inline-grid shrink-0 place-items-center font-semibold text-white"
-									style:width="30px"
-									style:height="30px"
+									class="inline-grid shrink-0 place-items-center font-semibold text-white size-[30px]"
 									style:border-radius="9px"
 									style:font-size="15px"
 									style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%,

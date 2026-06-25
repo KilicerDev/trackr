@@ -37,9 +37,7 @@
 >
 	<div class="mb-3 flex items-start gap-3">
 		<span
-			class="relative inline-grid shrink-0 place-items-center font-semibold text-white shadow-edge"
-			style:width="40px"
-			style:height="40px"
+			class="relative inline-grid shrink-0 place-items-center font-semibold text-white shadow-edge size-10"
 			style:border-radius="11px"
 			style:font-size="20px"
 			style:background="linear-gradient(140deg, {project.color}, color-mix(in oklch, {project.color} 70%,

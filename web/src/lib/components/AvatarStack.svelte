@@ -20,11 +20,10 @@
 	{/each}
 	{#if extra > 0}
 		<span
-			class="inline-grid place-items-center rounded-full bg-surface-2 font-mono text-[10px] font-medium text-text-3 select-none"
+			class="inline-grid place-items-center rounded-full bg-surface-2 font-mono text-[10px] font-medium text-text-3 select-none ring-2 ring-bg-elev"
 			style:width="{size}px"
 			style:height="{size}px"
-			style:margin-left="-{overlap}px"
-			style:box-shadow="0 0 0 2px var(--bg-elev)">+{extra}</span
+			style:margin-left="-{overlap}px">+{extra}</span
 		>
 	{/if}
 </div>
