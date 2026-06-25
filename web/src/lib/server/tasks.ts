@@ -2,7 +2,8 @@ import { and, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { db } from './db';
 import {
 	project,
-	projectActivity,
+	message,
+	thread,
 	task,
 	taskAssignee,
 	taskPlanning,
@@ -93,24 +94,30 @@ export async function loadTasks(opts?: {
 		assigneesByTask.set(r.taskId, list);
 	}
 
-	// Comments now live in project_activity (type='comment'); task-scoped
-	// comments carry the taskId. Same output shape as before so the Inspector
-	// is unchanged.
+	// Comments live in `message`, under each task's thread (subjectType='task').
+	// Same output shape as before so the Inspector is unchanged.
 	const commentRows = taskIds.length
 		? await db
 				.select({
-					id: projectActivity.id,
-					taskId: projectActivity.taskId,
-					authorId: projectActivity.actorId,
-					body: projectActivity.body,
-					createdAt: projectActivity.createdAt
+					id: message.id,
+					taskId: thread.subjectId,
+					authorId: message.authorId,
+					body: message.body,
+					createdAt: message.createdAt
 				})
-				.from(projectActivity)
-				.where(and(eq(projectActivity.type, 'comment'), inArray(projectActivity.taskId, taskIds)))
+				.from(message)
+				.innerJoin(thread, eq(thread.id, message.threadId))
+				.where(
+					and(
+						eq(thread.subjectType, 'task'),
+						inArray(thread.subjectId, taskIds),
+						isNull(message.deletedAt)
+					)
+				)
 		: [];
-	// Attachments on comments, keyed by the comment's project_activity id.
+	// Attachments on comments, keyed by the comment's (now message) id.
 	const commentAttachments = await listAttachmentsForMany(
-		'project_activity',
+		'message',
 		commentRows.map((c) => c.id)
 	);
 	const commentsByTask = new Map<string, NonNullable<Task['comments']>>();

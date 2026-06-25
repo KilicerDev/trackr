@@ -3,7 +3,8 @@ import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
 	project,
-	projectActivity,
+	message,
+	thread,
 	task,
 	taskAssignee,
 	taskPlanning,
@@ -465,20 +466,31 @@ export const actions: Actions = {
 
 		const commentId = crypto.randomUUID();
 		try {
-			await db.insert(projectActivity).values({
+			// Get-or-create the task's comment thread (backfill made one per task;
+			// new tasks create theirs lazily on first comment).
+			let [th] = await db
+				.select({ id: thread.id })
+				.from(thread)
+				.where(and(eq(thread.subjectType, 'task'), eq(thread.subjectId, target.id)))
+				.limit(1);
+			if (!th) {
+				const tid = crypto.randomUUID();
+				await db.insert(thread).values({ id: tid, subjectType: 'task', subjectId: target.id });
+				th = { id: tid };
+			}
+			await db.insert(message).values({
 				id: commentId,
-				projectId: target.projectId,
-				taskId: target.id,
-				actorId: me.id,
-				type: 'comment',
-				body: body || '(attachment)'
+				threadId: th.id,
+				authorId: me.id,
+				body: body || '(attachment)',
+				kind: 'comment'
 			});
 			// Bump the task's updatedAt so the activity flag is accurate.
 			await db.update(task).set({ updatedAt: new Date() }).where(eq(task.id, target.id));
 			// Attach any files staged on the composer to the new comment.
 			await attachFormFiles({
 				files: stagedFiles,
-				entityType: 'project_activity',
+				entityType: 'message',
 				entityId: commentId,
 				orgId: null,
 				projectId: target.projectId,
@@ -498,9 +510,16 @@ export const actions: Actions = {
 				.from(taskAssignee)
 				.where(eq(taskAssignee.taskId, target.id)),
 			db
-				.select({ authorId: projectActivity.actorId })
-				.from(projectActivity)
-				.where(and(eq(projectActivity.taskId, target.id), eq(projectActivity.type, 'comment')))
+				.select({ authorId: message.authorId })
+				.from(message)
+				.innerJoin(thread, eq(thread.id, message.threadId))
+				.where(
+					and(
+						eq(thread.subjectType, 'task'),
+						eq(thread.subjectId, target.id),
+						isNull(message.deletedAt)
+					)
+				)
 		]);
 		const recipients = taskRecipients({
 			creatorId: target.createdBy,
@@ -670,10 +689,11 @@ export const actions: Actions = {
 			// unreachable; remove their files (task-level + per-comment) to reclaim disk.
 			await deleteAttachmentsFor('task', target.id);
 			const comments = await db
-				.select({ id: projectActivity.id })
-				.from(projectActivity)
-				.where(and(eq(projectActivity.taskId, target.id), eq(projectActivity.type, 'comment')));
-			for (const c of comments) await deleteAttachmentsFor('project_activity', c.id);
+				.select({ id: message.id })
+				.from(message)
+				.innerJoin(thread, eq(thread.id, message.threadId))
+				.where(and(eq(thread.subjectType, 'task'), eq(thread.subjectId, target.id)));
+			for (const c of comments) await deleteAttachmentsFor('message', c.id);
 		} catch (err) {
 			console.error('task delete failed', err);
 			return fail(500, { message: m.tasks_err_failed_delete() });
