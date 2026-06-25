@@ -6,7 +6,7 @@
 	import AvatarStack from '../AvatarStack.svelte';
 	import TypeBadge from '../TypeBadge.svelte';
 	import Icon from '../Icon.svelte';
-	import { formatDateLong, formatDateShort, formatEstimate, dueCountdown } from '$lib/data';
+	import { formatDateLong, formatDateShort, formatEstimate, dueCountdown } from '$lib/utils/format';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
 	import { m } from '$lib/paraglide/messages';
 

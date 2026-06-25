@@ -1,4 +1,4 @@
-import { TRACKR_LABELS } from '$lib/data';
+import { TRACKR_LABELS } from '$lib/config/taxonomy';
 
 // Palette reused for free-form tags that aren't one of the predefined labels.
 // Mirrors the predefined label colors so custom tags feel native.

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PriorityId } from '$lib/types';
-	import { TRACKR_PRIORITIES } from '$lib/data';
+	import { TRACKR_PRIORITIES } from '$lib/config/taxonomy';
 	import { priorityLabel } from '$lib/utils/labels';
 	interface Props {
 		priority: PriorityId;

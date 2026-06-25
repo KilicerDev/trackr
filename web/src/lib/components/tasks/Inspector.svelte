@@ -32,14 +32,9 @@
 	import TagsPopover from '../popovers/TagsPopover.svelte';
 	import TaskMenuPopover from '../popovers/TaskMenuPopover.svelte';
 	import NewMeetingDialog from '../notes/NewMeetingDialog.svelte';
-	import {
-		TRACKR_PRIORITIES,
-		TRACKR_STATUSES,
-		TRACKR_TYPES,
-		userById as mockUserById,
-		formatDateLong,
-		formatEstimate
-	} from '$lib/data';
+	import { TRACKR_PRIORITIES, TRACKR_STATUSES, TRACKR_TYPES } from '$lib/config/taxonomy';
+	import { formatDateLong, formatEstimate } from '$lib/utils/format';
+	import { userById as mockUserById } from '$lib/data';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
 	import { statusLabel, priorityLabel, typeLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';

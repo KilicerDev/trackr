@@ -7,7 +7,7 @@
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
-	import { PROJECT_STATUS } from '$lib/data';
+	import { PROJECT_STATUS } from '$lib/config/taxonomy';
 	import { projectStatusLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';

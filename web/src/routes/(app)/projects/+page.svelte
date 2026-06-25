@@ -8,7 +8,7 @@
 	import type { BoardColumn } from '$lib/components/projects/ProjectsBoard.svelte';
 	import type { ProjectView, ProjectGroup } from '$lib/components/projects/ProjectsToolbar.svelte';
 	import CreateProjectModal from '$lib/components/projects/CreateProjectModal.svelte';
-	import { PROJECT_STATUS } from '$lib/data';
+	import { PROJECT_STATUS } from '$lib/config/taxonomy';
 	import { projectStatusLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 	import { showToast } from '$lib/stores/toast.svelte';

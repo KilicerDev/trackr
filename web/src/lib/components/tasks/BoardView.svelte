@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Task, ProjectId, StatusId, PriorityId } from '$lib/types';
-	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/data';
+	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/config/taxonomy';
 	import { statusLabel, priorityLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 	import { resolveProject, resolveUser } from '$lib/stores/lookup.svelte';

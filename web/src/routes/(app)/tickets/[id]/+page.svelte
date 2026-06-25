@@ -13,7 +13,7 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
-	import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from '$lib/data';
+	import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from '$lib/config/taxonomy';
 	import type { TicketRow, TicketMessageRow } from '$lib/server/tickets';
 	import AttachmentList from '$lib/components/attachments/AttachmentList.svelte';
 	import AttachmentUploader from '$lib/components/attachments/AttachmentUploader.svelte';

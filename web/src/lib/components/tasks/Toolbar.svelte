@@ -9,7 +9,7 @@
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
-	import { TRACKR_PRIORITIES, TRACKR_STATUSES, TRACKR_LABELS } from '$lib/data';
+	import { TRACKR_PRIORITIES, TRACKR_STATUSES, TRACKR_LABELS } from '$lib/config/taxonomy';
 	import { labelMeta } from '$lib/utils/label-meta';
 	import { page } from '$app/state';
 	import { statusLabel, priorityLabel } from '$lib/utils/labels';

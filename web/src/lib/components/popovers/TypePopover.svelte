@@ -5,7 +5,7 @@
 	import { POPOVER_IN } from '$lib/config/motion';
 	import TypeBadge from '../TypeBadge.svelte';
 	import Icon from '../Icon.svelte';
-	import { TRACKR_TYPES } from '$lib/data';
+	import { TRACKR_TYPES } from '$lib/config/taxonomy';
 	import type { TypeId } from '$lib/types';
 	import { typeLabel } from '$lib/utils/labels';
 

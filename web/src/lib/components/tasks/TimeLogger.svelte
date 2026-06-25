@@ -2,7 +2,7 @@
 	import Icon from '../Icon.svelte';
 	import Button from '../Button.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
-	import { formatEstimate } from '$lib/data';
+	import { formatEstimate } from '$lib/utils/format';
 	import { m } from '$lib/paraglide/messages';
 
 	function todayIso(): string {

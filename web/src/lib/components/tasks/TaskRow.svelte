@@ -6,7 +6,8 @@
 	import TypeBadge from '../TypeBadge.svelte';
 	import Avatar from '../Avatar.svelte';
 	import Icon from '../Icon.svelte';
-	import { TRACKR_PRIORITIES, formatDateShort, dueCountdown } from '$lib/data';
+	import { TRACKR_PRIORITIES } from '$lib/config/taxonomy';
+	import { formatDateShort, dueCountdown } from '$lib/utils/format';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
 	import { priorityLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';

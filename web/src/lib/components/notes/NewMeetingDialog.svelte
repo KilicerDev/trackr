@@ -7,7 +7,7 @@
 	import ProjectPopover from '$lib/components/popovers/ProjectPopover.svelte';
 	import TaskPopover from '$lib/components/popovers/TaskPopover.svelte';
 	import DatePopover from '$lib/components/popovers/DatePopover.svelte';
-	import { formatDateLong } from '$lib/data';
+	import { formatDateLong } from '$lib/utils/format';
 	import type { ProjectId } from '$lib/types';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { m } from '$lib/paraglide/messages';

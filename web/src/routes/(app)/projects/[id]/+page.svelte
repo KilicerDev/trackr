@@ -10,7 +10,7 @@
 	import EditProjectModal from '$lib/components/projects/EditProjectModal.svelte';
 	import ProjectHistory from '$lib/components/projects/ProjectHistory.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
-	import { PROJECT_STATUS, TRACKR_STATUSES } from '$lib/data';
+	import { PROJECT_STATUS, TRACKR_STATUSES } from '$lib/config/taxonomy';
 	import { projectStatusLabel, statusLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';

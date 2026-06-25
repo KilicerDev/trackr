@@ -5,7 +5,7 @@
 	import { POPOVER_IN } from '$lib/config/motion';
 	import StatusDot from '../StatusDot.svelte';
 	import Icon from '../Icon.svelte';
-	import { TRACKR_STATUSES } from '$lib/data';
+	import { TRACKR_STATUSES } from '$lib/config/taxonomy';
 	import type { StatusId } from '$lib/types';
 	import { statusLabel } from '$lib/utils/labels';
 

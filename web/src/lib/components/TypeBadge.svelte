@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { TypeId } from '$lib/types';
-	import { TRACKR_TYPES } from '$lib/data';
+	import { TRACKR_TYPES } from '$lib/config/taxonomy';
 	import { typeLabel } from '$lib/utils/labels';
 	interface Props {
 		type: TypeId;

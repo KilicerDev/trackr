@@ -4,7 +4,7 @@
 	import Popover from '../Popover.svelte';
 	import { setActiveOrg, type PortalOrg } from '$lib/api/portal';
 	import type { TicketRow, TicketStatus } from '$lib/server/tickets';
-	import { TICKET_STATUSES } from '$lib/data';
+	import { TICKET_STATUSES } from '$lib/config/taxonomy';
 	import { m } from '$lib/paraglide/messages';
 	import { ticketStatusLabel } from '$lib/utils/labels';
 

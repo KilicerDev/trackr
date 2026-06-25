@@ -18,7 +18,8 @@
 	import EstimatePopover from '../popovers/EstimatePopover.svelte';
 	import ProjectPopover from '../popovers/ProjectPopover.svelte';
 	import TagsPopover from '../popovers/TagsPopover.svelte';
-	import { TRACKR_PRIORITIES, formatDateLong, formatEstimate } from '$lib/data';
+	import { TRACKR_PRIORITIES } from '$lib/config/taxonomy';
+	import { formatDateLong, formatEstimate } from '$lib/utils/format';
 	import type { PriorityId, ProjectId, StatusId, TypeId } from '$lib/types';
 	import { statusLabel, priorityLabel, typeLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';

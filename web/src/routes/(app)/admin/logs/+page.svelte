@@ -8,7 +8,7 @@
 	import Drawer from '$lib/components/Drawer.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
-	import { LOG_EVENT_TYPES, LOG_KINDS } from '$lib/data';
+	import { LOG_EVENT_TYPES, LOG_KINDS } from '$lib/config/taxonomy';
 	import { m } from '$lib/paraglide/messages';
 	import { logKindLabel, logEventLabel } from '$lib/utils/labels';
 	import type { PageData } from './$types';

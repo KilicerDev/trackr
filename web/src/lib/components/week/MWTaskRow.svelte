@@ -4,7 +4,8 @@
 	import PriorityBars from '../PriorityBars.svelte';
 	import TypeBadge from '../TypeBadge.svelte';
 	import Avatar from '../Avatar.svelte';
-	import { formatEstimate, loggedMinutes } from '$lib/data';
+	import { formatEstimate } from '$lib/utils/format';
+	import { loggedMinutes } from '$lib/utils/task';
 	import { resolveProject, resolveUser } from '$lib/stores/lookup.svelte';
 	import { m } from '$lib/paraglide/messages';
 

@@ -9,7 +9,8 @@
 	import type { ComposerDraft } from '$lib/components/week/SmartComposer.svelte';
 	import PriorityBars from '$lib/components/PriorityBars.svelte';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
-	import { formatEstimate, taskTimeMinutes } from '$lib/data';
+	import { formatEstimate } from '$lib/utils/format';
+	import { taskTimeMinutes } from '$lib/utils/task';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';

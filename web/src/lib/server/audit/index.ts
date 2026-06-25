@@ -8,7 +8,7 @@ import type { RequestEvent } from '@sveltejs/kit';
 import { getRequestEvent } from '$app/server';
 import { db } from '../db';
 import { auditLog } from '../db/app.schema';
-import { LOG_EVENT_TYPES } from '$lib/data';
+import { LOG_EVENT_TYPES } from '$lib/config/taxonomy';
 
 export type AuditInput = {
 	// Event key from the shared catalog (LOG_EVENT_TYPES), e.g. 'user.invite'.

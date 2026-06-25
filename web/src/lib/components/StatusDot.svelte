@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { StatusId } from '$lib/types';
-	import { TRACKR_STATUSES } from '$lib/data';
+	import { TRACKR_STATUSES } from '$lib/config/taxonomy';
 	import { statusLabel } from '$lib/utils/labels';
 	interface Props {
 		status: StatusId;

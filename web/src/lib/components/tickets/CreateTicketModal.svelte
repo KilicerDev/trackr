@@ -11,7 +11,7 @@
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
-	import { TICKET_CATEGORIES, TICKET_PRIORITIES } from '$lib/data';
+	import { TICKET_CATEGORIES, TICKET_PRIORITIES } from '$lib/config/taxonomy';
 	import AttachmentDropzone from '../attachments/AttachmentDropzone.svelte';
 	import StagedFileList from '../attachments/StagedFileList.svelte';
 	import { selectStageable } from '$lib/config/attachments';

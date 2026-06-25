@@ -5,7 +5,7 @@
 	import { POPOVER_IN } from '$lib/config/motion';
 	import PriorityBars from '../PriorityBars.svelte';
 	import Icon from '../Icon.svelte';
-	import { TRACKR_PRIORITIES } from '$lib/data';
+	import { TRACKR_PRIORITIES } from '$lib/config/taxonomy';
 	import type { PriorityId } from '$lib/types';
 	import { priorityLabel } from '$lib/utils/labels';
 
