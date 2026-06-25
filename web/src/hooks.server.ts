@@ -61,23 +61,18 @@ const handleLocale: Handle = async ({ event, resolve }) => {
 const handleParaglide: Handle = ({ event, resolve }) =>
 	paraglideMiddleware(event.request, ({ request, locale }) => {
 		event.request = request;
-		// Inject the saved theme/density/accent into the SSR'd <html> so the first
-		// paint already matches the user's preference — same no-flash approach as
-		// the locale above. The client effect in (app)/+layout re-applies the same
+		// Inject the saved theme/density into the SSR'd <html> so the first paint
+		// already matches the user's preference — same no-flash approach as the
+		// locale above. The client effect in (app)/+layout re-applies the same
 		// values on hydration (a no-op), and still drives live changes. Logged-out
 		// requests fall back to PREF_DEFAULTS (matching the old hardcoded markup).
 		const p = event.locals.preferences;
 		const rawTheme = p?.theme ?? PREF_DEFAULTS.theme;
 		const theme = rawTheme === 'system' ? 'dark' : rawTheme;
 		const density = p?.density ?? PREF_DEFAULTS.density;
-		const accent = p?.accent ?? PREF_DEFAULTS.accent;
 		return resolve(event, {
 			transformPageChunk: ({ html }) =>
-				html
-					.replace('%lang%', locale)
-					.replace('%theme%', theme)
-					.replace('%density%', density)
-					.replace('%accent%', accent)
+				html.replace('%lang%', locale).replace('%theme%', theme).replace('%density%', density)
 		});
 	});
 

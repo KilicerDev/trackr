@@ -60,12 +60,14 @@
 	--text-2: oklch(0.74 0.008 270);
 	--text-3: oklch(0.54 0.008 270);
 	--text-4: oklch(0.42 0.008 270);
-	--accent: #ef7a6d;
-	--accent-soft: rgba(239, 122, 109, 0.14);
-	--accent-strong: #f08e7f;
+	/* Brand accent (logo coral-pink). Tints derive from it so it's a single
+	   source — change --accent and the soft/strong/ring/active states follow. */
+	--accent: #ff4867;
+	--accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
+	--accent-strong: color-mix(in oklab, var(--accent) 82%, white);
 	--row-hover: rgba(255, 255, 255, 0.035);
-	--row-active: rgba(239, 122, 109, 0.07);
-	--focus-ring: 0 0 0 2px rgba(239, 122, 109, 0.45);
+	--row-active: color-mix(in srgb, var(--accent) 7%, transparent);
+	--focus-ring: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
 	--shadow-elev: 0 12px 32px -8px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.35);
 	--shadow-elev-strong: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 24px 60px -28px rgba(0, 0, 0, 0.55);
 }
@@ -82,7 +84,7 @@
 	--text-3: oklch(0.58 0.008 270);
 	--text-4: oklch(0.66 0.008 270);
 	--row-hover: rgba(0, 0, 0, 0.025);
-	--row-active: rgba(239, 122, 109, 0.08);
+	--row-active: color-mix(in srgb, var(--accent) 8%, transparent);
 	--shadow-elev: 0 12px 32px -10px rgba(40, 30, 30, 0.18), 0 2px 6px rgba(40, 30, 30, 0.06);
 	--shadow-elev-strong: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 24px 60px -28px rgba(40, 30, 30, 0.18);
 }

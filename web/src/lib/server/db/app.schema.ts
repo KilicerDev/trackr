@@ -589,7 +589,6 @@ export const userPreferences = pgTable('user_preferences', {
 		.primaryKey()
 		.references(() => user.id, { onDelete: 'cascade' }),
 	theme: text('theme').notNull().default('dark'),
-	accent: text('accent').notNull().default('#ef7a6d'),
 	density: text('density').notNull().default('comfortable'),
 	defaultLanding: text('default_landing').notNull().default('/week'),
 	weekStartsOn: integer('week_starts_on').notNull().default(1),

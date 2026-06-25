@@ -18,7 +18,6 @@
 		const root = document.documentElement;
 		root.dataset.theme = p.theme === 'system' ? 'dark' : p.theme;
 		root.dataset.density = p.density;
-		root.style.setProperty('--accent', p.accent);
 		// Align the client locale store with the saved preference (cookie is
 		// authoritative and already reconciled server-side; this is a no-op in
 		// the common case but keeps the runtime consistent without a reload).

@@ -16,7 +16,6 @@ export const actions: Actions = {
 
 		const form = await request.formData();
 		const theme = String(form.get('theme') ?? '');
-		const accent = String(form.get('accent') ?? '');
 		const density = String(form.get('density') ?? '');
 		const defaultLanding = String(form.get('defaultLanding') ?? '');
 		const weekStartsOn = Number(form.get('weekStartsOn') ?? '');
@@ -27,8 +26,6 @@ export const actions: Actions = {
 			return fail(400, { message: m.settings_err_invalid_density() });
 		if (!ALLOWED_LANDINGS.has(defaultLanding))
 			return fail(400, { message: m.settings_err_invalid_landing() });
-		if (!/^#[0-9a-fA-F]{6}$/.test(accent))
-			return fail(400, { message: m.settings_err_invalid_accent() });
 		if (![0, 1].includes(weekStartsOn))
 			return fail(400, { message: m.settings_err_invalid_week_start() });
 		if (!ALLOWED_LOCALES.has(locale))
@@ -36,7 +33,6 @@ export const actions: Actions = {
 
 		await upsertPreferences(locals.user.id, {
 			theme,
-			accent,
 			density,
 			defaultLanding,
 			weekStartsOn,

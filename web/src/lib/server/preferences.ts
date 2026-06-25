@@ -4,7 +4,6 @@ import { userPreferences, type NotificationPrefs, type UserPreferences } from '.
 
 export const PREF_DEFAULTS = {
 	theme: 'dark' as const,
-	accent: '#ef7a6d',
 	density: 'comfortable' as const,
 	defaultLanding: '/week',
 	weekStartsOn: 1,
@@ -50,7 +49,6 @@ export async function getPreferences(userId: string): Promise<ResolvedPreference
 	return {
 		userId: row.userId,
 		theme: row.theme,
-		accent: row.accent,
 		density: row.density,
 		defaultLanding: row.defaultLanding,
 		weekStartsOn: row.weekStartsOn,
@@ -62,7 +60,6 @@ export async function getPreferences(userId: string): Promise<ResolvedPreference
 
 export type PreferencePatch = Partial<{
 	theme: string;
-	accent: string;
 	density: string;
 	defaultLanding: string;
 	weekStartsOn: number;
@@ -76,7 +73,6 @@ export async function upsertPreferences(userId: string, patch: PreferencePatch) 
 	const merged = {
 		userId,
 		theme: patch.theme ?? existing.theme,
-		accent: patch.accent ?? existing.accent,
 		density: patch.density ?? existing.density,
 		defaultLanding: patch.defaultLanding ?? existing.defaultLanding,
 		weekStartsOn: patch.weekStartsOn ?? existing.weekStartsOn,
@@ -92,7 +88,6 @@ export async function upsertPreferences(userId: string, patch: PreferencePatch) 
 			target: userPreferences.userId,
 			set: {
 				theme: merged.theme,
-				accent: merged.accent,
 				density: merged.density,
 				defaultLanding: merged.defaultLanding,
 				weekStartsOn: merged.weekStartsOn,

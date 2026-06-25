@@ -2,7 +2,6 @@
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
-	import Icon from '$lib/components/Icon.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
@@ -10,7 +9,6 @@
 
 	type Prefs = {
 		theme: string;
-		accent: string;
 		density: string;
 		defaultLanding: string;
 		weekStartsOn: number;
@@ -19,7 +17,6 @@
 	const prefs = $derived((page.data as { preferences: Prefs }).preferences);
 
 	let theme = $state(prefs.theme);
-	let accent = $state(prefs.accent);
 	let density = $state(prefs.density);
 	let defaultLanding = $state(prefs.defaultLanding);
 	let weekStartsOn = $state(prefs.weekStartsOn);
@@ -39,7 +36,6 @@
 		{ value: 'en', label: 'English' },
 		{ value: 'de', label: 'Deutsch' }
 	];
-	const accents = ['#ef7a6d', '#7a9cf0', '#7fc8a9', '#c08bd6', '#f0a85c', '#9aa4b2'];
 	const landings = [
 		{ value: '/week', label: m.settings_landing_week() },
 		{ value: '/tasks', label: m.settings_landing_tasks() },
@@ -51,7 +47,6 @@
 	function applyLive() {
 		document.documentElement.dataset.theme = theme === 'system' ? 'dark' : theme;
 		document.documentElement.dataset.density = density;
-		document.documentElement.style.setProperty('--accent', accent);
 	}
 
 	$effect(() => {
@@ -60,7 +55,6 @@
 
 	const dirty = $derived(
 		theme !== prefs.theme ||
-			accent !== prefs.accent ||
 			density !== prefs.density ||
 			defaultLanding !== prefs.defaultLanding ||
 			weekStartsOn !== prefs.weekStartsOn ||
@@ -137,24 +131,6 @@
 				{/each}
 			</div>
 
-			<div class="text-text-3">{m.settings_accent()}</div>
-			<div class="flex items-center gap-2">
-				{#each accents as c (c)}
-					<button
-						type="button"
-						onclick={() => (accent = c)}
-						aria-label={m.settings_accent_color()}
-						class="grid h-7 w-7 place-items-center rounded-md transition-transform hover:scale-110 {accent ===
-						c
-							? 'ring-2 ring-text/20'
-							: ''}"
-						style:background={c}
-					>
-						{#if accent === c}<Icon name="check" size={13} class="text-white" />{/if}
-					</button>
-				{/each}
-			</div>
-
 			<span class="text-text-3">{m.settings_language()}</span>
 			<Select bind:value={locale} options={localeOptions} ariaLabel={m.settings_language()} />
 		</div>
@@ -190,7 +166,6 @@
 	</section>
 
 	<input type="hidden" name="theme" value={theme} />
-	<input type="hidden" name="accent" value={accent} />
 	<input type="hidden" name="density" value={density} />
 	<input type="hidden" name="defaultLanding" value={defaultLanding} />
 	<input type="hidden" name="weekStartsOn" value={weekStartsOn} />
