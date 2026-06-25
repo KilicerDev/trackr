@@ -5,7 +5,7 @@
 // Access is always derived from the subject (see notify/recipients.ts and the
 // route load) — nothing here stores chat membership.
 
-import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from './db';
 import {
 	message,
@@ -20,7 +20,7 @@ import { listAttachmentsForMany, type AttachmentPublic } from './attachments';
 
 export type ChatTag = Pick<Tag, 'id' | 'label' | 'color'>;
 
-export type ThreadListItem = {
+export type FeedThread = {
 	id: string;
 	title: string | null;
 	status: string;
@@ -28,8 +28,7 @@ export type ThreadListItem = {
 	createdAt: string;
 	updatedAt: string;
 	tagIds: string[];
-	lastMessage: { body: string; authorId: string | null; createdAt: string } | null;
-	unread: boolean;
+	messages: ChatMessage[];
 };
 
 export type ChatMessage = {
@@ -132,66 +131,53 @@ export async function setTagSubscription(
 
 // ─── Threads & messages ───────────────────────────────────────────────────────
 
-export async function loadOrgThreads(
+// The whole org chat as one chronological feed: every thread (oldest first, so
+// the newest sits at the bottom like a chat) with all of its messages inlined.
+// Powers the single-feed UI where each thread is a Teams-style post + replies.
+export async function loadOrgFeed(
 	orgId: string,
-	userId: string,
 	opts: { tagId?: string } = {}
-): Promise<ThreadListItem[]> {
+): Promise<FeedThread[]> {
 	const base = and(
 		eq(thread.subjectType, 'org'),
 		eq(thread.subjectId, orgId),
 		isNull(thread.deletedAt)
 	);
+	const cols = {
+		id: thread.id,
+		title: thread.title,
+		status: thread.status,
+		createdBy: thread.createdBy,
+		createdAt: thread.createdAt,
+		updatedAt: thread.updatedAt
+	};
 	const rows = opts.tagId
 		? await db
-				.select({
-					id: thread.id,
-					title: thread.title,
-					status: thread.status,
-					createdBy: thread.createdBy,
-					createdAt: thread.createdAt,
-					updatedAt: thread.updatedAt
-				})
+				.select(cols)
 				.from(thread)
 				.innerJoin(threadTag, eq(threadTag.threadId, thread.id))
 				.where(and(base, eq(threadTag.tagId, opts.tagId)))
-				.orderBy(desc(thread.updatedAt))
-		: await db
-				.select({
-					id: thread.id,
-					title: thread.title,
-					status: thread.status,
-					createdBy: thread.createdBy,
-					createdAt: thread.createdAt,
-					updatedAt: thread.updatedAt
-				})
-				.from(thread)
-				.where(base)
-				.orderBy(desc(thread.updatedAt));
+				.orderBy(thread.createdAt)
+		: await db.select(cols).from(thread).where(base).orderBy(thread.createdAt);
 
 	const ids = rows.map((r) => r.id);
 	if (ids.length === 0) return [];
 
-	const [tagRows, msgRows, readRows] = await Promise.all([
+	const [tagRows, msgRows] = await Promise.all([
 		db
 			.select({ threadId: threadTag.threadId, tagId: threadTag.tagId })
 			.from(threadTag)
 			.where(inArray(threadTag.threadId, ids)),
 		db
-			.select({
-				threadId: message.threadId,
-				body: message.body,
-				authorId: message.authorId,
-				createdAt: message.createdAt
-			})
+			.select()
 			.from(message)
 			.where(and(inArray(message.threadId, ids), isNull(message.deletedAt)))
-			.orderBy(message.createdAt),
-		db
-			.select({ threadId: threadRead.threadId, lastReadAt: threadRead.lastReadAt })
-			.from(threadRead)
-			.where(and(eq(threadRead.userId, userId), inArray(threadRead.threadId, ids)))
+			.orderBy(message.createdAt)
 	]);
+	const fileMap = await listAttachmentsForMany(
+		'message',
+		msgRows.map((m) => m.id)
+	);
 
 	const tagsByThread = new Map<string, string[]>();
 	for (const t of tagRows) {
@@ -199,39 +185,32 @@ export async function loadOrgThreads(
 		list.push(t.tagId);
 		tagsByThread.set(t.threadId, list);
 	}
-	// msgRows is ascending by createdAt, so the last seen per thread is the latest.
-	const lastByThread = new Map<string, { body: string; authorId: string | null; createdAt: Date }>();
-	for (const mrow of msgRows) {
-		lastByThread.set(mrow.threadId, {
-			body: mrow.body,
-			authorId: mrow.authorId,
-			createdAt: mrow.createdAt
-		});
-	}
-	const readByThread = new Map<string, Date>();
-	for (const r of readRows) readByThread.set(r.threadId, r.lastReadAt);
-
-	return rows.map((r) => {
-		const last = lastByThread.get(r.id) ?? null;
-		const lastRead = readByThread.get(r.id);
-		const unread =
-			!!last &&
-			last.authorId !== userId &&
-			(!lastRead || last.createdAt.getTime() > lastRead.getTime());
-		return {
+	const msgsByThread = new Map<string, ChatMessage[]>();
+	for (const r of msgRows) {
+		const list = msgsByThread.get(r.threadId) ?? [];
+		list.push({
 			id: r.id,
-			title: r.title,
-			status: r.status,
-			createdBy: r.createdBy,
+			threadId: r.threadId,
+			authorId: r.authorId,
+			body: r.body,
+			kind: r.kind,
 			createdAt: r.createdAt.toISOString(),
-			updatedAt: r.updatedAt.toISOString(),
-			tagIds: tagsByThread.get(r.id) ?? [],
-			lastMessage: last
-				? { body: last.body, authorId: last.authorId, createdAt: last.createdAt.toISOString() }
-				: null,
-			unread
-		};
-	});
+			editedAt: r.editedAt ? r.editedAt.toISOString() : null,
+			files: fileMap.get(r.id) ?? []
+		});
+		msgsByThread.set(r.threadId, list);
+	}
+
+	return rows.map((r) => ({
+		id: r.id,
+		title: r.title,
+		status: r.status,
+		createdBy: r.createdBy,
+		createdAt: r.createdAt.toISOString(),
+		updatedAt: r.updatedAt.toISOString(),
+		tagIds: tagsByThread.get(r.id) ?? [],
+		messages: msgsByThread.get(r.id) ?? []
+	}));
 }
 
 export async function loadMessages(threadId: string): Promise<ChatMessage[]> {

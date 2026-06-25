@@ -3,7 +3,8 @@ import type { PageServerLoad, Actions } from './$types';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { organization, tag } from '$lib/server/db/app.schema';
-import { assertCan, can, isTrackrTeam } from '$lib/server/permissions';
+import { assertCan, can, isPortalUser, isTrackrTeam } from '$lib/server/permissions';
+import { getPreferences } from '$lib/server/preferences';
 import { m } from '$lib/paraglide/messages';
 import {
 	addMessage,
@@ -12,8 +13,7 @@ import {
 	getThreadContext,
 	listOrgTags,
 	listTagSubscriptions,
-	loadMessages,
-	loadOrgThreads,
+	loadOrgFeed,
 	markThreadRead,
 	setTagSubscription,
 	setThreadTags
@@ -59,38 +59,35 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const orgs = await chatableOrgs(locals);
 	if (orgs.length === 0) throw error(403, m.chat_no_access());
 
-	const requested = url.searchParams.get('org');
-	const activeOrgId = requested && orgs.some((o) => o.id === requested) ? requested : orgs[0].id;
+	// Resolve the org. Portal users follow the portal's active-org switcher (no
+	// second selector); app users can pass ?org= (a compact switcher in the UI).
+	const portal = isPortalUser(locals);
+	let activeOrgId: string;
+	if (portal) {
+		const prefs = await getPreferences(locals.user.id);
+		const stored = (prefs.viewState?.portal as { activeOrgId?: string } | undefined)?.activeOrgId;
+		activeOrgId = stored && orgs.some((o) => o.id === stored) ? stored : orgs[0].id;
+	} else {
+		const requested = url.searchParams.get('org');
+		activeOrgId = requested && orgs.some((o) => o.id === requested) ? requested : orgs[0].id;
+	}
 	await assertCan(locals, 'org.chat.read', { orgId: activeOrgId });
 
 	const tagFilter = url.searchParams.get('tag') || undefined;
-	const activeThreadId = url.searchParams.get('thread');
-
-	const [threads, tags, subscriptions] = await Promise.all([
-		loadOrgThreads(activeOrgId, locals.user.id, { tagId: tagFilter }),
+	const [feed, tags, subscriptions] = await Promise.all([
+		loadOrgFeed(activeOrgId, { tagId: tagFilter }),
 		listOrgTags(activeOrgId),
 		listTagSubscriptions(locals.user.id, activeOrgId)
 	]);
 
-	let messages: Awaited<ReturnType<typeof loadMessages>> = [];
-	if (activeThreadId) {
-		const ctx = await getThreadContext(activeThreadId);
-		if (ctx && ctx.orgId === activeOrgId) {
-			messages = await loadMessages(activeThreadId);
-			// Opening a thread clears its unread badge. Idempotent.
-			await markThreadRead(activeThreadId, locals.user.id);
-		}
-	}
-
 	return {
 		orgs,
 		activeOrgId,
+		isPortal: portal,
 		tagFilter: tagFilter ?? null,
-		threads,
+		feed,
 		tags,
-		subscriptions,
-		activeThreadId: activeThreadId ?? null,
-		messages
+		subscriptions
 	};
 };
 
