@@ -7,7 +7,7 @@
 	import FeedbackModal from '../FeedbackModal.svelte';
 	import { page } from '$app/state';
 	import { setActiveOrg, type PortalOrg } from '$lib/portal';
-	import { getSidebar } from '$lib/shell.svelte';
+	import { getSidebar } from '$lib/stores/sidebar.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { Snippet } from 'svelte';
 

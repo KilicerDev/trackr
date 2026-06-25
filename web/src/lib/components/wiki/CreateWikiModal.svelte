@@ -4,7 +4,7 @@
 	import type { ActionResult } from '@sveltejs/kit';
 	import Modal from '../Modal.svelte';
 	import Button from '../Button.svelte';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {

@@ -3,7 +3,7 @@
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/data';
 	import { statusLabel, priorityLabel } from '$lib/labels';
 	import { m } from '$lib/paraglide/messages';
-	import { resolveProject, resolveUser } from '$lib/lookup.svelte';
+	import { resolveProject, resolveUser } from '$lib/stores/lookup.svelte';
 	import { page } from '$app/state';
 	import BoardCard from './BoardCard.svelte';
 	import StatusDot from '../StatusDot.svelte';

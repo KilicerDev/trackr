@@ -7,7 +7,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Drawer from '$lib/components/Drawer.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import { LOG_EVENT_TYPES, LOG_KINDS } from '$lib/data';
 	import { m } from '$lib/paraglide/messages';
 	import { logKindLabel, logEventLabel } from '$lib/labels';

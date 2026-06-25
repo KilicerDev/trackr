@@ -2,7 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import Icon from '../Icon.svelte';
 	import { confirm } from '../confirm.svelte';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import { formatBytes, type AttachmentDTO } from '$lib/attachments/config';
 	import { m } from '$lib/paraglide/messages';
 

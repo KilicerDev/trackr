@@ -7,7 +7,7 @@
 // first paint is already correct — no expand→collapse flash on load. localStorage
 // is the freshest client mirror and is reconciled on mount.
 import { getContext, setContext } from 'svelte';
-import { readView, saveView } from '$lib/viewState';
+import { readView, saveView } from '$lib/stores/view';
 
 const KEY = Symbol('trackr.sidebar');
 

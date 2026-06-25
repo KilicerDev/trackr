@@ -5,7 +5,7 @@
 	import TypeBadge from '../TypeBadge.svelte';
 	import Avatar from '../Avatar.svelte';
 	import { formatEstimate, loggedMinutes } from '$lib/data';
-	import { resolveProject, resolveUser } from '$lib/lookup.svelte';
+	import { resolveProject, resolveUser } from '$lib/stores/lookup.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {

@@ -14,7 +14,7 @@
 	import { autoPlace } from '$lib/actions/autoPlace';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/motion';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { orgRoleLabel, projectStatusLabel } from '$lib/labels';
 	import type { PageData } from './$types';

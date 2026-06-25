@@ -3,7 +3,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
-	import { saveView } from '$lib/viewState';
+	import { saveView } from '$lib/stores/view';
 	import { m } from '$lib/paraglide/messages';
 
 	type NoteItem = {

@@ -4,10 +4,10 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import Composer from '$lib/components/Composer.svelte';
 	import MentionText from '$lib/components/MentionText.svelte';
-	import { resolveUser } from '$lib/lookup.svelte';
+	import { resolveUser } from '$lib/stores/lookup.svelte';
 	import { invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { ActionResult } from '@sveltejs/kit';
 

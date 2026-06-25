@@ -2,7 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import Icon from '../Icon.svelte';
 	import AttachmentDropzone from './AttachmentDropzone.svelte';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import {
 		selectStageable,
 		type AttachmentDTO,

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import { toast, dismissToast } from '$lib/toast.svelte';
+	import { toast, dismissToast } from '$lib/stores/toast.svelte';
 
 	const colors = {
 		ok: {

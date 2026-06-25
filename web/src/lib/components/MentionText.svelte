@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { segmentMentions } from '$lib/mentions';
-	import { resolveUser } from '$lib/lookup.svelte';
+	import { resolveUser } from '$lib/stores/lookup.svelte';
 
 	interface Props {
 		text: string | null | undefined;

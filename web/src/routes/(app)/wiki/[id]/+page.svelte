@@ -10,7 +10,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Popover from '$lib/components/Popover.svelte';
 	import { confirm } from '$lib/components/confirm.svelte';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import WikiEditor from '$lib/components/wiki/WikiEditor.svelte';
 	import CollaborativeWikiEditor, {
 		type PresenceUser

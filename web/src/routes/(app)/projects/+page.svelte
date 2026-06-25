@@ -11,10 +11,10 @@
 	import { PROJECT_STATUS } from '$lib/data';
 	import { projectStatusLabel } from '$lib/labels';
 	import { m } from '$lib/paraglide/messages';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import { readView, saveView } from '$lib/viewState';
+	import { readView, saveView } from '$lib/stores/view';
 	import type { ProjectListItem } from './+page.server';
 	import type { PageData } from './$types';
 

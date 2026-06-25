@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import Modal from './Modal.svelte';
 	import Icon from './Icon.svelte';
 	import Button from './Button.svelte';

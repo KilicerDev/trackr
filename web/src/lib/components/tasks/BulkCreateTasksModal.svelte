@@ -14,7 +14,7 @@
 	import Icon from '../Icon.svelte';
 	import Button from '../Button.svelte';
 	import TaskPropertyRail from './TaskPropertyRail.svelte';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import type { PriorityId, ProjectId, StatusId, TypeId } from '$lib/types';
 	import { m } from '$lib/paraglide/messages';
 

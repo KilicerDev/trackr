@@ -2,7 +2,7 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -12,7 +12,7 @@
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/motion';
-	import { resolveUser } from '$lib/lookup.svelte';
+	import { resolveUser } from '$lib/stores/lookup.svelte';
 	import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from '$lib/data';
 	import type { TicketRow, TicketMessageRow } from '$lib/server/tickets';
 	import AttachmentList from '$lib/components/attachments/AttachmentList.svelte';

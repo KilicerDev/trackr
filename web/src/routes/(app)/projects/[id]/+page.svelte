@@ -20,7 +20,7 @@
 	import { POPOVER_IN } from '$lib/motion';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import type { ActionResult } from '@sveltejs/kit';
 	import type { ProjectId, Task } from '$lib/types';
 	import type { PageData } from './$types';

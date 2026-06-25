@@ -5,7 +5,7 @@
 	import type { ActionResult } from '@sveltejs/kit';
 	import Icon from '$lib/components/Icon.svelte';
 	import { confirm } from '$lib/components/confirm.svelte';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	type Link = {

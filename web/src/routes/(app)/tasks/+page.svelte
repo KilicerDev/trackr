@@ -9,7 +9,7 @@
 	import type { PageData } from './$types';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { readView, saveView } from '$lib/viewState';
+	import { readView, saveView } from '$lib/stores/view';
 	import { m } from '$lib/paraglide/messages';
 
 	let { data }: { data: PageData } = $props();

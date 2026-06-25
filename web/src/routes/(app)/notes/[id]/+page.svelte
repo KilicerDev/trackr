@@ -8,7 +8,7 @@
 	import IconButton from '$lib/components/IconButton.svelte';
 	import Popover from '$lib/components/Popover.svelte';
 	import { confirm } from '$lib/components/confirm.svelte';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import CollaborativeWikiEditor, {
 		type PresenceUser
 	} from '$lib/components/wiki/CollaborativeWikiEditor.svelte';

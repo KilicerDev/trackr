@@ -9,7 +9,7 @@
 	import DatePopover from '$lib/components/popovers/DatePopover.svelte';
 	import { formatDateLong } from '$lib/data';
 	import type { ProjectId } from '$lib/types';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	type Project = { id: string; key: string; name: string; color: string; status: string };

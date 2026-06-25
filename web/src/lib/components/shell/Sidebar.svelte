@@ -3,7 +3,7 @@
 	import Icon from '../Icon.svelte';
 	import Kbd from '../Kbd.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import { getSidebar } from '$lib/shell.svelte';
+	import { getSidebar } from '$lib/stores/sidebar.svelte';
 
 	const sidebar = getSidebar();
 	const collapsed = $derived(!!sidebar?.collapsed);

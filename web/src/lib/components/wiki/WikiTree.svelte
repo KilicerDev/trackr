@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import Icon from '../Icon.svelte';
 	import Popover from '../Popover.svelte';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import { readView, saveView } from '$lib/viewState';
+	import { readView, saveView } from '$lib/stores/view';
 	import { m } from '$lib/paraglide/messages';
 
 	type Node = {
@@ -28,7 +28,7 @@
 		tree.filter((p) => p.parentId === parent)
 	);
 
-	// Persisted across reloads + devices via $lib/viewState (same mechanism as
+	// Persisted across reloads + devices via $lib/stores/view (same mechanism as
 	// the /tasks view state). Hydrates from the local cache on init.
 	let expanded = $state(new Set<string>(readView<{ expanded?: string[] }>('wiki').expanded ?? []));
 	let search = $state('');

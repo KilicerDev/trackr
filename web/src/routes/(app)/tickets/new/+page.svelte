@@ -11,7 +11,7 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/motion';
 	import { TICKET_CATEGORIES, TICKET_PRIORITIES } from '$lib/data';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import AttachmentDropzone from '$lib/components/attachments/AttachmentDropzone.svelte';
 	import StagedFileList from '$lib/components/attachments/StagedFileList.svelte';
 	import { selectStageable } from '$lib/attachments/config';

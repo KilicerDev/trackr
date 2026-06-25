@@ -2,7 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import { page } from '$app/state';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import { confirm } from '$lib/components/confirm.svelte';
 	import type { ActionResult } from '@sveltejs/kit';
 	import type { PriorityId, StatusId, TypeId, Task } from '$lib/types';
@@ -40,7 +40,7 @@
 		formatDateLong,
 		formatEstimate
 	} from '$lib/data';
-	import { resolveProject } from '$lib/lookup.svelte';
+	import { resolveProject } from '$lib/stores/lookup.svelte';
 	import { statusLabel, priorityLabel, typeLabel } from '$lib/labels';
 	import { m } from '$lib/paraglide/messages';
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import type { ActionResult } from '@sveltejs/kit';
 	import Modal from '../Modal.svelte';
 	import Icon from '../Icon.svelte';

@@ -4,7 +4,7 @@
 	import Avatar from '../Avatar.svelte';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import { resolveUser } from '$lib/lookup.svelte';
+	import { resolveUser } from '$lib/stores/lookup.svelte';
 	import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from '$lib/data';
 	import type { TicketRow } from '$lib/server/tickets';
 	import { m as mm } from '$lib/paraglide/messages';

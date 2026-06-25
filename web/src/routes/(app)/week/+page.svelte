@@ -8,12 +8,12 @@
 	import SmartComposer from '$lib/components/week/SmartComposer.svelte';
 	import type { ComposerDraft } from '$lib/components/week/SmartComposer.svelte';
 	import PriorityBars from '$lib/components/PriorityBars.svelte';
-	import { resolveProject } from '$lib/lookup.svelte';
+	import { resolveProject } from '$lib/stores/lookup.svelte';
 	import { formatEstimate, taskTimeMinutes } from '$lib/data';
-	import { showToast } from '$lib/toast.svelte';
+	import { showToast } from '$lib/stores/toast.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
-	import { readView, saveView } from '$lib/viewState';
+	import { readView, saveView } from '$lib/stores/view';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { m } from '$lib/paraglide/messages';

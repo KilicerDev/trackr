@@ -7,7 +7,7 @@
 	import TypeBadge from '../TypeBadge.svelte';
 	import Icon from '../Icon.svelte';
 	import { formatDateLong, formatDateShort, formatEstimate, dueCountdown } from '$lib/data';
-	import { resolveUser } from '$lib/lookup.svelte';
+	import { resolveUser } from '$lib/stores/lookup.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {

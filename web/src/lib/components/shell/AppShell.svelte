@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import Sidebar from './Sidebar.svelte';
-	import { setSidebar } from '$lib/shell.svelte';
+	import { setSidebar } from '$lib/stores/sidebar.svelte';
 	import type { Snippet } from 'svelte';
 	let { children }: { children: Snippet } = $props();
 

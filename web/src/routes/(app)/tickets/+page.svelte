@@ -6,7 +6,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { readView, saveView } from '$lib/viewState';
+	import { readView, saveView } from '$lib/stores/view';
 	import type { TicketRow } from '$lib/server/tickets';
 	import { m } from '$lib/paraglide/messages';
 
