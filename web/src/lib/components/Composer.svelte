@@ -22,6 +22,10 @@
 		// Scope @-mention suggestions to people who can access this project
 		// (see MentionTextarea). Omit for org-level surfaces like tickets.
 		projectId?: string | null;
+		// Opt-in inline `#` tagging (chat). Passed straight through to
+		// MentionTextarea; the tag lands as a chip via onTagAdd, not in the text.
+		tags?: import('$lib/server/chat').ChatTag[];
+		onTagAdd?: (id: string | null, label: string) => void;
 	}
 
 	let {
@@ -32,7 +36,9 @@
 		accent = 'default',
 		onsend,
 		rightActions,
-		projectId = null
+		projectId = null,
+		tags,
+		onTagAdd
 	}: Props = $props();
 
 	function onKey(e: KeyboardEvent) {
@@ -52,6 +58,8 @@
 		bind:value
 		onkeydown={onKey}
 		{projectId}
+		{tags}
+		{onTagAdd}
 		{placeholder}
 		rows={2}
 		disabled={disabled || sending}

@@ -4,8 +4,11 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Popover from '$lib/components/Popover.svelte';
 	import Composer from '$lib/components/Composer.svelte';
+	import MentionTextarea from '$lib/components/MentionTextarea.svelte';
 	import MentionText from '$lib/components/MentionText.svelte';
 	import AttachmentList from '$lib/components/attachments/AttachmentList.svelte';
+	import TagSelect from '$lib/components/chat/TagSelect.svelte';
+	import { createOrgTag } from '$lib/components/chat/tags';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -67,14 +70,25 @@
 		await post('toggleSubscription', { tagId, mode: next }, m.chat_err_subscription_failed());
 	}
 
-	// ── New thread ───────────────────────────────────────────────────────────────
-	let newOpen = $state(false);
+	// ── New thread (always-open composer) ────────────────────────────────────────
 	let newTitle = $state('');
 	let newBody = $state('');
 	let newTags = $state<string[]>([]);
 	let creating = $state(false);
-	function toggleNewTag(id: string) {
-		newTags = newTags.includes(id) ? newTags.filter((t) => t !== id) : [...newTags, id];
+	// Inline `#` in the message body adds a tag chip (id given) or creates one.
+	async function handleInlineTag(id: string | null, label: string) {
+		if (id) {
+			if (!newTags.includes(id)) newTags = [...newTags, id];
+			return;
+		}
+		try {
+			await createOrgTag(data.activeOrgId, label);
+			await invalidateAll();
+			const created = data.tags.find((t) => t.label.toLowerCase() === label.toLowerCase());
+			if (created && !newTags.includes(created.id)) newTags = [...newTags, created.id];
+		} catch (e) {
+			showToast('err', e instanceof Error ? e.message : m.chat_err_tag_failed());
+		}
 	}
 	async function submitThread() {
 		if (creating || !newTitle.trim() || !newBody.trim()) return;
@@ -86,10 +100,15 @@
 		);
 		creating = false;
 		if (ok) {
-			newOpen = false;
 			newTitle = '';
 			newBody = '';
 			newTags = [];
+		}
+	}
+	function newKey(e: KeyboardEvent) {
+		if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+			e.preventDefault();
+			void submitThread();
 		}
 	}
 
@@ -114,11 +133,8 @@
 
 	// ── Per-thread tag editing ────────────────────────────────────────────────────
 	let tagEditId = $state<string | null>(null);
-	async function toggleThreadTag(thread: Thread, tagId: string) {
-		const next = thread.tagIds.includes(tagId)
-			? thread.tagIds.filter((t) => t !== tagId)
-			: [...thread.tagIds, tagId];
-		await post('setTags', { threadId: thread.id, tags: next.join(',') }, m.chat_err_tag_failed());
+	async function persistThreadTags(threadId: string, ids: string[]) {
+		await post('setTags', { threadId, tags: ids.join(',') }, m.chat_err_tag_failed());
 	}
 
 	// Shared POST helper — form-encodes, invalidates on success, toasts on failure.
@@ -281,24 +297,16 @@
 									open={tagEditId === t.id}
 									onclose={() => (tagEditId = null)}
 									align="right"
-									minWidth={200}
+									minWidth={260}
 								>
-									{#if data.tags.length === 0}
-										<div class="px-2 py-1.5 text-[12px] text-text-4">{m.chat_no_tags()}</div>
-									{/if}
-									{#each data.tags as tag (tag.id)}
-										<button
-											type="button"
-											onclick={() => toggleThreadTag(t, tag.id)}
-											class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-surface-2"
-										>
-											<span class="h-2 w-2 rounded-full" style:background={tagColor(tag)}></span>
-											<span class="truncate text-[13px] text-text-2">{tag.label}</span>
-											{#if t.tagIds.includes(tag.id)}<span class="ml-auto text-accent"
-													><Icon name="check" size={13} /></span
-												>{/if}
-										</button>
-									{/each}
+									<div class="p-1">
+										<TagSelect
+											available={data.tags}
+											selected={t.tagIds}
+											orgId={data.activeOrgId}
+											onchange={(ids) => persistThreadTags(t.id, ids)}
+										/>
+									</div>
 								</Popover>
 							</div>
 						</div>
@@ -380,61 +388,52 @@
 		</div>
 	</div>
 
-	<!-- ── New thread composer ──────────────────────────────────────────────────── -->
+	<!-- ── New thread composer (always open) ────────────────────────────────────── -->
 	<div class="border-t border-border px-6 py-3">
 		<div class="mx-auto max-w-3xl">
-			{#if newOpen}
-				<div class="rounded-xl border border-border bg-surface p-3">
-					<input
-						bind:value={newTitle}
-						placeholder={m.chat_title_placeholder()}
-						class="mb-2 w-full bg-transparent text-[14px] font-semibold outline-none placeholder:text-text-3"
+			<div
+				class="rounded-xl border border-border bg-surface transition-colors focus-within:border-border-strong"
+			>
+				<input
+					bind:value={newTitle}
+					placeholder={m.chat_title_placeholder()}
+					onkeydown={newKey}
+					class="w-full bg-transparent px-3.5 pt-3 text-[15px] font-semibold outline-none placeholder:text-text-3"
+				/>
+				<MentionTextarea
+					bind:value={newBody}
+					tags={data.tags}
+					onTagAdd={handleInlineTag}
+					onkeydown={newKey}
+					placeholder={m.chat_message_placeholder()}
+					rows={2}
+					class="w-full resize-none border-0 bg-transparent px-3.5 pt-1.5 pb-1 text-[13px] leading-relaxed outline-none placeholder:text-text-3"
+				/>
+				<div class="flex items-center gap-2 px-2.5 pt-1 pb-2.5">
+					<TagSelect
+						dropUp
+						available={data.tags}
+						selected={newTags}
+						orgId={data.activeOrgId}
+						onchange={(ids) => (newTags = ids)}
 					/>
-					<Composer bind:value={newBody} onsend={submitThread} sending={creating} />
-					{#if data.tags.length}
-						<div class="mt-2 flex flex-wrap items-center gap-1.5">
-							{#each data.tags as t (t.id)}
-								<button
-									type="button"
-									onclick={() => toggleNewTag(t.id)}
-									class="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] {newTags.includes(
-										t.id
-									)
-										? 'border-accent bg-accent/10 text-accent'
-										: 'border-border text-text-3'}"
-								>
-									<span class="h-1.5 w-1.5 rounded-full" style:background={tagColor(t)}></span>
-									{t.label}
-								</button>
-							{/each}
-						</div>
-					{/if}
-					<div class="mt-2.5 flex items-center gap-2">
-						<button
-							type="button"
-							onclick={submitThread}
-							disabled={creating || !newTitle.trim() || !newBody.trim()}
-							class="rounded-lg bg-accent px-3.5 py-1.5 text-[13px] font-medium text-white hover:bg-accent-strong disabled:opacity-50"
-						>
-							{m.chat_create_thread()}
-						</button>
-						<button
-							type="button"
-							onclick={() => (newOpen = false)}
-							class="rounded-lg px-3 py-1.5 text-[13px] text-text-3 hover:text-text">{m.chat_cancel()}</button
-						>
-					</div>
+					<button
+						type="button"
+						aria-label={m.chat_create_thread()}
+						onclick={submitThread}
+						disabled={creating || !newTitle.trim() || !newBody.trim()}
+						class="ml-auto grid h-8 w-8 place-items-center rounded-lg bg-accent text-white shadow-btn transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
+					>
+						{#if creating}
+							<span
+								class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"
+							></span>
+						{:else}
+							<Icon name="send" size={13} />
+						{/if}
+					</button>
 				</div>
-			{:else}
-				<button
-					type="button"
-					onclick={() => (newOpen = true)}
-					class="flex w-full items-center gap-2 rounded-xl border border-border bg-surface px-3.5 py-2.5 text-[13px] text-text-3 hover:border-border-strong hover:text-text"
-				>
-					<Icon name="plus" size={15} />
-					{m.chat_new_thread()}
-				</button>
-			{/if}
+			</div>
 		</div>
 	</div>
 </div>

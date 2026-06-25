@@ -10,6 +10,9 @@
 	import { buildMentionToken, segmentMentions } from '$lib/utils/mentions';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
 	import Avatar from './Avatar.svelte';
+	import Icon from './Icon.svelte';
+	import { m } from '$lib/paraglide/messages';
+	import type { ChatTag } from '$lib/server/chat';
 
 	type MentionUser = {
 		id: string;
@@ -38,6 +41,12 @@
 		// server's projectMentionRecipients filter so the dropdown never
 		// suggests someone whose mention would be silently dropped.
 		projectId?: string | null;
+		// Opt-in `#` tagging. When `tags` is provided, typing `#` offers existing
+		// tags (and a create row); choosing one removes the typed `#text` from the
+		// body and calls `onTagAdd` — the tag lives as a chip elsewhere, never in
+		// the message text. Omit both and the editor behaves exactly as before.
+		tags?: ChatTag[];
+		onTagAdd?: (id: string | null, label: string) => void;
 	}
 	let {
 		value = $bindable(''),
@@ -46,7 +55,9 @@
 		rows = 2,
 		class: cls = '',
 		onkeydown,
-		projectId = null
+		projectId = null,
+		tags,
+		onTagAdd
 	}: Props = $props();
 
 	let root = $state<HTMLDivElement | null>(null);
@@ -54,12 +65,27 @@
 	let query = $state('');
 	let activeIndex = $state(0);
 	let isEmpty = $state(true);
+	// Which trigger char opened the dropdown: '@' (mentions) or '#' (tags).
+	let mode = $state<'@' | '#'>('@');
 	// The value we last pushed up — lets the sync effect tell an external change
 	// (clear-on-send, reset) apart from our own edits, so we never re-render the
 	// DOM mid-edit and blow away the caret.
 	let lastEmitted: string | null = null;
-	// Text node + offsets of the active `@query` being typed.
+	// Text node + offsets of the active `@`/`#` query being typed.
 	let trigger: { node: Text; start: number; end: number } | null = null;
+
+	// Tag suggestions for the `#` trigger (existing tags matching the query).
+	const tagMatches = $derived.by<ChatTag[]>(() => {
+		if (!tags) return [];
+		const needle = query.toLowerCase();
+		return tags.filter((t) => t.label.toLowerCase().includes(needle)).slice(0, 6);
+	});
+	const showCreateTag = $derived(
+		mode === '#' &&
+			!!onTagAdd &&
+			query.trim().length > 0 &&
+			!(tags ?? []).some((t) => t.label.toLowerCase() === query.trim().toLowerCase())
+	);
 
 	const candidates = $derived.by<MentionUser[]>(() => {
 		const all = ((page.data as { users?: MentionUser[] }).users ?? []).filter(
@@ -75,6 +101,11 @@
 			)
 			.slice(0, 6);
 	});
+
+	// Total selectable rows currently shown (drives keyboard nav).
+	const optionCount = $derived(
+		mode === '@' ? candidates.length : tagMatches.length + (showCreateTag ? 1 : 0)
+	);
 
 	function makeChip(id: string, name: string): HTMLSpanElement {
 		const span = document.createElement('span');
@@ -146,8 +177,12 @@
 		if (!node || node.nodeType !== Node.TEXT_NODE || !root?.contains(node)) return;
 		const offset = sel.anchorOffset;
 		const before = (node.textContent ?? '').slice(0, offset);
-		const match = before.match(/(?:^|\s)@([\p{L}\d_.-]*)$/u);
+		const at = before.match(/(?:^|\s)@([\p{L}\d_.-]*)$/u);
+		// `#` tagging is only active when the host opted in via `tags`.
+		const hash = tags ? before.match(/(?:^|\s)#([\p{L}\d_.-]*)$/u) : null;
+		const match = at ?? hash;
 		if (!match) return;
+		mode = at ? '@' : '#';
 		query = match[1] ?? '';
 		trigger = { node: node as Text, start: offset - query.length - 1, end: offset };
 		activeIndex = 0;
@@ -196,21 +231,46 @@
 		emit();
 	}
 
+	// `#` tagging: strip the typed `#query` from the body and hand the tag up to
+	// the host (id for an existing tag, null to create `label`). Nothing is left
+	// in the message text — the tag becomes a chip outside the editor.
+	async function chooseTag(id: string | null, label: string) {
+		if (!trigger || !root) return;
+		const { node, start, end } = trigger;
+		const full = node.textContent ?? '';
+		node.textContent = full.slice(0, start) + full.slice(end);
+		open = false;
+		trigger = null;
+		await tick();
+		const sel = window.getSelection();
+		const range = document.createRange();
+		range.setStart(node, Math.min(start, (node.textContent ?? '').length));
+		range.collapse(true);
+		sel?.removeAllRanges();
+		sel?.addRange(range);
+		root.focus();
+		emit();
+		onTagAdd?.(id, label);
+	}
+
 	function handleKeydown(e: KeyboardEvent) {
-		if (open && candidates.length && !e.metaKey && !e.ctrlKey) {
+		if (open && optionCount && !e.metaKey && !e.ctrlKey) {
 			if (e.key === 'ArrowDown') {
-				activeIndex = (activeIndex + 1) % candidates.length;
+				activeIndex = (activeIndex + 1) % optionCount;
 				e.preventDefault();
 				return;
 			}
 			if (e.key === 'ArrowUp') {
-				activeIndex = (activeIndex - 1 + candidates.length) % candidates.length;
+				activeIndex = (activeIndex - 1 + optionCount) % optionCount;
 				e.preventDefault();
 				return;
 			}
 			if (e.key === 'Enter' || e.key === 'Tab') {
 				e.preventDefault();
-				void choose(candidates[activeIndex]);
+				if (mode === '@') void choose(candidates[activeIndex]);
+				else if (activeIndex < tagMatches.length)
+					void chooseTag(tagMatches[activeIndex].id, tagMatches[activeIndex].label);
+				else if (showCreateTag) void chooseTag(null, query.trim());
 				return;
 			}
 			if (e.key === 'Escape') {
@@ -251,28 +311,65 @@
 		class="mention-input {cls} {isEmpty ? 'is-empty' : ''}"
 	></div>
 
-	{#if open && candidates.length}
+	{#if open && optionCount}
 		<div
 			use:autoPlace
 			class="absolute top-full left-0 z-50 mt-1 max-w-[280px] min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1 shadow-lg"
 		>
-			{#each candidates as u, i (u.id)}
-				<button
-					type="button"
-					onmousedown={(e) => {
-						e.preventDefault();
-						void choose(u);
-					}}
-					onmouseenter={() => (activeIndex = i)}
-					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left {i ===
-					activeIndex
-						? 'bg-surface-2 text-text'
-						: 'text-text-2'}"
-				>
-					<Avatar user={u} size={20} />
-					<span class="truncate text-[13px]">{u.name}</span>
-				</button>
-			{/each}
+			{#if mode === '@'}
+				{#each candidates as u, i (u.id)}
+					<button
+						type="button"
+						onmousedown={(e) => {
+							e.preventDefault();
+							void choose(u);
+						}}
+						onmouseenter={() => (activeIndex = i)}
+						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left {i ===
+						activeIndex
+							? 'bg-surface-2 text-text'
+							: 'text-text-2'}"
+					>
+						<Avatar user={u} size={20} />
+						<span class="truncate text-[13px]">{u.name}</span>
+					</button>
+				{/each}
+			{:else}
+				{#each tagMatches as t, i (t.id)}
+					<button
+						type="button"
+						onmousedown={(e) => {
+							e.preventDefault();
+							void chooseTag(t.id, t.label);
+						}}
+						onmouseenter={() => (activeIndex = i)}
+						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] {i ===
+						activeIndex
+							? 'bg-surface-2 text-text'
+							: 'text-text-2'}"
+					>
+						<span class="h-2 w-2 rounded-full" style:background={t.color ?? '#7c7c84'}></span>
+						<span class="truncate">{t.label}</span>
+					</button>
+				{/each}
+				{#if showCreateTag}
+					<button
+						type="button"
+						onmousedown={(e) => {
+							e.preventDefault();
+							void chooseTag(null, query.trim());
+						}}
+						onmouseenter={() => (activeIndex = tagMatches.length)}
+						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] {activeIndex ===
+						tagMatches.length
+							? 'bg-surface-2 text-text'
+							: 'text-text-2'}"
+					>
+						<Icon name="plus" size={12} class="text-text-3" />
+						<span class="truncate">{m.chat_tag_create({ label: query.trim() })}</span>
+					</button>
+				{/if}
+			{/if}
 		</div>
 	{/if}
 </div>
