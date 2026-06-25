@@ -10,8 +10,8 @@
 	import Drawer from '$lib/components/Drawer.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
-	import { ROLE_META, ORG_ROLE_META, type Role } from '$lib/utils/role-meta';
-	import { allowedOrgRoles } from '$lib/roles';
+	import { ROLE_META, ORG_ROLE_META } from '$lib/utils/role-meta';
+	import { allowedOrgRoles, type Role } from '$lib/roles';
 	import { m } from '$lib/paraglide/messages';
 	import { metaRoleLabel, orgRoleLabel, orgRolePerm } from '$lib/utils/labels';
 	import { clickOutside } from '$lib/actions/clickOutside';

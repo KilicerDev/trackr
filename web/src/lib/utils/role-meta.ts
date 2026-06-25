@@ -1,4 +1,4 @@
-export type Role = 'user' | 'admin' | 'superadmin';
+import type { Role } from '$lib/roles';
 
 export const ROLE_META: Record<Role, { label: string; color: string; perm: string }> = {
 	user: {
