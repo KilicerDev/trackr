@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { PROJECT_STATUS } from '$lib/data';
-	import { projectStatusLabel } from '$lib/labels';
+	import { projectStatusLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 	import AvatarStack from '../AvatarStack.svelte';
 	import type { ProjectListItem } from '../../../routes/(app)/projects/+page.server';

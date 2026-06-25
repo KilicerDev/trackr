@@ -11,7 +11,7 @@
 	import ProjectHistory from '$lib/components/projects/ProjectHistory.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { PROJECT_STATUS, TRACKR_STATUSES } from '$lib/data';
-	import { projectStatusLabel, statusLabel } from '$lib/labels';
+	import { projectStatusLabel, statusLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';

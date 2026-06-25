@@ -10,7 +10,7 @@
 	import { POPOVER_IN } from '$lib/config/motion';
 	import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from '$lib/data';
 	import { m } from '$lib/paraglide/messages';
-	import { ticketStatusLabel, ticketCategoryLabel, priorityLabel } from '$lib/labels';
+	import { ticketStatusLabel, ticketCategoryLabel, priorityLabel } from '$lib/utils/labels';
 
 	type GroupBy = 'status' | 'priority' | 'category' | 'org' | 'none';
 

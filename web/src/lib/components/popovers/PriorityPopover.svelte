@@ -7,7 +7,7 @@
 	import Icon from '../Icon.svelte';
 	import { TRACKR_PRIORITIES } from '$lib/data';
 	import type { PriorityId } from '$lib/types';
-	import { priorityLabel } from '$lib/labels';
+	import { priorityLabel } from '$lib/utils/labels';
 
 	interface Props {
 		value: PriorityId;

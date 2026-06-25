@@ -7,7 +7,7 @@
 	import Icon from '../Icon.svelte';
 	import { TRACKR_TYPES } from '$lib/data';
 	import type { TypeId } from '$lib/types';
-	import { typeLabel } from '$lib/labels';
+	import { typeLabel } from '$lib/utils/labels';
 
 	interface Props {
 		value: TypeId;

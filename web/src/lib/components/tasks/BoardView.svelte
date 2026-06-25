@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Task, ProjectId, StatusId, PriorityId } from '$lib/types';
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/data';
-	import { statusLabel, priorityLabel } from '$lib/labels';
+	import { statusLabel, priorityLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 	import { resolveProject, resolveUser } from '$lib/stores/lookup.svelte';
 	import { page } from '$app/state';

@@ -7,7 +7,7 @@
 	import CollaborationCaret from '@tiptap/extension-collaboration-caret';
 	import { HocuspocusProvider, type WebSocketStatus } from '@hocuspocus/provider';
 	import * as Y from 'yjs';
-	import { collabSchemaExtensions, COLLAB_FIELD } from '$lib/collab/extensions';
+	import { collabSchemaExtensions, COLLAB_FIELD } from '$lib/editor/extensions';
 	import { SlashCommand } from './slash-command.svelte';
 	import { WikiImageUpload } from './image-upload';
 	import { MarkdownPaste } from './markdown-paste';

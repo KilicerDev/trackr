@@ -24,7 +24,7 @@ import {
 import { notify } from '$lib/server/notify';
 import { recordAudit } from '$lib/server/audit';
 import { ticketRecipients } from '$lib/server/notify-recipients';
-import { parseMentionIds } from '$lib/mentions';
+import { parseMentionIds } from '$lib/utils/mentions';
 import { getPreferences } from '$lib/server/preferences';
 import { m } from '$lib/paraglide/messages';
 

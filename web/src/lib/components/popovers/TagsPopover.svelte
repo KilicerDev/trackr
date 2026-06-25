@@ -5,7 +5,7 @@
 	import { POPOVER_IN } from '$lib/config/motion';
 	import Icon from '../Icon.svelte';
 	import { TRACKR_LABELS } from '$lib/data';
-	import { labelMeta, normalizeTag } from '$lib/labelMeta';
+	import { labelMeta, normalizeTag } from '$lib/utils/label-meta';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {

@@ -26,7 +26,7 @@
 		ticketCategoryLabel,
 		ticketChannelLabel,
 		priorityLabel
-	} from '$lib/labels';
+	} from '$lib/utils/labels';
 	import CreateTaskModal from '$lib/components/tasks/CreateTaskModal.svelte';
 	import StatusDot from '$lib/components/StatusDot.svelte';
 	import type { TypeId } from '$lib/types';

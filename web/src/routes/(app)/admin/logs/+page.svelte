@@ -10,7 +10,7 @@
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { LOG_EVENT_TYPES, LOG_KINDS } from '$lib/data';
 	import { m } from '$lib/paraglide/messages';
-	import { logKindLabel, logEventLabel } from '$lib/labels';
+	import { logKindLabel, logEventLabel } from '$lib/utils/labels';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

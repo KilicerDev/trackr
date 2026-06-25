@@ -41,7 +41,7 @@
 		formatEstimate
 	} from '$lib/data';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
-	import { statusLabel, priorityLabel, typeLabel } from '$lib/labels';
+	import { statusLabel, priorityLabel, typeLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 
 	type AssignableUser = {

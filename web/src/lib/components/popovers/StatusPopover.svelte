@@ -7,7 +7,7 @@
 	import Icon from '../Icon.svelte';
 	import { TRACKR_STATUSES } from '$lib/data';
 	import type { StatusId } from '$lib/types';
-	import { statusLabel } from '$lib/labels';
+	import { statusLabel } from '$lib/utils/labels';
 
 	interface Props {
 		value: StatusId;

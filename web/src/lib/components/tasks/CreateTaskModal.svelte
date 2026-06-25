@@ -30,7 +30,7 @@
 		formatEstimate
 	} from '$lib/data';
 	import type { PriorityId, ProjectId, StatusId, TypeId } from '$lib/types';
-	import { statusLabel, priorityLabel, typeLabel } from '$lib/labels';
+	import { statusLabel, priorityLabel, typeLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 	import AttachmentDropzone from '../attachments/AttachmentDropzone.svelte';
 	import StagedFileList from '../attachments/StagedFileList.svelte';

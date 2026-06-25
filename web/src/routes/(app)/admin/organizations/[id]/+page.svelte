@@ -16,7 +16,7 @@
 	import { POPOVER_IN } from '$lib/config/motion';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import { orgRoleLabel, projectStatusLabel } from '$lib/labels';
+	import { orgRoleLabel, projectStatusLabel } from '$lib/utils/labels';
 	import type { PageData } from './$types';
 
 	type LayoutShape = {

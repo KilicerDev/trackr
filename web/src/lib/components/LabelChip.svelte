@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { labelMeta } from '$lib/labelMeta';
+	import { labelMeta } from '$lib/utils/label-meta';
 	interface Props {
 		id: string;
 	}

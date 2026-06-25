@@ -9,7 +9,7 @@
 	import type { ProjectView, ProjectGroup } from '$lib/components/projects/ProjectsToolbar.svelte';
 	import CreateProjectModal from '$lib/components/projects/CreateProjectModal.svelte';
 	import { PROJECT_STATUS } from '$lib/data';
-	import { projectStatusLabel } from '$lib/labels';
+	import { projectStatusLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { slide } from 'svelte/transition';

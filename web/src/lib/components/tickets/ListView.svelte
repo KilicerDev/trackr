@@ -8,7 +8,7 @@
 	import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from '$lib/data';
 	import type { TicketRow } from '$lib/server/tickets';
 	import { m as mm } from '$lib/paraglide/messages';
-	import { ticketStatusLabel, ticketCategoryLabel, priorityLabel } from '$lib/labels';
+	import { ticketStatusLabel, ticketCategoryLabel, priorityLabel } from '$lib/utils/labels';
 
 	type GroupBy = 'status' | 'priority' | 'category' | 'org' | 'none';
 

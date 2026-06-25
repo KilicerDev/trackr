@@ -7,7 +7,7 @@
 	import { tick } from 'svelte';
 	import { page } from '$app/state';
 	import { autoPlace } from '$lib/actions/autoPlace';
-	import { buildMentionToken, segmentMentions } from '$lib/mentions';
+	import { buildMentionToken, segmentMentions } from '$lib/utils/mentions';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
 	import Avatar from './Avatar.svelte';
 

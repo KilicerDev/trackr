@@ -8,7 +8,7 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
 	import { PROJECT_STATUS } from '$lib/data';
-	import { projectStatusLabel } from '$lib/labels';
+	import { projectStatusLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
 

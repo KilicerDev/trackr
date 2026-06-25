@@ -11,18 +11,18 @@ import {
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
 import { createTask, loadTasks } from '$lib/server/tasks';
-import { normalizeTag } from '$lib/labelMeta';
+import { normalizeTag } from '$lib/utils/label-meta';
 import { logActivityFF } from '$lib/server/activity';
 import { recordAudit } from '$lib/server/audit';
 import { syncTicketForLinkedTaskStatus } from '$lib/server/tickets';
 import { notify } from '$lib/server/notify';
 import { taskRecipients, projectMentionRecipients } from '$lib/server/notify-recipients';
-import { parseMentionIds } from '$lib/mentions';
+import { parseMentionIds } from '$lib/utils/mentions';
 import { accessibleProjectIds, assertCan, can } from '$lib/server/permissions';
 import { attachFormFiles, deleteAttachmentsFor } from '$lib/server/attachments';
 import { getPreferences } from '$lib/server/preferences';
 import { m } from '$lib/paraglide/messages';
-import { statusLabel } from '$lib/labels';
+import { statusLabel } from '$lib/utils/labels';
 
 export const load: ServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');

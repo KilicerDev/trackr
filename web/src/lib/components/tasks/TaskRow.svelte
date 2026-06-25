@@ -8,7 +8,7 @@
 	import Icon from '../Icon.svelte';
 	import { TRACKR_PRIORITIES, formatDateShort, dueCountdown } from '$lib/data';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
-	import { priorityLabel } from '$lib/labels';
+	import { priorityLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {

@@ -227,7 +227,7 @@
 		const title = pg.title || m.wiki_untitled();
 		const doc = editor.getJSON();
 		try {
-			const { exportWikiPageToPdf } = await import('$lib/wiki/pdf-export');
+			const { exportWikiPageToPdf } = await import('$lib/utils/pdf-export');
 			await exportWikiPageToPdf(title, doc);
 		} catch (e) {
 			console.error('PDF export failed', e);

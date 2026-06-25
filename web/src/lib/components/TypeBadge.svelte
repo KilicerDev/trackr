@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { TypeId } from '$lib/types';
 	import { TRACKR_TYPES } from '$lib/data';
-	import { typeLabel } from '$lib/labels';
+	import { typeLabel } from '$lib/utils/labels';
 	interface Props {
 		type: TypeId;
 		idText?: string;

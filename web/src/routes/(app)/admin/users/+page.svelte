@@ -10,10 +10,10 @@
 	import Drawer from '$lib/components/Drawer.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
-	import { ROLE_META, ORG_ROLE_META, type Role } from '$lib/admin-meta';
+	import { ROLE_META, ORG_ROLE_META, type Role } from '$lib/utils/role-meta';
 	import { allowedOrgRoles } from '$lib/roles';
 	import { m } from '$lib/paraglide/messages';
-	import { metaRoleLabel, orgRoleLabel, orgRolePerm } from '$lib/labels';
+	import { metaRoleLabel, orgRoleLabel, orgRolePerm } from '$lib/utils/labels';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';

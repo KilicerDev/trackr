@@ -16,7 +16,7 @@
 	import StagedFileList from '$lib/components/attachments/StagedFileList.svelte';
 	import { selectStageable } from '$lib/config/attachments';
 	import { m } from '$lib/paraglide/messages';
-	import { priorityLabel, ticketCategoryLabel } from '$lib/labels';
+	import { priorityLabel, ticketCategoryLabel } from '$lib/utils/labels';
 
 	type Priority = (typeof TICKET_PRIORITIES)[number]['id'];
 	type Category = (typeof TICKET_CATEGORIES)[number]['id'];

@@ -6,7 +6,7 @@
 	import type { TicketRow, TicketStatus } from '$lib/server/tickets';
 	import { TICKET_STATUSES } from '$lib/data';
 	import { m } from '$lib/paraglide/messages';
-	import { ticketStatusLabel } from '$lib/labels';
+	import { ticketStatusLabel } from '$lib/utils/labels';
 
 	function statusColor(id: TicketStatus): string {
 		return TICKET_STATUSES.find((s) => s.id === id)?.dot ?? '#7c7c84';

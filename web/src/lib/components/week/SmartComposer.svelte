@@ -8,7 +8,7 @@
 	import EstimatePopover from '../popovers/EstimatePopover.svelte';
 	import AssigneePopover from '../popovers/AssigneePopover.svelte';
 	import { formatEstimate } from '$lib/data';
-	import { priorityLabel } from '$lib/labels';
+	import { priorityLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 	import type { PriorityId } from '$lib/types';
 

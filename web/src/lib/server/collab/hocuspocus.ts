@@ -18,7 +18,7 @@ import * as Y from 'yjs';
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { document, note, wikiPage } from '$lib/server/db/app.schema';
-import { collabSchemaExtensions, COLLAB_FIELD } from '$lib/collab/extensions';
+import { collabSchemaExtensions, COLLAB_FIELD } from '$lib/editor/extensions';
 import { resolveCollabSession } from './auth';
 import { resolveNoteRole, touchNoteByDocument } from '$lib/server/notes';
 
