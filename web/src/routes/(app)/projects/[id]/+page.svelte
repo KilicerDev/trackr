@@ -17,7 +17,7 @@
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { autoPlace } from '$lib/actions/autoPlace';
 	import { fly } from 'svelte/transition';
-	import { POPOVER_IN } from '$lib/motion';
+	import { POPOVER_IN } from '$lib/config/motion';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import { showToast } from '$lib/stores/toast.svelte';

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { SvelteMap } from 'svelte/reactivity';
 	import Icon from '../Icon.svelte';
-	import { formatBytes } from '$lib/attachments/config';
+	import { formatBytes } from '$lib/config/attachments';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {

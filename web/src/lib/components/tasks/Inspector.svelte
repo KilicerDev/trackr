@@ -22,7 +22,7 @@
 	import AttachmentUploader from '../attachments/AttachmentUploader.svelte';
 	import AttachmentDropzone from '../attachments/AttachmentDropzone.svelte';
 	import StagedFileList from '../attachments/StagedFileList.svelte';
-	import { selectStageable } from '$lib/attachments/config';
+	import { selectStageable } from '$lib/config/attachments';
 	import StatusPopover from '../popovers/StatusPopover.svelte';
 	import PriorityPopover from '../popovers/PriorityPopover.svelte';
 	import TypePopover from '../popovers/TypePopover.svelte';
@@ -391,7 +391,7 @@
 			date: string;
 			sortKey: string;
 			data?: any;
-			files?: import('$lib/attachments/config').AttachmentDTO[];
+			files?: import('$lib/config/attachments').AttachmentDTO[];
 		}[] = [];
 		(draft.comments ?? []).forEach((c, i) =>
 			list.push({

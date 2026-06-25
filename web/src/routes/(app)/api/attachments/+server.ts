@@ -5,7 +5,7 @@ import {
 	resolveEntityContext,
 	AttachmentError
 } from '$lib/server/attachments';
-import { ATTACHMENT_ENTITY_TYPES, type AttachmentEntityType } from '$lib/attachments/config';
+import { ATTACHMENT_ENTITY_TYPES, type AttachmentEntityType } from '$lib/config/attachments';
 import type { RequestHandler } from './$types';
 
 const ENTITY_TYPES = new Set<string>(ATTACHMENT_ENTITY_TYPES);

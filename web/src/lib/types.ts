@@ -65,14 +65,14 @@ export interface Task {
 	checklist?: ChecklistItem[];
 	attachments?: { name: string; size: string }[];
 	/** Real uploaded attachments (populated from the DB by loadTasks). */
-	files?: import('$lib/attachments/config').AttachmentDTO[];
+	files?: import('$lib/config/attachments').AttachmentDTO[];
 	comments?: {
 		id?: string;
 		user: string;
 		date: string;
 		text: string;
 		createdAt?: string;
-		files?: import('$lib/attachments/config').AttachmentDTO[];
+		files?: import('$lib/config/attachments').AttachmentDTO[];
 	}[];
 	timeLogs?: {
 		user: string;

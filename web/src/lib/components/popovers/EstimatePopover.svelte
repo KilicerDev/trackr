@@ -2,7 +2,7 @@
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { autoPlace } from '$lib/actions/autoPlace';
 	import { fly } from 'svelte/transition';
-	import { POPOVER_IN } from '$lib/motion';
+	import { POPOVER_IN } from '$lib/config/motion';
 
 	interface Props {
 		value: number | undefined;

@@ -11,7 +11,7 @@
 	import { SlashCommand } from './slash-command.svelte';
 	import { WikiImageUpload } from './image-upload';
 	import { MarkdownPaste } from './markdown-paste';
-	import type { AttachmentEntityType } from '$lib/attachments/config';
+	import type { AttachmentEntityType } from '$lib/config/attachments';
 	import { m } from '$lib/paraglide/messages';
 	import './wiki-editor.css';
 

@@ -8,7 +8,7 @@
 	import type { FilterField } from '../FilterBar.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
-	import { POPOVER_IN } from '$lib/motion';
+	import { POPOVER_IN } from '$lib/config/motion';
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES, TRACKR_LABELS } from '$lib/data';
 	import { labelMeta } from '$lib/labelMeta';
 	import { page } from '$app/state';

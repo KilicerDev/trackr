@@ -35,7 +35,7 @@ import {
 	THUMBNAIL_WIDTH,
 	type AttachmentEntityType,
 	type ThumbnailFormat
-} from '$lib/attachments/config';
+} from '$lib/config/attachments';
 
 // ─── Storage keys ────────────────────────────────────────────────────────────
 

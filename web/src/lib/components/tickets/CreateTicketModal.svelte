@@ -10,11 +10,11 @@
 	import PriorityBars from '../PriorityBars.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
-	import { POPOVER_IN } from '$lib/motion';
+	import { POPOVER_IN } from '$lib/config/motion';
 	import { TICKET_CATEGORIES, TICKET_PRIORITIES } from '$lib/data';
 	import AttachmentDropzone from '../attachments/AttachmentDropzone.svelte';
 	import StagedFileList from '../attachments/StagedFileList.svelte';
-	import { selectStageable } from '$lib/attachments/config';
+	import { selectStageable } from '$lib/config/attachments';
 	import { m } from '$lib/paraglide/messages';
 	import { priorityLabel, ticketCategoryLabel } from '$lib/labels';
 

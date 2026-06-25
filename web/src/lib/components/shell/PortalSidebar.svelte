@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 	import Icon from '../Icon.svelte';
 	import Popover from '../Popover.svelte';
-	import { setActiveOrg, type PortalOrg } from '$lib/portal';
+	import { setActiveOrg, type PortalOrg } from '$lib/api/portal';
 	import type { TicketRow, TicketStatus } from '$lib/server/tickets';
 	import { TICKET_STATUSES } from '$lib/data';
 	import { m } from '$lib/paraglide/messages';

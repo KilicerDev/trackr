@@ -34,7 +34,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import AttachmentDropzone from '../attachments/AttachmentDropzone.svelte';
 	import StagedFileList from '../attachments/StagedFileList.svelte';
-	import { selectStageable } from '$lib/attachments/config';
+	import { selectStageable } from '$lib/config/attachments';
 
 	interface Prefill {
 		project?: string;

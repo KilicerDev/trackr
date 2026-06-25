@@ -14,7 +14,7 @@ import {
 	type AnyPgColumn
 } from 'drizzle-orm/pg-core';
 import { user } from './auth.schema';
-import type { AttachmentEntityType } from '$lib/attachments/config';
+import type { AttachmentEntityType } from '$lib/config/attachments';
 
 export const invitation = pgTable(
 	'invitation',

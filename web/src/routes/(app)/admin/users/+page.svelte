@@ -16,7 +16,7 @@
 	import { metaRoleLabel, orgRoleLabel, orgRolePerm } from '$lib/labels';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
-	import { POPOVER_IN } from '$lib/motion';
+	import { POPOVER_IN } from '$lib/config/motion';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

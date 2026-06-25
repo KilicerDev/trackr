@@ -16,7 +16,7 @@
 	import Icon from './Icon.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
-	import { POPOVER_IN } from '$lib/motion';
+	import { POPOVER_IN } from '$lib/config/motion';
 	import { m } from '$lib/paraglide/messages';
 
 	export interface FilterField {

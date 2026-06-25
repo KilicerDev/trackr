@@ -11,7 +11,7 @@
 	import PriorityBars from '$lib/components/PriorityBars.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
-	import { POPOVER_IN } from '$lib/motion';
+	import { POPOVER_IN } from '$lib/config/motion';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
 	import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from '$lib/data';
 	import type { TicketRow, TicketMessageRow } from '$lib/server/tickets';
@@ -19,7 +19,7 @@
 	import AttachmentUploader from '$lib/components/attachments/AttachmentUploader.svelte';
 	import AttachmentDropzone from '$lib/components/attachments/AttachmentDropzone.svelte';
 	import StagedFileList from '$lib/components/attachments/StagedFileList.svelte';
-	import { selectStageable, type AttachmentDTO } from '$lib/attachments/config';
+	import { selectStageable, type AttachmentDTO } from '$lib/config/attachments';
 	import { m } from '$lib/paraglide/messages';
 	import {
 		ticketStatusLabel,

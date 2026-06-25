@@ -3,7 +3,7 @@
 	import Icon from '../Icon.svelte';
 	import { confirm } from '../confirm.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
-	import { formatBytes, type AttachmentDTO } from '$lib/attachments/config';
+	import { formatBytes, type AttachmentDTO } from '$lib/config/attachments';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {

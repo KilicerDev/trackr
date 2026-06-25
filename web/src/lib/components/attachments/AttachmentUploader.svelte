@@ -7,7 +7,7 @@
 		selectStageable,
 		type AttachmentDTO,
 		type AttachmentEntityType
-	} from '$lib/attachments/config';
+	} from '$lib/config/attachments';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
