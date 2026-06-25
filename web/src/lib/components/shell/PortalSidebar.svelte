@@ -17,6 +17,7 @@
 		activeOrgId?: string | null;
 		pinnedTickets?: TicketRow[];
 		recentTickets?: TicketRow[];
+		effectivePermissions?: string[];
 	};
 
 	const orgs = $derived((page.data as LayoutShape).orgs ?? []);
@@ -24,6 +25,10 @@
 	const activeOrg = $derived(orgs.find((o) => o.id === activeOrgId) ?? orgs[0] ?? null);
 	const pinned = $derived((page.data as LayoutShape).pinnedTickets ?? []);
 	const recents = $derived((page.data as LayoutShape).recentTickets ?? []);
+	// Members (the see-all tier) get the org chat; standard own-tickets users don't.
+	const canChat = $derived(
+		((page.data as LayoutShape).effectivePermissions ?? []).includes('org.chat.read')
+	);
 
 	let switcherOpen = $state(false);
 
@@ -111,6 +116,22 @@
 			<span>{m.shell_portal_new_ticket()}</span>
 		</a>
 	</div>
+
+	{#if canChat}
+		<div class="px-3 pt-1 pb-1">
+			<a
+				href="/chat"
+				class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-text-2 transition-colors hover:bg-surface hover:text-text {page.url.pathname.startsWith(
+					'/chat'
+				)
+					? 'bg-surface !text-text'
+					: ''}"
+			>
+				<Icon name="msg" size={15} class="text-text-3" />
+				<span>{m.shell_nav_chat()}</span>
+			</a>
+		</div>
+	{/if}
 
 	<div class="mt-1 flex-1 overflow-y-auto px-2 pb-2">
 		<!-- Pinned -->

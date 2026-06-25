@@ -6,9 +6,16 @@
 // matrix that gates reads on the entity. A client from org B can never end
 // up in the recipient set for a ticket in org A, by construction.
 
-import { eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '../db';
-import { organization, organizationMember, projectMember, rolePermission } from '../db/app.schema';
+import {
+	organization,
+	organizationMember,
+	projectMember,
+	rolePermission,
+	tagSubscription,
+	threadTag
+} from '../db/app.schema';
 import type { Permission } from '../../permissions';
 
 async function rolesGranting(perms: Permission[]): Promise<Set<string>> {
@@ -148,4 +155,54 @@ export async function ticketRecipients(
 	if (!opts.internalOnly && ctx.customerId) out.add(ctx.customerId);
 	if (ctx.assignedAgentId) out.add(ctx.assignedAgentId);
 	return out;
+}
+
+// The audience of an org's support chat: org members holding `org.chat.read`
+// (the "see-all" tier — clients/admins) plus internal Trackr staff with the
+// same permission. Standard own-tickets-only members never hold it, so they're
+// excluded by construction. This is the derived membership for the chat — no
+// stored member rows.
+export async function orgChatRecipients(orgId: string): Promise<Set<string>> {
+	const [members, internal] = await Promise.all([
+		orgMembersWithAnyPerm(orgId, ['org.chat.read' as Permission]),
+		internalStaffWithAnyPerm(['org.chat.read' as Permission])
+	]);
+	return new Set<string>([...members, ...internal]);
+}
+
+// Filter @-mention candidates down to people actually in the org chat audience,
+// so a mention can never page someone who can't read the chat. Org analogue of
+// `projectMentionRecipients`.
+export async function orgMentionRecipients(
+	orgId: string,
+	candidateIds: Iterable<string>
+): Promise<Set<string>> {
+	const candidates = new Set([...candidateIds].filter(Boolean));
+	if (candidates.size === 0) return new Set();
+	const allowed = await orgChatRecipients(orgId);
+	return new Set([...candidates].filter((id) => allowed.has(id)));
+}
+
+// Users who have explicitly subscribed to (`'all'`) or muted (`'muted'`) any
+// tag on `threadId`. Drives tag-based notification routing: followers are added
+// to the audience even if not otherwise involved; muters are dropped (unless
+// mentioned). Returns the set for the requested mode.
+async function tagSubscribersForThread(
+	threadId: string,
+	mode: 'all' | 'muted'
+): Promise<Set<string>> {
+	const rows = await db
+		.select({ userId: tagSubscription.userId })
+		.from(tagSubscription)
+		.innerJoin(threadTag, eq(threadTag.tagId, tagSubscription.tagId))
+		.where(and(eq(threadTag.threadId, threadId), eq(tagSubscription.mode, mode)));
+	return new Set(rows.map((r) => r.userId));
+}
+
+export function tagFollowers(threadId: string): Promise<Set<string>> {
+	return tagSubscribersForThread(threadId, 'all');
+}
+
+export function tagMuters(threadId: string): Promise<Set<string>> {
+	return tagSubscribersForThread(threadId, 'muted');
 }

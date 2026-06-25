@@ -35,7 +35,8 @@ export const ATTACHMENT_ENTITY_TYPES = [
 	'wiki_page',
 	'note',
 	'ticket_message',
-	'project_activity'
+	'project_activity',
+	'message'
 ] as const;
 export type AttachmentEntityType = (typeof ATTACHMENT_ENTITY_TYPES)[number];
 

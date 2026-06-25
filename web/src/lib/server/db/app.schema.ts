@@ -581,6 +581,7 @@ export type NotificationPrefs = Partial<{
 	ticketCreated: NotificationChannelPrefs;
 	ticketAssigned: NotificationChannelPrefs;
 	ticketMessage: NotificationChannelPrefs;
+	chatMessage: NotificationChannelPrefs;
 	wikiUpdated: NotificationChannelPrefs;
 }>;
 
@@ -962,6 +963,182 @@ export const ticketFavoriteRelations = relations(ticketFavorite, ({ one }) => ({
 	ticket: one(ticket, { fields: [ticketFavorite.ticketId], references: [ticket.id] })
 }));
 
+// ─── Threads & messages ──────────────────────────────────────────────────────
+// The unified messaging core. A `thread` is a conversation; a `message` is one
+// post in it. A thread carries *what it's attached to* via (subjectType,
+// subjectId) — access is derived from that subject, never stored. v1 uses only
+// `subjectType='org'` (the org-wide support chat: "a chat" is simply all threads
+// whose subject is that org). The other subject types are reserved so task
+// comments, ticket conversations, project chat and DMs can fold onto this table
+// additively later.
+
+export const THREAD_SUBJECT_TYPES = ['org', 'project', 'ticket', 'task', 'dm'] as const;
+export type ThreadSubjectType = (typeof THREAD_SUBJECT_TYPES)[number];
+
+export const thread = pgTable(
+	'thread',
+	{
+		id: text('id').primaryKey(),
+		subjectType: text('subject_type').$type<ThreadSubjectType>().notNull(),
+		subjectId: text('subject_id').notNull(),
+		// Null for entity-attached threads (the parent supplies the title); set for
+		// standalone chat threads.
+		title: text('title'),
+		status: text('status').notNull().default('open'), // 'open' | 'resolved'
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		deletedAt: timestamp('deleted_at'),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at')
+			.defaultNow()
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull()
+	},
+	(t) => [index('thread_subject_idx').on(t.subjectType, t.subjectId, t.updatedAt)]
+);
+
+export type Thread = typeof thread.$inferSelect;
+
+export const MESSAGE_KINDS = ['comment', 'system'] as const;
+export type MessageKind = (typeof MESSAGE_KINDS)[number];
+
+export const message = pgTable(
+	'message',
+	{
+		id: text('id').primaryKey(),
+		threadId: text('thread_id')
+			.notNull()
+			.references(() => thread.id, { onDelete: 'cascade' }),
+		authorId: text('author_id').references(() => user.id, { onDelete: 'set null' }),
+		body: text('body').notNull(),
+		// 'comment' = human message; 'system' reserved for folded-in activity events.
+		kind: text('kind').$type<MessageKind>().notNull().default('comment'),
+		meta: jsonb('meta').$type<Record<string, unknown>>(),
+		editedAt: timestamp('edited_at'),
+		deletedAt: timestamp('deleted_at'),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at')
+			.defaultNow()
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull()
+	},
+	(t) => [index('message_thread_idx').on(t.threadId, t.createdAt)]
+);
+
+export type Message = typeof message.$inferSelect;
+
+export const threadRelations = relations(thread, ({ one, many }) => ({
+	creator: one(user, { fields: [thread.createdBy], references: [user.id] }),
+	messages: many(message),
+	tags: many(threadTag)
+}));
+
+export const messageRelations = relations(message, ({ one }) => ({
+	thread: one(thread, { fields: [message.threadId], references: [thread.id] }),
+	author: one(user, { fields: [message.authorId], references: [user.id] })
+}));
+
+// ─── Tags ────────────────────────────────────────────────────────────────────
+// First-class, shared tag vocabulary. `orgId` scopes the vocabulary to an org;
+// `org_id IS NULL` = internal/team tags (mirrors how internal projects use a
+// null org). Links to entities live in per-entity join tables (v1 needs only
+// `thread_tag`; `task_tag`/`ticket_tag` arrive when those migrate). Follow/mute
+// is a single global `tag_subscription` so "follow Features / mute SEO" works
+// across every entity type.
+
+export const tag = pgTable(
+	'tag',
+	{
+		id: text('id').primaryKey(),
+		orgId: text('org_id').references(() => organization.id, { onDelete: 'cascade' }),
+		label: text('label').notNull(),
+		color: text('color'),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: timestamp('created_at').defaultNow().notNull()
+	},
+	(t) => [
+		uniqueIndex('tag_org_label_idx').on(t.orgId, t.label),
+		// Postgres treats NULLs as distinct, so the composite unique above does not
+		// cover internal (null-org) tags — enforce those separately.
+		uniqueIndex('tag_internal_label_idx')
+			.on(t.label)
+			.where(sql`${t.orgId} is null`)
+	]
+);
+
+export type Tag = typeof tag.$inferSelect;
+
+export const tagRelations = relations(tag, ({ one, many }) => ({
+	org: one(organization, { fields: [tag.orgId], references: [organization.id] }),
+	threads: many(threadTag),
+	subscriptions: many(tagSubscription)
+}));
+
+export const threadTag = pgTable(
+	'thread_tag',
+	{
+		threadId: text('thread_id')
+			.notNull()
+			.references(() => thread.id, { onDelete: 'cascade' }),
+		tagId: text('tag_id')
+			.notNull()
+			.references(() => tag.id, { onDelete: 'cascade' })
+	},
+	(t) => [primaryKey({ columns: [t.threadId, t.tagId] }), index('thread_tag_tag_idx').on(t.tagId)]
+);
+
+export type ThreadTag = typeof threadTag.$inferSelect;
+
+export const threadTagRelations = relations(threadTag, ({ one }) => ({
+	thread: one(thread, { fields: [threadTag.threadId], references: [thread.id] }),
+	tag: one(tag, { fields: [threadTag.tagId], references: [tag.id] })
+}));
+
+// Per-user follow/mute of a tag. Absence = default (no override). 'all' =
+// notify me about anything tagged this, even unassigned/unmentioned; 'muted' =
+// suppress (mentions still win).
+export const tagSubscription = pgTable(
+	'tag_subscription',
+	{
+		tagId: text('tag_id')
+			.notNull()
+			.references(() => tag.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		mode: text('mode').$type<'all' | 'muted'>().notNull(),
+		updatedAt: timestamp('updated_at').defaultNow().notNull()
+	},
+	(t) => [
+		primaryKey({ columns: [t.tagId, t.userId] }),
+		index('tag_subscription_user_idx').on(t.userId)
+	]
+);
+
+export type TagSubscription = typeof tagSubscription.$inferSelect;
+
+export const tagSubscriptionRelations = relations(tagSubscription, ({ one }) => ({
+	tag: one(tag, { fields: [tagSubscription.tagId], references: [tag.id] }),
+	user: one(user, { fields: [tagSubscription.userId], references: [user.id] })
+}));
+
+// Per-user last-read cursor for a thread — drives unread badges. Pure UX state;
+// never gates access.
+export const threadRead = pgTable(
+	'thread_read',
+	{
+		threadId: text('thread_id')
+			.notNull()
+			.references(() => thread.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		lastReadAt: timestamp('last_read_at').defaultNow().notNull()
+	},
+	(t) => [primaryKey({ columns: [t.threadId, t.userId] })]
+);
+
+export type ThreadRead = typeof threadRead.$inferSelect;
+
 // ─── Attachments ─────────────────────────────────────────────────────────────
 // One row per uploaded file. Polymorphic: a single table serves every parent
 // (tickets, tasks, wiki pages, ticket messages, task comments) via
@@ -1043,6 +1220,7 @@ export const NOTIFICATION_KINDS = [
 	'ticketCreated',
 	'ticketAssigned',
 	'ticketMessage',
+	'chatMessage',
 	'wikiUpdated'
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];

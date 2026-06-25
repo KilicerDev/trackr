@@ -25,6 +25,8 @@ import {
 	task,
 	projectActivity,
 	note,
+	message,
+	thread,
 	type Attachment
 } from '$lib/server/db/app.schema';
 import { storage } from '$lib/server/storage';
@@ -438,6 +440,18 @@ export async function resolveEntityContext(
 			if (!row) return null;
 			return { orgId: null, projectId: null, ticketOwners: [] };
 		}
+		case 'message': {
+			// Chat message: scope comes from its thread's subject. v1 only has
+			// org-subject threads, so resolve the org and gate on org.chat.*.
+			const [row] = await db
+				.select({ subjectType: thread.subjectType, subjectId: thread.subjectId })
+				.from(message)
+				.innerJoin(thread, eq(thread.id, message.threadId))
+				.where(and(eq(message.id, entityId), isNull(message.deletedAt), isNull(thread.deletedAt)))
+				.limit(1);
+			if (!row || row.subjectType !== 'org') return null;
+			return { orgId: row.subjectId, projectId: null, ticketOwners: [] };
+		}
 	}
 }
 
@@ -489,6 +503,11 @@ export async function authorizeAttachmentAccess(
 		case 'note':
 			// Both read and write require Trackr-team membership.
 			return isTrackrTeam(locals);
+		case 'message': {
+			const orgId = ctx.orgId;
+			if (!orgId) return false;
+			return can(locals, mode === 'write' ? 'org.chat.post' : 'org.chat.read', { orgId });
+		}
 	}
 }
 
@@ -517,5 +536,10 @@ export async function authorizeAttachmentDelete(
 		case 'wiki_page':
 		case 'note':
 			return isTrackrTeam(locals);
+		case 'message': {
+			// Uploader may remove their own file; otherwise requires post rights.
+			if (locals.user?.id && row.uploadedBy === locals.user.id) return true;
+			return ctx.orgId ? can(locals, 'org.chat.post', { orgId: ctx.orgId }) : false;
+		}
 	}
 }

@@ -20,6 +20,7 @@ export const NOTIFICATION_DEFAULTS: Required<NotificationPrefs> = {
 	ticketCreated: { email: true, inApp: true },
 	ticketAssigned: { email: true, inApp: true },
 	ticketMessage: { email: true, inApp: true },
+	chatMessage: { email: false, inApp: true },
 	wikiUpdated: { email: false, inApp: false }
 };
 

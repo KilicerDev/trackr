@@ -15,6 +15,7 @@
 		isAdmin?: boolean;
 		isSuperadmin?: boolean;
 		isTrackrTeam?: boolean;
+		effectivePermissions?: string[];
 	};
 
 	const taskCount = $derived((page.data as LayoutShape).taskCount ?? 0);
@@ -24,6 +25,9 @@
 	const isAdmin = $derived(!!(page.data as LayoutShape).isAdmin);
 	const isSuperadmin = $derived(!!(page.data as LayoutShape).isSuperadmin);
 	const isTrackrTeam = $derived(!!(page.data as LayoutShape).isTrackrTeam);
+	const canChat = $derived(
+		((page.data as LayoutShape).effectivePermissions ?? []).includes('org.chat.read')
+	);
 
 	const workspaceItems = $derived([
 		{ key: 'week', label: m.shell_nav_week(), icon: 'calendar', href: '/week' },
@@ -33,6 +37,9 @@
 			icon: 'ticket',
 			href: '/tickets'
 		},
+		...(canChat
+			? [{ key: 'chat', label: m.shell_nav_chat(), icon: 'msg', href: '/chat' }]
+			: []),
 		{
 			key: 'projects',
 			label: m.shell_nav_projects(),

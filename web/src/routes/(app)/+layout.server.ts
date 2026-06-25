@@ -26,7 +26,10 @@ import type { LayoutServerLoad } from './$types';
 // back to the new-ticket view.
 function portalPathAllowed(pathname: string): boolean {
 	return (
-		/^\/tickets(\/|$)/.test(pathname) || /^\/me(\/|$)/.test(pathname) || pathname === '/logout'
+		/^\/tickets(\/|$)/.test(pathname) ||
+		/^\/chat(\/|$)/.test(pathname) ||
+		/^\/me(\/|$)/.test(pathname) ||
+		pathname === '/logout'
 	);
 }
 
