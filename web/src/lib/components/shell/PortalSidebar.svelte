@@ -117,6 +117,20 @@
 		</a>
 	</div>
 
+	<!-- Overview -->
+	<div class="px-3 pt-1 pb-1">
+		<a
+			href="/tickets"
+			class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-text-2 transition-colors hover:bg-surface hover:text-text {page
+				.url.pathname === '/tickets'
+				? 'bg-surface !text-text'
+				: ''}"
+		>
+			<Icon name="ticket" size={15} class="text-text-3" />
+			<span>{m.shell_portal_overview()}</span>
+		</a>
+	</div>
+
 	{#if canChat}
 		<div class="px-3 pt-1 pb-1">
 			<a

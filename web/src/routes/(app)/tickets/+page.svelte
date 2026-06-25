@@ -30,11 +30,18 @@
 		orgs?: { id: string; name: string; slug: string; color: string }[];
 		users?: AppUser[];
 		isTrackrTeam?: boolean;
+		isPortalUser?: boolean;
+		activeOrgId?: string | null;
 		effectivePermissions?: string[];
 		savedView?: Record<string, unknown>;
 	};
 
 	let { data }: { data: PageData } = $props();
+
+	// Portal clients get a simplified, read-only overview: no agent-oriented
+	// controls, and the New button routes to the full /tickets/new page (not the
+	// in-app compose modal).
+	const isPortal = $derived(!!data.isPortalUser);
 
 	type GroupBy = 'status' | 'priority' | 'category' | 'org' | 'assignee' | 'none';
 	type SubGroup = 'none' | 'status' | 'priority' | 'category' | 'assignee';
@@ -117,9 +124,15 @@
 	}
 
 	function openCreate(orgId: string | null = null) {
+		if (isPortal) {
+			void goto('/tickets/new');
+			return;
+		}
 		createPrefillOrg = orgId;
 		createOpen = true;
 	}
+
+	const activeOrg = $derived((data.orgs ?? []).find((o) => o.id === data.activeOrgId));
 
 	const filtered = $derived.by(() => {
 		const q = search.trim().toLowerCase();
@@ -144,10 +157,12 @@
 <svelte:head><title>{m.tickets_page_title()}</title></svelte:head>
 
 <Topbar
-	crumbs={[
-		{ label: m.tickets_breadcrumb_workspace(), href: '/tasks' },
-		{ label: m.tickets_breadcrumb_support() }
-	]}
+	crumbs={isPortal
+		? [{ label: activeOrg?.name ?? m.shell_portal_support() }, { label: m.shell_portal_overview() }]
+		: [
+				{ label: m.tickets_breadcrumb_workspace(), href: '/tasks' },
+				{ label: m.tickets_breadcrumb_support() }
+			]}
 />
 
 <Toolbar
@@ -164,6 +179,7 @@
 	canCreate={data.canCreateTicket}
 	onNew={() => openCreate()}
 	{orgs}
+	portal={isPortal}
 />
 
 {#if data.tickets.length === 0}
@@ -203,9 +219,11 @@
 	linkedTasks={selected ? (data.linkedTasksByTicket?.[selected.id] ?? []) : []}
 />
 
-<CreateTicketModal
-	open={createOpen}
-	onclose={() => (createOpen = false)}
-	{orgs}
-	prefillOrgId={createPrefillOrg}
-/>
+{#if !isPortal}
+	<CreateTicketModal
+		open={createOpen}
+		onclose={() => (createOpen = false)}
+		{orgs}
+		prefillOrgId={createPrefillOrg}
+	/>
+{/if}

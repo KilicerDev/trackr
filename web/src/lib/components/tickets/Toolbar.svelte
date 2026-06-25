@@ -34,6 +34,8 @@
 		onNew?: () => void;
 		canCreate?: boolean;
 		orgs?: { id: string; name: string; color: string }[];
+		// Portal (client) mode: hide agent-oriented dimensions like assignee.
+		portal?: boolean;
 	}
 	let {
 		view,
@@ -48,7 +50,8 @@
 		setSub,
 		onNew,
 		canCreate = true,
-		orgs = []
+		orgs = [],
+		portal = false
 	}: Props = $props();
 
 	// Assignees offered for grouping/filtering: internal agents only (tickets are
@@ -57,29 +60,32 @@
 		((page.data as LayoutData).users ?? []).filter((u) => u.internal && u.status !== 'disabled')
 	);
 
-	const GROUP_OPTIONS: { id: GroupBy; label: () => string }[] = [
+	// Assignee is an agent-facing dimension — dropped in portal (client) mode.
+	const GROUP_OPTIONS = $derived<{ id: GroupBy; label: () => string }[]>([
 		{ id: 'status', label: m.tickets_group_status },
 		{ id: 'priority', label: m.tickets_group_priority },
 		{ id: 'category', label: m.tickets_group_category },
 		{ id: 'org', label: m.tickets_group_org },
-		{ id: 'assignee', label: m.tickets_group_assignee },
+		...(portal ? [] : [{ id: 'assignee' as const, label: m.tickets_group_assignee }]),
 		{ id: 'none', label: m.tickets_group_none }
-	];
-	const SUB_OPTIONS: { id: SubBy; label: () => string }[] = [
+	]);
+	const SUB_OPTIONS = $derived<{ id: SubBy; label: () => string }[]>([
 		{ id: 'status', label: m.tickets_group_status },
 		{ id: 'priority', label: m.tickets_group_priority },
 		{ id: 'category', label: m.tickets_group_category },
-		{ id: 'assignee', label: m.tickets_group_assignee },
+		...(portal ? [] : [{ id: 'assignee' as const, label: m.tickets_group_assignee }]),
 		{ id: 'none', label: m.tickets_group_none }
-	];
+	]);
 
-	const FIELDS: FilterField[] = [
+	const FIELDS = $derived<FilterField[]>([
 		{ id: 'status', label: m.tickets_field_status(), icon: 'check' },
 		{ id: 'priority', label: m.tickets_field_priority(), icon: 'filter' },
 		{ id: 'category', label: m.tickets_field_category(), icon: 'bookmark' },
-		{ id: 'assignee', label: m.tickets_field_assignee(), icon: 'users' },
+		...(portal
+			? []
+			: [{ id: 'assignee', label: m.tickets_field_assignee(), icon: 'users' } as FilterField]),
 		{ id: 'org', label: m.tickets_field_org(), icon: 'org' }
-	];
+	]);
 
 	const groupLabel = (id: GroupBy) => GROUP_OPTIONS.find((g) => g.id === id)?.label() ?? '';
 	const subLabel = (id: SubBy) => SUB_OPTIONS.find((s) => s.id === id)?.label() ?? '';
