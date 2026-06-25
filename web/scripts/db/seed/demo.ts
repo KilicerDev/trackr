@@ -1,53 +1,19 @@
-#!/usr/bin/env bun
-/**
- * Seed (or refresh) demo data so dev sees a populated app:
- *   - 6 demo users (idempotent, matched by email).
- *   - 4 orgs+projects matching the original mock fixtures (SIWEB, TRACKR, MAJA, WEBIM).
- *   - 23 mock tasks with status/priority/assignee.
- *
- * Re-runs are idempotent: existing users/projects are updated in place,
- * existing tasks (matched on `(project_id, number)`) are upserted.
- *
- * Usage:
- *   bun seed:demo
- *   DEMO_PASSWORD=changeme123 bun seed:demo  # overrides default
- */
-
-import '../load-root-env';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
 import { and, eq, sql } from 'drizzle-orm';
 import { hashPassword } from 'better-auth/crypto';
-import * as schema from '../../src/lib/server/db/schema';
-import { resolveDatabaseUrl } from '../../src/lib/server/db/resolve-url';
-import { TRACKR_TASKS, TRACKR_PROJECTS, TRACKR_USERS } from '../../src/lib/data';
-import type { ProjectId } from '../../src/lib/types';
+import * as schema from '../../../src/lib/server/db/schema';
+import type { ProjectId, WikiPage } from '../../../src/lib/types';
+import { ok, info, type Db } from './client';
+import { USERS, PROJECTS, TASKS, WIKI_PAGES } from './fixtures';
 
-const DEFAULT_PASSWORD = process.env.DEMO_PASSWORD ?? 'demo12345';
-if (DEFAULT_PASSWORD.length < 8) {
-	console.error('DEMO_PASSWORD must be at least 8 characters.');
-	process.exit(1);
-}
+type IdMap = Map<string, string>;
 
-const client = postgres(resolveDatabaseUrl(process.env), { max: 1 });
-const db = drizzle(client, { schema });
+// ── Users ──────────────────────────────────────────────────────────────────
+// Seed the six active demo users as credential accounts (idempotent by email).
+async function seedUsers(db: Db, password: string): Promise<IdMap> {
+	const userIdMap: IdMap = new Map();
+	const passwordHash = await hashPassword(password);
 
-function ok(msg: string) {
-	console.log(`\x1b[32m✓\x1b[0m ${msg}`);
-}
-function info(msg: string) {
-	console.log(`\x1b[2m·\x1b[0m ${msg}`);
-}
-
-// Map mock user id (u1…u6) → real db user id.
-const userIdMap = new Map<string, string>();
-// Mock project key (SIWEB, …) → db project id.
-const projectIdMap = new Map<ProjectId, string>();
-
-try {
-	// ── Users ────────────────────────────────────────────────────────────
-	const passwordHash = await hashPassword(DEFAULT_PASSWORD);
-	for (const u of TRACKR_USERS.slice(0, 6)) {
+	for (const u of USERS.slice(0, 6)) {
 		const [existing] = await db
 			.select({ id: schema.user.id })
 			.from(schema.user)
@@ -84,10 +50,15 @@ try {
 		userIdMap.set(u.id, id);
 		ok(`user ${u.email}`);
 	}
+	return userIdMap;
+}
 
-	// ── Projects ─────────────────────────────────────────────────────────
-	for (const key of Object.keys(TRACKR_PROJECTS) as ProjectId[]) {
-		const p = TRACKR_PROJECTS[key];
+// ── Projects ─────────────────────────────────────────────────────────────────
+async function seedProjects(db: Db, userIdMap: IdMap): Promise<Map<ProjectId, string>> {
+	const projectIdMap = new Map<ProjectId, string>();
+
+	for (const key of Object.keys(PROJECTS) as ProjectId[]) {
+		const p = PROJECTS[key];
 		const leadDb = userIdMap.get(p.lead) ?? null;
 
 		const [existing] = await db
@@ -149,10 +120,14 @@ try {
 			);
 		}
 	}
+	return projectIdMap;
+}
 
-	// ── Tasks ────────────────────────────────────────────────────────────
-	let maxNumberByProject = new Map<string, number>();
-	for (const t of TRACKR_TASKS) {
+// ── Tasks ────────────────────────────────────────────────────────────────────
+async function seedTasks(db: Db, userIdMap: IdMap, projectIdMap: Map<ProjectId, string>) {
+	const maxNumberByProject = new Map<string, number>();
+
+	for (const t of TASKS) {
 		const projectId = projectIdMap.get(t.project as ProjectId);
 		if (!projectId) {
 			info(`skip task ${t.id} (no project)`);
@@ -220,21 +195,92 @@ try {
 		const prev = maxNumberByProject.get(projectId) ?? 0;
 		if (number > prev) maxNumberByProject.set(projectId, number);
 	}
-	ok(`tasks: ${TRACKR_TASKS.length} reconciled`);
+	ok(`tasks: ${TASKS.length} reconciled`);
 
-	// Bump per-project counter past the highest seeded number so the next
-	// real create starts cleanly.
+	// Bump per-project counter past the highest seeded number so the next real
+	// create starts cleanly.
 	for (const [projectId, max] of maxNumberByProject) {
 		await db
 			.update(schema.project)
 			.set({ nextTaskNumber: sql`GREATEST(${schema.project.nextTaskNumber}, ${max + 1})` })
 			.where(eq(schema.project.id, projectId));
 	}
+}
 
+// ── Wiki ─────────────────────────────────────────────────────────────────────
+const escapeHtml = (s: string) =>
+	s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// Render the fixture block body to the HTML stored on `wiki_page.body`. The app
+// builds the collaborative ydoc lazily from this on first open (see
+// ensureDocumentForPage), so seeding the HTML is enough.
+function bodyToHtml(body: WikiPage['body']): string {
+	return body
+		.map((block) => {
+			switch (block.kind) {
+				case 'h1':
+					return `<h1>${escapeHtml(block.text)}</h1>`;
+				case 'h2':
+					return `<h2>${escapeHtml(block.text)}</h2>`;
+				case 'p':
+					return `<p>${escapeHtml(block.text)}</p>`;
+				case 'list':
+					return `<ul>${block.items.map((i) => `<li>${escapeHtml(i)}</li>`).join('')}</ul>`;
+				case 'callout':
+					return `<blockquote>${escapeHtml(block.text)}</blockquote>`;
+			}
+		})
+		.join('\n');
+}
+
+async function seedWiki(db: Db, userIdMap: IdMap) {
+	// Fixture order lists folders/parents before their children, so parentId
+	// references resolve. The fixture page id doubles as the (text) primary key.
+	for (let i = 0; i < WIKI_PAGES.length; i++) {
+		const p = WIKI_PAGES[i];
+		const isFolder = p.icon === 'folder';
+		const values = {
+			id: p.id,
+			parentId: p.parent,
+			title: p.title,
+			icon: p.icon,
+			isFolder,
+			body: isFolder ? '' : bodyToHtml(p.body),
+			authorId: userIdMap.get(p.author) ?? null,
+			sortOrder: i
+		};
+		await db
+			.insert(schema.wikiPage)
+			.values(values)
+			.onConflictDoUpdate({
+				target: schema.wikiPage.id,
+				set: {
+					parentId: values.parentId,
+					title: values.title,
+					icon: values.icon,
+					isFolder: values.isFolder,
+					body: values.body,
+					authorId: values.authorId,
+					sortOrder: values.sortOrder,
+					updatedAt: new Date()
+				}
+			});
+	}
+	ok(`wiki: ${WIKI_PAGES.length} pages reconciled`);
+}
+
+/**
+ * Seed the full demo dataset in dependency order: users → projects → tasks →
+ * wiki. Idempotent; safe to re-run. Reads DEMO_PASSWORD (default 'demo12345').
+ */
+export async function seedDemo(db: Db): Promise<void> {
+	const password = process.env.DEMO_PASSWORD ?? 'demo12345';
+	if (password.length < 8) {
+		throw new Error('DEMO_PASSWORD must be at least 8 characters.');
+	}
+	const userIdMap = await seedUsers(db, password);
+	const projectIdMap = await seedProjects(db, userIdMap);
+	await seedTasks(db, userIdMap, projectIdMap);
+	await seedWiki(db, userIdMap);
 	ok('demo seed complete');
-} catch (err) {
-	console.error('\x1b[31m✗\x1b[0m seed failed:', err);
-	process.exitCode = 1;
-} finally {
-	await client.end();
 }

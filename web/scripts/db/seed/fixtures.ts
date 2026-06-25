@@ -1,8 +1,10 @@
-import type { Project, ProjectId, Task, User, WikiPage } from './types';
+// Demo fixtures consumed by the seeder (`bun run db:seed --all`). These used to
+// live in src/lib/data.ts and leak into the app at runtime; they now exist only
+// here, as the source for optionally populating a local/dev database.
 
-export const TODAY = '2026-05-12';
+import type { Project, ProjectId, Task, User, WikiPage } from '../../../src/lib/types';
 
-export const TRACKR_USERS: User[] = [
+export const USERS: User[] = [
 	{
 		id: 'u1',
 		name: 'Maja Schmidt',
@@ -131,11 +133,7 @@ export const TRACKR_USERS: User[] = [
 	}
 ];
 
-export const CURRENT_USER_ID = 'u6';
-export const currentUser = () => TRACKR_USERS.find((u) => u.id === CURRENT_USER_ID)!;
-export const userById = (id: string) => TRACKR_USERS.find((u) => u.id === id);
-
-export const TRACKR_PROJECTS: Record<ProjectId, Project> = {
+export const PROJECTS: Record<ProjectId, Project> = {
 	SIWEB: {
 		name: 'Siweb Marketplace',
 		color: '#e07a5f',
@@ -178,7 +176,7 @@ export const TRACKR_PROJECTS: Record<ProjectId, Project> = {
 	}
 };
 
-export const TRACKR_TASKS: Task[] = [
+export const TASKS: Task[] = [
 	{
 		id: 'SIWEB-15',
 		title: 'Gelöschte Artikel besser darstellen',

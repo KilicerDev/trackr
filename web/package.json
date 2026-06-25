@@ -24,8 +24,7 @@
 		"db:migrate": "bun run scripts/db/migrate.ts",
 		"db:studio": "drizzle-kit studio",
 		"auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes",
-		"seed:root": "bun run scripts/db/seed-root.ts",
-		"seed:demo": "bun run scripts/db/seed-demo.ts"
+		"db:seed": "bun run scripts/db/seed/index.ts"
 	},
 	"devDependencies": {
 		"@better-auth/cli": "~1.4.21",

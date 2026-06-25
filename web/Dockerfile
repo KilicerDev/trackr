@@ -65,4 +65,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 # server. Any step's failure aborts boot. The seed step is idempotent — it
 # no-ops once a superadmin user exists, so subsequent restarts skip the work.
 # On a fresh database, ROOT_PASSWORD must be set or seeding (and boot) fails.
-CMD ["sh", "-c", "bun scripts/db/migrate.ts && bun scripts/db/seed-root.ts && bun build/server-entry.js"]
+CMD ["sh", "-c", "bun scripts/db/migrate.ts && bun scripts/db/seed/index.ts --root && bun build/server-entry.js"]

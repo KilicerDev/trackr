@@ -1,4 +1,4 @@
-// Locale-aware label resolvers for the constant id→meta maps in `$lib/data`.
+// Locale-aware label resolvers for the constant id→meta maps in `$lib/config/taxonomy`.
 //
 // The arrays in data.ts keep their stable `id`/color/`dot`/`tint` fields; their
 // English `label` strings are only a fallback. UI code must resolve display
