@@ -97,8 +97,7 @@
 					<button
 						type="submit"
 						disabled={submitting}
-						class="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[13.5px] font-semibold text-white transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-default disabled:opacity-70"
-						style:box-shadow="var(--shadow-btn-lg)"
+						class="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[13.5px] font-semibold text-white shadow-btn-lg transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-default disabled:opacity-70"
 					>
 						{#if submitting}
 							<span

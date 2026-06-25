@@ -74,8 +74,7 @@
 				</p>
 				<a
 					href="/forgot-password"
-					class="mt-6 inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-accent px-4 text-[13px] font-semibold text-white transition-colors hover:bg-accent-strong"
-					style:box-shadow="var(--shadow-btn-lg)"
+					class="mt-6 inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-accent px-4 text-[13px] font-semibold text-white shadow-btn-lg transition-colors hover:bg-accent-strong"
 				>
 					{m.auth_reset_request_new_link()}
 				</a>
@@ -199,8 +198,7 @@
 					<button
 						type="submit"
 						disabled={submitting}
-						class="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[13.5px] font-semibold text-white transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-default disabled:opacity-70"
-						style:box-shadow="var(--shadow-btn-lg)"
+						class="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[13.5px] font-semibold text-white shadow-btn-lg transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-default disabled:opacity-70"
 					>
 						{#if submitting}
 							<span
