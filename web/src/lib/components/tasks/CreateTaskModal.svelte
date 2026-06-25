@@ -24,7 +24,7 @@
 	import TagsPopover from '../popovers/TagsPopover.svelte';
 	import { TRACKR_PRIORITIES } from '$lib/config/taxonomy';
 	import { formatDateLong, formatEstimate } from '$lib/utils/format';
-	import { TRACKR_PROJECTS, TRACKR_USERS } from '$lib/data';
+	import { page } from '$app/state';
 	import type { PriorityId, ProjectId, StatusId, TypeId } from '$lib/types';
 	import { statusLabel, priorityLabel, typeLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
@@ -99,21 +99,15 @@
 		sourceTicketId
 	}: Props = $props();
 
-	// Fall back to mock data if real lists weren't provided — keeps the
-	// modal usable from contexts that haven't been wired to DB yet.
-	const userList = $derived<AssignableUser[]>(providedUsers ?? TRACKR_USERS);
-	const projectList = $derived<PickableProject[]>(
-		providedProjects ??
-			(Object.keys(TRACKR_PROJECTS) as ProjectId[]).map((id) => ({
-				id,
-				key: id,
-				name: TRACKR_PROJECTS[id].name,
-				color: TRACKR_PROJECTS[id].color,
-				icon: TRACKR_PROJECTS[id].icon,
-				status: 'active'
-			}))
+	// Prefer explicitly provided lists; otherwise read the app-wide layout data
+	// so the modal works from any context without threading props.
+	const userList = $derived<AssignableUser[]>(
+		providedUsers ?? (page.data as { users?: AssignableUser[] }).users ?? []
 	);
-	const meId = $derived(currentUserId ?? 'u6');
+	const projectList = $derived<PickableProject[]>(
+		providedProjects ?? (page.data as { projects?: PickableProject[] }).projects ?? []
+	);
+	const meId = $derived(currentUserId ?? '');
 
 	let title = $state('');
 	let description = $state('');

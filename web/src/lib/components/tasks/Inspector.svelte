@@ -34,7 +34,6 @@
 	import NewMeetingDialog from '../notes/NewMeetingDialog.svelte';
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES, TRACKR_TYPES } from '$lib/config/taxonomy';
 	import { formatDateLong, formatEstimate } from '$lib/utils/format';
-	import { userById as mockUserById } from '$lib/data';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
 	import { statusLabel, priorityLabel, typeLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
@@ -56,9 +55,8 @@
 	let { task, onclose, users: providedUsers }: Props = $props();
 
 	function resolveUser(id: string) {
-		const real = providedUsers?.find((u) => u.id === id);
-		if (real) return real;
-		return mockUserById(id);
+		const source = providedUsers ?? (page.data as { users?: AssignableUser[] }).users;
+		return source?.find((u) => u.id === id);
 	}
 
 	// Whether the current user can edit fields on the currently-open task.

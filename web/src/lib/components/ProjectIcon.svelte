@@ -1,13 +1,10 @@
 <script lang="ts">
-	import type { ProjectId } from '$lib/types';
-	import { TRACKR_PROJECTS } from '$lib/data';
 	import { page } from '$app/state';
 
 	interface Props {
-		// One of three modes:
+		// One of two modes:
 		//   1. `color` + `icon` provided directly (preferred for DB-backed callers).
 		//   2. `id` + lookup via $page.data.projects (matched on key).
-		//   3. `id` matches a mock project key (fallback for legacy callers).
 		id?: string;
 		color?: string;
 		icon?: string;
@@ -23,8 +20,6 @@
 			const projects = (page.data as DataShape).projects;
 			const fromDb = projects?.find((p) => p.key === id);
 			if (fromDb) return { color: fromDb.color, icon: fromDb.icon, name: fromDb.name };
-			const mock = TRACKR_PROJECTS[id as ProjectId];
-			if (mock) return { color: mock.color, icon: mock.icon, name: mock.name };
 		}
 		return { color: '#7c7c84', icon: '?', name: '' };
 	});

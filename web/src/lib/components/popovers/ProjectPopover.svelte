@@ -5,7 +5,7 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
 	import Icon from '../Icon.svelte';
-	import { TRACKR_PROJECTS } from '$lib/data';
+	import { page } from '$app/state';
 	import type { ProjectId } from '$lib/types';
 	import { m } from '$lib/paraglide/messages';
 
@@ -33,14 +33,9 @@
 		allAccess = false
 	}: Props = $props();
 
-	const fallback: PickableProject[] = (Object.keys(TRACKR_PROJECTS) as ProjectId[]).map((id) => ({
-		id,
-		key: id,
-		name: TRACKR_PROJECTS[id].name,
-		color: TRACKR_PROJECTS[id].color,
-		status: 'active'
-	}));
-	const projects = $derived(providedProjects ?? fallback);
+	const projects = $derived<PickableProject[]>(
+		providedProjects ?? (page.data as { projects?: PickableProject[] }).projects ?? []
+	);
 
 	// Statuses that represent projects no longer in active use. Hidden from the
 	// default list (still reachable via "show all", the inactive expander, or

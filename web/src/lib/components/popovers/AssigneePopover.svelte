@@ -5,7 +5,7 @@
 	import { POPOVER_IN } from '$lib/config/motion';
 	import Avatar from '../Avatar.svelte';
 	import Icon from '../Icon.svelte';
-	import { TRACKR_USERS } from '$lib/data';
+	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages';
 
 	type AssignableUser = {
@@ -28,7 +28,8 @@
 	let q = $state('');
 
 	let users = $derived.by(() => {
-		const source: AssignableUser[] = providedUsers ?? TRACKR_USERS;
+		const source: AssignableUser[] =
+			providedUsers ?? (page.data as { users?: AssignableUser[] }).users ?? [];
 		const list = source.filter((u) => u.status !== 'disabled');
 		if (!q) return list;
 		const needle = q.toLowerCase();
