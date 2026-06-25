@@ -7,10 +7,10 @@
 
 import { env } from '$env/dynamic/private';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
-import { db } from './db';
-import { notification, type NotificationKind } from './db/app.schema';
-import { user as userTable } from './db/auth.schema';
-import { getPreferences } from './preferences';
+import { db } from '../db';
+import { notification, type NotificationKind } from '../db/app.schema';
+import { user as userTable } from '../db/auth.schema';
+import { getPreferences } from '../preferences';
 import { sendEmailFireAndForget, notificationEmail, EMAIL_PRIORITY } from '$lib/server/jobs';
 import { baseLocale, isLocale, type Locale } from '$lib/paraglide/runtime';
 

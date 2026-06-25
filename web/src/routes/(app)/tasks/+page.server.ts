@@ -16,7 +16,7 @@ import { logActivityFF } from '$lib/server/activity';
 import { recordAudit } from '$lib/server/audit';
 import { syncTicketForLinkedTaskStatus } from '$lib/server/tickets';
 import { notify } from '$lib/server/notify';
-import { taskRecipients, projectMentionRecipients } from '$lib/server/notify-recipients';
+import { taskRecipients, projectMentionRecipients } from '$lib/server/notify/recipients';
 import { parseMentionIds } from '$lib/utils/mentions';
 import { accessibleProjectIds, assertCan, can } from '$lib/server/permissions';
 import { attachFormFiles, deleteAttachmentsFor } from '$lib/server/attachments';

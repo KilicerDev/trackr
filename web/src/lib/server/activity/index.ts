@@ -8,12 +8,12 @@
 // `logActivityFF` for fire-and-forget writes that must never undo the action
 // they describe.
 
-import { db } from './db';
+import { db } from '../db';
 import {
 	projectActivity,
 	type ProjectActivityType,
 	type ProjectActivityMeta
-} from './db/app.schema';
+} from '../db/app.schema';
 
 type Db = typeof db;
 // Drizzle's transaction callback parameter — structurally a subset of `db`.

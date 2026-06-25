@@ -3,9 +3,9 @@
 // Newest-first with a simple limit/offset for "load more".
 
 import { and, desc, eq, isNull } from 'drizzle-orm';
-import { db } from './db';
-import { projectActivity, type ProjectActivityType } from './db/app.schema';
-import { user } from './db/auth.schema';
+import { db } from '../db';
+import { projectActivity, type ProjectActivityType } from '../db/app.schema';
+import { user } from '../db/auth.schema';
 
 export type ActivityActor = {
 	id: string;

@@ -3,10 +3,10 @@
 // row shaping stay consistent across all three.
 
 import { and, desc, eq, gte, inArray, lt, or, sql } from 'drizzle-orm';
-import { db } from './db';
-import { auditLog } from './db/app.schema';
-import { user as userTable } from './db/auth.schema';
-import { parseDevice } from './audit';
+import { db } from '../db';
+import { auditLog } from '../db/app.schema';
+import { user as userTable } from '../db/auth.schema';
+import { parseDevice } from './index';
 
 export const AUDIT_PAGE_SIZE = 50;
 const RANGE_DAYS: Record<string, number> = { '1': 1, '7': 7, '30': 30 };

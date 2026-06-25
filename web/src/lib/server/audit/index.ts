@@ -6,8 +6,8 @@
 
 import type { RequestEvent } from '@sveltejs/kit';
 import { getRequestEvent } from '$app/server';
-import { db } from './db';
-import { auditLog } from './db/app.schema';
+import { db } from '../db';
+import { auditLog } from '../db/app.schema';
 import { LOG_EVENT_TYPES } from '$lib/data';
 
 export type AuditInput = {

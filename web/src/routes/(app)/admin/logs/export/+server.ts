@@ -1,6 +1,6 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { assertCan } from '$lib/server/permissions';
-import { queryAuditLog, type AuditRow, type AuditActor } from '$lib/server/audit-query';
+import { queryAuditLog, type AuditRow, type AuditActor } from '$lib/server/audit/query';
 
 const MAX_ROWS = 10_000; // safety cap so an export can't run unbounded
 const COLUMNS = ['timestamp', 'type', 'kind', 'actor', 'target', 'ip', 'device'] as const;

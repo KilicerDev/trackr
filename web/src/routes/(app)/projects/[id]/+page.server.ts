@@ -10,11 +10,11 @@ import {
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
 import { loadTasks } from '$lib/server/tasks';
-import { loadProjectActivity } from '$lib/server/activity-feed';
+import { loadProjectActivity } from '$lib/server/activity/feed';
 import { logActivityFF } from '$lib/server/activity';
 import { recordAudit } from '$lib/server/audit';
 import { notify } from '$lib/server/notify';
-import { projectMentionRecipients } from '$lib/server/notify-recipients';
+import { projectMentionRecipients } from '$lib/server/notify/recipients';
 import { parseMentionIds } from '$lib/utils/mentions';
 import { assertCan } from '$lib/server/permissions';
 import { m } from '$lib/paraglide/messages';

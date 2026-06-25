@@ -7,9 +7,9 @@
 // up in the recipient set for a ticket in org A, by construction.
 
 import { eq, inArray } from 'drizzle-orm';
-import { db } from './db';
-import { organization, organizationMember, projectMember, rolePermission } from './db/app.schema';
-import type { Permission } from '../permissions';
+import { db } from '../db';
+import { organization, organizationMember, projectMember, rolePermission } from '../db/app.schema';
+import type { Permission } from '../../permissions';
 
 async function rolesGranting(perms: Permission[]): Promise<Set<string>> {
 	if (perms.length === 0) return new Set();
