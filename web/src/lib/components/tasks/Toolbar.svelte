@@ -307,10 +307,9 @@
 				<div
 					use:clickOutside={() => (pop = null)}
 					in:fly={POPOVER_IN}
-					class="fixed z-50 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5"
+					class="fixed z-50 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 					style:left="{popPos.left}px"
 					style:top="{popPos.top}px"
-					style:box-shadow="var(--shadow-lg)"
 				>
 					{#each GROUP_OPTIONS as o (o.id)}
 						<button
@@ -347,10 +346,9 @@
 					<div
 						use:clickOutside={() => (pop = null)}
 						in:fly={POPOVER_IN}
-						class="fixed z-50 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5"
+						class="fixed z-50 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 						style:left="{popPos.left}px"
 						style:top="{popPos.top}px"
-						style:box-shadow="var(--shadow-lg)"
 					>
 						{#each SUB_OPTIONS as o (o.id)}
 							<button
@@ -390,10 +388,9 @@
 				<div
 					use:clickOutside={() => (pop = null)}
 					in:fly={POPOVER_IN}
-					class="fixed z-50 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5"
+					class="fixed z-50 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 					style:left="{popPos.left}px"
 					style:top="{popPos.top}px"
-					style:box-shadow="var(--shadow-lg)"
 				>
 					{#each TIME_OPTIONS as o (o.id)}
 						<button

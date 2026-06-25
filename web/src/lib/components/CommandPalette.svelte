@@ -210,8 +210,7 @@
 	>
 		<div
 			transition:fly={{ y: -8, duration: 180, easing: cubicOut }}
-			class="pointer-events-auto flex w-full max-w-[640px] flex-col self-start overflow-hidden rounded-2xl border border-border bg-bg-elev"
-			style:box-shadow="var(--shadow-lg)"
+			class="pointer-events-auto flex w-full max-w-[640px] flex-col self-start overflow-hidden rounded-2xl border border-border bg-bg-elev shadow-lg"
 			style:margin-top="calc(30vh - 24px)"
 		>
 			<!-- Search row -->

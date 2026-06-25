@@ -123,8 +123,7 @@
 	use:clickOutside={onclose}
 	use:autoPlace
 	in:fly={POPOVER_IN}
-	class="absolute top-full z-50 mt-1.5 w-[268px] rounded-[10px] border border-border bg-bg-elev p-2.5"
-	style:box-shadow="var(--shadow-lg)"
+	class="absolute top-full z-50 mt-1.5 w-[268px] rounded-[10px] border border-border bg-bg-elev p-2.5 shadow-lg"
 >
 	<div class="flex items-center justify-between px-1 pb-2">
 		<button

@@ -137,7 +137,7 @@
 					style:border-radius="13px"
 					style:font-size="18px"
 					style:background="linear-gradient(140deg, {color}, color-mix(in oklch, {color} 70%, #000) 85%)"
-					style:box-shadow="0 1px 0 rgba(255,255,255,0.18) inset, 0 6px 18px {color}33"
+					style:box-shadow="var(--shadow-edge), 0 6px 18px {color}33"
 				>
 					{initials}
 				</span>
@@ -195,7 +195,7 @@
 							style:background="linear-gradient(140deg, {c}, color-mix(in oklch, {c} 70%, #000) 85%)"
 							style:box-shadow={color === c
 								? `0 0 0 2px var(--bg-elev), 0 0 0 4px ${c}`
-								: '0 1px 0 rgba(255,255,255,0.18) inset'}
+								: 'var(--shadow-edge)'}
 						>
 							{#if color === c}
 								<svg

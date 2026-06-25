@@ -187,8 +187,7 @@
 			<div
 				use:clickOutside={() => (pop = null)}
 				in:fly={POPOVER_IN}
-				class="absolute top-full left-0 z-50 mt-1.5 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5"
-				style:box-shadow="var(--shadow-lg)"
+				class="absolute top-full left-0 z-50 mt-1.5 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 			>
 				{#each GROUP_OPTIONS as o (o.id)}
 					<button

@@ -33,9 +33,8 @@
 	></button>
 	<aside
 		transition:fly={{ x: width + 20, duration: 280, easing: cubicOut, opacity: 1 }}
-		class="fixed top-0 right-0 bottom-0 z-50 flex flex-col overflow-hidden border-l border-border bg-bg-elev"
+		class="fixed top-0 right-0 bottom-0 z-50 flex flex-col overflow-hidden border-l border-border bg-bg-elev shadow-lg"
 		style:width="{width}px"
-		style:box-shadow="var(--shadow-lg)"
 	>
 		{@render children()}
 	</aside>

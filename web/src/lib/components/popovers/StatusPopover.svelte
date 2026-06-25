@@ -21,8 +21,7 @@
 	use:clickOutside={onclose}
 	use:autoPlace
 	in:fly={POPOVER_IN}
-	class="absolute top-full z-50 mt-1.5 min-w-[180px] rounded-[10px] border border-border bg-bg-elev p-1.5"
-	style:box-shadow="var(--shadow-lg)"
+	class="absolute top-full z-50 mt-1.5 min-w-[180px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 >
 	{#each TRACKR_STATUSES as s (s.id)}
 		<button

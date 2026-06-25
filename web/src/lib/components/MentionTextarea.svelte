@@ -254,8 +254,7 @@
 	{#if open && candidates.length}
 		<div
 			use:autoPlace
-			class="absolute top-full left-0 z-50 mt-1 max-w-[280px] min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1"
-			style:box-shadow="var(--shadow-lg)"
+			class="absolute top-full left-0 z-50 mt-1 max-w-[280px] min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1 shadow-lg"
 		>
 			{#each candidates as u, i (u.id)}
 				<button

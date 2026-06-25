@@ -697,8 +697,7 @@
 				<div
 					use:clickOutside={p.onClosePop}
 					in:fly={POPOVER_IN}
-					class="absolute top-full left-0 z-50 mt-1.5 max-h-56 w-full overflow-y-auto rounded-[10px] border border-border bg-bg-elev p-1.5"
-					style:box-shadow="var(--shadow-lg)"
+					class="absolute top-full left-0 z-50 mt-1.5 max-h-56 w-full overflow-y-auto rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 				>
 					{#each data.orgs as o (o.id)}
 						<button
@@ -742,8 +741,7 @@
 				<div
 					use:clickOutside={p.onClosePop}
 					in:fly={POPOVER_IN}
-					class="absolute top-full left-0 z-50 mt-1.5 w-full rounded-[10px] border border-border bg-bg-elev p-1.5"
-					style:box-shadow="var(--shadow-lg)"
+					class="absolute top-full left-0 z-50 mt-1.5 w-full rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 				>
 					{#each p.roleOptions as r (r)}
 						<button

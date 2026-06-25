@@ -71,8 +71,7 @@
 		<!-- Expanded panel: floats over the elements below -->
 		<div
 			use:clickOutside={cancel}
-			class="absolute inset-x-0 top-0 z-30 overflow-hidden rounded-xl border border-border bg-bg-elev"
-			style:box-shadow="var(--shadow-lg)"
+			class="absolute inset-x-0 top-0 z-30 overflow-hidden rounded-xl border border-border bg-bg-elev shadow-lg"
 		>
 			<button
 				type="button"

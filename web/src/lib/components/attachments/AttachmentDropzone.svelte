@@ -66,8 +66,7 @@
 			style:box-shadow="inset 0 0 0 2px var(--color-accent, #ef7a6d)"
 		>
 			<div
-				class="flex flex-col items-center gap-2 rounded-xl border border-accent/40 bg-bg-elev px-4 py-3 text-accent"
-				style:box-shadow="var(--shadow-lg)"
+				class="flex flex-col items-center gap-2 rounded-xl border border-accent/40 bg-bg-elev px-4 py-3 text-accent shadow-lg"
 			>
 				<Icon name="paperclip" size={20} />
 				<span class="text-[13px] font-medium">{label}</span>

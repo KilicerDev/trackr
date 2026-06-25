@@ -167,7 +167,7 @@
 					style:border-radius="13px"
 					style:font-size="22px"
 					style:background="linear-gradient(140deg, {color}, color-mix(in oklch, {color} 70%, #000) 85%)"
-					style:box-shadow="0 1px 0 rgba(255,255,255,0.18) inset, 0 6px 18px {color}33"
+					style:box-shadow="var(--shadow-edge), 0 6px 18px {color}33"
 				>
 					{icon}
 				</span>
@@ -232,7 +232,7 @@
 							style:background="linear-gradient(140deg, {c}, color-mix(in oklch, {c} 70%, #000) 85%)"
 							style:box-shadow={color === c
 								? `0 0 0 2px var(--bg-elev), 0 0 0 4px ${c}`
-								: '0 1px 0 rgba(255,255,255,0.18) inset'}
+								: 'var(--shadow-edge)'}
 						>
 							{#if color === c}
 								<svg
@@ -269,8 +269,7 @@
 						<div
 							use:clickOutside={() => (pop = null)}
 							in:fly={POPOVER_IN}
-							class="absolute top-full z-50 mt-1.5 min-w-[180px] rounded-[10px] border border-border bg-bg-elev p-1.5"
-							style:box-shadow="var(--shadow-lg)"
+							class="absolute top-full z-50 mt-1.5 min-w-[180px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 						>
 							{#each STATUSES as s (s)}
 								{@const meta = PROJECT_STATUS[s]}
@@ -312,8 +311,7 @@
 						<div
 							use:clickOutside={() => (pop = null)}
 							in:fly={POPOVER_IN}
-							class="absolute top-full z-50 mt-1.5 min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1.5"
-							style:box-shadow="var(--shadow-lg)"
+							class="absolute top-full z-50 mt-1.5 min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 						>
 							<button
 								type="button"

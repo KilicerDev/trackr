@@ -140,7 +140,7 @@
 						type="button"
 						onclick={onConfirm}
 						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent px-[11px] py-[7px] text-[13px] font-medium text-white transition-[background,border-color,transform] duration-150 hover:brightness-110 active:translate-y-[1px] bg-prio-urgent"
-						style:box-shadow="0 1px 0 rgba(255,255,255,0.18) inset, 0 4px 12px rgba(239,79,94,0.28)"
+						style:box-shadow="var(--shadow-edge), 0 4px 12px rgba(239,79,94,0.28)"
 					>
 						{top.confirmLabel}
 					</button>
@@ -149,7 +149,7 @@
 						type="button"
 						onclick={onConfirm}
 						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent px-[11px] py-[7px] text-[13px] font-medium text-white transition-[background,border-color,transform] duration-150 hover:brightness-110 active:translate-y-[1px] bg-prio-medium"
-						style:box-shadow="0 1px 0 rgba(255,255,255,0.18) inset, 0 4px 12px rgba(240,168,92,0.28)"
+						style:box-shadow="var(--shadow-edge), 0 4px 12px rgba(240,168,92,0.28)"
 					>
 						{top.confirmLabel}
 					</button>

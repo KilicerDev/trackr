@@ -330,8 +330,7 @@
 					<div
 						use:clickOutside={() => (pop = null)}
 						in:fly={POPOVER_IN}
-						class="absolute top-full left-0 z-50 mt-1.5 min-w-[200px] rounded-[10px] border border-border bg-bg-elev p-1.5"
-						style:box-shadow="var(--shadow-lg)"
+						class="absolute top-full left-0 z-50 mt-1.5 min-w-[200px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 					>
 						{#each TICKET_STATUSES as s (s.id)}
 							<button
@@ -368,8 +367,7 @@
 					<div
 						use:clickOutside={() => (pop = null)}
 						in:fly={POPOVER_IN}
-						class="absolute top-full left-0 z-50 mt-1.5 min-w-[160px] rounded-[10px] border border-border bg-bg-elev p-1.5"
-						style:box-shadow="var(--shadow-lg)"
+						class="absolute top-full left-0 z-50 mt-1.5 min-w-[160px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 					>
 						{#each TICKET_PRIORITIES as p (p.id)}
 							<button
@@ -409,8 +407,7 @@
 					<div
 						use:clickOutside={() => (pop = null)}
 						in:fly={POPOVER_IN}
-						class="absolute top-full left-0 z-50 mt-1.5 min-w-[180px] rounded-[10px] border border-border bg-bg-elev p-1.5"
-						style:box-shadow="var(--shadow-lg)"
+						class="absolute top-full left-0 z-50 mt-1.5 min-w-[180px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 					>
 						{#each TICKET_CATEGORIES as c (c.id)}
 							<button
@@ -458,8 +455,7 @@
 					<div
 						use:clickOutside={() => (pop = null)}
 						in:fly={POPOVER_IN}
-						class="absolute top-full left-0 z-50 mt-1.5 max-h-[320px] min-w-[240px] overflow-auto rounded-[10px] border border-border bg-bg-elev p-1.5"
-						style:box-shadow="var(--shadow-lg)"
+						class="absolute top-full left-0 z-50 mt-1.5 max-h-[320px] min-w-[240px] overflow-auto rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 					>
 						<button
 							type="button"

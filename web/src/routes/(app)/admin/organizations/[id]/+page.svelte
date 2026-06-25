@@ -206,10 +206,9 @@
 		<!-- hero -->
 		<div class="mb-6 flex items-start gap-4">
 			<div
-				class="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-[16px] font-semibold text-white"
+				class="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-[16px] font-semibold text-white shadow-edge"
 				style:background="linear-gradient(140deg, {data.org.color}, color-mix(in oklch, {data.org
 					.color} 70%, #000) 85%)"
-				style:box-shadow="0 1px 0 rgba(255,255,255,0.18) inset"
 			>
 				{initials(data.org.name)}
 			</div>
@@ -320,7 +319,7 @@
 								style:background="linear-gradient(140deg, {c}, color-mix(in oklch, {c} 70%, #000) 85%)"
 								style:box-shadow={color === c
 									? `0 0 0 2px var(--bg-elev), 0 0 0 4px ${c}`
-									: '0 1px 0 rgba(255,255,255,0.18) inset'}
+									: 'var(--shadow-edge)'}
 							></button>
 						{/each}
 					</div>
@@ -383,8 +382,7 @@
 							use:clickOutside={() => (addingMember = false)}
 							use:autoPlace
 							in:fly={POPOVER_IN}
-							class="absolute top-full z-50 mt-1.5 w-[280px] rounded-[10px] border border-border bg-bg-elev p-1.5"
-							style:box-shadow="var(--shadow-lg)"
+							class="absolute top-full z-50 mt-1.5 w-[280px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 						>
 							<div class="mb-1.5 flex items-center gap-2 border-b border-border px-2 pt-1 pb-2">
 								<span class="text-text-3"><Icon name="search" size={13} /></span>
@@ -457,8 +455,7 @@
 									use:clickOutside={() => (openRoleMenu = null)}
 									use:autoPlace
 									in:fly={POPOVER_IN}
-									class="absolute top-full z-40 mt-1.5 min-w-[140px] rounded-[10px] border border-border bg-bg-elev p-1.5"
-									style:box-shadow="var(--shadow-lg)"
+									class="absolute top-full z-40 mt-1.5 min-w-[140px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 								>
 									{#each ROLES as r (r)}
 										<button

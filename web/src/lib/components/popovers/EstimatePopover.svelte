@@ -41,8 +41,7 @@
 	use:clickOutside={commit}
 	use:autoPlace
 	in:fly={POPOVER_IN}
-	class="absolute top-full z-50 mt-1.5 w-[260px] rounded-[10px] border border-border bg-bg-elev p-2.5"
-	style:box-shadow="var(--shadow-lg)"
+	class="absolute top-full z-50 mt-1.5 w-[260px] rounded-[10px] border border-border bg-bg-elev p-2.5 shadow-lg"
 >
 	<div class="mb-2 grid grid-cols-2 gap-2">
 		<div class="relative">

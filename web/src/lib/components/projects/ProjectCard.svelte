@@ -37,14 +37,13 @@
 >
 	<div class="mb-3 flex items-start gap-3">
 		<span
-			class="relative inline-grid shrink-0 place-items-center font-semibold text-white"
+			class="relative inline-grid shrink-0 place-items-center font-semibold text-white shadow-edge"
 			style:width="40px"
 			style:height="40px"
 			style:border-radius="11px"
 			style:font-size="20px"
 			style:background="linear-gradient(140deg, {project.color}, color-mix(in oklch, {project.color} 70%,
 			#000) 85%)"
-			style:box-shadow="0 1px 0 rgba(255,255,255,0.16) inset"
 		>
 			{project.icon}
 		</span>

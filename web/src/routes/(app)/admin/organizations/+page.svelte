@@ -113,10 +113,9 @@
 					>
 						<span class="flex min-w-0 items-center gap-2.5">
 							<span
-								class="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[12.5px] font-semibold text-white"
+								class="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[12.5px] font-semibold text-white shadow-edge"
 								style:background="linear-gradient(140deg, {o.color}, color-mix(in oklch, {o.color} 70%,
-								#000) 85%)"
-								style:box-shadow="0 1px 0 rgba(255,255,255,0.16) inset">{initials(o.name)}</span
+								#000) 85%)">{initials(o.name)}</span
 							>
 							<span class="min-w-0">
 								<span class="block truncate font-medium text-text">{o.name}</span>

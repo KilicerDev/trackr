@@ -35,8 +35,7 @@
 		<BrandMark />
 
 		<div
-			class="rounded-[14px] border border-border bg-bg-elev px-7 pt-7 pb-6"
-			style:box-shadow="0 1px 0 rgba(255,255,255,0.03) inset, 0 24px 60px -28px rgba(0,0,0,0.55)"
+			class="rounded-[14px] border border-border bg-bg-elev px-7 pt-7 pb-6 shadow-card"
 		>
 			<h1 class="text-[19px] font-semibold tracking-[-0.012em] text-text">
 				{m.auth_login_welcome()}

@@ -24,9 +24,8 @@
 			role="dialog"
 			aria-modal="true"
 			transition:fly={{ y: 12, duration: 220, easing: cubicOut }}
-			class="pointer-events-auto w-full rounded-2xl border border-border bg-bg-elev"
+			class="pointer-events-auto w-full rounded-2xl border border-border bg-bg-elev shadow-lg"
 			style:max-width="{maxWidth}px"
-			style:box-shadow="var(--shadow-lg)"
 		>
 			{@render children()}
 		</div>

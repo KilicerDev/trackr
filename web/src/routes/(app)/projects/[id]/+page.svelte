@@ -267,10 +267,9 @@
 		<!-- hero -->
 		<div class="mb-5 flex items-start gap-4">
 			<div
-				class="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-[20px] font-semibold text-white"
+				class="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-[20px] font-semibold text-white shadow-edge"
 				style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%, #000)
 				85%)"
-				style:box-shadow="0 1px 0 rgba(255,255,255,0.18) inset"
 			>
 				{p.icon}
 			</div>
@@ -314,8 +313,7 @@
 							use:clickOutside={() => (settingsOpen = false)}
 							use:autoPlace
 							in:fly={POPOVER_IN}
-							class="absolute top-full z-50 mt-1.5 min-w-[200px] rounded-[10px] border border-border bg-bg-elev p-1.5"
-							style:box-shadow="var(--shadow-lg)"
+							class="absolute top-full z-50 mt-1.5 min-w-[200px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 						>
 							<button
 								type="button"
@@ -429,8 +427,7 @@
 									use:clickOutside={() => (openMemberMenu = null)}
 									use:autoPlace
 									in:fly={POPOVER_IN}
-									class="absolute top-full z-40 mt-1.5 min-w-[200px] rounded-[10px] border border-border bg-bg-elev p-1.5"
-									style:box-shadow="var(--shadow-lg)"
+									class="absolute top-full z-40 mt-1.5 min-w-[200px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 								>
 									<div class="px-2 pt-1 pb-1 text-[10.5px] tracking-[0.08em] text-text-4 uppercase">
 										{m.projects_role_label()}
@@ -504,8 +501,7 @@
 								use:clickOutside={() => (addingMember = false)}
 								use:autoPlace
 								in:fly={POPOVER_IN}
-								class="absolute top-full z-50 mt-1.5 w-[280px] rounded-[10px] border border-border bg-bg-elev p-1.5"
-								style:box-shadow="var(--shadow-lg)"
+								class="absolute top-full z-50 mt-1.5 w-[280px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 							>
 								<div class="mb-1.5 flex items-center gap-2 border-b border-border px-2 pt-1 pb-2">
 									<span class="text-text-3"><Icon name="search" size={13} /></span>

@@ -136,10 +136,9 @@
 	<div
 		use:clickOutside={() => (pop = null)}
 		in:fly={POPOVER_IN}
-		class="fixed z-50 min-w-[200px] rounded-[10px] border border-border bg-bg-elev p-1.5"
+		class="fixed z-50 min-w-[200px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 		style:left="{popPos.left}px"
 		style:top="{popPos.top}px"
-		style:box-shadow="var(--shadow-lg)"
 	>
 		{#each fields as f (f.id)}
 			<button
@@ -158,10 +157,9 @@
 	<div
 		use:clickOutside={() => (pop = null)}
 		in:fly={POPOVER_IN}
-		class="fixed z-50 min-w-[240px] rounded-[10px] border border-border bg-bg-elev p-1.5"
+		class="fixed z-50 min-w-[240px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 		style:left="{popPos.left}px"
 		style:top="{popPos.top}px"
-		style:box-shadow="var(--shadow-lg)"
 	>
 		<button
 			type="button"
@@ -178,10 +176,9 @@
 	<div
 		use:clickOutside={() => (pop = null)}
 		in:fly={POPOVER_IN}
-		class="fixed z-50 min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1.5"
+		class="fixed z-50 min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 		style:left="{popPos.left}px"
 		style:top="{popPos.top}px"
-		style:box-shadow="var(--shadow-lg)"
 	>
 		{@render valuesList(field)}
 	</div>

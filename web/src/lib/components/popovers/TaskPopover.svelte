@@ -82,8 +82,7 @@
 	use:clickOutside={onclose}
 	use:autoPlace
 	in:fly={POPOVER_IN}
-	class="absolute top-full z-50 mt-1.5 w-[var(--task-pop-w,300px)] min-w-[300px] rounded-[10px] border border-border bg-bg-elev p-1.5"
-	style:box-shadow="var(--shadow-lg)"
+	class="absolute top-full z-50 mt-1.5 w-[var(--task-pop-w,300px)] min-w-[300px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 >
 	<div class="mb-1.5 flex items-center gap-2 border-b border-border px-2 pt-1 pb-2">
 		<span class="text-text-3"><Icon name="search" size={13} /></span>
