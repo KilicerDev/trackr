@@ -247,7 +247,7 @@
 			</button>
 
 			<label
-				class="ml-auto inline-flex cursor-pointer items-center gap-2 text-[12.5px] select-none {current.created
+				class="ml-auto inline-flex cursor-pointer items-center gap-2 text-[13px] select-none {current.created
 					? 'pointer-events-none opacity-50'
 					: ''}"
 			>
@@ -263,14 +263,14 @@
 				bind:value={current.title}
 				disabled={current.created}
 				placeholder={m.tasks_title_placeholder()}
-				class="mb-2 w-full border-0 bg-transparent text-[19px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3 disabled:text-text-3"
+				class="mb-2 w-full border-0 bg-transparent text-[20px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3 disabled:text-text-3"
 			/>
 			<textarea
 				bind:value={current.description}
 				disabled={current.created}
 				placeholder={m.tasks_description_placeholder()}
 				rows="2"
-				class="w-full resize-none border-0 bg-transparent text-[13.5px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
+				class="w-full resize-none border-0 bg-transparent text-[13px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
 			></textarea>
 
 			<div class="mt-3">

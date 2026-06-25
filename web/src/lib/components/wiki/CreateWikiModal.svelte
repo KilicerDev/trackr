@@ -68,13 +68,13 @@
 
 <Modal {open} {onclose} maxWidth={420}>
 	<div class="border-b border-border px-5 pt-4 pb-3">
-		<h2 class="text-[15px] font-semibold tracking-[-0.005em]">
+		<h2 class="text-[14px] font-semibold tracking-[-0.005em]">
 			{isFolder ? m.wiki_new_folder() : m.wiki_new_page()}
 		</h2>
 	</div>
 	<form onsubmit={submit} class="space-y-4 px-5 py-4">
 		<div>
-			<label for="wiki-title" class="mb-1.5 block text-[11.5px] text-text-3"
+			<label for="wiki-title" class="mb-1.5 block text-[11px] text-text-3"
 				>{m.wiki_title_label()}</label
 			>
 			<!-- svelte-ignore a11y_autofocus -->

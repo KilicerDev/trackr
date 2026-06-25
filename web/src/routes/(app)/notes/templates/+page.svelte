@@ -63,9 +63,9 @@
 				<span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface text-text-3">
 					<Icon name={t.icon || 'file'} size={15} stroke={1.75} />
 				</span>
-				<span class="flex-1 truncate text-[13.5px] text-text-2">{t.name}</span>
+				<span class="flex-1 truncate text-[13px] text-text-2">{t.name}</span>
 				{#if t.isSystem}
-					<span class="font-mono text-[10.5px] tracking-wide text-text-4 uppercase">
+					<span class="font-mono text-[11px] tracking-wide text-text-4 uppercase">
 						{m.notes_template_built_in()}
 					</span>
 				{:else if t.mine}

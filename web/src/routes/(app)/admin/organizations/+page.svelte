@@ -58,10 +58,10 @@
 	<div class="px-6 py-6">
 		<div class="mb-6 flex items-end gap-4">
 			<div>
-				<h1 class="text-[26px] font-semibold tracking-[-0.014em] text-text">
+				<h1 class="text-[24px] font-semibold tracking-[-0.014em] text-text">
 					{m.admin_organizations_title()}
 				</h1>
-				<p class="mt-1 text-[12.5px] text-text-3">
+				<p class="mt-1 text-[13px] text-text-3">
 					{m.admin_organizations_subtitle({ count: data.orgs.length })}
 				</p>
 			</div>
@@ -74,7 +74,7 @@
 						type="text"
 						bind:value={search}
 						placeholder={m.common_search()}
-						class="h-8 w-56 rounded-lg border border-border bg-surface pr-3 pl-8 text-[12.5px] outline-none focus:border-border-strong"
+						class="h-8 w-56 rounded-lg border border-border bg-surface pr-3 pl-8 text-[13px] outline-none focus:border-border-strong"
 					/>
 				</div>
 				<Button variant="primary" size="sm" onclick={() => (createOpen = true)}>
@@ -99,7 +99,7 @@
 					<span></span>
 				</div>
 				{#if visible.length === 0}
-					<div class="px-5 py-10 text-center text-[12.5px] text-text-3">
+					<div class="px-5 py-10 text-center text-[13px] text-text-3">
 						{m.admin_org_no_search_match()}
 					</div>
 				{/if}
@@ -113,14 +113,14 @@
 					>
 						<span class="flex min-w-0 items-center gap-2.5">
 							<span
-								class="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[12.5px] font-semibold text-white shadow-edge"
+								class="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[13px] font-semibold text-white shadow-edge"
 								style:background="linear-gradient(140deg, {o.color}, color-mix(in oklch, {o.color} 70%,
 								#000) 85%)">{initials(o.name)}</span
 							>
 							<span class="min-w-0">
 								<span class="block truncate font-medium text-text">{o.name}</span>
 								{#if o.description}
-									<span class="block truncate text-[11.5px] text-text-3">{o.description}</span>
+									<span class="block truncate text-[11px] text-text-3">{o.description}</span>
 								{/if}
 							</span>
 						</span>

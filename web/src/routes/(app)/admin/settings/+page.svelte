@@ -31,8 +31,8 @@
 
 <div class="min-h-0 flex-1 overflow-y-auto">
 	<div class="max-w-[820px] px-6 py-6">
-		<h1 class="mb-1 text-[26px] font-semibold tracking-[-0.014em]">{m.admin_settings_title()}</h1>
-		<p class="mb-6 text-[12.5px] text-text-3">{m.admin_settings_subtitle()}</p>
+		<h1 class="mb-1 text-[24px] font-semibold tracking-[-0.014em]">{m.admin_settings_title()}</h1>
+		<p class="mb-6 text-[13px] text-text-3">{m.admin_settings_subtitle()}</p>
 
 		<section class="mb-5 rounded-2xl border border-border bg-bg-elev p-5">
 			<div class="mb-3 text-[11px] tracking-[0.08em] text-text-4 uppercase">
@@ -74,7 +74,7 @@
 						>
 						<div class="min-w-0 flex-1">
 							<div class="text-[13px] font-medium">{name}</div>
-							<div class="text-[11.5px] text-text-3">{desc}</div>
+							<div class="text-[11px] text-text-3">{desc}</div>
 						</div>
 						<Button size="sm" variant="default">{m.admin_settings_connect()}</Button>
 					</div>
@@ -90,7 +90,7 @@
 				<Icon name="shield" size={16} class="text-[#ef7a6d]" />
 				<div class="min-w-0 flex-1">
 					<div class="text-[13px] font-medium">{m.admin_settings_delete_workspace()}</div>
-					<div class="text-[11.5px] text-text-3">{m.admin_settings_delete_workspace_desc()}</div>
+					<div class="text-[11px] text-text-3">{m.admin_settings_delete_workspace_desc()}</div>
 				</div>
 				<Button size="sm">{m.common_delete()}</Button>
 			</div>

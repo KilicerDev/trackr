@@ -63,8 +63,8 @@
 </script>
 
 <header class="mb-6">
-	<h1 class="text-[22px] font-semibold tracking-[-0.014em]">{m.settings_title()}</h1>
-	<p class="mt-1 text-[12.5px] text-text-3">{m.settings_subtitle()}</p>
+	<h1 class="text-[24px] font-semibold tracking-[-0.014em]">{m.settings_title()}</h1>
+	<p class="mt-1 text-[13px] text-text-3">{m.settings_subtitle()}</p>
 </header>
 
 <form
@@ -107,7 +107,7 @@
 					<button
 						type="button"
 						onclick={() => (theme = t.value)}
-						class="h-full rounded-md px-3 text-[12.5px] {theme === t.value
+						class="h-full rounded-md px-3 text-[13px] {theme === t.value
 							? 'bg-bg-elev text-text shadow-sm'
 							: 'text-text-3 hover:text-text'}"
 					>
@@ -122,7 +122,7 @@
 					<button
 						type="button"
 						onclick={() => (density = d.value)}
-						class="h-full rounded-md px-3 text-[12.5px] {density === d.value
+						class="h-full rounded-md px-3 text-[13px] {density === d.value
 							? 'bg-bg-elev text-text shadow-sm'
 							: 'text-text-3 hover:text-text'}"
 					>
@@ -154,7 +154,7 @@
 					<button
 						type="button"
 						onclick={() => (weekStartsOn = opt.v)}
-						class="h-full rounded-md px-3 text-[12.5px] {weekStartsOn === opt.v
+						class="h-full rounded-md px-3 text-[13px] {weekStartsOn === opt.v
 							? 'bg-bg-elev text-text shadow-sm'
 							: 'text-text-3 hover:text-text'}"
 					>

@@ -146,7 +146,7 @@
 				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">
 					{m.projects_workspace_eyebrow()}
 				</div>
-				<div class="text-[15px] font-semibold">{m.projects_create_title()}</div>
+				<div class="text-[14px] font-semibold">{m.projects_create_title()}</div>
 			</div>
 			<button
 				type="button"
@@ -176,10 +176,10 @@
 						bind:value={name}
 						required
 						placeholder={m.projects_name_placeholder()}
-						class="block w-full border-0 bg-transparent text-[19px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
+						class="block w-full border-0 bg-transparent text-[20px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
 					/>
 					<div class="mt-1 flex items-center gap-1.5">
-						<span class="text-[10.5px] tracking-[0.08em] text-text-4 uppercase"
+						<span class="text-[11px] tracking-[0.08em] text-text-4 uppercase"
 							>{m.projects_key_label()}</span
 						>
 						<input
@@ -195,10 +195,10 @@
 							}}
 							maxlength={5}
 							placeholder={m.projects_key_placeholder()}
-							class="w-[72px] rounded-md border border-border bg-surface px-1.5 py-0.5 font-mono text-[11.5px] tracking-[0.04em] text-text uppercase outline-none focus:border-border-strong"
+							class="w-[72px] rounded-md border border-border bg-surface px-1.5 py-0.5 font-mono text-[11px] tracking-[0.04em] text-text uppercase outline-none focus:border-border-strong"
 						/>
-						<span class="text-[11.5px] text-text-4">·</span>
-						<span class="text-[11.5px] text-text-3">
+						<span class="text-[11px] text-text-4">·</span>
+						<span class="text-[11px] text-text-3">
 							{m.projects_key_prefix_hint_before()}
 							<span class="font-mono text-text-2"
 								>{effectiveKey || m.projects_key_fallback()}-1</span
@@ -213,11 +213,11 @@
 				bind:value={description}
 				placeholder={m.projects_description_placeholder()}
 				rows="2"
-				class="mb-4 w-full resize-none border-0 bg-transparent text-[13.5px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
+				class="mb-4 w-full resize-none border-0 bg-transparent text-[13px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
 			></textarea>
 
 			<div class="mb-4">
-				<div class="mb-2 text-[10.5px] tracking-[0.08em] text-text-4 uppercase">
+				<div class="mb-2 text-[11px] tracking-[0.08em] text-text-4 uppercase">
 					{m.projects_color_label()}
 				</div>
 				<div class="flex flex-wrap gap-1.5">
@@ -257,7 +257,7 @@
 					<button
 						type="button"
 						onclick={() => (pop = pop === 'status' ? null : 'status')}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
 					>
 						<span class="h-2 w-2 rounded-full" style:background={statusMeta.color}></span>
 						<span>{projectStatusLabel(status)}</span>
@@ -294,7 +294,7 @@
 					<button
 						type="button"
 						onclick={() => (pop = pop === 'org' ? null : 'org')}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
 					>
 						{#if selectedOrg}
 							<span class="h-2 w-2 rounded-full" style:background={selectedOrg.color}></span>
@@ -342,7 +342,7 @@
 								</button>
 							{/each}
 							{#if orgs.length === 0}
-								<div class="px-2 py-2 text-[11.5px] text-text-3">
+								<div class="px-2 py-2 text-[11px] text-text-3">
 									{m.projects_no_orgs_hint_before()}
 									<a href="/admin/organizations" class="text-accent hover:underline"
 										>{m.projects_admin_orgs_link()}</a
@@ -359,13 +359,13 @@
 			<input type="hidden" name="status" value={status} />
 			<input type="hidden" name="orgId" value={orgId} />
 
-			<p class="mt-4 text-[11.5px] text-text-3">
+			<p class="mt-4 text-[11px] text-text-3">
 				{m.projects_create_lead_hint()}
 			</p>
 		</div>
 
 		<div class="flex items-center gap-2 rounded-b-2xl border-t border-border bg-bg/40 px-5 py-3">
-			<span class="text-[11.5px] text-text-3">
+			<span class="text-[11px] text-text-3">
 				<Kbd>⌘↵</Kbd>
 				{m.projects_kbd_to_create()}
 			</span>

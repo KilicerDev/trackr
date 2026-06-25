@@ -264,7 +264,7 @@
 	     widths instead of wrapping or squeezing. New task stays pinned outside. -->
 	<div class="tb-scroll flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
 		<div
-			class="inline-flex h-7 shrink-0 items-center rounded-lg border border-border bg-surface p-0.5 text-[12.5px]"
+			class="inline-flex h-7 shrink-0 items-center rounded-lg border border-border bg-surface p-0.5 text-[13px]"
 		>
 			<button
 				type="button"
@@ -297,7 +297,7 @@
 			<button
 				type="button"
 				onclick={(e) => openPop('group', e.currentTarget)}
-				class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[12.5px] whitespace-nowrap transition-colors hover:bg-surface-2"
+				class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[13px] whitespace-nowrap transition-colors hover:bg-surface-2"
 			>
 				<span class="text-text-3">{m.tasks_group_by()}</span>
 				<span class="font-medium text-text">{groupLabel(group)}</span>
@@ -336,7 +336,7 @@
 				<button
 					type="button"
 					onclick={(e) => openPop('sub', e.currentTarget)}
-					class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[12.5px] whitespace-nowrap transition-colors hover:bg-surface-2"
+					class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[13px] whitespace-nowrap transition-colors hover:bg-surface-2"
 				>
 					<span class="text-text-3">{m.tasks_sub_group()}</span>
 					<span class="font-medium text-text">{subLabel(sub)}</span>
@@ -377,7 +377,7 @@
 			<button
 				type="button"
 				onclick={(e) => openPop('time', e.currentTarget)}
-				class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[12.5px] whitespace-nowrap transition-colors hover:bg-surface-2"
+				class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[13px] whitespace-nowrap transition-colors hover:bg-surface-2"
 			>
 				<Icon name="calendar" size={13} class="text-text-3" />
 				<span class="text-text-3">{m.tasks_time()}</span>
@@ -432,7 +432,7 @@
 				placeholder={m.common_search()}
 				value={search}
 				oninput={(e) => setSearch((e.target as HTMLInputElement).value)}
-				class="h-7 w-full rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[12.5px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
+				class="h-7 w-full rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[13px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
 			/>
 		</div>
 	</div>

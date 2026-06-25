@@ -44,7 +44,7 @@
 	<span class="truncate font-mono text-[12px] text-text-3">{task.id}</span>
 	<span class="flex min-w-0 items-center gap-2">
 		<span class="shrink-0"><TypeBadge type={task.type ?? 'task'} showLabel={false} /></span>
-		<span class="truncate text-[13.5px] text-text">{task.title}</span>
+		<span class="truncate text-[13px] text-text">{task.title}</span>
 		{#if task.plannedFor || task.inMyPlan}
 			<span
 				class="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] text-accent bg-accent-soft"
@@ -66,7 +66,7 @@
 		{/each}
 		{#if task.checklist && task.checklist.length > 0}
 			<span
-				class="inline-flex items-center gap-1 text-[11.5px] {task.checklist.every((i) => i.done)
+				class="inline-flex items-center gap-1 text-[11px] {task.checklist.every((i) => i.done)
 					? 'text-[#7fc8a9]'
 					: 'text-text-3'}"
 				title={m.tasks_checklist()}
@@ -78,7 +78,7 @@
 			</span>
 		{/if}
 	</span>
-	<span class="flex items-center gap-2 text-[12.5px] text-text-3">
+	<span class="flex items-center gap-2 text-[13px] text-text-3">
 		{#if task.priority !== 'none'}
 			<PriorityBars priority={task.priority} />
 			<span>{priorityLabel(prio.id)}</span>

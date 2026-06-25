@@ -66,7 +66,7 @@
 				<h1 class="mt-4 text-[18px] font-semibold tracking-[-0.012em] text-text">
 					{m.auth_invite_invalid()}
 				</h1>
-				<p class="mt-1.5 text-[13.5px] leading-relaxed text-text-3">
+				<p class="mt-1.5 text-[13px] leading-relaxed text-text-3">
 					{m.auth_invite_invalid_desc()}
 				</p>
 				<a
@@ -80,10 +80,10 @@
 			<div
 				class="rounded-[14px] border border-border bg-bg-elev px-7 pt-7 pb-6 shadow-card"
 			>
-				<h1 class="text-[19px] font-semibold tracking-[-0.012em] text-text">
+				<h1 class="text-[20px] font-semibold tracking-[-0.012em] text-text">
 					{m.auth_invite_welcome({ name: data.invitation.name.split(' ')[0] })}
 				</h1>
-				<p class="mt-1 text-[13.5px] leading-relaxed text-text-3">
+				<p class="mt-1 text-[13px] leading-relaxed text-text-3">
 					{m.auth_invite_subtitle()}
 				</p>
 
@@ -133,7 +133,7 @@
 					<input type="hidden" name="token" value={data.token} />
 
 					<label class="flex flex-col gap-1.5">
-						<span class="text-[12.5px] font-medium text-text-2">{m.auth_password_label()}</span>
+						<span class="text-[13px] font-medium text-text-2">{m.auth_password_label()}</span>
 						<div class="relative">
 							<input
 								bind:this={passwordInput}
@@ -178,7 +178,7 @@
 						</div>
 						{#if strength}
 							<span
-								class="text-[11.5px] {strength.tone === 'error'
+								class="text-[11px] {strength.tone === 'error'
 									? 'text-prio-urgent'
 									: strength.tone === 'warn'
 										? 'text-text-3'
@@ -190,7 +190,7 @@
 					</label>
 
 					<label class="flex flex-col gap-1.5">
-						<span class="text-[12.5px] font-medium text-text-2"
+						<span class="text-[13px] font-medium text-text-2"
 							>{m.auth_confirm_password_label()}</span
 						>
 						<input
@@ -214,7 +214,7 @@
 					<button
 						type="submit"
 						disabled={submitting}
-						class="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[13.5px] font-semibold text-white shadow-btn-lg transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-default disabled:opacity-70"
+						class="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[13px] font-semibold text-white shadow-btn-lg transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-default disabled:opacity-70"
 					>
 						{#if submitting}
 							<span

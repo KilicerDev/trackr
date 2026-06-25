@@ -165,7 +165,7 @@
 				{@render row(p, i)}
 			{/each}
 			{#if searchResults.length === 0}
-				<div class="px-2 py-3 text-center text-[12.5px] text-text-3">
+				<div class="px-2 py-3 text-center text-[13px] text-text-3">
 					{m.tasks_no_projects_match({ q })}
 				</div>
 			{/if}

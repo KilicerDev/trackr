@@ -94,7 +94,7 @@
 			<Icon name="sidebar" size={16} />
 		</button>
 	{/if}
-	<div class="flex items-center gap-2 text-[13.5px]">
+	<div class="flex items-center gap-2 text-[13px]">
 		{#each crumbs as c, i (c.label)}
 			{#if i > 0}<span class="text-text-4">/</span>{/if}
 			{#if c.href}
@@ -118,7 +118,7 @@
 				<div class="flex items-center justify-between px-2 pt-1 pb-2">
 					<span class="text-[12px] font-medium">{m.shell_notifications()}</span>
 					{#if notifications.unreadCount > 0}
-						<span class="text-[10.5px] tracking-[0.08em] text-text-3 uppercase">
+						<span class="text-[11px] tracking-[0.08em] text-text-3 uppercase">
 							{m.shell_notifications_unread({ n: notifications.unreadCount })}
 						</span>
 					{/if}
@@ -144,12 +144,12 @@
 									<span class="mt-1.5 h-1.5 w-1.5 shrink-0"></span>
 								{/if}
 								<div class="min-w-0 flex-1">
-									<div class="truncate text-[12.5px] font-medium">{n.title}</div>
+									<div class="truncate text-[13px] font-medium">{n.title}</div>
 									{#if n.body}
-										<div class="mt-0.5 line-clamp-2 text-[11.5px] text-text-3">{n.body}</div>
+										<div class="mt-0.5 line-clamp-2 text-[11px] text-text-3">{n.body}</div>
 									{/if}
 								</div>
-								<span class="mt-0.5 shrink-0 text-[10.5px] text-text-4">{timeAgo(n.createdAt)}</span
+								<span class="mt-0.5 shrink-0 text-[11px] text-text-4">{timeAgo(n.createdAt)}</span
 								>
 							</a>
 						{/each}
@@ -158,7 +158,7 @@
 					<a
 						href="/me/notifications"
 						onclick={() => (bellOpen = false)}
-						class="block px-2 py-1.5 text-center text-[11.5px] text-text-3 hover:text-text"
+						class="block px-2 py-1.5 text-center text-[11px] text-text-3 hover:text-text"
 					>
 						{m.shell_notifications_view_all()}
 					</a>
@@ -181,7 +181,7 @@
 						<Avatar user={me} size={32} />
 						<div class="flex min-w-0 flex-col">
 							<span class="truncate text-[13px] font-medium">{me.name}</span>
-							<span class="truncate text-[11.5px] text-text-3">{me.email}</span>
+							<span class="truncate text-[11px] text-text-3">{me.email}</span>
 						</div>
 					</div>
 					<div class="-mx-0.5 mb-1 h-px bg-border"></div>
@@ -240,7 +240,7 @@
 										acctOpen = false;
 										if (o.id !== activeOrgId) void setActiveOrg(o.id);
 									}}
-									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[12.5px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 								>
 									<span class="h-2 w-2 shrink-0 rounded-full" style:background={o.color}></span>
 									<span class="truncate">{o.name}</span>

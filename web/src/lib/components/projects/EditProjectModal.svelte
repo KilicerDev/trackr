@@ -117,7 +117,7 @@
 				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">
 					{m.projects_settings_eyebrow()}
 				</div>
-				<div class="text-[15px] font-semibold">{m.projects_edit_title()}</div>
+				<div class="text-[14px] font-semibold">{m.projects_edit_title()}</div>
 			</div>
 			<button
 				type="button"
@@ -147,15 +147,15 @@
 						bind:value={name}
 						required
 						placeholder={m.projects_name_placeholder()}
-						class="block w-full border-0 bg-transparent text-[19px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
+						class="block w-full border-0 bg-transparent text-[20px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
 					/>
 					<div class="mt-1 flex items-center gap-1.5">
-						<span class="text-[10.5px] tracking-[0.08em] text-text-4 uppercase"
+						<span class="text-[11px] tracking-[0.08em] text-text-4 uppercase"
 							>{m.projects_key_label()}</span
 						>
-						<span class="font-mono text-[11.5px] text-text-2">{project.key}</span>
-						<span class="text-[11.5px] text-text-4">·</span>
-						<span class="text-[11.5px] text-text-3">{m.projects_key_cannot_change()}</span>
+						<span class="font-mono text-[11px] text-text-2">{project.key}</span>
+						<span class="text-[11px] text-text-4">·</span>
+						<span class="text-[11px] text-text-3">{m.projects_key_cannot_change()}</span>
 					</div>
 				</div>
 			</div>
@@ -165,11 +165,11 @@
 				bind:value={description}
 				placeholder={m.projects_description_placeholder()}
 				rows="2"
-				class="mb-4 w-full resize-none border-0 bg-transparent text-[13.5px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
+				class="mb-4 w-full resize-none border-0 bg-transparent text-[13px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
 			></textarea>
 
 			<div class="mb-4">
-				<div class="mb-2 text-[10.5px] tracking-[0.08em] text-text-4 uppercase">
+				<div class="mb-2 text-[11px] tracking-[0.08em] text-text-4 uppercase">
 					{m.projects_color_label()}
 				</div>
 				<div class="flex flex-wrap gap-1.5">
@@ -208,7 +208,7 @@
 				<button
 					type="button"
 					onclick={() => (pop = !pop)}
-					class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
+					class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
 				>
 					<span class="h-2 w-2 rounded-full" style:background={statusMeta.color}></span>
 					<span>{projectStatusLabel(status)}</span>
@@ -246,7 +246,7 @@
 		</div>
 
 		<div class="flex items-center gap-2 rounded-b-2xl border-t border-border bg-bg/40 px-5 py-3">
-			<span class="text-[11.5px] text-text-3">
+			<span class="text-[11px] text-text-3">
 				<Kbd>⌘↵</Kbd>
 				{m.projects_kbd_to_save()}
 			</span>

@@ -197,7 +197,7 @@
 	<div class="px-6 py-6">
 		<a
 			href="/admin/organizations"
-			class="mb-5 inline-flex items-center gap-1.5 text-[12.5px] text-text-3 hover:text-text"
+			class="mb-5 inline-flex items-center gap-1.5 text-[13px] text-text-3 hover:text-text"
 		>
 			<Icon name="chevron-r" size={11} class="rotate-180" />
 			{m.admin_organizations_title()}
@@ -214,16 +214,16 @@
 			</div>
 			<div class="min-w-0 flex-1">
 				<div class="flex items-center gap-2">
-					<h1 class="text-[26px] font-semibold tracking-[-0.014em] text-text">{data.org.name}</h1>
+					<h1 class="text-[24px] font-semibold tracking-[-0.014em] text-text">{data.org.name}</h1>
 					{#if data.org.archivedAt}
 						<span
-							class="rounded px-1.5 py-0.5 text-[10.5px] tracking-[0.06em] text-text-3 uppercase bg-status-todo/16"
+							class="rounded px-1.5 py-0.5 text-[11px] tracking-[0.06em] text-text-3 uppercase bg-status-todo/16"
 						>
 							{m.admin_org_archived_badge()}
 						</span>
 					{/if}
 				</div>
-				<div class="mt-1 font-mono text-[12.5px] text-text-3">{data.org.slug}</div>
+				<div class="mt-1 font-mono text-[13px] text-text-3">{data.org.slug}</div>
 			</div>
 			<div class="flex items-center gap-2">
 				{#if !editing}
@@ -327,7 +327,7 @@
 				</div>
 				{#if serverError}
 					<div
-						class="rounded-lg border px-3 py-2 text-[12.5px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
+						class="rounded-lg border px-3 py-2 text-[13px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
 					>
 						{serverError}
 					</div>
@@ -356,7 +356,7 @@
 				<div class="mb-1.5 text-[11px] tracking-[0.08em] text-text-4 uppercase">
 					{m.admin_org_about()}
 				</div>
-				<p class="text-[13.5px] leading-relaxed text-text-2">{data.org.description}</p>
+				<p class="text-[13px] leading-relaxed text-text-2">{data.org.description}</p>
 			</div>
 		{/if}
 
@@ -421,7 +421,7 @@
 			</div>
 
 			{#if data.members.length === 0}
-				<div class="px-5 py-8 text-center text-[12.5px] text-text-3">
+				<div class="px-5 py-8 text-center text-[13px] text-text-3">
 					{m.admin_org_no_members()}
 				</div>
 			{:else}
@@ -436,13 +436,13 @@
 						<Avatar user={member} size={28} />
 						<div class="min-w-0 flex-1">
 							<div class="truncate font-medium text-text">{member.name}</div>
-							<div class="truncate font-mono text-[11.5px] text-text-3">{member.email}</div>
+							<div class="truncate font-mono text-[11px] text-text-3">{member.email}</div>
 						</div>
 						<div class="relative">
 							<button
 								type="button"
 								onclick={() => (openRoleMenu = openRoleMenu === member.id ? null : member.id)}
-								class="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11.5px] font-medium hover:bg-surface"
+								class="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium hover:bg-surface"
 								style:color={meta.color}
 								style:background={meta.color + '22'}
 							>
@@ -465,7 +465,7 @@
 										>
 											<span class="h-1.5 w-1.5 rounded-full" style:background={ROLE_META[r].color}
 											></span>
-											<span class="text-[12.5px]">{orgRoleLabel(r)}</span>
+											<span class="text-[13px]">{orgRoleLabel(r)}</span>
 											{#if r === role}
 												<span class="ml-auto text-accent"><Icon name="check" size={12} /></span>
 											{/if}
@@ -517,9 +517,9 @@
 						>
 						<span class="min-w-0 flex-1">
 							<span class="block truncate font-medium text-text">{p.name}</span>
-							<span class="block font-mono text-[11.5px] text-text-3">{p.key}</span>
+							<span class="block font-mono text-[11px] text-text-3">{p.key}</span>
 						</span>
-						<span class="text-[12.5px] text-text-2">{projectStatusLabel(p.status)}</span>
+						<span class="text-[13px] text-text-2">{projectStatusLabel(p.status)}</span>
 						<span class="grid place-items-center text-text-3"
 							><Icon name="chevron-r" size={12} /></span
 						>

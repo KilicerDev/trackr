@@ -294,7 +294,7 @@
 				<Icon name="chevron-r" size={12} />
 			</button>
 		</div>
-		<div class="flex items-center gap-2 text-[13.5px] text-text-2">
+		<div class="flex items-center gap-2 text-[13px] text-text-2">
 			<span class="font-mono font-medium tracking-tight text-text">{weekLabel}</span>
 			{#if weekDelta === 0}
 				<span
@@ -302,7 +302,7 @@
 				>
 			{/if}
 			<span class="text-text-4">·</span>
-			<span class="font-mono text-[12.5px] text-text-3">{weekRangeLabel()}</span>
+			<span class="font-mono text-[13px] text-text-3">{weekRangeLabel()}</span>
 		</div>
 		<div
 			class="ml-auto flex items-center gap-3 rounded-xl border border-border bg-bg-elev px-3.5 py-2"
@@ -349,7 +349,7 @@
 						<span class="font-mono text-[12px] text-text-4">{dayLabels[i].dayOfMonth}</span>
 						{#if isToday}
 							<span
-								class="rounded-full px-2 py-0.5 text-[10.5px] font-medium tracking-[0.06em] text-accent uppercase bg-accent-soft">{m.common_today()}</span
+								class="rounded-full px-2 py-0.5 text-[11px] font-medium tracking-[0.06em] text-accent uppercase bg-accent-soft">{m.common_today()}</span
 							>
 						{/if}
 						<span class="font-mono text-[11px] text-text-3">{tasks.length}</span>
@@ -406,11 +406,11 @@
 					<span class="text-[13px] font-semibold text-text">{m.week_unscheduled()}</span>
 					<span class="font-mono text-[11px] text-text-3">{unscheduled.length}</span>
 				</div>
-				<p class="mt-1 text-[11.5px] text-text-4">{m.week_unscheduled_hint()}</p>
+				<p class="mt-1 text-[11px] text-text-4">{m.week_unscheduled_hint()}</p>
 			</div>
 			<div class="px-4 pb-2">
 				<div
-					class="inline-flex h-7 w-full items-center rounded-lg border border-border bg-surface p-0.5 text-[11.5px]"
+					class="inline-flex h-7 w-full items-center rounded-lg border border-border bg-surface p-0.5 text-[11px]"
 				>
 					{#each [['past', m.week_tab_past()], ['mine', m.week_tab_my_tasks()], ['others', m.week_tab_others()]] as [k, lbl] (k)}
 						<button
@@ -443,9 +443,9 @@
 								></span>
 							{/if}
 						</span>
-						<span class="font-mono text-[10.5px] text-text-3">{t.id}</span>
+						<span class="font-mono text-[11px] text-text-3">{t.id}</span>
 						<PriorityBars priority={t.priority} />
-						<span class="flex-1 truncate text-[12.5px] text-text">{t.title}</span>
+						<span class="flex-1 truncate text-[13px] text-text">{t.title}</span>
 						<span class="font-mono text-[10px] {t.estimate ? 'text-text-4' : 'text-text-4/60'}">
 							{t.estimate ? formatEstimate(t.estimate) : '—'}
 						</span>

@@ -72,7 +72,7 @@
 		bind:value={entry}
 		{onkeydown}
 		placeholder={m.tasks_add_or_search_tags()}
-		class="mb-1.5 w-full rounded-md border border-border bg-surface px-2 py-1.5 text-[12.5px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
+		class="mb-1.5 w-full rounded-md border border-border bg-surface px-2 py-1.5 text-[13px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
 	/>
 	<div class="max-h-[240px] overflow-y-auto">
 		{#each filtered as id (id)}
@@ -99,7 +99,7 @@
 				<span class="truncate text-[13px]">{m.tasks_create_tag({ tag: normalizedEntry })}</span>
 			</button>
 		{:else if filtered.length === 0}
-			<div class="px-2 py-1.5 text-[12.5px] text-text-3">{m.tasks_no_tags()}</div>
+			<div class="px-2 py-1.5 text-[13px] text-text-3">{m.tasks_no_tags()}</div>
 		{/if}
 	</div>
 </div>

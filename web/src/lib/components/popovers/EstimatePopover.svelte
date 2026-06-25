@@ -52,7 +52,7 @@
 				class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-center font-mono text-[14px] outline-none focus:border-border-strong"
 			/>
 			<span
-				class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[11.5px] text-text-3"
+				class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[11px] text-text-3"
 				>h</span
 			>
 		</div>
@@ -65,7 +65,7 @@
 				class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-center font-mono text-[14px] outline-none focus:border-border-strong"
 			/>
 			<span
-				class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[11.5px] text-text-3"
+				class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[11px] text-text-3"
 				>m</span
 			>
 		</div>
@@ -75,7 +75,7 @@
 			<button
 				type="button"
 				onclick={() => preset(p)}
-				class="rounded-md border border-border bg-surface py-1.5 text-[12.5px] font-medium text-text transition-colors hover:bg-surface-2"
+				class="rounded-md border border-border bg-surface py-1.5 text-[13px] font-medium text-text transition-colors hover:bg-surface-2"
 			>
 				{labels[p]}
 			</button>

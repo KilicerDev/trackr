@@ -37,23 +37,23 @@
 				>
 					<Icon name="check" size={20} stroke={2} />
 				</div>
-				<h1 class="mt-4 text-center text-[19px] font-semibold tracking-[-0.012em] text-text">
+				<h1 class="mt-4 text-center text-[20px] font-semibold tracking-[-0.012em] text-text">
 					{m.auth_forgot_check_email()}
 				</h1>
-				<p class="mt-1.5 text-center text-[13.5px] leading-relaxed text-text-3">
+				<p class="mt-1.5 text-center text-[13px] leading-relaxed text-text-3">
 					{m.auth_forgot_sent_message({ email: form.email })}
 				</p>
 				<a
 					href="/login"
-					class="mt-6 inline-flex h-10 w-full items-center justify-center rounded-[8px] border border-border bg-surface text-[13.5px] font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text"
+					class="mt-6 inline-flex h-10 w-full items-center justify-center rounded-[8px] border border-border bg-surface text-[13px] font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text"
 				>
 					{m.auth_back_to_sign_in()}
 				</a>
 			{:else}
-				<h1 class="text-[19px] font-semibold tracking-[-0.012em] text-text">
+				<h1 class="text-[20px] font-semibold tracking-[-0.012em] text-text">
 					{m.auth_forgot_title()}
 				</h1>
-				<p class="mt-1 text-[13.5px] text-text-3">
+				<p class="mt-1 text-[13px] text-text-3">
 					{m.auth_forgot_subtitle()}
 				</p>
 
@@ -69,7 +69,7 @@
 					class="mt-6 flex flex-col gap-4"
 				>
 					<label class="flex flex-col gap-1.5">
-						<span class="text-[12.5px] font-medium text-text-2">{m.auth_email_label()}</span>
+						<span class="text-[13px] font-medium text-text-2">{m.auth_email_label()}</span>
 						<input
 							bind:this={emailInput}
 							type="email"
@@ -94,7 +94,7 @@
 					<button
 						type="submit"
 						disabled={submitting}
-						class="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[13.5px] font-semibold text-white shadow-btn-lg transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-default disabled:opacity-70"
+						class="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[13px] font-semibold text-white shadow-btn-lg transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-default disabled:opacity-70"
 					>
 						{#if submitting}
 							<span

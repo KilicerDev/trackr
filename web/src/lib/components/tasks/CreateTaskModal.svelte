@@ -230,7 +230,7 @@
 					<button
 						type="button"
 						onclick={() => (pop = pop === 'project' ? null : 'project')}
-						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] transition-colors {projectMeta
+						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors {projectMeta
 							? 'border border-border bg-surface hover:border-border-strong'
 							: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
 					>
@@ -253,7 +253,7 @@
 						/>
 					{/if}
 				</div>
-				<div class="ml-1 text-[10.5px] tracking-[0.08em] text-text-4 uppercase">
+				<div class="ml-1 text-[11px] tracking-[0.08em] text-text-4 uppercase">
 					{m.tasks_new_task()}
 				</div>
 				<button
@@ -274,14 +274,14 @@
 					bind:value={title}
 					required
 					placeholder={m.tasks_title_placeholder()}
-					class="mb-2 w-full border-0 bg-transparent text-[19px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
+					class="mb-2 w-full border-0 bg-transparent text-[20px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
 				/>
 				<textarea
 					name="description"
 					bind:value={description}
 					placeholder={m.tasks_description_placeholder()}
 					rows="3"
-					class="w-full resize-none border-0 bg-transparent text-[13.5px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
+					class="w-full resize-none border-0 bg-transparent text-[13px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
 				></textarea>
 
 				<!-- Property rail -->
@@ -290,7 +290,7 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'type' ? null : 'type')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
+							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
 						>
 							<TypeBadge {type} showLabel={false} />
 							<span>{typeLabel(type)}</span>
@@ -304,7 +304,7 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'status' ? null : 'status')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
+							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
 						>
 							<StatusDot {status} />
 							<span>{statusLabel(status)}</span>
@@ -322,7 +322,7 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'priority' ? null : 'priority')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
+							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
 						>
 							{#if prioMeta.bars > 0}<PriorityBars {priority} />{/if}
 							<span>{priorityLabel(priority)}</span>
@@ -340,7 +340,7 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'assignees' ? null : 'assignees')}
-							class="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
+							class="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
 						>
 							{#if assignees.length === 1 && assigneeUsers[0]}
 								<Avatar user={assigneeUsers[0]} size={18} />
@@ -366,7 +366,7 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'due' ? null : 'due')}
-							class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] transition-colors {due
+							class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors {due
 								? 'border border-border bg-surface hover:border-border-strong'
 								: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
 						>
@@ -384,7 +384,7 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'estimate' ? null : 'estimate')}
-							class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] transition-colors {estimate
+							class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors {estimate
 								? 'border border-border bg-surface hover:border-border-strong'
 								: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
 						>
@@ -405,7 +405,7 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'tags' ? null : 'tags')}
-							class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] transition-colors {tags.length >
+							class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors {tags.length >
 							0
 								? 'border border-border bg-surface hover:border-border-strong'
 								: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
@@ -453,7 +453,7 @@
 					<button
 						type="button"
 						onclick={() => fileInput?.click()}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[12.5px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
 					>
 						<Icon name="paperclip" size={13} />
 						<span>{m.tasks_attach_files()}</span>
@@ -464,7 +464,7 @@
 
 			<!-- Foot -->
 			<div class="flex items-center gap-2 rounded-b-2xl border-t border-border bg-bg/40 px-5 py-3">
-				<span class="text-[11.5px] text-text-3">
+				<span class="text-[11px] text-text-3">
 					<Kbd>⌘↵</Kbd>
 					{m.tasks_to_create()}
 				</span>

@@ -121,11 +121,11 @@
 					{/if}
 				</span>
 				<div class="min-w-0 flex-1 pt-0.5">
-					<div id="confirm-title" class="text-[15px] font-semibold tracking-[-0.01em] text-text">
+					<div id="confirm-title" class="text-[14px] font-semibold tracking-[-0.01em] text-text">
 						{top.title}
 					</div>
 					{#if top.message}
-						<div class="mt-1.5 text-[12.5px] leading-relaxed whitespace-pre-line text-text-3">
+						<div class="mt-1.5 text-[13px] leading-relaxed whitespace-pre-line text-text-3">
 							{top.message}
 						</div>
 					{/if}

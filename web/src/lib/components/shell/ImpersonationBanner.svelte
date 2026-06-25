@@ -42,7 +42,7 @@
 </script>
 
 <div
-	class="flex h-9 items-center gap-3 border-b px-5 text-[12.5px] bg-prio-medium/14 border-prio-medium/35 text-prio-medium"
+	class="flex h-9 items-center gap-3 border-b px-5 text-[13px] bg-prio-medium/14 border-prio-medium/35 text-prio-medium"
 >
 	<svg
 		xmlns="http://www.w3.org/2000/svg"

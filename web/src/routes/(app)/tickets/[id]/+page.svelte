@@ -265,7 +265,7 @@
 <div class="min-h-0 flex-1 overflow-auto">
 	<div class="mx-auto max-w-[820px] px-6 py-6">
 		<!-- Header -->
-		<div class="mb-1 flex items-center gap-2 text-[11.5px] text-text-3">
+		<div class="mb-1 flex items-center gap-2 text-[11px] text-text-3">
 			<span class="font-mono text-text-4">{t.displayId}</span>
 			<span class="inline-flex items-center gap-1.5">
 				<span class="h-1.5 w-1.5 rounded-full" style:background={t.orgColor}></span>
@@ -307,7 +307,7 @@
 				{/if}
 			</div>
 		</div>
-		<h1 class="mb-4 text-[22px] leading-tight font-semibold tracking-[-0.012em] text-text">
+		<h1 class="mb-4 text-[24px] leading-tight font-semibold tracking-[-0.012em] text-text">
 			{t.subject}
 		</h1>
 
@@ -319,7 +319,7 @@
 					type="button"
 					disabled={!isAgent}
 					onclick={() => (pop = pop === 'status' ? null : 'status')}
-					class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {isAgent
+					class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {isAgent
 						? 'hover:border-border-strong'
 						: ''} {pop === 'status' ? 'ring-2 ring-accent/40' : ''}"
 				>
@@ -356,7 +356,7 @@
 					type="button"
 					disabled={!isAgent}
 					onclick={() => (pop = pop === 'priority' ? null : 'priority')}
-					class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {isAgent
+					class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {isAgent
 						? 'hover:border-border-strong'
 						: ''} {pop === 'priority' ? 'ring-2 ring-accent/40' : ''}"
 				>
@@ -395,7 +395,7 @@
 					type="button"
 					disabled={!isAgent}
 					onclick={() => (pop = pop === 'category' ? null : 'category')}
-					class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {isAgent
+					class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {isAgent
 						? 'hover:border-border-strong'
 						: ''} {pop === 'category' ? 'ring-2 ring-accent/40' : ''}"
 				>
@@ -435,7 +435,7 @@
 					type="button"
 					disabled={!isAgent}
 					onclick={() => (pop = pop === 'assignee' ? null : 'assignee')}
-					class="inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {assignee
+					class="inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {assignee
 						? 'border border-border bg-surface'
 						: 'border border-dashed border-border text-text-3'} {isAgent
 						? assignee
@@ -499,7 +499,7 @@
 
 		<!-- Description (if any) shown as opening message -->
 		{#if t.description}
-			<div class="mb-6 text-[13.5px] leading-relaxed whitespace-pre-wrap text-text">
+			<div class="mb-6 text-[13px] leading-relaxed whitespace-pre-wrap text-text">
 				<MentionText text={t.description} />
 			</div>
 		{/if}
@@ -518,7 +518,7 @@
 				<!-- Deletion is agent-only; clients/members can attach but not remove. -->
 				<AttachmentList attachments={data.attachments} canDelete={isAgent} />
 			{:else}
-				<p class="text-[12.5px] text-text-3">{m.tickets_no_files()}</p>
+				<p class="text-[13px] text-text-3">{m.tickets_no_files()}</p>
 			{/if}
 		</div>
 
@@ -541,7 +541,7 @@
 									class="group flex items-center gap-2.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 transition-colors hover:border-border-strong"
 								>
 									<StatusDot status={lt.status as import('$lib/types').StatusId} size={13} />
-									<span class="font-mono text-[11.5px] text-text-4">{lt.displayId}</span>
+									<span class="font-mono text-[11px] text-text-4">{lt.displayId}</span>
 									<span class="truncate text-[13px] text-text-2 group-hover:text-text"
 										>{lt.title}</span
 									>
@@ -550,7 +550,7 @@
 						{/each}
 					</ul>
 				{:else}
-					<p class="text-[12.5px] text-text-3">{m.tickets_linked_tasks_empty()}</p>
+					<p class="text-[13px] text-text-3">{m.tickets_linked_tasks_empty()}</p>
 				{/if}
 			</div>
 		{/if}
@@ -574,7 +574,7 @@
 								<Avatar user={u} size={18} />
 							{/if}
 						</span>
-						<div class="text-[12.5px] text-text-2">
+						<div class="text-[13px] text-text-2">
 							<span class="font-medium text-text">{u?.name ?? m.tickets_unknown_user()}</span>
 							{#if e.kind === 'created'}
 								{m.tickets_opened_this()}

@@ -397,7 +397,7 @@
 
 		{#if !canEdit}
 			<span
-				class="flex items-center gap-1.5 rounded-md bg-surface px-2 py-0.5 text-[11.5px] text-text-3"
+				class="flex items-center gap-1.5 rounded-md bg-surface px-2 py-0.5 text-[11px] text-text-3"
 			>
 				<Icon name="link" size={12} />
 				{m.notes_read_only()}
@@ -409,7 +409,7 @@
 				<div class="flex items-center -space-x-1.5">
 					{#each others.slice(0, 4) as u (u.clientId)}
 						<span
-							class="grid place-items-center rounded-full text-[9.5px] font-semibold text-white select-none size-[22px]"
+							class="grid place-items-center rounded-full text-[10px] font-semibold text-white select-none size-[22px]"
 							style:background={u.color}
 							style:box-shadow="0 0 0 2px var(--bg), 0 0 0 3.5px {u.color}55"
 							title={u.name}
@@ -421,7 +421,7 @@
 			{/if}
 
 			{#if statusLabel}
-				<span class="text-[11.5px] text-text-3">{statusLabel}</span>
+				<span class="text-[11px] text-text-3">{statusLabel}</span>
 			{/if}
 
 			<div class="h-4 w-px bg-border"></div>
@@ -477,7 +477,7 @@
 				oninput={onTitleInput}
 				onblur={() => void saveTitle()}
 				onkeydown={onTitleKeydown}
-				class="w-full border-0 bg-transparent pt-1 text-[33px] leading-[1.12] font-semibold tracking-[-0.02em] text-text outline-none placeholder:text-text-4 read-only:cursor-default"
+				class="w-full border-0 bg-transparent pt-1 text-[32px] leading-[1.12] font-semibold tracking-[-0.02em] text-text outline-none placeholder:text-text-4 read-only:cursor-default"
 			/>
 		</div>
 

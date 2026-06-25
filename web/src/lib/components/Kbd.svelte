@@ -6,7 +6,7 @@
 </script>
 
 <span
-	class="inline-flex items-center rounded border border-border bg-surface-2 px-1.5 py-[2px] font-mono text-[10.5px] text-text-3"
+	class="inline-flex items-center rounded border border-border bg-surface-2 px-1.5 py-[2px] font-mono text-[11px] text-text-3"
 >
 	{@render children()}
 </span>

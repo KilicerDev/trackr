@@ -78,7 +78,7 @@
 					</span>
 				{/if}
 				<div class="min-w-0 flex-1">
-					<div class="truncate text-[12.5px] text-text">{att.filename}</div>
+					<div class="truncate text-[13px] text-text">{att.filename}</div>
 					<div class="text-[11px] text-text-3">{formatBytes(att.sizeBytes)}</div>
 				</div>
 				<a

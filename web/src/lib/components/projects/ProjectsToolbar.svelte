@@ -154,7 +154,7 @@
 <div class="flex shrink-0 items-center gap-2 border-b border-border bg-bg px-5 py-2.5">
 	<!-- View toggle -->
 	<div
-		class="inline-flex h-7 items-center rounded-lg border border-border bg-surface p-0.5 text-[12.5px]"
+		class="inline-flex h-7 items-center rounded-lg border border-border bg-surface p-0.5 text-[13px]"
 	>
 		{#each VIEWS as v (v.id)}
 			<button
@@ -177,7 +177,7 @@
 		<button
 			type="button"
 			onclick={() => (pop = pop === 'group' ? null : 'group')}
-			class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[12.5px] transition-colors hover:bg-surface-2"
+			class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[13px] transition-colors hover:bg-surface-2"
 		>
 			<span class="text-text-3">{m.projects_group_label()}</span>
 			<span class="font-medium text-text">{groupLabel(group)}</span>
@@ -222,7 +222,7 @@
 				placeholder={m.projects_search_placeholder()}
 				value={search}
 				oninput={(e) => setSearch((e.target as HTMLInputElement).value)}
-				class="h-7 w-44 rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[12.5px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
+				class="h-7 w-44 rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[13px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
 			/>
 		</div>
 		{#if canCreate}

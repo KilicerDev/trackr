@@ -121,7 +121,7 @@
 								: ''}"
 						>
 							<PriorityBars priority={t.priority} />
-							<span class="w-[112px] shrink-0 truncate font-mono text-[11.5px] text-text-3"
+							<span class="w-[112px] shrink-0 truncate font-mono text-[11px] text-text-3"
 								>{t.displayId}</span
 							>
 							<span
@@ -131,7 +131,7 @@
 							></span>
 							<span class="flex-1 truncate text-text">{t.subject}</span>
 							<span
-								class="hidden shrink-0 items-center gap-1 rounded-md border border-border bg-surface px-1.5 py-0.5 text-[11.5px] text-text-3 md:inline-flex"
+								class="hidden shrink-0 items-center gap-1 rounded-md border border-border bg-surface px-1.5 py-0.5 text-[11px] text-text-3 md:inline-flex"
 								title={t.orgName}
 							>
 								<span class="h-1.5 w-1.5 rounded-full" style:background={t.orgColor}></span>
@@ -139,7 +139,7 @@
 							</span>
 							{#if t.messageCount > 0}
 								<span
-									class="hidden shrink-0 items-center gap-1 text-[11.5px] text-text-3 md:inline-flex"
+									class="hidden shrink-0 items-center gap-1 text-[11px] text-text-3 md:inline-flex"
 								>
 									<Icon name="msg" size={11} />
 									{t.messageCount}

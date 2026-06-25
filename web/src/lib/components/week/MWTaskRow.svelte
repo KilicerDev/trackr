@@ -27,7 +27,7 @@
 	class="group flex w-full items-center gap-2.5 border-b border-border/40 px-3.5 py-2 text-left transition-colors last:border-b-0 hover:bg-[var(--row-hover)]"
 >
 	<StatusDot status={task.status} />
-	<span class="w-[78px] shrink-0 font-mono text-[11.5px] text-text-3">{task.id}</span>
+	<span class="w-[78px] shrink-0 font-mono text-[11px] text-text-3">{task.id}</span>
 	<span class="shrink-0"><TypeBadge type={task.type ?? 'task'} showLabel={false} /></span>
 	<span
 		class="flex-1 truncate text-[13px] text-text {task.status === 'done'

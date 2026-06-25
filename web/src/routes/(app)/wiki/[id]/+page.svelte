@@ -292,7 +292,7 @@
 	<header
 		class="sticky top-0 z-20 flex h-[52px] items-center gap-3 border-b border-border/70 bg-bg/80 px-8 backdrop-blur-md"
 	>
-		<nav class="flex min-w-0 items-center gap-1.5 text-[12.5px]">
+		<nav class="flex min-w-0 items-center gap-1.5 text-[13px]">
 			<a href="/wiki" class="text-text-3 transition-colors hover:text-text"
 				>{m.wiki_breadcrumb_root()}</a
 			>
@@ -317,7 +317,7 @@
 				<div class="flex items-center -space-x-1.5">
 					{#each others.slice(0, 4) as u (u.clientId)}
 						<span
-							class="grid place-items-center rounded-full text-[9.5px] font-semibold text-white select-none size-[22px]"
+							class="grid place-items-center rounded-full text-[10px] font-semibold text-white select-none size-[22px]"
 							style:background={u.color}
 							style:box-shadow="0 0 0 2px var(--bg), 0 0 0 3.5px {u.color}55"
 							title={m.wiki_collaborators_now({ name: u.name })}
@@ -327,7 +327,7 @@
 					{/each}
 					{#if others.length > 4}
 						<span
-							class="grid place-items-center rounded-full bg-surface-2 text-[9.5px] font-semibold text-text-3 size-[22px] ring-2 ring-bg"
+							class="grid place-items-center rounded-full bg-surface-2 text-[10px] font-semibold text-text-3 size-[22px] ring-2 ring-bg"
 						>
 							+{others.length - 4}
 						</span>
@@ -396,13 +396,13 @@
 					oninput={onTitleInput}
 					onblur={onTitleBlur}
 					onkeydown={onTitleKeydown}
-					class="w-full border-0 bg-transparent pt-1 text-[33px] leading-[1.12] font-semibold tracking-[-0.02em] text-text outline-none placeholder:text-text-4"
+					class="w-full border-0 bg-transparent pt-1 text-[32px] leading-[1.12] font-semibold tracking-[-0.02em] text-text outline-none placeholder:text-text-4"
 				/>
 			</div>
 
 			<!-- Byline -->
 			<div
-				class="mb-8 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 pl-[54px] text-[12.5px] text-text-3"
+				class="mb-8 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 pl-[54px] text-[13px] text-text-3"
 			>
 				{#if updaterAvatar}
 					<span class="flex items-center gap-2">
@@ -453,7 +453,7 @@
 									>
 										<Icon name={child.isFolder ? 'folder' : 'file'} size={15} stroke={1.75} />
 									</span>
-									<span class="flex-1 truncate text-[13.5px] text-text-2 group-hover:text-text">
+									<span class="flex-1 truncate text-[13px] text-text-2 group-hover:text-text">
 										{child.title}
 									</span>
 									<span
@@ -502,7 +502,7 @@
 
 				<div>
 					<div class="wiki-rail__label mb-3">{m.wiki_details()}</div>
-					<dl class="space-y-2.5 text-[12.5px]">
+					<dl class="space-y-2.5 text-[13px]">
 						<div class="flex items-center justify-between gap-2">
 							<dt class="text-text-4">{m.wiki_detail_type()}</dt>
 							<dd class="flex items-center gap-1.5 text-text-2">

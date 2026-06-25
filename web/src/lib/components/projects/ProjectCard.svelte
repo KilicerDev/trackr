@@ -47,7 +47,7 @@
 		</span>
 		<div class="min-w-0 flex-1">
 			<div class="flex items-center gap-2">
-				<div class="truncate text-[15px] font-semibold text-text">{project.name}</div>
+				<div class="truncate text-[14px] font-semibold text-text">{project.name}</div>
 			</div>
 			<div class="flex items-center gap-1.5 font-mono text-[11px] text-text-3">
 				<span>{project.key}</span>
@@ -63,7 +63,7 @@
 		</div>
 	</div>
 
-	<p class="mb-5 line-clamp-2 min-h-[2.4em] text-[12.5px] leading-snug text-text-3">
+	<p class="mb-5 line-clamp-2 min-h-[2.4em] text-[13px] leading-snug text-text-3">
 		{project.description ?? m.projects_no_description()}
 	</p>
 

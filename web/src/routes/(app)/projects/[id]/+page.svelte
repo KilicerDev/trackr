@@ -258,7 +258,7 @@
 	<div class="px-6 py-6">
 		<a
 			href="/projects"
-			class="mb-5 inline-flex items-center gap-1.5 text-[12.5px] text-text-3 hover:text-text"
+			class="mb-5 inline-flex items-center gap-1.5 text-[13px] text-text-3 hover:text-text"
 		>
 			<Icon name="chevron-r" size={11} class="rotate-180" />
 			{m.projects_back_to_projects()}
@@ -275,11 +275,11 @@
 			</div>
 			<div class="min-w-0 flex-1">
 				<div class="flex items-center gap-2">
-					<h1 class="text-[26px] font-semibold tracking-[-0.014em] text-text">{p.name}</h1>
+					<h1 class="text-[24px] font-semibold tracking-[-0.014em] text-text">{p.name}</h1>
 				</div>
-				<div class="mt-1.5 flex items-center gap-2 text-[12.5px] text-text-3">
+				<div class="mt-1.5 flex items-center gap-2 text-[13px] text-text-3">
 					<span
-						class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11.5px]"
+						class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px]"
 						style:background={st.color + '24'}
 						style:color={st.color}
 					>
@@ -321,7 +321,7 @@
 									settingsOpen = false;
 									editing = true;
 								}}
-								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2 hover:text-text"
+								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text"
 							>
 								<Icon name="settings" size={12} />
 								{m.projects_edit_details()}
@@ -331,7 +331,7 @@
 								type="button"
 								onclick={toggleFavorite}
 								disabled={projectBusy !== null}
-								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
 							>
 								<span class={isFavorite ? 'text-accent' : ''}>
 									<Icon name="star" size={12} />
@@ -350,7 +350,7 @@
 									type="button"
 									onclick={unarchiveProject}
 									disabled={projectBusy !== null}
-									class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+									class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
 								>
 									<Icon name="refresh" size={12} />
 									{projectBusy === 'unarchive'
@@ -362,7 +362,7 @@
 									type="button"
 									onclick={archiveProject}
 									disabled={projectBusy !== null}
-									class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+									class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
 								>
 									<Icon name="bookmark" size={12} />
 									{projectBusy === 'archive'
@@ -375,7 +375,7 @@
 								type="button"
 								onclick={deleteProject}
 								disabled={projectBusy !== null}
-								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] hover:bg-surface-2 disabled:opacity-50 text-accent"
+								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-surface-2 disabled:opacity-50 text-accent"
 							>
 								<Icon name="x" size={12} />
 								{projectBusy === 'delete' ? m.common_deleting() : m.projects_delete_project()}
@@ -396,7 +396,7 @@
 				<div class="mb-1.5 text-[11px] tracking-[0.08em] text-text-4 uppercase">
 					{m.projects_about()}
 				</div>
-				<p class="text-[13.5px] leading-relaxed text-text-2">
+				<p class="text-[13px] leading-relaxed text-text-2">
 					{p.description ?? m.projects_no_description()}
 				</p>
 			</div>
@@ -429,7 +429,7 @@
 									in:fly={POPOVER_IN}
 									class="absolute top-full z-40 mt-1.5 min-w-[200px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 								>
-									<div class="px-2 pt-1 pb-1 text-[10.5px] tracking-[0.08em] text-text-4 uppercase">
+									<div class="px-2 pt-1 pb-1 text-[11px] tracking-[0.08em] text-text-4 uppercase">
 										{m.projects_role_label()}
 									</div>
 									{#each PROJECT_ROLES as r (r.id)}
@@ -438,7 +438,7 @@
 											type="button"
 											onclick={() => setRole(mem.id, r.id)}
 											disabled={busy === `memberSetRole:${mem.id}` || active}
-											class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2 hover:text-text disabled:cursor-default disabled:opacity-100"
+											class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text disabled:cursor-default disabled:opacity-100"
 										>
 											<span class="h-1.5 w-1.5 rounded-full" style:background={r.color}></span>
 											<span class={active ? 'font-medium text-text' : ''}>{r.label}</span>
@@ -453,7 +453,7 @@
 											type="button"
 											onclick={clearLead}
 											disabled={busy === 'leadSet:'}
-											class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+											class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
 										>
 											<Icon name="star" size={12} />
 											{m.projects_remove_as_lead()}
@@ -463,7 +463,7 @@
 											type="button"
 											onclick={() => setLead(mem.id)}
 											disabled={busy === `leadSet:${mem.id}`}
-											class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+											class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
 										>
 											<Icon name="star" size={12} />
 											{m.projects_set_as_lead()}
@@ -474,7 +474,7 @@
 										type="button"
 										onclick={() => removeMember(mem.id, mem.name)}
 										disabled={busy === `memberRemove:${mem.id}`}
-										class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12.5px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+										class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
 									>
 										<Icon name="x" size={12} />
 										{m.common_remove()}

@@ -134,7 +134,7 @@
 		>
 			<Icon name="chevron-r" size={11} class="rotate-180" />
 		</button>
-		<span class="text-[12.5px] font-medium">{title}</span>
+		<span class="text-[13px] font-medium">{title}</span>
 		<button
 			type="button"
 			onclick={() => step(1)}
@@ -145,7 +145,7 @@
 		</button>
 	</div>
 	<div
-		class="mb-1 grid grid-cols-7 gap-px text-center text-[10.5px] tracking-[0.06em] text-text-4 uppercase"
+		class="mb-1 grid grid-cols-7 gap-px text-center text-[11px] tracking-[0.06em] text-text-4 uppercase"
 	>
 		{#each [m.tasks_weekday_mon(), m.tasks_weekday_tue(), m.tasks_weekday_wed(), m.tasks_weekday_thu(), m.tasks_weekday_fri(), m.tasks_weekday_sat(), m.tasks_weekday_sun()] as d, i (i)}
 			<span>{d}</span>
@@ -172,19 +172,19 @@
 		<button
 			type="button"
 			onclick={() => quick(0)}
-			class="flex-1 rounded-md px-2 py-1 text-[11.5px] text-text-2 hover:bg-surface hover:text-text"
+			class="flex-1 rounded-md px-2 py-1 text-[11px] text-text-2 hover:bg-surface hover:text-text"
 			>{m.common_today()}</button
 		>
 		<button
 			type="button"
 			onclick={() => quick(1)}
-			class="flex-1 rounded-md px-2 py-1 text-[11.5px] text-text-2 hover:bg-surface hover:text-text"
+			class="flex-1 rounded-md px-2 py-1 text-[11px] text-text-2 hover:bg-surface hover:text-text"
 			>{m.tasks_tomorrow()}</button
 		>
 		<button
 			type="button"
 			onclick={() => quick(7)}
-			class="flex-1 rounded-md px-2 py-1 text-[11.5px] text-text-2 hover:bg-surface hover:text-text"
+			class="flex-1 rounded-md px-2 py-1 text-[11px] text-text-2 hover:bg-surface hover:text-text"
 			>{m.tasks_plus_one_week()}</button
 		>
 		<button
@@ -193,7 +193,7 @@
 				onchange(null);
 				onclose();
 			}}
-			class="rounded-md px-2 py-1 text-[11.5px] text-text-3 hover:bg-surface hover:text-text"
+			class="rounded-md px-2 py-1 text-[11px] text-text-3 hover:bg-surface hover:text-text"
 			>{m.tasks_clear()}</button
 		>
 	</div>
@@ -204,7 +204,7 @@
 				onundated();
 				onclose();
 			}}
-			class="mt-1.5 w-full rounded-md px-2 py-1.5 text-[11.5px] transition-colors {undatedActive
+			class="mt-1.5 w-full rounded-md px-2 py-1.5 text-[11px] transition-colors {undatedActive
 				? 'bg-accent-soft text-accent'
 				: 'text-text-2 hover:bg-surface hover:text-text'}"
 			style:background={undatedActive ? 'rgba(239,122,109,0.14)' : ''}

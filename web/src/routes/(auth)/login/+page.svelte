@@ -37,10 +37,10 @@
 		<div
 			class="rounded-[14px] border border-border bg-bg-elev px-7 pt-7 pb-6 shadow-card"
 		>
-			<h1 class="text-[19px] font-semibold tracking-[-0.012em] text-text">
+			<h1 class="text-[20px] font-semibold tracking-[-0.012em] text-text">
 				{m.auth_login_welcome()}
 			</h1>
-			<p class="mt-1 text-[13.5px] text-text-3">
+			<p class="mt-1 text-[13px] text-text-3">
 				{m.auth_login_subtitle()}
 			</p>
 
@@ -69,7 +69,7 @@
 				{/if}
 
 				<label class="flex flex-col gap-1.5">
-					<span class="text-[12.5px] font-medium text-text-2">{m.auth_email_label()}</span>
+					<span class="text-[13px] font-medium text-text-2">{m.auth_email_label()}</span>
 					<input
 						bind:this={emailInput}
 						type="email"
@@ -85,7 +85,7 @@
 
 				<label class="flex flex-col gap-1.5">
 					<div class="flex items-center justify-between">
-						<span class="text-[12.5px] font-medium text-text-2">{m.auth_password_label()}</span>
+						<span class="text-[13px] font-medium text-text-2">{m.auth_password_label()}</span>
 						<a
 							href="/forgot-password"
 							class="text-[12px] font-medium text-text-3 transition-colors hover:text-text"
@@ -145,7 +145,7 @@
 				<button
 					type="submit"
 					disabled={submitting}
-					class="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[13.5px] font-semibold text-white shadow-btn-lg transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-default disabled:opacity-70"
+					class="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[13px] font-semibold text-white shadow-btn-lg transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-default disabled:opacity-70"
 				>
 					{#if submitting}
 						<span

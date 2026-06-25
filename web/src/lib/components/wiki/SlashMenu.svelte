@@ -47,7 +47,7 @@
 					: 'text-text-2 hover:text-text'}"
 			>
 				<span
-					class="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border bg-surface text-[11.5px] font-medium text-text-2"
+					class="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-border bg-surface text-[11px] font-medium text-text-2"
 				>
 					{item.icon}
 				</span>

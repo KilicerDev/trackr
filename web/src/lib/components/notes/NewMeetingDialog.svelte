@@ -126,7 +126,7 @@
 			aria-modal="true"
 		>
 			<div class="flex items-center justify-between border-b border-border/70 px-5 py-4">
-				<h2 class="text-[15px] font-semibold text-text">{m.notes_new_meeting()}</h2>
+				<h2 class="text-[14px] font-semibold text-text">{m.notes_new_meeting()}</h2>
 				<button
 					type="button"
 					onclick={close}
@@ -224,7 +224,7 @@
 							class="flex h-9 w-full items-center gap-1.5 rounded-lg border border-border bg-surface px-3 text-[13px] text-text-2"
 						>
 							{#if presetTaskRef}
-								<span class="shrink-0 font-mono text-[11.5px] text-text-3">{presetTaskRef}</span>
+								<span class="shrink-0 font-mono text-[11px] text-text-3">{presetTaskRef}</span>
 							{/if}
 							<span class="truncate">{presetTaskTitle}</span>
 						</div>
@@ -241,7 +241,7 @@
 							>
 								{#if selectedTask}
 									<span class="flex items-center gap-1.5 truncate">
-										<span class="shrink-0 font-mono text-[11.5px] text-text-3"
+										<span class="shrink-0 font-mono text-[11px] text-text-3"
 											>{selectedTask.ref}</span
 										>
 										<span class="truncate text-text">{selectedTask.title}</span>

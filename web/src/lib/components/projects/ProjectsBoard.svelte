@@ -57,7 +57,7 @@
 								>
 								<div class="min-w-0 flex-1">
 									<div class="truncate text-[13px] font-semibold text-text">{p.name}</div>
-									<div class="flex items-center gap-1.5 font-mono text-[10.5px] text-text-3">
+									<div class="flex items-center gap-1.5 font-mono text-[11px] text-text-3">
 										<span>{p.key}</span>
 										{#if p.org}
 											<span class="text-text-4">·</span>
@@ -67,14 +67,14 @@
 								</div>
 							</div>
 							{#if p.description}
-								<p class="mb-2.5 line-clamp-2 text-[11.5px] leading-snug text-text-3">
+								<p class="mb-2.5 line-clamp-2 text-[11px] leading-snug text-text-3">
 									{p.description}
 								</p>
 							{/if}
 							<div class="flex items-center gap-2">
 								<AvatarStack users={p.members} size={18} max={4} />
 								<span
-									class="ml-auto inline-flex items-center gap-1 text-[10.5px]"
+									class="ml-auto inline-flex items-center gap-1 text-[11px]"
 									style:color={st.color}
 								>
 									<span class="h-1.5 w-1.5 rounded-full" style:background={st.color}></span>
@@ -87,7 +87,7 @@
 						</a>
 					{/each}
 					{#if col.projects.length === 0}
-						<div class="py-6 text-center text-[11.5px] text-text-4">{m.projects_no_projects()}</div>
+						<div class="py-6 text-center text-[11px] text-text-4">{m.projects_no_projects()}</div>
 					{/if}
 				</div>
 			</div>

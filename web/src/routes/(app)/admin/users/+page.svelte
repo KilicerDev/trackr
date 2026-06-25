@@ -367,8 +367,8 @@
 	<div class="px-6 py-6">
 		<div class="mb-6 flex items-end gap-4">
 			<div>
-				<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.admin_users_title()}</h1>
-				<p class="mt-1 text-[12.5px] text-text-3">
+				<h1 class="text-[24px] font-semibold tracking-[-0.014em]">{m.admin_users_title()}</h1>
+				<p class="mt-1 text-[13px] text-text-3">
 					{m.admin_users_subtitle({
 						total: counts.all,
 						active: counts.active,
@@ -394,13 +394,13 @@
 					<button
 						type="button"
 						onclick={() => (filter = t.id)}
-						class="inline-flex h-full items-center gap-1.5 rounded-md px-2.5 text-[12.5px] transition-colors {filter ===
+						class="inline-flex h-full items-center gap-1.5 rounded-md px-2.5 text-[13px] transition-colors {filter ===
 						t.id
 							? 'bg-bg-elev text-text'
 							: 'text-text-3 hover:text-text'}"
 					>
 						{t.label}
-						<span class="font-mono text-[10.5px] text-text-3">
+						<span class="font-mono text-[11px] text-text-3">
 							{counts[t.id]}
 						</span>
 					</button>
@@ -414,14 +414,14 @@
 					type="text"
 					bind:value={search}
 					placeholder={m.admin_users_search_placeholder()}
-					class="h-8 w-64 rounded-lg border border-border bg-surface pr-3 pl-8 text-[12.5px] outline-none focus:border-border-strong"
+					class="h-8 w-64 rounded-lg border border-border bg-surface pr-3 pl-8 text-[13px] outline-none focus:border-border-strong"
 				/>
 			</div>
 		</div>
 
 		{#if data.invitations.length > 0}
 			<div class="mb-5">
-				<div class="mb-2 px-1 text-[10.5px] tracking-[0.08em] text-text-4 uppercase">
+				<div class="mb-2 px-1 text-[11px] tracking-[0.08em] text-text-4 uppercase">
 					{m.admin_users_pending_invitations({ count: data.invitations.length })}
 				</div>
 				<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
@@ -445,7 +445,7 @@
 								<div class="flex items-center gap-2">
 									<span class="truncate text-[13px] font-medium text-text">{inv.email}</span>
 									<span
-										class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] font-medium"
+										class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium"
 										style:background={meta.color + '22'}
 										style:color={meta.color}
 									>
@@ -453,7 +453,7 @@
 										{metaLabel}
 									</span>
 								</div>
-								<div class="mt-0.5 text-[11.5px] text-text-3">
+								<div class="mt-0.5 text-[11px] text-text-3">
 									{m.admin_users_invited_as()} <span class="text-text-2">{inv.name}</span>
 									{' · '}
 									<span class={expired ? 'text-prio-urgent' : ''}>{fmtRelative(inv.expiresAt)}</span
@@ -500,7 +500,7 @@
 				<span></span>
 			</div>
 			{#if users.length === 0}
-				<div class="px-5 py-10 text-center text-[12.5px] text-text-3">
+				<div class="px-5 py-10 text-center text-[13px] text-text-3">
 					{m.admin_users_no_match()}
 				</div>
 			{/if}
@@ -522,11 +522,11 @@
 							<span class="block truncate font-medium text-text">
 								{u.name ?? '—'}
 								{#if isSelf}
-									<span class="ml-1 font-mono text-[10.5px] text-text-4">{m.admin_users_you()}</span
+									<span class="ml-1 font-mono text-[11px] text-text-4">{m.admin_users_you()}</span
 									>
 								{/if}
 							</span>
-							<span class="block truncate font-mono text-[11.5px] text-text-3">{u.email}</span>
+							<span class="block truncate font-mono text-[11px] text-text-3">{u.email}</span>
 						</span>
 					</span>
 					<span class="flex items-center gap-1.5">
@@ -582,7 +582,7 @@
 		{@const isSelf = sel.id === data.currentUserId}
 		{@const canImpersonate = data.viewerIsSuperadmin && !isSelf && !banned}
 		<div class="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3">
-			<span class="font-mono text-[10.5px] tracking-[0.08em] text-text-4 uppercase"
+			<span class="font-mono text-[11px] tracking-[0.08em] text-text-4 uppercase"
 				>{m.admin_users_drawer_user()}</span
 			>
 			<div class="ml-auto flex items-center gap-1">
@@ -601,11 +601,11 @@
 							<span class="ml-1 font-mono text-[12px] text-text-4">{m.admin_users_you()}</span>
 						{/if}
 					</div>
-					<div class="truncate font-mono text-[12.5px] text-text-3">{sel.email}</div>
+					<div class="truncate font-mono text-[13px] text-text-3">{sel.email}</div>
 				</div>
 			</div>
 
-			<div class="mb-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-[12.5px]">
+			<div class="mb-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-[13px]">
 				<div class="text-text-4">{m.admin_users_col_role()}</div>
 				<div class="flex items-center gap-1.5">
 					<span class="h-1.5 w-1.5 rounded-full" style:background={meta.color}></span>
@@ -672,7 +672,7 @@
 {#snippet orgRolePicker(p: OrgRolePickerProps)}
 	<div class="grid grid-cols-2 gap-3">
 		<div class="relative">
-			<span class="mb-1.5 block text-[11.5px] tracking-[0.06em] text-text-4 uppercase"
+			<span class="mb-1.5 block text-[11px] tracking-[0.06em] text-text-4 uppercase"
 				>{m.admin_organization()}</span
 			>
 			<button
@@ -719,7 +719,7 @@
 			{/if}
 		</div>
 		<div class="relative">
-			<span class="mb-1.5 block text-[11.5px] tracking-[0.06em] text-text-4 uppercase"
+			<span class="mb-1.5 block text-[11px] tracking-[0.06em] text-text-4 uppercase"
 				>{m.admin_users_col_role()}</span
 			>
 			<button
@@ -764,7 +764,7 @@
 		</div>
 	</div>
 	{#if p.orgRole}
-		<p class="mt-2 text-[11.5px] text-text-3">{orgRolePerm(p.orgRole)}</p>
+		<p class="mt-2 text-[11px] text-text-3">{orgRolePerm(p.orgRole)}</p>
 	{/if}
 {/snippet}
 
@@ -781,7 +781,7 @@
 		<div class="flex items-center border-b border-border px-5 pt-4 pb-3">
 			<div>
 				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">{m.admin_workspace()}</div>
-				<div class="text-[15px] font-semibold">{m.admin_users_create_title()}</div>
+				<div class="text-[14px] font-semibold">{m.admin_users_create_title()}</div>
 			</div>
 			<button
 				type="button"
@@ -799,7 +799,7 @@
 			<div>
 				<label
 					for="c-name"
-					class="mb-1.5 block text-[11.5px] tracking-[0.06em] text-text-4 uppercase"
+					class="mb-1.5 block text-[11px] tracking-[0.06em] text-text-4 uppercase"
 					>{m.admin_name()}</label
 				>
 				<input
@@ -814,7 +814,7 @@
 			<div>
 				<label
 					for="c-email"
-					class="mb-1.5 block text-[11.5px] tracking-[0.06em] text-text-4 uppercase"
+					class="mb-1.5 block text-[11px] tracking-[0.06em] text-text-4 uppercase"
 					>{m.admin_users_email()}</label
 				>
 				<input
@@ -829,7 +829,7 @@
 			<div>
 				<label
 					for="c-password"
-					class="mb-1.5 block text-[11.5px] tracking-[0.06em] text-text-4 uppercase"
+					class="mb-1.5 block text-[11px] tracking-[0.06em] text-text-4 uppercase"
 					>{m.admin_users_initial_password()}</label
 				>
 				<div class="relative">
@@ -881,7 +881,7 @@
 			})}
 			{#if cError}
 				<div
-					class="rounded-lg border px-3 py-2 text-[12.5px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
+					class="rounded-lg border px-3 py-2 text-[13px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
 				>
 					{cError}
 				</div>
@@ -924,7 +924,7 @@
 		<div class="flex items-center border-b border-border px-5 pt-4 pb-3">
 			<div>
 				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">{m.admin_workspace()}</div>
-				<div class="text-[15px] font-semibold">{m.admin_users_invite_title()}</div>
+				<div class="text-[14px] font-semibold">{m.admin_users_invite_title()}</div>
 			</div>
 			<button
 				type="button"
@@ -942,7 +942,7 @@
 			<div>
 				<label
 					for="i-name"
-					class="mb-1.5 block text-[11.5px] tracking-[0.06em] text-text-4 uppercase"
+					class="mb-1.5 block text-[11px] tracking-[0.06em] text-text-4 uppercase"
 					>{m.admin_name()}</label
 				>
 				<input
@@ -957,7 +957,7 @@
 			<div>
 				<label
 					for="i-email"
-					class="mb-1.5 block text-[11.5px] tracking-[0.06em] text-text-4 uppercase"
+					class="mb-1.5 block text-[11px] tracking-[0.06em] text-text-4 uppercase"
 					>{m.admin_users_email()}</label
 				>
 				<input
@@ -988,7 +988,7 @@
 			</p>
 			{#if iError}
 				<div
-					class="rounded-lg border px-3 py-2 text-[12.5px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
+					class="rounded-lg border px-3 py-2 text-[13px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
 				>
 					{iError}
 				</div>

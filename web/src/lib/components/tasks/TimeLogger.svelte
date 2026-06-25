@@ -61,7 +61,7 @@
 			<Icon name="calendar" size={13} />
 		</span>
 		<span class="text-[13px] font-medium text-text">{m.tasks_log_time()}</span>
-		<span class="ml-auto font-mono text-[11.5px] text-text-3">{summary}</span>
+		<span class="ml-auto font-mono text-[11px] text-text-3">{summary}</span>
 		<span class="text-text-3">
 			<Icon name="chevron" size={11} />
 		</span>
@@ -84,7 +84,7 @@
 					<Icon name="calendar" size={13} />
 				</span>
 				<span class="text-[13px] font-medium text-text">{m.tasks_log_time()}</span>
-				<span class="ml-auto font-mono text-[11.5px] text-text-3">{summary}</span>
+				<span class="ml-auto font-mono text-[11px] text-text-3">{summary}</span>
 				<span class="rotate-180 text-text-3">
 					<Icon name="chevron" size={11} />
 				</span>
@@ -99,7 +99,7 @@
 							class="w-full rounded-lg border border-border bg-surface px-3 py-2 pr-7 font-mono text-[13px] outline-none focus:border-border-strong"
 						/>
 						<span
-							class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[11.5px] text-text-3"
+							class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[11px] text-text-3"
 							>h</span
 						>
 					</div>
@@ -112,7 +112,7 @@
 							class="w-full rounded-lg border border-border bg-surface px-3 py-2 pr-7 font-mono text-[13px] outline-none focus:border-border-strong"
 						/>
 						<span
-							class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[11.5px] text-text-3"
+							class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[11px] text-text-3"
 							>m</span
 						>
 					</div>

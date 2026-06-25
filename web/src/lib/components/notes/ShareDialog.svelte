@@ -96,7 +96,7 @@
 			aria-modal="true"
 		>
 			<div class="flex items-center justify-between border-b border-border/70 px-5 py-4">
-				<h2 class="text-[15px] font-semibold text-text">{m.notes_share_title()}</h2>
+				<h2 class="text-[14px] font-semibold text-text">{m.notes_share_title()}</h2>
 				<button
 					type="button"
 					onclick={() => (open = false)}
@@ -108,7 +108,7 @@
 			</div>
 
 			<div class="grid gap-4 px-5 py-4">
-				<p class="text-[12.5px] leading-relaxed text-text-3">{m.notes_share_hint()}</p>
+				<p class="text-[13px] leading-relaxed text-text-3">{m.notes_share_hint()}</p>
 
 				<div class="flex gap-2">
 					<button
@@ -136,7 +136,7 @@
 						{#each activeLinks as link (link.id)}
 							<div class="flex items-center gap-2 rounded-lg bg-surface px-3 py-2">
 								<span
-									class="rounded px-1.5 py-0.5 font-mono text-[10.5px] tracking-wide uppercase {link.role ===
+									class="rounded px-1.5 py-0.5 font-mono text-[11px] tracking-wide uppercase {link.role ===
 									'write'
 										? 'bg-accent/15 text-accent'
 										: 'bg-surface-2 text-text-3'}"

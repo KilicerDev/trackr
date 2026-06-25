@@ -38,7 +38,7 @@
 		{#if task.type}
 			<TypeBadge type={task.type} />
 		{/if}
-		<span class="font-mono text-[10.5px] text-text-3">{task.id}</span>
+		<span class="font-mono text-[11px] text-text-3">{task.id}</span>
 		{#if task.plannedFor || task.inMyPlan}
 			<span
 				class="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] text-accent bg-accent-soft"

@@ -234,7 +234,7 @@
 					<Icon name={p.isFolder ? 'folder' : 'file'} size={16} stroke={1.75} />
 				</span>
 
-				<span class="tree-label min-w-0 flex-1 truncate text-[13.5px]">{p.title}</span>
+				<span class="tree-label min-w-0 flex-1 truncate text-[13px]">{p.title}</span>
 
 				{#if p.isFolder}
 					<span class="relative shrink-0">
@@ -352,7 +352,7 @@
 	</div>
 
 	<div class="px-3 pb-2">
-		<div class="wiki-search flex items-center gap-2 rounded-lg px-2.5 py-[6px] text-[12.5px]">
+		<div class="wiki-search flex items-center gap-2 rounded-lg px-2.5 py-[6px] text-[13px]">
 			<span class="text-text-4"><Icon name="search" size={13} /></span>
 			<input
 				type="text"
@@ -365,7 +365,7 @@
 
 	<div class="min-h-0 flex-1 overflow-y-auto px-2 pt-1 pb-4">
 		{#if topLevel.length === 0}
-			<div class="px-3 py-6 text-center text-[12.5px] text-text-4">{m.wiki_tree_no_pages()}</div>
+			<div class="px-3 py-6 text-center text-[13px] text-text-4">{m.wiki_tree_no_pages()}</div>
 		{:else}
 			{#each topLevel as p (p.id)}
 				{@render row(p, 0, filtered)}

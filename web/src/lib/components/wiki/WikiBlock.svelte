@@ -7,11 +7,11 @@
 </script>
 
 {#if block.kind === 'h1'}
-	<h1 class="mt-7 mb-3 text-[28px] font-semibold tracking-[-0.012em] text-text first:mt-0">
+	<h1 class="mt-7 mb-3 text-[32px] font-semibold tracking-[-0.012em] text-text first:mt-0">
 		{block.text}
 	</h1>
 {:else if block.kind === 'h2'}
-	<h2 class="mt-6 mb-2.5 text-[19px] font-semibold tracking-[-0.008em] text-text">{block.text}</h2>
+	<h2 class="mt-6 mb-2.5 text-[20px] font-semibold tracking-[-0.008em] text-text">{block.text}</h2>
 {:else if block.kind === 'p'}
 	<p class="mb-3 text-[14px] leading-[1.65] text-text-2">{block.text}</p>
 {:else if block.kind === 'list'}
@@ -33,6 +33,6 @@
 		>
 			{block.tone === 'warn' ? '!' : 'i'}
 		</span>
-		<p class="text-[13.5px] leading-relaxed text-text-2">{block.text}</p>
+		<p class="text-[13px] leading-relaxed text-text-2">{block.text}</p>
 	</div>
 {/if}

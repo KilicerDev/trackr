@@ -109,7 +109,7 @@
 
 <aside class="flex min-h-0 w-full flex-col overflow-hidden border-r border-border bg-bg-elev">
 	<div
-		class="flex items-center gap-2.5 px-[18px] pt-[18px] pb-[14px] text-[15px] font-semibold tracking-[-0.01em]"
+		class="flex items-center gap-2.5 px-[18px] pt-[18px] pb-[14px] text-[14px] font-semibold tracking-[-0.01em]"
 	>
 		<span class="grid h-6 w-6 shrink-0 place-items-center" aria-hidden="true">
 			<svg
@@ -125,7 +125,7 @@
 			</svg>
 		</span>
 		<span class={fade}>Trackr</span>
-		<span class="ml-auto font-mono text-[10.5px] font-normal text-text-3 {fade}">v2</span>
+		<span class="ml-auto font-mono text-[11px] font-normal text-text-3 {fade}">v2</span>
 	</div>
 
 	<button

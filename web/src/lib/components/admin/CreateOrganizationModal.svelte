@@ -116,7 +116,7 @@
 		<div class="flex items-center border-b border-border px-5 pt-4 pb-3">
 			<div>
 				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">{m.admin_workspace()}</div>
-				<div class="text-[15px] font-semibold">{m.admin_org_new()}</div>
+				<div class="text-[14px] font-semibold">{m.admin_org_new()}</div>
 			</div>
 			<button
 				type="button"
@@ -146,10 +146,10 @@
 						bind:value={name}
 						required
 						placeholder={m.admin_org_name_placeholder()}
-						class="block w-full border-0 bg-transparent text-[19px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
+						class="block w-full border-0 bg-transparent text-[20px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
 					/>
 					<div class="mt-1 flex items-center gap-1.5">
-						<span class="text-[10.5px] tracking-[0.08em] text-text-4 uppercase"
+						<span class="text-[11px] tracking-[0.08em] text-text-4 uppercase"
 							>{m.admin_slug()}</span
 						>
 						<input
@@ -165,7 +165,7 @@
 							}}
 							maxlength={48}
 							placeholder="acme-co"
-							class="w-[160px] rounded-md border border-border bg-surface px-1.5 py-0.5 font-mono text-[11.5px] tracking-[0.02em] text-text outline-none focus:border-border-strong"
+							class="w-[160px] rounded-md border border-border bg-surface px-1.5 py-0.5 font-mono text-[11px] tracking-[0.02em] text-text outline-none focus:border-border-strong"
 						/>
 					</div>
 				</div>
@@ -176,11 +176,11 @@
 				bind:value={description}
 				placeholder={m.admin_org_description_placeholder()}
 				rows="2"
-				class="mb-4 w-full resize-none border-0 bg-transparent text-[13.5px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
+				class="mb-4 w-full resize-none border-0 bg-transparent text-[13px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
 			></textarea>
 
 			<div>
-				<div class="mb-2 text-[10.5px] tracking-[0.08em] text-text-4 uppercase">
+				<div class="mb-2 text-[11px] tracking-[0.08em] text-text-4 uppercase">
 					{m.admin_color()}
 				</div>
 				<div class="flex flex-wrap gap-1.5">
@@ -219,7 +219,7 @@
 
 			{#if serverError}
 				<div
-					class="mt-4 rounded-lg border px-3 py-2 text-[12.5px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
+					class="mt-4 rounded-lg border px-3 py-2 text-[13px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
 				>
 					{serverError}
 				</div>
@@ -227,7 +227,7 @@
 		</div>
 
 		<div class="flex items-center gap-2 rounded-b-2xl border-t border-border bg-bg/40 px-5 py-3">
-			<span class="text-[11.5px] text-text-3">
+			<span class="text-[11px] text-text-3">
 				<Kbd>⌘↵</Kbd>
 				{m.admin_to_create()}
 			</span>

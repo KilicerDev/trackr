@@ -102,8 +102,8 @@
 	<div class="px-6 py-6">
 		<div class="mb-6 flex items-end gap-4">
 			<div>
-				<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.admin_logs_title()}</h1>
-				<p class="mt-1 max-w-xl text-[12.5px] text-text-3">
+				<h1 class="text-[24px] font-semibold tracking-[-0.014em]">{m.admin_logs_title()}</h1>
+				<p class="mt-1 max-w-xl text-[13px] text-text-3">
 					{m.admin_logs_subtitle()}
 				</p>
 			</div>
@@ -124,7 +124,7 @@
 							kind = k.id;
 							navigate();
 						}}
-						class="h-full rounded-md px-2.5 text-[12.5px] {kind === k.id
+						class="h-full rounded-md px-2.5 text-[13px] {kind === k.id
 							? 'bg-bg-elev text-text shadow-sm'
 							: 'text-text-3 hover:text-text'}"
 					>
@@ -141,7 +141,7 @@
 							range = r.id;
 							navigate();
 						}}
-						class="h-full rounded-md px-2.5 text-[12.5px] {range === r.id
+						class="h-full rounded-md px-2.5 text-[13px] {range === r.id
 							? 'bg-bg-elev text-text shadow-sm'
 							: 'text-text-3 hover:text-text'}"
 					>
@@ -158,7 +158,7 @@
 					bind:value={search}
 					oninput={onSearchInput}
 					placeholder={m.admin_logs_search_placeholder()}
-					class="h-8 w-56 rounded-lg border border-border bg-surface pr-3 pl-8 text-[12.5px] outline-none focus:border-border-strong"
+					class="h-8 w-56 rounded-lg border border-border bg-surface pr-3 pl-8 text-[13px] outline-none focus:border-border-strong"
 				/>
 			</div>
 		</div>
@@ -189,7 +189,7 @@
 					<button
 						type="button"
 						onclick={() => (selected = e)}
-						class="group grid w-full items-center gap-3 border-b border-border/40 px-5 py-2.5 text-left text-[12.5px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)]"
+						class="group grid w-full items-center gap-3 border-b border-border/40 px-5 py-2.5 text-left text-[13px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)]"
 						style:grid-template-columns="1.6fr 1fr 2fr 1.4fr 1.2fr 30px"
 					>
 						<span class="flex min-w-0 items-center gap-2">
@@ -247,7 +247,7 @@
 		}}
 		{@const actor = selected.actor ? actors[selected.actor] : undefined}
 		<div class="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3">
-			<span class="font-mono text-[10.5px] tracking-[0.08em] text-text-4 uppercase"
+			<span class="font-mono text-[11px] tracking-[0.08em] text-text-4 uppercase"
 				>{m.admin_logs_event_label({ id: selected.id.slice(0, 8).toUpperCase() })}</span
 			>
 			<div class="ml-auto">
@@ -267,11 +267,11 @@
 				</span>
 				<div class="min-w-0">
 					<div class="text-[16px] font-semibold text-text">{logEventLabel(selected.type)}</div>
-					<div class="font-mono text-[11.5px] text-text-3">{selected.type}</div>
+					<div class="font-mono text-[11px] text-text-3">{selected.type}</div>
 				</div>
 			</div>
 
-			<div class="mb-6 grid grid-cols-[100px_1fr] gap-x-3 gap-y-3 text-[12.5px]">
+			<div class="mb-6 grid grid-cols-[100px_1fr] gap-x-3 gap-y-3 text-[13px]">
 				<div class="text-text-4">{m.admin_logs_col_actor()}</div>
 				<div class="flex items-center gap-1.5">
 					{#if actor}<Avatar user={actor} size={16} /><span>{actor.name}</span>{:else}<span
@@ -291,11 +291,11 @@
 			</div>
 
 			<div>
-				<div class="mb-2 text-[10.5px] tracking-[0.08em] text-text-4 uppercase">
+				<div class="mb-2 text-[11px] tracking-[0.08em] text-text-4 uppercase">
 					{m.admin_logs_raw_payload()}
 				</div>
 				<pre
-					class="overflow-x-auto rounded-lg border border-border bg-surface p-3 font-mono text-[11.5px] text-text-2">{JSON.stringify(
+					class="overflow-x-auto rounded-lg border border-border bg-surface p-3 font-mono text-[11px] text-text-2">{JSON.stringify(
 						selected,
 						null,
 						2

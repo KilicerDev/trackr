@@ -26,12 +26,12 @@
 
 <div class="flex h-full justify-center px-6">
 	<div class="w-full max-w-[640px] pt-[14vh]">
-		<h1 class="mb-6 text-[28px] font-semibold tracking-[-0.02em] text-text">
+		<h1 class="mb-6 text-[32px] font-semibold tracking-[-0.02em] text-text">
 			{m.wiki_welcome_back({ name: firstName })}
 		</h1>
 
 		{#if data.recent.length > 0}
-			<div class="mb-3 px-0.5 font-mono text-[10.5px] tracking-[0.14em] text-text-4 uppercase">
+			<div class="mb-3 px-0.5 font-mono text-[11px] tracking-[0.14em] text-text-4 uppercase">
 				{m.wiki_recent()}
 			</div>
 			<div class="grid gap-2">
@@ -47,7 +47,7 @@
 							<Icon name="file" size={15} stroke={1.75} />
 						</span>
 						<span class="min-w-0 flex-1">
-							<span class="block truncate text-[13.5px] text-text-2 group-hover:text-text">
+							<span class="block truncate text-[13px] text-text-2 group-hover:text-text">
 								{p.title}
 							</span>
 							{#if path}

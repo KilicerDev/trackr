@@ -14,7 +14,7 @@
 		<span class="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-surface text-text-3">
 			<Icon name="file" size={22} stroke={1.6} />
 		</span>
-		<h1 class="mb-1.5 text-[17px] font-semibold text-text">{m.notes_landing_title()}</h1>
+		<h1 class="mb-1.5 text-[18px] font-semibold text-text">{m.notes_landing_title()}</h1>
 		<p class="mb-5 text-[13px] leading-relaxed text-text-3">{m.notes_landing_hint()}</p>
 		<form
 			method="POST"

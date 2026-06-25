@@ -121,7 +121,7 @@
 			<button
 				type="button"
 				onclick={() => setTab('notes')}
-				class="flex-1 rounded-[6px] px-2 py-1 text-[12.5px] font-medium transition-colors {tab ===
+				class="flex-1 rounded-[6px] px-2 py-1 text-[13px] font-medium transition-colors {tab ===
 				'notes'
 					? 'bg-bg-elev text-text shadow-sm'
 					: 'text-text-3 hover:text-text-2'}"
@@ -131,7 +131,7 @@
 			<button
 				type="button"
 				onclick={() => setTab('meetings')}
-				class="flex-1 rounded-[6px] px-2 py-1 text-[12.5px] font-medium transition-colors {tab ===
+				class="flex-1 rounded-[6px] px-2 py-1 text-[13px] font-medium transition-colors {tab ===
 				'meetings'
 					? 'bg-bg-elev text-text shadow-sm'
 					: 'text-text-3 hover:text-text-2'}"
@@ -208,7 +208,7 @@
 
 			{#if shared.length > 0}
 				<div
-					class="px-1 pt-3.5 pb-1 text-[10.5px] font-medium tracking-[0.1em] text-text-4 uppercase"
+					class="px-1 pt-3.5 pb-1 text-[11px] font-medium tracking-[0.1em] text-text-4 uppercase"
 				>
 					{m.notes_shared_with_me()}
 				</div>
@@ -250,7 +250,7 @@
 						<span class="min-w-0 flex-1">
 							<span class="block truncate">{n.title || m.notes_untitled()}</span>
 							{#if proj}
-								<span class="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-text-4">
+								<span class="mt-0.5 flex items-center gap-1.5 text-[11px] text-text-4">
 									<span class="h-2 w-2 shrink-0 rounded-[2.5px]" style:background={proj.color}
 									></span>
 									<span class="truncate">{proj.name}</span>
@@ -267,7 +267,7 @@
 	<div class="border-t border-border px-2 py-2">
 		<a
 			href="/notes/templates"
-			class="flex items-center gap-2 rounded-md px-2 py-1.5 text-[12.5px] transition-colors {page
+			class="flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors {page
 				.url.pathname === '/notes/templates'
 				? 'text-text'
 				: 'text-text-3 hover:bg-[var(--row-hover)] hover:text-text'}"

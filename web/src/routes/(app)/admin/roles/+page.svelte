@@ -80,8 +80,8 @@
 	<div class="max-w-[1280px] px-6 py-6">
 		<div class="mb-6 flex items-end gap-4">
 			<div>
-				<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.admin_roles_title()}</h1>
-				<p class="mt-1 max-w-2xl text-[12.5px] leading-relaxed text-text-3">
+				<h1 class="text-[24px] font-semibold tracking-[-0.014em]">{m.admin_roles_title()}</h1>
+				<p class="mt-1 max-w-2xl text-[13px] leading-relaxed text-text-3">
 					{m.admin_roles_subtitle()}
 				</p>
 			</div>
@@ -94,7 +94,7 @@
 		</div>
 
 		<!-- Scope legend -->
-		<div class="mb-3 flex items-center gap-3 text-[11.5px] text-text-3">
+		<div class="mb-3 flex items-center gap-3 text-[11px] text-text-3">
 			<span class="inline-flex items-center gap-1.5">
 				<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
 				{m.admin_roles_legend_org({ count: orgRoles.length })}
@@ -170,7 +170,7 @@
 					<button
 						type="button"
 						onclick={() => toggle(g.key)}
-						class="flex w-full items-center gap-2 border-y border-border bg-surface/20 px-5 py-2.5 text-left text-[12.5px]"
+						class="flex w-full items-center gap-2 border-y border-border bg-surface/20 px-5 py-2.5 text-left text-[13px]"
 					>
 						<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
 							<Icon name="chevron" size={11} />
@@ -209,7 +209,7 @@
 			</div>
 		</div>
 
-		<p class="mt-4 max-w-2xl text-[11.5px] text-text-4">
+		<p class="mt-4 max-w-2xl text-[11px] text-text-4">
 			{m.admin_roles_internal_note_before()}<Icon
 				name="shield"
 				size={11}

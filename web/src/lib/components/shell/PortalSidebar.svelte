@@ -59,7 +59,7 @@
 					{(activeOrg?.name ?? '?').slice(0, 1).toUpperCase()}
 				</span>
 				<span class="min-w-0 flex-1">
-					<span class="block truncate text-[13.5px] font-semibold"
+					<span class="block truncate text-[13px] font-semibold"
 						>{activeOrg?.name ?? m.shell_portal_support()}</span
 					>
 					<span class="block text-[11px] leading-tight text-text-3"
@@ -75,7 +75,7 @@
 					align="left"
 					minWidth={232}
 				>
-					<div class="px-2 pt-1 pb-1.5 text-[10.5px] tracking-[0.08em] text-text-4 uppercase">
+					<div class="px-2 pt-1 pb-1.5 text-[11px] tracking-[0.08em] text-text-4 uppercase">
 						{m.shell_switch_organization()}
 					</div>
 					{#each orgs as o (o.id)}
@@ -102,7 +102,7 @@
 	<div class="px-3 pb-1">
 		<a
 			href="/tickets/new"
-			class="flex items-center gap-2.5 rounded-lg border border-border bg-surface px-2.5 py-2 text-[13.5px] text-text-2 transition-colors hover:border-border-strong hover:text-text {page
+			class="flex items-center gap-2.5 rounded-lg border border-border bg-surface px-2.5 py-2 text-[13px] text-text-2 transition-colors hover:border-border-strong hover:text-text {page
 				.url.pathname === '/tickets/new'
 				? 'border-border-strong !text-text'
 				: ''}"
@@ -153,7 +153,7 @@
 	<a
 		href="/tickets/{t.id}"
 		title={t.subject}
-		class="relative mx-1 my-[1px] flex items-center gap-2.5 rounded-[7px] px-3 py-[7px] text-[13.5px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text
+		class="relative mx-1 my-[1px] flex items-center gap-2.5 rounded-[7px] px-3 py-[7px] text-[13px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text
 		{active ? 'bg-[var(--row-active)] !text-text' : ''}"
 	>
 		<span class="grid h-4 w-4 shrink-0 place-items-center" title={ticketStatusLabel(t.status)}>

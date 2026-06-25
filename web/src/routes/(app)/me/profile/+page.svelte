@@ -35,8 +35,8 @@
 </script>
 
 <header class="mb-6">
-	<h1 class="text-[22px] font-semibold tracking-[-0.014em]">{m.profile_title()}</h1>
-	<p class="mt-1 text-[12.5px] text-text-3">{m.profile_subtitle()}</p>
+	<h1 class="text-[24px] font-semibold tracking-[-0.014em]">{m.profile_title()}</h1>
+	<p class="mt-1 text-[13px] text-text-3">{m.profile_subtitle()}</p>
 </header>
 
 <form
@@ -87,7 +87,7 @@
 					class="rounded-lg border border-border bg-surface px-3 py-2 font-mono text-[12px] outline-none focus:border-border-strong"
 				/>
 				<div class="text-text-3">{m.profile_email()}</div>
-				<div class="font-mono text-[12.5px] text-text-2">{data.profile?.email ?? '—'}</div>
+				<div class="font-mono text-[13px] text-text-2">{data.profile?.email ?? '—'}</div>
 				<div class="text-text-3">{m.profile_member_since()}</div>
 				<div class="text-text-2">
 					{data.profile?.createdAt

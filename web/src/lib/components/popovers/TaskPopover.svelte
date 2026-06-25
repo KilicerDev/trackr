@@ -109,7 +109,7 @@
 					: ''}"
 			>
 				{#if r.ref}
-					<span class="shrink-0 font-mono text-[11.5px] text-text-3">{r.ref}</span>
+					<span class="shrink-0 font-mono text-[11px] text-text-3">{r.ref}</span>
 				{/if}
 				<span class="truncate text-[13px]">{r.title}</span>
 				<span class="ml-auto shrink-0 text-accent {r.id === value ? 'opacity-100' : 'opacity-0'}">
@@ -118,7 +118,7 @@
 			</button>
 		{/each}
 		{#if searching && filtered.length === 0}
-			<div class="px-2 py-3 text-center text-[12.5px] text-text-3">
+			<div class="px-2 py-3 text-center text-[13px] text-text-3">
 				{m.notes_no_tasks_match({ q })}
 			</div>
 		{/if}

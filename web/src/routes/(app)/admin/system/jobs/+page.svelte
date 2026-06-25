@@ -35,8 +35,8 @@
 
 <div class="mb-6 flex items-end gap-4">
 	<div>
-		<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.jobs_title()}</h1>
-		<p class="mt-1 max-w-xl text-[12.5px] text-text-3">{m.jobs_description()}</p>
+		<h1 class="text-[24px] font-semibold tracking-[-0.014em]">{m.jobs_title()}</h1>
+		<p class="mt-1 max-w-xl text-[13px] text-text-3">{m.jobs_description()}</p>
 	</div>
 	<div class="ml-auto">
 		<Button variant="default" size="sm" onclick={() => invalidateAll()}>
@@ -51,7 +51,7 @@
 	<div class="flex items-center justify-between gap-4">
 		<div>
 			<h2 class="text-[14px] font-semibold text-text">{m.jobs_enqueue_heading()}</h2>
-			<p class="mt-1 text-[12.5px] text-text-3">{m.jobs_enqueue_description()}</p>
+			<p class="mt-1 text-[13px] text-text-3">{m.jobs_enqueue_description()}</p>
 		</div>
 		<form
 			method="post"
@@ -71,7 +71,7 @@
 		</form>
 	</div>
 	{#if form?.message}
-		<p class="mt-3 text-[12.5px] text-red-400">{form.message}</p>
+		<p class="mt-3 text-[13px] text-red-400">{form.message}</p>
 	{/if}
 </div>
 
@@ -93,7 +93,7 @@
 		</div>
 		{#each data.jobs as j (j.id)}
 			<div
-				class="grid items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[12.5px] last:border-b-0"
+				class="grid items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[13px] last:border-b-0"
 				style:grid-template-columns={cols}
 			>
 				<div class="min-w-0">
@@ -115,7 +115,7 @@
 				</div>
 				<div>
 					<span
-						class="inline-flex rounded-full px-2.5 py-1 text-[11.5px] font-medium {statusStyles[
+						class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium {statusStyles[
 							j.status
 						] ?? statusStyles.queued}"
 					>

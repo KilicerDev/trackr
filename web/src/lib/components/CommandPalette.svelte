@@ -238,7 +238,7 @@
 							<Icon name="search" size={16} />
 						</div>
 						<div class="text-[13px] text-text-2">{m.shell_palette_no_results()}</div>
-						<div class="mt-0.5 text-[11.5px] text-text-4">
+						<div class="mt-0.5 text-[11px] text-text-4">
 							{m.shell_palette_no_results_hint()}
 						</div>
 					</div>
@@ -247,7 +247,7 @@
 						{#if gi > 0}
 							<div class="mx-3 my-1.5 h-px bg-border/70"></div>
 						{/if}
-						<div class="px-3 pt-1.5 pb-1 text-[10.5px] tracking-[0.08em] text-text-4 uppercase">
+						<div class="px-3 pt-1.5 pb-1 text-[11px] tracking-[0.08em] text-text-4 uppercase">
 							{g.section}
 						</div>
 						<div class="px-1.5">
@@ -267,11 +267,11 @@
 										<Icon name={it.icon} size={13} />
 									</span>
 									<span class="min-w-0 flex-1">
-										<span class="block truncate text-[13.5px] leading-tight {toneClasses(it.tone)}">
+										<span class="block truncate text-[13px] leading-tight {toneClasses(it.tone)}">
 											{it.label}
 										</span>
 										{#if it.hint}
-											<span class="mt-0.5 block truncate text-[11.5px] leading-tight text-text-4">
+											<span class="mt-0.5 block truncate text-[11px] leading-tight text-text-4">
 												{it.hint}
 											</span>
 										{/if}
@@ -299,7 +299,7 @@
 
 			<!-- Footer -->
 			<div
-				class="flex h-9 items-center gap-3 border-t border-border bg-surface/40 px-4 text-[11.5px] text-text-3"
+				class="flex h-9 items-center gap-3 border-t border-border bg-surface/40 px-4 text-[11px] text-text-3"
 			>
 				<div class="flex items-center gap-1.5">
 					<Kbd>↑</Kbd><Kbd>↓</Kbd>
@@ -309,7 +309,7 @@
 					<Kbd>↵</Kbd>
 					<span class="text-text-4">{m.common_open()}</span>
 				</div>
-				<div class="ml-auto flex items-center gap-1.5 font-mono text-[10.5px] text-text-4">
+				<div class="ml-auto flex items-center gap-1.5 font-mono text-[11px] text-text-4">
 					<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
 					Trackr
 				</div>

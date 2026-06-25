@@ -208,7 +208,7 @@
 {/snippet}
 
 {#snippet line(e: ActivityItem)}
-	<div class="min-w-0 flex-1 text-[12.5px] leading-relaxed text-text-2">
+	<div class="min-w-0 flex-1 text-[13px] leading-relaxed text-text-2">
 		<span class="font-medium text-text">{e.actor?.name ?? m.projects_history_someone()}</span>
 		{#if e.type === 'comment'}
 			{m.projects_history_commented()}{#if e.taskId}
@@ -275,7 +275,7 @@
 
 <Drawer {open} {onclose} width={460}>
 	<div class="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
-		<div class="flex items-center gap-2 text-[13.5px] font-medium text-text">
+		<div class="flex items-center gap-2 text-[13px] font-medium text-text">
 			<Icon name="logs" size={15} />
 			{m.projects_history_title()}
 		</div>
@@ -352,7 +352,7 @@
 										<MentionText text={e.body} />
 									</div>
 								{:else if e.type === 'task.assignee'}
-									<div class="mt-1 flex flex-wrap gap-1.5 text-[11.5px]">
+									<div class="mt-1 flex flex-wrap gap-1.5 text-[11px]">
 										{#if Array.isArray(e.meta?.added) && e.meta.added.length}
 											<span
 												class="inline-flex items-center rounded border border-border bg-surface px-1.5 py-px text-text-2"
@@ -367,7 +367,7 @@
 										{/if}
 									</div>
 								{:else if e.type === 'time.logged' && e.meta?.note}
-									<div class="mt-1 text-[12.5px] text-text-3 italic">{e.meta.note}</div>
+									<div class="mt-1 text-[13px] text-text-3 italic">{e.meta.note}</div>
 								{/if}
 							</div>
 						</div>
@@ -380,7 +380,7 @@
 					type="button"
 					onclick={loadMore}
 					disabled={loadingMore}
-					class="mt-5 w-full rounded-lg border border-border py-2 text-[12.5px] text-text-2 hover:bg-surface-2 disabled:opacity-50"
+					class="mt-5 w-full rounded-lg border border-border py-2 text-[13px] text-text-2 hover:bg-surface-2 disabled:opacity-50"
 				>
 					{loadingMore ? m.common_loading() : m.projects_load_more()}
 				</button>

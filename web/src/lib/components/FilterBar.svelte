@@ -164,7 +164,7 @@
 		<button
 			type="button"
 			onclick={() => (pop = 'add:fields')}
-			class="mb-1 flex w-full items-center gap-1.5 rounded-md border-b border-border px-2 py-1 pb-2 text-left text-[11.5px] tracking-[0.06em] text-text-3 uppercase hover:bg-surface-2 hover:text-text"
+			class="mb-1 flex w-full items-center gap-1.5 rounded-md border-b border-border px-2 py-1 pb-2 text-left text-[11px] tracking-[0.06em] text-text-3 uppercase hover:bg-surface-2 hover:text-text"
 		>
 			<Icon name="chevron-r" size={10} class="rotate-180" />
 			{fieldLabel(field)}

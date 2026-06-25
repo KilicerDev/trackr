@@ -11,7 +11,7 @@
 </script>
 
 <div
-	class="inline-flex h-7 items-stretch rounded-lg text-[12.5px] font-medium transition-[background,border-color] duration-150 select-none
+	class="inline-flex h-7 items-stretch rounded-lg text-[13px] font-medium transition-[background,border-color] duration-150 select-none
 	{variant === 'filter'
 		? 'border border-accent/40 bg-[var(--accent-soft)] text-text'
 		: variant === 'add'

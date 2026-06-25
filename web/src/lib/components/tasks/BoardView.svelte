@@ -224,7 +224,7 @@
 								<button
 									type="button"
 									onclick={() => toggle(g.key)}
-									class="flex w-full items-center gap-2 px-1 py-1 text-left text-[10.5px] font-medium tracking-[0.08em] text-text-3 uppercase hover:text-text"
+									class="flex w-full items-center gap-2 px-1 py-1 text-left text-[11px] font-medium tracking-[0.08em] text-text-3 uppercase hover:text-text"
 								>
 									<span class="text-text-4 transition-transform {isCollapsed ? '-rotate-90' : ''}">
 										<Icon name="chevron" size={10} />

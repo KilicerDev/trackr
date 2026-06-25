@@ -125,7 +125,7 @@
 					<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">
 						{m.tickets_support_eyebrow()}
 					</div>
-					<div class="text-[15px] font-semibold">{m.tickets_new_title()}</div>
+					<div class="text-[14px] font-semibold">{m.tickets_new_title()}</div>
 				</div>
 				<button
 					type="button"
@@ -144,7 +144,7 @@
 					bind:value={subject}
 					required
 					placeholder={m.tickets_subject_placeholder()}
-					class="mb-3 block w-full border-0 bg-transparent text-[19px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
+					class="mb-3 block w-full border-0 bg-transparent text-[20px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
 				/>
 
 				<textarea
@@ -152,7 +152,7 @@
 					bind:value={description}
 					placeholder={m.tickets_description_placeholder()}
 					rows="4"
-					class="mb-4 w-full resize-none border-0 bg-transparent text-[13.5px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
+					class="mb-4 w-full resize-none border-0 bg-transparent text-[13px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
 				></textarea>
 
 				<div class="flex flex-wrap gap-2">
@@ -162,7 +162,7 @@
 							type="button"
 							disabled={!!lockedOrgId}
 							onclick={() => (pop = pop === 'org' ? null : 'org')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-70"
+							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-70"
 						>
 							{#if selectedOrg}
 								<span class="h-2 w-2 rounded-full" style:background={selectedOrg.color}></span>
@@ -198,7 +198,7 @@
 									</button>
 								{/each}
 								{#if orgs.length === 0}
-									<div class="px-2 py-2 text-[11.5px] text-text-3">
+									<div class="px-2 py-2 text-[11px] text-text-3">
 										{m.tickets_no_orgs_available()}
 									</div>
 								{/if}
@@ -211,7 +211,7 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'priority' ? null : 'priority')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
+							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
 						>
 							<PriorityBars {priority} />
 							<span>{priorityLabel(priority)}</span>
@@ -250,7 +250,7 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'category' ? null : 'category')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
+							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
 						>
 							<span class="h-2 w-2 rounded-full" style:background={categoryMeta.color}></span>
 							<span>{ticketCategoryLabel(category)}</span>
@@ -302,7 +302,7 @@
 					<button
 						type="button"
 						onclick={() => fileInput?.click()}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[12.5px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
 					>
 						<Icon name="paperclip" size={13} />
 						<span>{m.tickets_attach_files()}</span>
@@ -312,7 +312,7 @@
 			</div>
 
 			<div class="flex items-center gap-2 rounded-b-2xl border-t border-border bg-bg/40 px-5 py-3">
-				<span class="text-[11.5px] text-text-3">
+				<span class="text-[11px] text-text-3">
 					<Kbd>⌘↵</Kbd>
 					{m.tickets_kbd_to_create()}
 				</span>

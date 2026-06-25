@@ -164,8 +164,8 @@
 				>
 					<Icon name="folder" size={20} />
 				</div>
-				<div class="text-[15px] font-semibold text-text">{m.projects_empty_title()}</div>
-				<div class="max-w-[320px] text-center text-[12.5px] text-text-3">
+				<div class="text-[14px] font-semibold text-text">{m.projects_empty_title()}</div>
+				<div class="max-w-[320px] text-center text-[13px] text-text-3">
 					{m.projects_empty_hint()}
 				</div>
 				{#if canCreate}
@@ -182,8 +182,8 @@
 				<div class="grid h-10 w-10 place-items-center rounded-xl border border-border bg-surface">
 					<Icon name="folder" size={16} />
 				</div>
-				<div class="text-[13.5px] font-medium text-text">{m.projects_no_matching_title()}</div>
-				<div class="text-[11.5px] text-text-4">{m.projects_no_matching_hint()}</div>
+				<div class="text-[13px] font-medium text-text">{m.projects_no_matching_title()}</div>
+				<div class="text-[11px] text-text-4">{m.projects_no_matching_hint()}</div>
 			</div>
 		{/if}
 	</div>
@@ -207,8 +207,8 @@
 						>
 							<Icon name="plus" size={16} />
 						</div>
-						<div class="text-[13.5px] font-medium">{m.projects_new_project()}</div>
-						<div class="text-[11.5px] text-text-4">{m.projects_new_project_card_hint()}</div>
+						<div class="text-[13px] font-medium">{m.projects_new_project()}</div>
+						<div class="text-[11px] text-text-4">{m.projects_new_project_card_hint()}</div>
 					</button>
 				{/if}
 			</div>

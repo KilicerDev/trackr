@@ -218,8 +218,8 @@
 
 	function chipClass(active: boolean) {
 		return active
-			? 'inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11.5px] border border-accent text-text transition-colors hover:bg-accent-soft hover:border-accent'
-			: 'inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11.5px] border border-border bg-bg-elev text-text-2 hover:text-text hover:border-border-strong transition-colors';
+			? 'inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] border border-accent text-text transition-colors hover:bg-accent-soft hover:border-accent'
+			: 'inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] border border-border bg-bg-elev text-text-2 hover:text-text hover:border-border-strong transition-colors';
 	}
 </script>
 
@@ -238,7 +238,7 @@
 			onfocus={() => (focused = true)}
 			onblur={() => (focused = false)}
 			placeholder={m.week_composer_placeholder()}
-			class="flex-1 border-0 bg-transparent text-[13.5px] outline-none placeholder:text-text-3"
+			class="flex-1 border-0 bg-transparent text-[13px] outline-none placeholder:text-text-3"
 		/>
 		<Kbd>⌘↵</Kbd>
 		<IconButton size={26} ariaLabel={m.week_open_in_modal()} onclick={expand}>
@@ -339,7 +339,7 @@
 			{/if}
 		</div>
 
-		<span class="ml-auto text-[10.5px] text-text-4">
+		<span class="ml-auto text-[11px] text-text-4">
 			{m.week_tokens_label()} <span class="font-mono">+PROJ</span>
 			<span class="font-mono">!prio</span>
 			<span class="font-mono">@user</span>

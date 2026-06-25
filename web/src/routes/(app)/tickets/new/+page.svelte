@@ -63,13 +63,13 @@
 
 <div class="min-h-0 flex-1 overflow-auto">
 	<div class="mx-auto max-w-[720px] px-6 py-8">
-		<div class="mb-3 flex items-center gap-2 text-[11.5px] text-text-3">
+		<div class="mb-3 flex items-center gap-2 text-[11px] text-text-3">
 			<span class="inline-flex items-center gap-1.5">
 				<span class="h-1.5 w-1.5 rounded-full" style:background={data.org.color}></span>
 				<span>{data.org.name}</span>
 			</span>
 		</div>
-		<h1 class="mb-5 text-[22px] font-semibold tracking-[-0.012em]">
+		<h1 class="mb-5 text-[24px] font-semibold tracking-[-0.012em]">
 			{m.tickets_new_open_heading()}
 		</h1>
 
@@ -107,7 +107,7 @@
 						bind:value={subject}
 						required
 						placeholder={m.tickets_subject_placeholder()}
-						class="mb-3 block w-full border-0 bg-transparent text-[19px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
+						class="mb-3 block w-full border-0 bg-transparent text-[20px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
 					/>
 					<textarea
 						name="description"
@@ -123,7 +123,7 @@
 							<button
 								type="button"
 								onclick={() => (pop = pop === 'priority' ? null : 'priority')}
-								class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
+								class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
 							>
 								<PriorityBars {priority} />
 								<span>{priorityLabel(priority)}</span>
@@ -164,7 +164,7 @@
 							<button
 								type="button"
 								onclick={() => (pop = pop === 'category' ? null : 'category')}
-								class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors hover:border-border-strong"
+								class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
 							>
 								<span class="h-2 w-2 rounded-full" style:background={categoryMeta.color}></span>
 								<span>{ticketCategoryLabel(category)}</span>
@@ -203,7 +203,7 @@
 						<button
 							type="button"
 							onclick={() => fileInput?.click()}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[12.5px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
+							class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
 						>
 							<Icon name="paperclip" size={13} />
 							<span>{m.tickets_attach_files()}</span>
@@ -229,7 +229,7 @@
 			</AttachmentDropzone>
 
 			<div class="mt-4 flex items-center gap-2">
-				<span class="text-[11.5px] text-text-3"><Kbd>⌘↵</Kbd> {m.tickets_kbd_to_submit()}</span>
+				<span class="text-[11px] text-text-3"><Kbd>⌘↵</Kbd> {m.tickets_kbd_to_submit()}</span>
 				<div class="ml-auto flex items-center gap-2">
 					<Button variant="default" onclick={() => history.back()}>{m.common_cancel()}</Button>
 					<button

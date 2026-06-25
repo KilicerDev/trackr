@@ -81,7 +81,7 @@
 			{m.shell_error_label({ status })}
 		</div>
 		<h1 class="mb-2 text-[20px] font-semibold tracking-[-0.012em] text-text">{meta.title}</h1>
-		<p class="mb-6 text-[13.5px] leading-relaxed text-text-3">{meta.hint}</p>
+		<p class="mb-6 text-[13px] leading-relaxed text-text-3">{meta.hint}</p>
 
 		<div class="flex items-center gap-2">
 			<Button variant="default" onclick={back}>

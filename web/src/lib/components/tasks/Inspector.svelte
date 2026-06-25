@@ -519,7 +519,7 @@
 							type="button"
 							onclick={() => toggle('type')}
 							disabled={!canEdit}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
+							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
 								? 'hover:border-border-strong'
 								: ''} {openPop === 'type' ? 'ring-2 ring-accent/40' : ''}"
 						>
@@ -545,7 +545,7 @@
 						type="button"
 						onclick={() => toggle('status')}
 						disabled={!canEdit}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
+						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
 							? 'hover:border-border-strong'
 							: ''} {openPop === 'status' ? 'ring-2 ring-accent/40' : ''}"
 					>
@@ -570,7 +570,7 @@
 						type="button"
 						onclick={() => toggle('priority')}
 						disabled={!canEdit}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
+						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
 							? 'hover:border-border-strong'
 							: ''} {openPop === 'priority' ? 'ring-2 ring-accent/40' : ''}"
 					>
@@ -597,7 +597,7 @@
 						type="button"
 						onclick={() => toggle('assignees')}
 						disabled={!canEdit}
-						class="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[12.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
+						class="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
 							? 'hover:border-border-strong'
 							: ''} {openPop === 'assignees' ? 'ring-2 ring-accent/40' : ''}"
 					>
@@ -634,7 +634,7 @@
 						type="button"
 						onclick={() => toggle('due')}
 						disabled={!canEdit}
-						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {draft.due
+						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {draft.due
 							? 'border border-border bg-surface'
 							: 'border border-dashed border-border text-text-3'} {canEdit
 							? draft.due
@@ -666,7 +666,7 @@
 					<button
 						type="button"
 						onclick={() => toggle('plan')}
-						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] transition-colors {draft.inMyPlan
+						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors {draft.inMyPlan
 							? 'border border-transparent bg-accent-soft text-accent'
 							: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'} {openPop ===
 						'plan'
@@ -701,7 +701,7 @@
 						type="button"
 						onclick={() => toggle('estimate')}
 						disabled={!canEdit}
-						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {draft.estimate
+						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {draft.estimate
 							? 'border border-border bg-surface'
 							: 'border border-dashed border-border text-text-3'} {canEdit
 							? draft.estimate
@@ -747,7 +747,7 @@
 					if (next === current) return;
 					void patch('description', { description: next });
 				}}
-				class="mb-5 min-h-[60px] w-full resize-none border-0 bg-transparent text-[13.5px] leading-relaxed text-text-2 outline-none placeholder:text-text-4"
+				class="mb-5 min-h-[60px] w-full resize-none border-0 bg-transparent text-[13px] leading-relaxed text-text-2 outline-none placeholder:text-text-4"
 			></textarea>
 
 			{#if canEdit || checklistItems.length > 0}
@@ -847,7 +847,7 @@
 				<div class="mb-6 flex flex-wrap items-center gap-2">
 					{#if draft.parent}
 						<span
-							class="inline-flex items-center gap-1.5 rounded border border-border bg-surface px-2 py-1 font-mono text-[11.5px] text-text-3"
+							class="inline-flex items-center gap-1.5 rounded border border-border bg-surface px-2 py-1 font-mono text-[11px] text-text-3"
 						>
 							<Icon name="chevron-r" size={11} />
 							{draft.parent}
@@ -857,7 +857,7 @@
 						<a
 							href="/tickets/{draft.sourceTicket.id}"
 							title={m.tasks_source_ticket()}
-							class="inline-flex items-center gap-1.5 rounded border border-border bg-surface px-2 py-1 text-[11.5px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
+							class="inline-flex items-center gap-1.5 rounded border border-border bg-surface px-2 py-1 text-[11px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
 						>
 							<Icon name="link" size={11} />
 							<span class="font-mono">{draft.sourceTicket.displayId}</span>
@@ -910,7 +910,7 @@
 							currentUserId={(page.data as { currentUserId?: string }).currentUserId ?? null}
 						/>
 					{:else}
-						<p class="text-[12.5px] text-text-3">{m.tasks_no_files_attached()}</p>
+						<p class="text-[13px] text-text-3">{m.tasks_no_files_attached()}</p>
 					{/if}
 				</div>
 			{/if}
@@ -946,7 +946,7 @@
 										>{n.title || m.notes_untitled()}</span
 									>
 									{#if n.meetingDate}
-										<span class="shrink-0 text-[11.5px] text-text-4"
+										<span class="shrink-0 text-[11px] text-text-4"
 											>{meetingDateLabel(n.meetingDate)}</span
 										>
 									{/if}
@@ -954,7 +954,7 @@
 							{/each}
 						</div>
 					{:else}
-						<p class="text-[12.5px] text-text-3">{m.notes_task_no_meetings()}</p>
+						<p class="text-[13px] text-text-3">{m.notes_task_no_meetings()}</p>
 					{/if}
 				</div>
 			{/if}
@@ -982,7 +982,7 @@
 									<Icon name="plus" size={11} />
 								{/if}
 							</span>
-							<div class="text-[12.5px] text-text-2">
+							<div class="text-[13px] text-text-2">
 								<span class="font-medium text-text">{u?.name ?? e.user}</span>
 								{#if e.kind === 'comment'}{m.tasks_event_commented()}
 								{:else if e.kind === 'time'}{m.tasks_event_logged()}
@@ -1008,7 +1008,7 @@
 									</div>
 								{/if}
 							{:else if e.kind === 'time' && e.data.note}
-								<div class="mt-1.5 text-[12.5px] text-text-3 italic">{e.data.note}</div>
+								<div class="mt-1.5 text-[13px] text-text-3 italic">{e.data.note}</div>
 							{/if}
 						</div>
 					{/each}
