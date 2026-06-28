@@ -257,6 +257,8 @@ export type CreateTaskInput = {
 	dueDate?: Date | null;
 	estimateMinutes?: number | null;
 	tags?: string[];
+	/** Initial checklist items (e.g. carried over from a converted ticket). */
+	checklist?: { id: string; text: string; done: boolean }[];
 	assigneeIds?: string[];
 	createdBy: string;
 	/** When set, plan the task into this user's week. */
@@ -303,6 +305,7 @@ export async function createTask(
 			dueDate: input.dueDate ?? null,
 			estimateMinutes: input.estimateMinutes ?? null,
 			tags: input.tags ?? [],
+			checklist: input.checklist ?? [],
 			createdBy: input.createdBy,
 			sourceTicketId: input.sourceTicketId ?? null
 		});

@@ -392,6 +392,33 @@ export async function softDeleteTicket(ticketId: string): Promise<void> {
 		.where(and(eq(ticket.id, ticketId), isNull(ticket.deletedAt)));
 }
 
+// Mirror checklist completion from a converted task back onto its source ticket.
+// Items carried over at conversion keep the same id on both sides, so we match
+// by id and copy the done-state across. Items the task added later (new ids) and
+// ticket-only items are left untouched. No-op when nothing matches or changed.
+export async function syncTicketChecklistFromTask(
+	ticketId: string,
+	taskChecklist: { id: string; done: boolean }[]
+): Promise<void> {
+	const doneById = new Map(taskChecklist.map((i) => [i.id, i.done]));
+	const [row] = await db
+		.select({ checklist: ticket.checklist })
+		.from(ticket)
+		.where(and(eq(ticket.id, ticketId), isNull(ticket.deletedAt)))
+		.limit(1);
+	if (!row) return;
+	let changed = false;
+	const next = (row.checklist ?? []).map((it) => {
+		const done = doneById.get(it.id);
+		if (done !== undefined && done !== it.done) {
+			changed = true;
+			return { ...it, done };
+		}
+		return it;
+	});
+	if (changed) await db.update(ticket).set({ checklist: next }).where(eq(ticket.id, ticketId));
+}
+
 export async function getTicket(ticketId: string): Promise<TicketRow | null> {
 	const [row] = await db
 		.select({

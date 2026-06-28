@@ -195,6 +195,14 @@ export const actions: Actions = {
 
 		await assertCan(locals, 'project.tasks.create', { projectId: p.id });
 
+		// Carry the ticket's open checklist items into the new task. Item ids are
+		// preserved so the two stay linked: completing one on the task mirrors back
+		// onto the ticket (see syncTicketChecklistFromTask). Already-done items are
+		// left behind — the task tracks the remaining work.
+		const carriedChecklist = (t.checklist ?? [])
+			.filter((it) => !it.done)
+			.map((it) => ({ id: it.id, text: it.text, done: false }));
+
 		let created: Awaited<ReturnType<typeof createTask>>;
 		try {
 			created = await createTask({
@@ -207,6 +215,7 @@ export const actions: Actions = {
 				type,
 				dueDate: due ? new Date(due) : null,
 				estimateMinutes: estimateRaw ? Number(estimateRaw) : null,
+				checklist: carriedChecklist,
 				assigneeIds,
 				createdBy: me.id,
 				sourceTicketId: ticketId

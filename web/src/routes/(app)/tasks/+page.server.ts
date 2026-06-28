@@ -15,6 +15,7 @@ import { createTask, loadTasks } from '$lib/server/tasks';
 import { normalizeTag } from '$lib/utils/label-meta';
 import { logActivityFF } from '$lib/server/activity';
 import { recordAudit } from '$lib/server/audit';
+import { syncTicketChecklistFromTask } from '$lib/server/tickets';
 import { notify } from '$lib/server/notify';
 import { taskRecipients, projectMentionRecipients } from '$lib/server/notify/recipients';
 import { parseMentionIds } from '$lib/utils/mentions';
@@ -324,6 +325,15 @@ export const actions: Actions = {
 		} catch (err) {
 			console.error('task update failed', err);
 			return fail(500, { message: m.tasks_err_failed_save() });
+		}
+
+		// Mirror checklist completion back to the source ticket (items copied on
+		// conversion share their id). Fire-and-forget — never undoes the task save.
+		if (target.sourceTicketId && Array.isArray(patch.checklist)) {
+			void syncTicketChecklistFromTask(
+				target.sourceTicketId,
+				patch.checklist as { id: string; done: boolean }[]
+			).catch((err) => console.error('ticket checklist sync failed', err));
 		}
 
 		const me = locals.user;
