@@ -37,7 +37,10 @@ function allowedRoles(isInternal: boolean): Set<string> {
 // Highest role on each org type — used for the "last admin" check that
 // prevents leaving an org without anyone holding the top role.
 const TOP_ROLE_FOR_INTERNAL = ['org.superadmin', 'org.admin'];
-const TOP_ROLE_FOR_CLIENT = ['org.client'];
+// org.client and org.agent are both top-tier client-org roles (full ticket
+// visibility; the agent additionally manages/assigns). An org just needs at
+// least one of them, so either satisfies the last-top-role guard.
+const TOP_ROLE_FOR_CLIENT = ['org.client', 'org.agent'];
 
 function initials(name: string): string {
 	return (

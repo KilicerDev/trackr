@@ -41,6 +41,11 @@ export const ORG_ROLE_META: Record<string, { label: string; color: string; perm:
 		color: '#7fc8a9',
 		perm: "External org member with full visibility over their org's tickets."
 	},
+	'org.agent': {
+		label: 'Agent',
+		color: '#e0a35c',
+		perm: 'External org member with full ticket visibility who can edit and assign every ticket in their org.'
+	},
 	'org.member': {
 		label: 'Member',
 		color: '#8fb6c4',

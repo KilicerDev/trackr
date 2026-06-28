@@ -43,6 +43,7 @@
 		isPortalUser: boolean;
 		participants: { id: string; name: string; initials: string; color: string }[];
 		users?: { id: string; name: string; initials: string; color: string }[];
+		assignableUsers?: { id: string; name: string; initials: string; color: string }[];
 		canCreateTask: boolean;
 		canEditChecklist: boolean;
 		linkedTasks: { id: string; displayId: string; title: string; status: string }[];
@@ -228,7 +229,8 @@
 	}
 
 	const isAgent = $derived(data.isAgent);
-	const users = $derived(data.users ?? []);
+	// Assignee candidates: org members (clients/agents/members) + platform agents.
+	const users = $derived(data.assignableUsers ?? []);
 
 	// Deletion is admin-only. effectivePermissions is the workspace-wide union
 	// (UI gating only); the server re-checks org.tickets.delete.any per-org.

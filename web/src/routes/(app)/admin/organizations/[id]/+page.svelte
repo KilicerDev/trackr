@@ -34,6 +34,7 @@
 		'org.admin': { label: 'Admin', color: '#c08bd6' },
 		'org.staff': { label: 'Staff', color: '#7a9cf0' },
 		'org.client': { label: 'Client', color: '#7fc8a9' },
+		'org.agent': { label: 'Agent', color: '#e0a35c' },
 		'org.member': { label: 'Member', color: '#8fb6c4' }
 	};
 
@@ -217,7 +218,7 @@
 					<h1 class="text-[26px] font-semibold tracking-[-0.014em] text-text">{data.org.name}</h1>
 					{#if data.org.archivedAt}
 						<span
-							class="rounded px-1.5 py-0.5 text-[12px] tracking-[0.06em] text-text-3 uppercase bg-status-todo/16"
+							class="rounded bg-status-todo/16 px-1.5 py-0.5 text-[12px] tracking-[0.06em] text-text-3 uppercase"
 						>
 							{m.admin_org_archived_badge()}
 						</span>
@@ -327,7 +328,7 @@
 				</div>
 				{#if serverError}
 					<div
-						class="rounded-lg border px-3 py-2 text-[14px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
+						class="rounded-lg border border-prio-urgent/35 bg-prio-urgent/8 px-3 py-2 text-[14px] text-accent"
 					>
 						{serverError}
 					</div>

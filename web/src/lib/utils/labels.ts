@@ -250,6 +250,7 @@ export function orgRoleLabel(id: string): string {
 			'org.admin': m.org_role_admin,
 			'org.staff': m.org_role_staff,
 			'org.client': m.org_role_client,
+			'org.agent': m.org_role_agent,
 			'org.member': m.org_role_member
 		},
 		id
@@ -263,6 +264,7 @@ export function orgRolePerm(id: string): string {
 			'org.admin': m.org_role_admin_perm,
 			'org.staff': m.org_role_staff_perm,
 			'org.client': m.org_role_client_perm,
+			'org.agent': m.org_role_agent_perm,
 			'org.member': m.org_role_member_perm
 		},
 		id,

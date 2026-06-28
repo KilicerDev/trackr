@@ -11,6 +11,7 @@
 	import { readView, saveView } from '$lib/stores/view';
 	import type { TicketRow } from '$lib/server/tickets';
 	import { m } from '$lib/paraglide/messages';
+	import { isPortalSeeAllRole } from '$lib/roles';
 
 	type LinkedTask = { id: string; displayId: string; title: string; status: string };
 	type AppUser = {
@@ -20,6 +21,7 @@
 		color: string;
 		status: string;
 		internal?: boolean;
+		orgIds?: string[];
 	};
 	type PageData = {
 		tickets: TicketRow[];
@@ -29,6 +31,7 @@
 		linkedTasksByTicket: Record<string, LinkedTask[]>;
 		orgs?: { id: string; name: string; slug: string; color: string }[];
 		users?: AppUser[];
+		assignableUsers?: AppUser[];
 		isTrackrTeam?: boolean;
 		isPortalUser?: boolean;
 		portalRole?: string | null;
@@ -44,9 +47,9 @@
 	// in-app compose modal).
 	const isPortal = $derived(!!data.isPortalUser);
 	// Portal *members* (own-tickets-only) get a stripped-down, list-only bar:
-	// no board/group/filter chrome. Portal *clients* (org.client, see-all) keep
-	// the full board/list experience. `memberOnly` reads the per-active-org role.
-	const memberOnly = $derived(isPortal && data.portalRole !== 'org.client');
+	// no board/group/filter chrome. The see-all tier (org.client + org.agent)
+	// keeps the full board/list experience. `memberOnly` reads the per-active-org role.
+	const memberOnly = $derived(isPortal && !isPortalSeeAllRole(data.portalRole));
 
 	type GroupBy = 'status' | 'priority' | 'category' | 'org' | 'assignee' | 'none';
 	type SubGroup = 'none' | 'status' | 'priority' | 'category' | 'assignee';
@@ -87,7 +90,7 @@
 
 	// Portal members can't reach the board (the toggle is hidden), so clamp a
 	// stale board snapshot to list for them.
-	const memberOnlyInit = !!data.isPortalUser && data.portalRole !== 'org.client';
+	const memberOnlyInit = !!data.isPortalUser && !isPortalSeeAllRole(data.portalRole);
 
 	let view = $state<'list' | 'board'>(
 		memberOnlyInit
@@ -150,8 +153,10 @@
 	}
 
 	const orgs = $derived(data.orgs ?? []);
-	// Internal agents are the assignable users for tickets.
-	const agents = $derived((data.users ?? []).filter((u) => u.internal && u.status !== 'disabled'));
+	// Assignee candidates: org members (clients/agents/members) + internal platform
+	// agents. Scoped per selected ticket below — internal agents are assignable on
+	// every org; org members only on their own.
+	const assignable = $derived(data.assignableUsers ?? []);
 	const canDelete = $derived((data.effectivePermissions ?? []).includes('org.tickets.delete.any'));
 	// Checklist is participant-editable: agents (edit.any) and anyone who can
 	// comment (the org.client admin + owning org.member). The server re-checks
@@ -173,6 +178,18 @@
 		const id = manualSelectedId ?? page.url.searchParams.get('ticket');
 		return id ? (data.tickets.find((t) => t.id === id) ?? null) : null;
 	});
+
+	// Assignee candidates for the selected ticket: its org's members plus internal
+	// platform agents. Filtered from the org-wide `assignable` set by the selected
+	// ticket's org so the picker never offers people from an unrelated org.
+	const ticketAgents = $derived(
+		selected
+			? assignable.filter(
+					(u) =>
+						u.status !== 'disabled' && (u.internal || (u.orgIds ?? []).includes(selected!.orgId))
+				)
+			: []
+	);
 
 	function closeInspector() {
 		manualSelectedId = null;
@@ -284,7 +301,7 @@
 	canEdit={selected ? canEditTicket(selected) : false}
 	{canEditChecklist}
 	{canDelete}
-	users={agents}
+	users={ticketAgents}
 	linkedTasks={selected ? (data.linkedTasksByTicket?.[selected.id] ?? []) : []}
 />
 

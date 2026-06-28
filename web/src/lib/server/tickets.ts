@@ -1,6 +1,7 @@
-import { and, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from './db';
-import { organization, task, ticket, message, thread } from './db/app.schema';
+import { organization, organizationMember, ticket, message, thread } from './db/app.schema';
+import { user as userTable } from './db/auth.schema';
 
 export const TICKET_STATUSES = [
 	'open',
@@ -335,13 +336,10 @@ type AddMessageInput = {
 	authorIsAgent: boolean;
 };
 
-// Adds a message and runs the lifecycle side-effects:
-// - first agent public reply stamps first_response_at
-// - agent public reply on `open` moves to `in_progress`
-// - customer public reply on `waiting_on_customer` / `resolved` flips to
-//   `waiting_on_agent` (i.e. customer re-opens / pushes back)
-// - agent public reply on `waiting_on_agent` moves to `waiting_on_customer`
-// Internal notes never transition status.
+// Adds a message. Public replies bump `updatedAt` (so the portal "Recents"
+// list reflects conversation activity) and stamp `first_response_at` on the
+// first agent reply for response-time metrics. Replies do NOT auto-transition
+// the ticket status — agents move status manually via the picker.
 export async function addTicketMessage(input: AddMessageInput): Promise<{ id: string }> {
 	const id = crypto.randomUUID();
 	await db.transaction(async (tx) => {
@@ -368,27 +366,17 @@ export async function addTicketMessage(input: AddMessageInput): Promise<{ id: st
 		if (input.isInternalNote) return;
 
 		const [t] = await tx
-			.select({
-				status: ticket.status,
-				firstResponseAt: ticket.firstResponseAt
-			})
+			.select({ firstResponseAt: ticket.firstResponseAt })
 			.from(ticket)
 			.where(eq(ticket.id, input.ticketId))
 			.limit(1);
 		if (!t) return;
 
-		// Always bump updatedAt for a public reply so the portal "Recents" list
-		// reflects conversation activity, not just status transitions.
+		// Bump updatedAt so the portal "Recents" list reflects conversation
+		// activity, and stamp the first agent reply for response-time metrics.
+		// No status transition — status is changed manually only.
 		const fields: Record<string, unknown> = { updatedAt: new Date() };
-		if (input.authorIsAgent) {
-			if (!t.firstResponseAt) fields.firstResponseAt = new Date();
-			if (t.status === 'open') fields.status = 'in_progress';
-			else if (t.status === 'waiting_on_agent') fields.status = 'waiting_on_customer';
-		} else {
-			if (t.status === 'waiting_on_customer' || t.status === 'resolved') {
-				fields.status = 'waiting_on_agent';
-			}
-		}
+		if (input.authorIsAgent && !t.firstResponseAt) fields.firstResponseAt = new Date();
 		await tx.update(ticket).set(fields).where(eq(ticket.id, input.ticketId));
 	});
 	return { id };
@@ -402,59 +390,6 @@ export async function softDeleteTicket(ticketId: string): Promise<void> {
 		.update(ticket)
 		.set({ deletedAt: new Date() })
 		.where(and(eq(ticket.id, ticketId), isNull(ticket.deletedAt)));
-}
-
-// Keeps a ticket in step with the tasks spun up from it (the convert flow):
-// - when a task is marked done, resolve the ticket once EVERY linked,
-//   non-deleted task is done (and the ticket isn't already resolved/closed);
-// - when a done task is reopened, leave the ticket status alone but drop an
-//   internal note so agents see the regression.
-// Caller invokes this fire-and-forget; it never throws into the task save.
-export async function syncTicketForLinkedTaskStatus(input: {
-	ticketId: string;
-	actorId: string;
-	prevStatus: string;
-	newStatus: string;
-	// Pre-localized note body for the reopen case (built by the caller, which
-	// has the request locale + the task ref). Falls back to a plain string.
-	reopenNote?: string;
-}): Promise<void> {
-	const { ticketId, actorId, prevStatus, newStatus } = input;
-
-	if (newStatus === 'done') {
-		const [remaining] = await db
-			.select({ n: sql<number>`count(*)::int` })
-			.from(task)
-			.where(
-				and(eq(task.sourceTicketId, ticketId), isNull(task.deletedAt), ne(task.status, 'done'))
-			);
-		if (Number(remaining?.n ?? 0) > 0) return;
-
-		const [t] = await db
-			.select({ status: ticket.status })
-			.from(ticket)
-			.where(and(eq(ticket.id, ticketId), isNull(ticket.deletedAt)))
-			.limit(1);
-		if (!t || t.status === 'resolved' || t.status === 'closed') return;
-		await updateTicket(ticketId, { status: 'resolved' });
-		return;
-	}
-
-	if (prevStatus === 'done' && newStatus !== 'done') {
-		const [t] = await db
-			.select({ status: ticket.status })
-			.from(ticket)
-			.where(and(eq(ticket.id, ticketId), isNull(ticket.deletedAt)))
-			.limit(1);
-		if (!t || t.status !== 'resolved') return;
-		await addTicketMessage({
-			ticketId,
-			authorId: actorId,
-			body: input.reopenNote ?? 'A linked task was reopened.',
-			isInternalNote: true,
-			authorIsAgent: true
-		});
-	}
 }
 
 export async function getTicket(ticketId: string): Promise<TicketRow | null> {
@@ -514,4 +449,88 @@ export async function getTicket(ticketId: string): Promise<TicketRow | null> {
 		createdAt: t.createdAt.toISOString(),
 		updatedAt: t.updatedAt.toISOString()
 	};
+}
+
+// ─── Assignable users ──────────────────────────────────────────────────────
+// Who may be assigned a ticket: every member of the requested org(s) — clients,
+// agents and members — plus every internal Trackr-team member (the platform
+// agents). Deduped; banned accounts excluded. Each row carries the requested
+// org ids it belongs to so the list-view picker can scope candidates to a
+// single selected ticket's org, while `internal` flags the platform agents
+// (who are assignable on every ticket regardless of org).
+
+export type AssignableUser = {
+	id: string;
+	name: string;
+	email: string;
+	initials: string;
+	color: string;
+	status: 'active';
+	internal: boolean;
+	orgIds: string[];
+};
+
+function assigneeInitials(name: string): string {
+	return name
+		.split(/\s+/)
+		.map((p) => p[0])
+		.filter(Boolean)
+		.slice(0, 2)
+		.join('')
+		.toUpperCase();
+}
+function assigneeColor(id: string): string {
+	let h = 0;
+	for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+	return `hsl(${h % 360} 55% 60%)`;
+}
+
+export async function loadAssignableUsers(orgIds: string[]): Promise<AssignableUser[]> {
+	// Internal Trackr orgs — their members are platform agents, always assignable.
+	const internalOrgRows = await db
+		.select({ id: organization.id })
+		.from(organization)
+		.where(eq(organization.isInternal, true));
+	const internalOrgIds = internalOrgRows.map((r) => r.id);
+	const scopeOrgIds = [...new Set([...orgIds, ...internalOrgIds])];
+	if (scopeOrgIds.length === 0) return [];
+
+	const rows = await db
+		.select({
+			userId: organizationMember.userId,
+			orgId: organizationMember.orgId,
+			name: userTable.name,
+			email: userTable.email,
+			banned: userTable.banned
+		})
+		.from(organizationMember)
+		.innerJoin(userTable, eq(userTable.id, organizationMember.userId))
+		.where(inArray(organizationMember.orgId, scopeOrgIds));
+
+	const internalSet = new Set(internalOrgIds);
+	const requested = new Set(orgIds);
+	const byUser = new Map<string, AssignableUser>();
+	for (const r of rows) {
+		if (r.banned) continue;
+		const name = r.name ?? r.email;
+		let u = byUser.get(r.userId);
+		if (!u) {
+			u = {
+				id: r.userId,
+				name,
+				email: r.email,
+				initials: assigneeInitials(name),
+				color: assigneeColor(r.userId),
+				status: 'active',
+				internal: false,
+				orgIds: []
+			};
+			byUser.set(r.userId, u);
+		}
+		if (internalSet.has(r.orgId)) u.internal = true;
+		// Only the requested (ticket) orgs are surfaced in `orgIds`; the internal
+		// org id stays an implementation detail — `internal` already marks them.
+		if (requested.has(r.orgId) && !u.orgIds.includes(r.orgId)) u.orgIds.push(r.orgId);
+	}
+	return [...byUser.values()];
 }

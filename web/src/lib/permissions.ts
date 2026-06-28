@@ -12,6 +12,7 @@ export const ROLE_IDS = {
 	OrgStaff: 'org.staff',
 	// Any org
 	OrgClient: 'org.client',
+	OrgAgent: 'org.agent',
 	OrgMember: 'org.member',
 	// Projects
 	ProjectManager: 'project.manager',

@@ -16,6 +16,7 @@ import {
 	addTicketMessage,
 	createTicket,
 	getTicket,
+	loadAssignableUsers,
 	loadTickets,
 	softDeleteTicket,
 	updateTicket,
@@ -112,11 +113,19 @@ export const load: ServerLoad = async ({ locals }) => {
 	const preferences = await getPreferences(locals.user.id);
 	const savedView = (preferences.viewState?.tickets ?? {}) as Record<string, unknown>;
 
+	// Assignee candidates for the Inspector: members of every org whose tickets
+	// the viewer can edit (team → every loaded ticket's org; client-side editor →
+	// their editable orgs), plus internal platform agents. The picker scopes this
+	// to the selected ticket's org via each row's `orgIds` / `internal` flags.
+	const assignOrgIds = trackrTeam ? [...new Set(tickets.map((t) => t.orgId))] : editableOrgIds;
+	const assignableUsers = isAgent ? await loadAssignableUsers(assignOrgIds) : [];
+
 	return {
 		tickets,
 		canCreateTicket: await anyCreatePerm(locals, myOrgIds, trackrTeam),
 		isAgent,
 		editableOrgIds,
+		assignableUsers,
 		linkedTasksByTicket,
 		savedView
 	};
@@ -289,6 +298,16 @@ export const actions: Actions = {
 		}
 		if (form.has('assignedAgentId')) {
 			const v = String(form.get('assignedAgentId') ?? '').trim();
+			// Validate the target: only org members (clients/agents/members of this
+			// ticket's org) or internal platform agents may be assigned. The picker
+			// already scopes candidates, but the action is the real boundary —
+			// never trust the posted id. `null` clears the assignment.
+			if (v) {
+				const allowed = await loadAssignableUsers([orgId]);
+				if (!allowed.some((u) => u.id === v)) {
+					return fail(400, { message: m.tickets_invalid_assignee() });
+				}
+			}
 			patch.assignedAgentId = v || null;
 		}
 		const tags = form.getAll('tags');

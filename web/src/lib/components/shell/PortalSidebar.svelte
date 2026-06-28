@@ -7,6 +7,7 @@
 	import { TICKET_STATUSES } from '$lib/config/taxonomy';
 	import { m } from '$lib/paraglide/messages';
 	import { ticketStatusLabel } from '$lib/utils/labels';
+	import { isPortalSeeAllRole } from '$lib/roles';
 
 	function statusColor(id: TicketStatus): string {
 		return TICKET_STATUSES.find((s) => s.id === id)?.dot ?? '#7c7c84';
@@ -26,10 +27,10 @@
 	const activeOrg = $derived(orgs.find((o) => o.id === activeOrgId) ?? orgs[0] ?? null);
 	const pinned = $derived((page.data as LayoutShape).pinnedTickets ?? []);
 	const recents = $derived((page.data as LayoutShape).recentTickets ?? []);
-	// org.client (the see-all "administrator" tier) gets the richer nav: a
-	// dashboard, the full board, and saved-view shortcuts. Keyed off the
+	// The see-all tier (org.client + the privileged org.agent) gets the richer
+	// nav: a dashboard, the full board, and saved-view shortcuts. Keyed off the
 	// per-active-org role so it flips correctly on org switch.
-	const isAdmin = $derived((page.data as LayoutShape).portalRole === 'org.client');
+	const isAdmin = $derived(isPortalSeeAllRole((page.data as LayoutShape).portalRole));
 	// Members (the see-all tier) get the org chat; standard own-tickets users don't.
 	const canChat = $derived(
 		((page.data as LayoutShape).effectivePermissions ?? []).includes('org.chat.read')

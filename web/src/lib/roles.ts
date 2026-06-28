@@ -38,8 +38,18 @@ export function canAssignRole(
 // orgs get the two client-side roles.
 
 export const INTERNAL_ORG_ROLES = ['org.superadmin', 'org.admin', 'org.staff'] as const;
-export const CLIENT_ORG_ROLES = ['org.client', 'org.member'] as const;
+export const CLIENT_ORG_ROLES = ['org.client', 'org.agent', 'org.member'] as const;
 export type OrgRole = (typeof INTERNAL_ORG_ROLES)[number] | (typeof CLIENT_ORG_ROLES)[number];
+
+// Client-org roles that see ALL of their org's tickets (the "see-all" portal
+// tier) and get the richer board/dashboard nav — as opposed to the
+// own-tickets-only member. org.agent is a privileged member: same visibility as
+// org.client, plus the ability to edit/assign tickets. Keyed by role string so
+// it works on both the server and the portal client (which only has the role id).
+const PORTAL_SEE_ALL_ROLES = new Set<string>(['org.client', 'org.agent']);
+export function isPortalSeeAllRole(role: string | null | undefined): boolean {
+	return !!role && PORTAL_SEE_ALL_ROLES.has(role);
+}
 
 export function allowedOrgRoles(isInternal: boolean): readonly OrgRole[] {
 	return isInternal ? INTERNAL_ORG_ROLES : CLIENT_ORG_ROLES;

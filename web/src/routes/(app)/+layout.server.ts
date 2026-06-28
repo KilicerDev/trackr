@@ -13,6 +13,7 @@ import {
 } from '$lib/server/db/app.schema';
 import {
 	accessibleProjectIds,
+	can,
 	effectivePermissions,
 	isPortalUser,
 	isTrackrTeam
@@ -284,10 +285,13 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			?.activeOrgId;
 		activeOrgId = storedActive && orgIds.includes(storedActive) ? storedActive : orgs[0].id;
 		portalRole = memberRoles.orgs[activeOrgId] ?? null;
-		const scope =
-			portalRole === 'org.client'
-				? { orgIds: [activeOrgId] }
-				: { orgIds: [activeOrgId], ownerUserId: locals.user.id };
+		// The see-all tier (org.client + org.agent) loads every ticket in the
+		// active org; own-tickets-only members are scoped to themselves. Gate on
+		// the permission, not the role string, so it stays correct as roles evolve.
+		const seeAll = await can(locals, 'org.tickets.read.any', { orgId: activeOrgId });
+		const scope = seeAll
+			? { orgIds: [activeOrgId] }
+			: { orgIds: [activeOrgId], ownerUserId: locals.user.id };
 		const [pinned, recents] = await Promise.all([
 			loadTickets({ ...scope, pinnedByUserId: locals.user.id }),
 			loadTickets({ ...scope, limit: 20 })

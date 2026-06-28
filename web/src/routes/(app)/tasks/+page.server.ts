@@ -15,7 +15,6 @@ import { createTask, loadTasks } from '$lib/server/tasks';
 import { normalizeTag } from '$lib/utils/label-meta';
 import { logActivityFF } from '$lib/server/activity';
 import { recordAudit } from '$lib/server/audit';
-import { syncTicketForLinkedTaskStatus } from '$lib/server/tickets';
 import { notify } from '$lib/server/notify';
 import { taskRecipients, projectMentionRecipients } from '$lib/server/notify/recipients';
 import { parseMentionIds } from '$lib/utils/mentions';
@@ -387,18 +386,6 @@ export const actions: Actions = {
 				type: 'task.status',
 				meta: { ...taskMeta, from: priorStatus, to: patch.status }
 			});
-			// Keep a linked source ticket in step: resolve it once all its tasks
-			// are done; note (don't reopen) when a done task is reopened.
-			// Fire-and-forget — a failed sync must never undo the task save.
-			if (target.sourceTicketId) {
-				void syncTicketForLinkedTaskStatus({
-					ticketId: target.sourceTicketId,
-					actorId: me.id,
-					prevStatus: priorStatus,
-					newStatus: patch.status,
-					reopenNote: m.tickets_note_task_reopened({ ref: displayId })
-				}).catch((err) => console.error('ticket sync failed', err));
-			}
 			void recordAudit({
 				type: 'task.status',
 				actorId: me.id,

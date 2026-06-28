@@ -4,7 +4,12 @@ import { db } from '$lib/server/db';
 import { project, task, ticketFavorite } from '$lib/server/db/app.schema';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import { assertCan, can, canViewTicket, isPortalUser, isTrackrTeam } from '$lib/server/permissions';
-import { addTicketMessage, getTicket, loadTicketMessages, updateTicket } from '$lib/server/tickets';
+import {
+	addTicketMessage,
+	getTicket,
+	loadAssignableUsers,
+	loadTicketMessages
+} from '$lib/server/tickets';
 import { createTask } from '$lib/server/tasks';
 import { recordAudit } from '$lib/server/audit';
 import { markEntityRead, notify } from '$lib/server/notify';
@@ -52,6 +57,10 @@ export const load: ServerLoad = async ({ params, locals }) => {
 	// who can comment (the org.client admin and the owning org.member).
 	const canEditChecklist =
 		isAgent || (await can(locals, 'org.tickets.comment', { orgId: ticket.orgId }));
+
+	// Assignee candidates: this ticket's org members (clients/agents/members) plus
+	// internal platform agents. Only loaded for editors — others can't reassign.
+	const assignableUsers = isAgent ? await loadAssignableUsers([ticket.orgId]) : [];
 
 	const messages = await loadTicketMessages(id, { includeInternal: isAgent });
 
@@ -127,6 +136,7 @@ export const load: ServerLoad = async ({ params, locals }) => {
 		ticket,
 		messages,
 		isAgent,
+		assignableUsers,
 		attachments,
 		messageAttachments,
 		currentUserId: locals.user.id,
@@ -206,11 +216,11 @@ export const actions: Actions = {
 			return fail(500, { message: m.tickets_create_task_failed() });
 		}
 
-		// Move the ticket out of triage and leave an agents-only breadcrumb.
-		// Best-effort: the task already exists, so a failure here is logged, not
-		// surfaced as a failed conversion.
+		// Leave an agents-only breadcrumb linking the new task. Best-effort: the
+		// task already exists, so a failure here is logged, not surfaced as a
+		// failed conversion. (The ticket's status is left untouched — agents move
+		// it manually.)
 		try {
-			if (t.status === 'open') await updateTicket(ticketId, { status: 'in_progress' });
 			await addTicketMessage({
 				ticketId,
 				authorId: me.id,
