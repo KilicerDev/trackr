@@ -9,6 +9,8 @@ import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from './db';
 import {
 	message,
+	organization,
+	organizationMember,
 	tag,
 	tagSubscription,
 	thread,
@@ -16,7 +18,9 @@ import {
 	threadTag,
 	type Tag
 } from './db/app.schema';
+import { user as userTable } from './db/auth.schema';
 import { listAttachmentsForMany, type AttachmentPublic } from './attachments';
+import { orgChatRecipients } from './notify/recipients';
 
 export type ChatTag = Pick<Tag, 'id' | 'label' | 'color'>;
 
@@ -314,5 +318,77 @@ export async function markThreadRead(threadId: string, userId: string): Promise<
 		.onConflictDoUpdate({
 			target: [threadRead.threadId, threadRead.userId],
 			set: { lastReadAt: sql`now()` }
+		});
+}
+
+// ─── Chat @-mention directory ───────────────────────────────────────────────
+// Display rows for everyone who can be @-mentioned in `orgId`'s chat: the
+// derived chat audience — org members holding `org.chat.read` (clients/agents)
+// plus internal platform staff. Mirrors `orgMentionRecipients` exactly, so the
+// composer only ever offers targets whose mention will actually be delivered.
+// Returned to the chat page so the dropdown isn't limited to the layout's
+// org-scoped `users` directory (which omits internal staff for portal users).
+
+export type ChatMentionUser = {
+	id: string;
+	name: string;
+	email: string;
+	initials: string;
+	color: string;
+	status: 'active' | 'invited' | 'disabled';
+	internal: boolean;
+};
+
+function mentionInitials(name: string): string {
+	return name
+		.split(/\s+/)
+		.map((p) => p[0])
+		.filter(Boolean)
+		.slice(0, 2)
+		.join('')
+		.toUpperCase();
+}
+function mentionColor(id: string): string {
+	let h = 0;
+	for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+	return `hsl(${h % 360} 55% 60%)`;
+}
+
+export async function loadOrgChatMentionUsers(orgId: string): Promise<ChatMentionUser[]> {
+	const audience = await orgChatRecipients(orgId);
+	const ids = [...audience];
+	if (ids.length === 0) return [];
+
+	const [rows, internalRows] = await Promise.all([
+		db
+			.select({
+				id: userTable.id,
+				name: userTable.name,
+				email: userTable.email,
+				banned: userTable.banned
+			})
+			.from(userTable)
+			.where(inArray(userTable.id, ids)),
+		db
+			.select({ userId: organizationMember.userId })
+			.from(organizationMember)
+			.innerJoin(organization, eq(organization.id, organizationMember.orgId))
+			.where(eq(organization.isInternal, true))
+	]);
+
+	const internalSet = new Set(internalRows.map((r) => r.userId));
+	return rows
+		.filter((u) => !u.banned)
+		.map((u) => {
+			const name = u.name ?? u.email;
+			return {
+				id: u.id,
+				name,
+				email: u.email,
+				initials: mentionInitials(name),
+				color: mentionColor(u.id),
+				status: 'active' as const,
+				internal: internalSet.has(u.id)
+			};
 		});
 }

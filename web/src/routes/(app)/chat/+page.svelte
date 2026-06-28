@@ -15,7 +15,7 @@
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { selectStageable, type AttachmentDTO } from '$lib/config/attachments';
-	import type { ChatMessage, ChatTag, FeedThread } from '$lib/server/chat';
+	import type { ChatMentionUser, ChatMessage, ChatTag, FeedThread } from '$lib/server/chat';
 
 	type FeedMsg = Omit<ChatMessage, 'files'> & { files: AttachmentDTO[] };
 	type Thread = Omit<FeedThread, 'messages'> & { messages: FeedMsg[] };
@@ -27,6 +27,7 @@
 		feed: Thread[];
 		tags: ChatTag[];
 		subscriptions: Record<string, 'all' | 'muted'>;
+		mentionUsers: ChatMentionUser[];
 	};
 	let { data }: { data: PageData } = $props();
 
@@ -99,7 +100,12 @@
 		creating = true;
 		const ok = await post(
 			'createThread',
-			{ org: data.activeOrgId, title: newTitle.trim(), body: newBody.trim(), tags: newTags.join(',') },
+			{
+				org: data.activeOrgId,
+				title: newTitle.trim(),
+				body: newBody.trim(),
+				tags: newTags.join(',')
+			},
 			m.chat_err_create_failed(),
 			newFiles
 		);
@@ -289,7 +295,11 @@
 									: 'text-text-3'}"
 						>
 							<Icon name={mode === 'muted' ? 'x' : 'bell'} size={13} />
-							{mode === 'all' ? m.chat_following() : mode === 'muted' ? m.chat_muted() : m.chat_default()}
+							{mode === 'all'
+								? m.chat_following()
+								: mode === 'muted'
+									? m.chat_muted()
+									: m.chat_default()}
 						</span>
 					</button>
 				{/each}
@@ -316,7 +326,9 @@
 					<div class="px-4 pt-3.5 pb-1">
 						<div class="flex items-center gap-2.5">
 							<Avatar user={author} size={31} />
-							<span class="text-[14px] font-medium text-text">{author?.name ?? m.chat_unknown_user()}</span>
+							<span class="text-[14px] font-medium text-text"
+								>{author?.name ?? m.chat_unknown_user()}</span
+							>
 							<span class="font-mono text-[11px] text-text-4">{relTime(t.createdAt)}</span>
 							<div class="relative ml-auto">
 								<button
@@ -414,6 +426,7 @@
 									onsend={() => sendReply(t.id)}
 									sending={replySending}
 									hasAttachments={replyFiles.length > 0}
+									mentionUsers={data.mentionUsers}
 									placeholder={m.chat_reply_placeholder()}
 								>
 									{#snippet rightActions()}
@@ -430,7 +443,8 @@
 											type="file"
 											multiple
 											class="hidden"
-											onchange={() => pickInto(replyFileInput, (f) => (replyFiles = stage(replyFiles, f)))}
+											onchange={() =>
+												pickInto(replyFileInput, (f) => (replyFiles = stage(replyFiles, f)))}
 										/>
 									{/snippet}
 								</Composer>
@@ -466,6 +480,7 @@
 					/>
 					<MentionTextarea
 						bind:value={newBody}
+						users={data.mentionUsers}
 						tags={data.tags}
 						onTagAdd={handleInlineTag}
 						onkeydown={newKey}

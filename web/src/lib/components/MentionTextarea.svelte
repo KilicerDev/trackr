@@ -41,6 +41,12 @@
 		// server's projectMentionRecipients filter so the dropdown never
 		// suggests someone whose mention would be silently dropped.
 		projectId?: string | null;
+		// Override the @-mention candidate directory. When omitted, candidates come
+		// from the layout-wide `page.data.users` (the default for task/ticket
+		// surfaces). The org chat passes its own list here — org chat members plus
+		// internal platform staff — since the layout list omits staff for portal
+		// users.
+		users?: MentionUser[];
 		// Opt-in `#` tagging. When `tags` is provided, typing `#` offers existing
 		// tags (and a create row); choosing one removes the typed `#text` from the
 		// body and calls `onTagAdd` — the tag lives as a chip elsewhere, never in
@@ -56,6 +62,7 @@
 		class: cls = '',
 		onkeydown,
 		projectId = null,
+		users,
 		tags,
 		onTagAdd
 	}: Props = $props();
@@ -88,7 +95,8 @@
 	);
 
 	const candidates = $derived.by<MentionUser[]>(() => {
-		const all = ((page.data as { users?: MentionUser[] }).users ?? []).filter(
+		const directory = users ?? (page.data as { users?: MentionUser[] }).users ?? [];
+		const all = directory.filter(
 			(u) =>
 				u.status !== 'disabled' &&
 				(!projectId || u.internal || (u.projectIds ?? []).includes(projectId))

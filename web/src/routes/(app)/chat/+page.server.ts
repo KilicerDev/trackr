@@ -13,6 +13,7 @@ import {
 	getThreadContext,
 	listOrgTags,
 	listTagSubscriptions,
+	loadOrgChatMentionUsers,
 	loadOrgFeed,
 	markThreadRead,
 	setTagSubscription,
@@ -74,10 +75,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	await assertCan(locals, 'org.chat.read', { orgId: activeOrgId });
 
 	const tagFilter = url.searchParams.get('tag') || undefined;
-	const [feed, tags, subscriptions] = await Promise.all([
+	const [feed, tags, subscriptions, mentionUsers] = await Promise.all([
 		loadOrgFeed(activeOrgId, { tagId: tagFilter }),
 		listOrgTags(activeOrgId),
-		listTagSubscriptions(locals.user.id, activeOrgId)
+		listTagSubscriptions(locals.user.id, activeOrgId),
+		// @-mention directory for the composer: org chat members + internal
+		// platform staff. Not the layout's org-scoped `users` (which omits staff).
+		loadOrgChatMentionUsers(activeOrgId)
 	]);
 
 	return {
@@ -87,7 +91,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		tagFilter: tagFilter ?? null,
 		feed,
 		tags,
-		subscriptions
+		subscriptions,
+		mentionUsers
 	};
 };
 
@@ -212,7 +217,11 @@ export const actions: Actions = {
 		if (!ctx) return fail(404, { message: m.chat_err_thread_not_found() });
 		await assertCan(locals, 'org.chat.post', { orgId: ctx.orgId });
 
-		const { id: messageId } = await addMessage({ threadId, authorId: me.id, body: body || '(attachment)' });
+		const { id: messageId } = await addMessage({
+			threadId,
+			authorId: me.id,
+			body: body || '(attachment)'
+		});
 		await attachFormFiles({
 			files: stagedFiles,
 			entityType: 'message',

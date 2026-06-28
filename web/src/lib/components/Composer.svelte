@@ -22,6 +22,10 @@
 		// Scope @-mention suggestions to people who can access this project
 		// (see MentionTextarea). Omit for org-level surfaces like tickets.
 		projectId?: string | null;
+		// Override the @-mention directory (see MentionTextarea `users`). The org
+		// chat passes its audience here so internal staff are mentionable; omit to
+		// use the layout-wide directory.
+		mentionUsers?: import('$lib/server/chat').ChatMentionUser[];
 		// Opt-in inline `#` tagging (chat). Passed straight through to
 		// MentionTextarea; the tag lands as a chip via onTagAdd, not in the text.
 		tags?: import('$lib/server/chat').ChatTag[];
@@ -39,6 +43,7 @@
 		onsend,
 		rightActions,
 		projectId = null,
+		mentionUsers,
 		tags,
 		onTagAdd,
 		hasAttachments = false
@@ -63,6 +68,7 @@
 		bind:value
 		onkeydown={onKey}
 		{projectId}
+		users={mentionUsers}
 		{tags}
 		{onTagAdd}
 		{placeholder}
