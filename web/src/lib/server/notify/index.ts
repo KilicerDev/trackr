@@ -13,6 +13,7 @@ import { user as userTable } from '../db/auth.schema';
 import { getPreferences } from '../preferences';
 import { sendEmailFireAndForget, notificationEmail, EMAIL_PRIORITY } from '$lib/server/jobs';
 import { baseLocale, isLocale, type Locale } from '$lib/paraglide/runtime';
+import { plainifyMentions } from '$lib/utils/mentions';
 
 export type NotifyContent = { title: string; body?: string | null };
 
@@ -71,10 +72,14 @@ export async function notify(input: NotifyInput): Promise<void> {
 	const contentCache = new Map<Locale, NotifyContent>();
 	const contentFor = (recipientId: string): NotifyContent => {
 		const locale = localeOf.get(recipientId) ?? baseLocale;
-		if (!input.render) return { title: input.title ?? '', body: input.body ?? null };
 		let content = contentCache.get(locale);
 		if (!content) {
-			content = input.render(locale);
+			const raw = input.render
+				? input.render(locale)
+				: { title: input.title ?? '', body: input.body ?? null };
+			// Bodies may carry raw @[Name](id) mention tokens — flatten them to plain
+			// `@Name` for the inbox row and the email (neither can render chips).
+			content = { ...raw, body: raw.body ? plainifyMentions(raw.body) : (raw.body ?? null) };
 			contentCache.set(locale, content);
 		}
 		return content;

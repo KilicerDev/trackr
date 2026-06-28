@@ -245,6 +245,8 @@
 	"admin_users_generate": "Generate",
 	"admin_users_hide_password": "Hide password",
 	"admin_users_id": "ID",
+	"admin_users_organizations": "Organizations",
+	"admin_users_no_organizations": "Not a member of any organization.",
 	"admin_users_impersonate": "Impersonate",
 	"admin_users_initial_password": "Initial password",
 	"admin_users_internal": "internal",

@@ -44,6 +44,15 @@
 		participants: { id: string; name: string; initials: string; color: string }[];
 		users?: { id: string; name: string; initials: string; color: string }[];
 		assignableUsers?: { id: string; name: string; initials: string; color: string }[];
+		mentionUsers?: {
+			id: string;
+			name: string;
+			email: string;
+			initials: string;
+			color: string;
+			status: 'active' | 'invited' | 'disabled';
+			internal: boolean;
+		}[];
 		canCreateTask: boolean;
 		canEditChecklist: boolean;
 		linkedTasks: { id: string; displayId: string; title: string; status: string }[];
@@ -665,6 +674,7 @@
 							? m.tickets_composer_internal_placeholder()
 							: m.tickets_composer_reply_placeholder()}
 						accent={internal ? 'warning' : 'default'}
+						mentionUsers={data.mentionUsers}
 						{sending}
 						onsend={send}
 					>

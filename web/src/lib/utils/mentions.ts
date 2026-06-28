@@ -41,3 +41,13 @@ export function segmentMentions(text: string): MentionSegment[] {
 export function buildMentionToken(name: string, id: string): string {
 	return `@[${name}](${id})`;
 }
+
+/**
+ * Flatten mention tokens to their plain `@Name` form for non-rich contexts —
+ * notification bodies, emails, previews — where chips can't render. Other text
+ * is left untouched; safe to call on bodies that contain no mentions.
+ */
+export function plainifyMentions(text: string | null | undefined): string {
+	if (!text) return '';
+	return text.replace(MENTION_RE, (_full, name) => `@${name}`);
+}

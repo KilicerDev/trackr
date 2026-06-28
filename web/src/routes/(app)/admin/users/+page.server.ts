@@ -1,6 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
-import { eq, isNull } from 'drizzle-orm';
+import { eq, inArray, isNull } from 'drizzle-orm';
 import { auth } from '$lib/server/auth';
 import { sendEmail, invitationEmail, EMAIL_PRIORITY } from '$lib/server/jobs';
 import {
@@ -85,14 +85,54 @@ export const load: PageServerLoad = async (event) => {
 		.where(isNull(organization.archivedAt))
 		.orderBy(desc(organization.isInternal), asc(organization.name));
 
+	const users = viewerIsSuperadmin ? list.users : list.users.filter((u) => !isSuperadmin(u.role));
+
+	// Org memberships per listed user — surfaced in the detail drawer so an admin
+	// can see which organizations (and at what role) a user belongs to.
+	const userIds = users.map((u) => u.id);
+	const memberRows = userIds.length
+		? await db
+				.select({
+					userId: organizationMember.userId,
+					role: organizationMember.role,
+					orgId: organization.id,
+					orgName: organization.name,
+					orgColor: organization.color,
+					isInternal: organization.isInternal
+				})
+				.from(organizationMember)
+				.innerJoin(organization, eq(organization.id, organizationMember.orgId))
+				.where(inArray(organizationMember.userId, userIds))
+		: [];
+	const orgMemberships: Record<
+		string,
+		{ id: string; name: string; color: string; role: string; isInternal: boolean }[]
+	> = {};
+	for (const r of memberRows) {
+		(orgMemberships[r.userId] ??= []).push({
+			id: r.orgId,
+			name: r.orgName,
+			color: r.orgColor,
+			role: r.role,
+			isInternal: r.isInternal
+		});
+	}
+	// Internal org(s) first, then alphabetical — matches the create-user org picker.
+	for (const memberships of Object.values(orgMemberships)) {
+		memberships.sort(
+			(a, b) => Number(b.isInternal) - Number(a.isInternal) || a.name.localeCompare(b.name)
+		);
+	}
+
 	return {
-		users: viewerIsSuperadmin ? list.users : list.users.filter((u) => !isSuperadmin(u.role)),
+		users,
 		invitations: viewerIsSuperadmin
 			? invitations
 			: invitations.filter((inv) => !isSuperadmin(inv.role)),
 		currentUserId: event.locals.user!.id,
 		viewerIsSuperadmin,
-		orgs
+		orgs,
+		orgMemberships
 	};
 };
 

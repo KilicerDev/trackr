@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from './db';
 import { organization, organizationMember, ticket, message, thread } from './db/app.schema';
 import { user as userTable } from './db/auth.schema';
+import { ticketRecipients } from './notify/recipients';
 
 export const TICKET_STATUSES = [
 	'open',
@@ -560,4 +561,59 @@ export async function loadAssignableUsers(orgIds: string[]): Promise<AssignableU
 		if (requested.has(r.orgId) && !u.orgIds.includes(r.orgId)) u.orgIds.push(r.orgId);
 	}
 	return [...byUser.values()];
+}
+
+// @-mention directory for a ticket's conversation composer: everyone in the
+// ticket's notify audience — org agents/admins (read.any), internal platform
+// staff, the customer, and the assigned agent. Mirrors `ticketRecipients` (the
+// public-message variant), so the dropdown only offers people the server will
+// actually deliver a mention to. The customer is included here; for an internal
+// note the post action re-intersects with the internal-only audience, so a
+// customer mention is silently dropped (and they never see the note anyway).
+export async function loadTicketMentionUsers(ticket: {
+	orgId: string;
+	customerId: string | null;
+	assignedAgentId: string | null;
+}): Promise<AssignableUser[]> {
+	const audience = await ticketRecipients({
+		orgId: ticket.orgId,
+		customerId: ticket.customerId,
+		assignedAgentId: ticket.assignedAgentId
+	});
+	const ids = [...audience];
+	if (ids.length === 0) return [];
+
+	const [rows, internalRows] = await Promise.all([
+		db
+			.select({
+				id: userTable.id,
+				name: userTable.name,
+				email: userTable.email,
+				banned: userTable.banned
+			})
+			.from(userTable)
+			.where(inArray(userTable.id, ids)),
+		db
+			.select({ userId: organizationMember.userId })
+			.from(organizationMember)
+			.innerJoin(organization, eq(organization.id, organizationMember.orgId))
+			.where(eq(organization.isInternal, true))
+	]);
+
+	const internalSet = new Set(internalRows.map((r) => r.userId));
+	return rows
+		.filter((u) => !u.banned)
+		.map((u) => {
+			const name = u.name ?? u.email;
+			return {
+				id: u.id,
+				name,
+				email: u.email,
+				initials: assigneeInitials(name),
+				color: assigneeColor(u.id),
+				status: 'active' as const,
+				internal: internalSet.has(u.id),
+				orgIds: [ticket.orgId]
+			};
+		});
 }

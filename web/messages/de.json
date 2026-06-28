@@ -245,6 +245,8 @@
 	"admin_users_generate": "Generieren",
 	"admin_users_hide_password": "Passwort ausblenden",
 	"admin_users_id": "ID",
+	"admin_users_organizations": "Organisationen",
+	"admin_users_no_organizations": "Kein Mitglied einer Organisation.",
 	"admin_users_impersonate": "Identitätswechsel",
 	"admin_users_initial_password": "Initiales Passwort",
 	"admin_users_internal": "intern",

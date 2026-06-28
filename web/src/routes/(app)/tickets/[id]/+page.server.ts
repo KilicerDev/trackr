@@ -8,6 +8,7 @@ import {
 	addTicketMessage,
 	getTicket,
 	loadAssignableUsers,
+	loadTicketMentionUsers,
 	loadTicketMessages
 } from '$lib/server/tickets';
 import { createTask } from '$lib/server/tasks';
@@ -61,6 +62,11 @@ export const load: ServerLoad = async ({ params, locals }) => {
 	// Assignee candidates: this ticket's org members (clients/agents/members) plus
 	// internal platform agents. Only loaded for editors — others can't reassign.
 	const assignableUsers = isAgent ? await loadAssignableUsers([ticket.orgId]) : [];
+
+	// @-mention candidates for the reply composer: the ticket's notify audience —
+	// org agents, internal platform staff, the customer, and the assignee — so an
+	// agent can mention the org user (and vice versa), not just the global list.
+	const mentionUsers = await loadTicketMentionUsers(ticket);
 
 	const messages = await loadTicketMessages(id, { includeInternal: isAgent });
 
@@ -137,6 +143,7 @@ export const load: ServerLoad = async ({ params, locals }) => {
 		messages,
 		isAgent,
 		assignableUsers,
+		mentionUsers,
 		attachments,
 		messageAttachments,
 		currentUserId: locals.user.id,

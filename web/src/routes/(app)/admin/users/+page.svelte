@@ -522,8 +522,7 @@
 							<span class="block truncate font-medium text-text">
 								{u.name ?? '—'}
 								{#if isSelf}
-									<span class="ml-1 font-mono text-[12px] text-text-4">{m.admin_users_you()}</span
-									>
+									<span class="ml-1 font-mono text-[12px] text-text-4">{m.admin_users_you()}</span>
 								{/if}
 							</span>
 							<span class="block truncate font-mono text-[12px] text-text-3">{u.email}</span>
@@ -536,14 +535,14 @@
 					<span>
 						{#if banned}
 							<span
-								class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] bg-prio-urgent/16 text-prio-urgent"
+								class="inline-flex items-center gap-1.5 rounded-full bg-prio-urgent/16 px-2 py-0.5 text-[12px] text-prio-urgent"
 							>
 								<span class="h-1.5 w-1.5 rounded-full bg-prio-urgent"></span>
 								{m.admin_users_status_banned()}
 							</span>
 						{:else}
 							<span
-								class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] bg-status-done/16 text-status-done"
+								class="inline-flex items-center gap-1.5 rounded-full bg-status-done/16 px-2 py-0.5 text-[12px] text-status-done"
 							>
 								<span class="h-1.5 w-1.5 rounded-full bg-status-done"></span>
 								{m.admin_users_status_active()}
@@ -581,6 +580,7 @@
 		{@const banned = !!sel.banned}
 		{@const isSelf = sel.id === data.currentUserId}
 		{@const canImpersonate = data.viewerIsSuperadmin && !isSelf && !banned}
+		{@const memberships = data.orgMemberships?.[sel.id] ?? []}
 		<div class="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3">
 			<span class="font-mono text-[12px] tracking-[0.08em] text-text-4 uppercase"
 				>{m.admin_users_drawer_user()}</span
@@ -623,6 +623,41 @@
 				<div class="font-mono">{fmtDate(sel.createdAt)}</div>
 				<div class="text-text-4">{m.admin_users_id()}</div>
 				<div class="truncate font-mono text-text-3">{sel.id}</div>
+			</div>
+
+			<div class="mb-6">
+				<div class="mb-2 font-mono text-[12px] tracking-[0.08em] text-text-4 uppercase">
+					{m.admin_users_organizations()}
+				</div>
+				{#if memberships.length === 0}
+					<div class="text-[14px] text-text-3">{m.admin_users_no_organizations()}</div>
+				{:else}
+					<div class="flex flex-col gap-1.5">
+						{#each memberships as om (om.id)}
+							{@const roleMeta = ORG_ROLE_META[om.role] ?? { color: '#7c7c84' }}
+							<a
+								href="/admin/organizations/{om.id}"
+								class="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2 transition-colors hover:border-border-strong hover:bg-surface"
+							>
+								<span
+									class="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[11px] font-semibold text-white"
+									style:background={om.color}
+								>
+									{om.name.slice(0, 1).toUpperCase()}
+								</span>
+								<span class="min-w-0 flex-1 truncate text-[14px] text-text">{om.name}</span>
+								<span
+									class="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-0.5 text-[12px] font-medium"
+									style:color={roleMeta.color}
+									style:background={roleMeta.color + '22'}
+								>
+									<span class="h-1.5 w-1.5 rounded-full" style:background={roleMeta.color}></span>
+									{orgRoleLabel(om.role)}
+								</span>
+							</a>
+						{/each}
+					</div>
+				{/if}
 			</div>
 
 			<div class="flex flex-col gap-2">
@@ -797,9 +832,7 @@
 		</div>
 		<div class="space-y-4 p-5">
 			<div>
-				<label
-					for="c-name"
-					class="mb-1.5 block text-[12px] tracking-[0.06em] text-text-4 uppercase"
+				<label for="c-name" class="mb-1.5 block text-[12px] tracking-[0.06em] text-text-4 uppercase"
 					>{m.admin_name()}</label
 				>
 				<input
@@ -881,7 +914,7 @@
 			})}
 			{#if cError}
 				<div
-					class="rounded-lg border px-3 py-2 text-[14px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
+					class="rounded-lg border border-prio-urgent/35 bg-prio-urgent/8 px-3 py-2 text-[14px] text-accent"
 				>
 					{cError}
 				</div>
@@ -940,9 +973,7 @@
 		</div>
 		<div class="space-y-4 p-5">
 			<div>
-				<label
-					for="i-name"
-					class="mb-1.5 block text-[12px] tracking-[0.06em] text-text-4 uppercase"
+				<label for="i-name" class="mb-1.5 block text-[12px] tracking-[0.06em] text-text-4 uppercase"
 					>{m.admin_name()}</label
 				>
 				<input
@@ -988,7 +1019,7 @@
 			</p>
 			{#if iError}
 				<div
-					class="rounded-lg border px-3 py-2 text-[14px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
+					class="rounded-lg border border-prio-urgent/35 bg-prio-urgent/8 px-3 py-2 text-[14px] text-accent"
 				>
 					{iError}
 				</div>
