@@ -65,16 +65,16 @@
 	use:clickOutside={onclose}
 	use:autoPlace
 	in:fly={POPOVER_IN}
-	class="absolute top-full z-50 mt-1.5 min-w-[210px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+	class="absolute top-full z-50 mt-1.5 min-w-[231px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 >
 	<input
 		type="text"
 		bind:value={entry}
 		{onkeydown}
 		placeholder={m.tasks_add_or_search_tags()}
-		class="mb-1.5 w-full rounded-md border border-border bg-surface px-2 py-1.5 text-[13px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
+		class="mb-1.5 w-full rounded-md border border-border bg-surface px-2 py-1.5 text-[14px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
 	/>
-	<div class="max-h-[240px] overflow-y-auto">
+	<div class="max-h-[264px] overflow-y-auto">
 		{#each filtered as id (id)}
 			{@const l = labelMeta(id)}
 			<button
@@ -83,9 +83,9 @@
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<span class="h-2 w-2 rounded-full" style:background={l.color}></span>
-				<span class="truncate text-[13px]">{l.label}</span>
+				<span class="truncate text-[14px]">{l.label}</span>
 				<span class="ml-auto text-accent {value.includes(id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={13} />
+					<Icon name="check" size={14} />
 				</span>
 			</button>
 		{/each}
@@ -95,11 +95,11 @@
 				onclick={create}
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
-				<Icon name="plus" size={13} class="text-text-3" />
-				<span class="truncate text-[13px]">{m.tasks_create_tag({ tag: normalizedEntry })}</span>
+				<Icon name="plus" size={14} class="text-text-3" />
+				<span class="truncate text-[14px]">{m.tasks_create_tag({ tag: normalizedEntry })}</span>
 			</button>
 		{:else if filtered.length === 0}
-			<div class="px-2 py-1.5 text-[13px] text-text-3">{m.tasks_no_tags()}</div>
+			<div class="px-2 py-1.5 text-[14px] text-text-3">{m.tasks_no_tags()}</div>
 		{/if}
 	</div>
 </div>

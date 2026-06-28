@@ -21,7 +21,7 @@
 	use:clickOutside={onclose}
 	use:autoPlace
 	in:fly={POPOVER_IN}
-	class="absolute top-full z-50 mt-1.5 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+	class="absolute top-full z-50 mt-1.5 min-w-[187px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 >
 	{#each TRACKR_PRIORITIES as p (p.id)}
 		<button
@@ -33,9 +33,9 @@
 			class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 		>
 			<PriorityBars priority={p.id} />
-			<span class="text-[13px]">{priorityLabel(p.id)}</span>
+			<span class="text-[14px]">{priorityLabel(p.id)}</span>
 			<span class="ml-auto text-accent {value === p.id ? 'opacity-100' : 'opacity-0'}">
-				<Icon name="check" size={13} />
+				<Icon name="check" size={14} />
 			</span>
 		</button>
 	{/each}

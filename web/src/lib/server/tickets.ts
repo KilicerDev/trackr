@@ -55,6 +55,7 @@ export type TicketRow = {
 	closedAt: string | null;
 	satisfactionScore: number | null;
 	tags: string[];
+	checklist: { id: string; text: string; done: boolean }[];
 	messageCount: number;
 	lastMessageAt: string | null;
 	createdAt: string;
@@ -187,6 +188,7 @@ export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 			closedAt: t.closedAt?.toISOString() ?? null,
 			satisfactionScore: t.satisfactionScore,
 			tags: t.tags,
+			checklist: t.checklist ?? [],
 			messageCount: mc?.count ?? 0,
 			lastMessageAt: mc?.last ?? null,
 			createdAt: t.createdAt.toISOString(),
@@ -295,6 +297,7 @@ type UpdateTicketInput = {
 	assignedAgentId?: string | null;
 	satisfactionScore?: number | null;
 	tags?: string[];
+	checklist?: { id: string; text: string; done: boolean }[];
 };
 
 // Centralizes the resolved/closed timestamp bookkeeping that the auto-
@@ -307,6 +310,7 @@ export async function updateTicket(ticketId: string, patch: UpdateTicketInput): 
 	if (patch.assignedAgentId !== undefined) fields.assignedAgentId = patch.assignedAgentId;
 	if (patch.satisfactionScore !== undefined) fields.satisfactionScore = patch.satisfactionScore;
 	if (patch.tags !== undefined) fields.tags = patch.tags;
+	if (patch.checklist !== undefined) fields.checklist = patch.checklist;
 	if (patch.status !== undefined) {
 		fields.status = patch.status;
 		if (patch.status === 'resolved') fields.resolvedAt = new Date();
@@ -350,9 +354,7 @@ export async function addTicketMessage(input: AddMessageInput): Promise<{ id: st
 			.limit(1);
 		if (!th) {
 			const tid = crypto.randomUUID();
-			await tx
-				.insert(thread)
-				.values({ id: tid, subjectType: 'ticket', subjectId: input.ticketId });
+			await tx.insert(thread).values({ id: tid, subjectType: 'ticket', subjectId: input.ticketId });
 			th = { id: tid };
 		}
 		await tx.insert(message).values({
@@ -506,6 +508,7 @@ export async function getTicket(ticketId: string): Promise<TicketRow | null> {
 		closedAt: t.closedAt?.toISOString() ?? null,
 		satisfactionScore: t.satisfactionScore,
 		tags: t.tags,
+		checklist: t.checklist ?? [],
 		messageCount: Number(mc?.count ?? 0),
 		lastMessageAt: toIso(mc?.last ?? null),
 		createdAt: t.createdAt.toISOString(),

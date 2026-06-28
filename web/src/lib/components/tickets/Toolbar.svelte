@@ -17,7 +17,14 @@
 	type SubBy = 'none' | 'status' | 'priority' | 'category' | 'assignee';
 
 	type LayoutData = {
-		users?: { id: string; name: string; initials: string; color: string; status: string; internal?: boolean }[];
+		users?: {
+			id: string;
+			name: string;
+			initials: string;
+			color: string;
+			status: string;
+			internal?: boolean;
+		}[];
 	};
 
 	interface Props {
@@ -36,6 +43,9 @@
 		orgs?: { id: string; name: string; color: string }[];
 		// Portal (client) mode: hide agent-oriented dimensions like assignee.
 		portal?: boolean;
+		// Minimal (portal member) mode: strip board/group/sub/filter chrome and
+		// leave only search + New. The member sees a plain list of their own tickets.
+		minimal?: boolean;
 	}
 	let {
 		view,
@@ -51,7 +61,8 @@
 		onNew,
 		canCreate = true,
 		orgs = [],
-		portal = false
+		portal = false,
+		minimal = false
 	}: Props = $props();
 
 	// Assignees offered for grouping/filtering: internal agents only (tickets are
@@ -138,11 +149,16 @@
 	}
 
 	function valueLabel(field: string, v: string): string {
-		if (field === 'status') return TICKET_STATUSES.some((s) => s.id === v) ? ticketStatusLabel(v) : v;
-		if (field === 'priority') return TICKET_PRIORITIES.some((p) => p.id === v) ? priorityLabel(v) : v;
+		if (field === 'status')
+			return TICKET_STATUSES.some((s) => s.id === v) ? ticketStatusLabel(v) : v;
+		if (field === 'priority')
+			return TICKET_PRIORITIES.some((p) => p.id === v) ? priorityLabel(v) : v;
 		if (field === 'category')
 			return TICKET_CATEGORIES.some((c) => c.id === v) ? ticketCategoryLabel(v) : v;
-		if (field === 'assignee') return agents.find((u) => u.id === v)?.name ?? v;
+		if (field === 'assignee')
+			return v === '__unassigned__'
+				? m.common_unassigned()
+				: (agents.find((u) => u.id === v)?.name ?? v);
 		if (field === 'org') return orgs.find((o) => o.id === v)?.name ?? v;
 		return v;
 	}
@@ -158,9 +174,9 @@
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<span class="h-2 w-2 rounded-full" style:background={s.dot}></span>
-				<span class="text-[13px]">{ticketStatusLabel(s.id)}</span>
+				<span class="text-[14px]">{ticketStatusLabel(s.id)}</span>
 				<span class="ml-auto text-accent {values.includes(s.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={13} />
+					<Icon name="check" size={14} />
 				</span>
 			</button>
 		{/each}
@@ -172,9 +188,9 @@
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<PriorityBars priority={p.id} />
-				<span class="text-[13px]">{priorityLabel(p.id)}</span>
+				<span class="text-[14px]">{priorityLabel(p.id)}</span>
 				<span class="ml-auto text-accent {values.includes(p.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={13} />
+					<Icon name="check" size={14} />
 				</span>
 			</button>
 		{/each}
@@ -186,9 +202,9 @@
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<span class="h-2 w-2 rounded-full" style:background={c.color}></span>
-				<span class="text-[13px]">{ticketCategoryLabel(c.id)}</span>
+				<span class="text-[14px]">{ticketCategoryLabel(c.id)}</span>
 				<span class="ml-auto text-accent {values.includes(c.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={13} />
+					<Icon name="check" size={14} />
 				</span>
 			</button>
 		{/each}
@@ -199,15 +215,15 @@
 				onclick={() => toggleValue('assignee', u.id)}
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
-				<Avatar user={u} size={20} />
-				<span class="truncate text-[13px]">{u.name}</span>
+				<Avatar user={u} size={22} />
+				<span class="truncate text-[14px]">{u.name}</span>
 				<span class="ml-auto text-accent {values.includes(u.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={13} />
+					<Icon name="check" size={14} />
 				</span>
 			</button>
 		{/each}
 		{#if agents.length === 0}
-			<div class="px-2 py-2 text-[11px] text-text-3">{m.tickets_no_agents()}</div>
+			<div class="px-2 py-2 text-[12px] text-text-3">{m.tickets_no_agents()}</div>
 		{/if}
 	{:else if field === 'org'}
 		{#each orgs as o (o.id)}
@@ -217,142 +233,146 @@
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<span class="h-2 w-2 rounded-full" style:background={o.color}></span>
-				<span class="truncate text-[13px]">{o.name}</span>
+				<span class="truncate text-[14px]">{o.name}</span>
 				<span class="ml-auto text-accent {values.includes(o.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={13} />
+					<Icon name="check" size={14} />
 				</span>
 			</button>
 		{/each}
 		{#if orgs.length === 0}
-			<div class="px-2 py-2 text-[11px] text-text-3">{m.tickets_no_orgs()}</div>
+			<div class="px-2 py-2 text-[12px] text-text-3">{m.tickets_no_orgs()}</div>
 		{/if}
 	{/if}
 {/snippet}
 
 <div class="flex shrink-0 items-center gap-2 border-b border-border bg-bg px-5 py-2.5">
 	<div class="tb-scroll flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
-		<!-- View toggle -->
-		<div
-			class="inline-flex h-7 shrink-0 items-center rounded-lg border border-border bg-surface p-0.5 text-[13px]"
-		>
-			<button
-				type="button"
-				onclick={() => setView('list')}
-				class="inline-flex h-full items-center gap-1.5 rounded-md px-2 transition-colors {view === 'list'
-					? 'bg-bg-elev text-text'
-					: 'text-text-3 hover:text-text'}"
+		{#if !minimal}
+			<!-- View toggle -->
+			<div
+				class="inline-flex h-7 shrink-0 items-center rounded-lg border border-border bg-surface p-0.5 text-[14px]"
 			>
-				<Icon name="list" size={13} />
-				{m.tasks_view_list()}
-			</button>
-			<button
-				type="button"
-				onclick={() => setView('board')}
-				class="inline-flex h-full items-center gap-1.5 rounded-md px-2 transition-colors {view === 'board'
-					? 'bg-bg-elev text-text'
-					: 'text-text-3 hover:text-text'}"
-			>
-				<Icon name="board" size={13} />
-				{m.tasks_view_board()}
-			</button>
-		</div>
-
-		<div class="h-5 w-px shrink-0 bg-border"></div>
-
-		<!-- Group -->
-		<div class="shrink-0">
-			<button
-				type="button"
-				onclick={(e) => openPop('group', e.currentTarget)}
-				class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[13px] whitespace-nowrap transition-colors hover:bg-surface-2"
-			>
-				<span class="text-text-3">{m.tickets_group()}</span>
-				<span class="font-medium text-text">{groupLabel(group)}</span>
-				<Icon name="chevron" size={10} class="text-text-3" />
-			</button>
-			{#if pop === 'group' && popPos}
-				<div
-					use:clickOutside={() => (pop = null)}
-					in:fly={POPOVER_IN}
-					class="fixed z-50 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-					style:left="{popPos.left}px"
-					style:top="{popPos.top}px"
+				<button
+					type="button"
+					onclick={() => setView('list')}
+					class="inline-flex h-full items-center gap-1.5 rounded-md px-2 transition-colors {view ===
+					'list'
+						? 'bg-bg-elev text-text'
+						: 'text-text-3 hover:text-text'}"
 				>
-					{#each GROUP_OPTIONS as o (o.id)}
-						<button
-							type="button"
-							onclick={() => {
-								setGroup(o.id);
-								pop = null;
-							}}
-							class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text"
-						>
-							<span>{o.label()}</span>
-							<span class="ml-auto text-accent {group === o.id ? 'opacity-100' : 'opacity-0'}">
-								<Icon name="check" size={12} />
-							</span>
-						</button>
-					{/each}
-				</div>
-			{/if}
-		</div>
+					<Icon name="list" size={14} />
+					{m.tasks_view_list()}
+				</button>
+				<button
+					type="button"
+					onclick={() => setView('board')}
+					class="inline-flex h-full items-center gap-1.5 rounded-md px-2 transition-colors {view ===
+					'board'
+						? 'bg-bg-elev text-text'
+						: 'text-text-3 hover:text-text'}"
+				>
+					<Icon name="board" size={14} />
+					{m.tasks_view_board()}
+				</button>
+			</div>
 
-		<!-- Sub (board view only) -->
-		{#if view === 'board'}
+			<div class="h-5 w-px shrink-0 bg-border"></div>
+
+			<!-- Group -->
 			<div class="shrink-0">
 				<button
 					type="button"
-					onclick={(e) => openPop('sub', e.currentTarget)}
-					class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[13px] whitespace-nowrap transition-colors hover:bg-surface-2"
+					onclick={(e) => openPop('group', e.currentTarget)}
+					class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[14px] whitespace-nowrap transition-colors hover:bg-surface-2"
 				>
-					<span class="text-text-3">{m.tasks_sub_group()}</span>
-					<span class="font-medium text-text">{subLabel(sub)}</span>
-					<Icon name="chevron" size={10} class="text-text-3" />
+					<span class="text-text-3">{m.tickets_group()}</span>
+					<span class="font-medium text-text">{groupLabel(group)}</span>
+					<Icon name="chevron" size={11} class="text-text-3" />
 				</button>
-				{#if pop === 'sub' && popPos}
+				{#if pop === 'group' && popPos}
 					<div
 						use:clickOutside={() => (pop = null)}
 						in:fly={POPOVER_IN}
-						class="fixed z-50 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+						class="fixed z-50 min-w-[187px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 						style:left="{popPos.left}px"
 						style:top="{popPos.top}px"
 					>
-						{#each SUB_OPTIONS as o (o.id)}
+						{#each GROUP_OPTIONS as o (o.id)}
 							<button
 								type="button"
 								onclick={() => {
-									setSub?.(o.id);
+									setGroup(o.id);
 									pop = null;
 								}}
-								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text"
+								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
 							>
 								<span>{o.label()}</span>
-								<span class="ml-auto text-accent {sub === o.id ? 'opacity-100' : 'opacity-0'}">
-									<Icon name="check" size={12} />
+								<span class="ml-auto text-accent {group === o.id ? 'opacity-100' : 'opacity-0'}">
+									<Icon name="check" size={13} />
 								</span>
 							</button>
 						{/each}
 					</div>
 				{/if}
 			</div>
+
+			<!-- Sub (board view only) -->
+			{#if view === 'board'}
+				<div class="shrink-0">
+					<button
+						type="button"
+						onclick={(e) => openPop('sub', e.currentTarget)}
+						class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[14px] whitespace-nowrap transition-colors hover:bg-surface-2"
+					>
+						<span class="text-text-3">{m.tasks_sub_group()}</span>
+						<span class="font-medium text-text">{subLabel(sub)}</span>
+						<Icon name="chevron" size={11} class="text-text-3" />
+					</button>
+					{#if pop === 'sub' && popPos}
+						<div
+							use:clickOutside={() => (pop = null)}
+							in:fly={POPOVER_IN}
+							class="fixed z-50 min-w-[187px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+							style:left="{popPos.left}px"
+							style:top="{popPos.top}px"
+						>
+							{#each SUB_OPTIONS as o (o.id)}
+								<button
+									type="button"
+									onclick={() => {
+										setSub?.(o.id);
+										pop = null;
+									}}
+									class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
+								>
+									<span>{o.label()}</span>
+									<span class="ml-auto text-accent {sub === o.id ? 'opacity-100' : 'opacity-0'}">
+										<Icon name="check" size={13} />
+									</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			{/if}
+
+			<div class="h-5 w-px shrink-0 bg-border"></div>
+
+			<div class="min-w-[92px] shrink-0">
+				<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
+			</div>
 		{/if}
 
-		<div class="h-5 w-px shrink-0 bg-border"></div>
-
-		<div class="min-w-[84px] shrink-0">
-			<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
-		</div>
-
-		<div class="relative ml-auto w-44 min-w-[120px] shrink">
+		<div class="relative ml-auto w-44 min-w-[132px] shrink">
 			<span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-3">
-				<Icon name="search" size={13} />
+				<Icon name="search" size={14} />
 			</span>
 			<input
 				type="text"
 				placeholder={m.tickets_search_placeholder()}
 				value={search}
 				oninput={(e) => setSearch((e.target as HTMLInputElement).value)}
-				class="h-7 w-full rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[13px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
+				class="h-7 w-full rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[14px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
 			/>
 		</div>
 	</div>
@@ -360,7 +380,7 @@
 	{#if canCreate}
 		<div class="shrink-0">
 			<Button variant="primary" size="sm" onclick={() => onNew?.()}>
-				<Icon name="plus" size={13} />
+				<Icon name="plus" size={14} />
 				{m.tickets_new_title()}
 			</Button>
 		</div>

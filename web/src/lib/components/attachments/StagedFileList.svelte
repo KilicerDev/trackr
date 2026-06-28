@@ -51,12 +51,12 @@
 					<span
 						class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-surface-2 text-text-3"
 					>
-						<Icon name="file" size={15} />
+						<Icon name="file" size={16} />
 					</span>
 				{/if}
 				<div class="min-w-0 flex-1">
-					<div class="truncate text-[13px] text-text">{file.name}</div>
-					<div class="text-[11px] text-text-3">{formatBytes(file.size)}</div>
+					<div class="truncate text-[14px] text-text">{file.name}</div>
+					<div class="text-[12px] text-text-3">{formatBytes(file.size)}</div>
 				</div>
 				<button
 					type="button"
@@ -65,7 +65,7 @@
 					aria-label={m.attach_remove_file({ filename: file.name })}
 					class="grid h-7 w-7 place-items-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text disabled:opacity-50"
 				>
-					<Icon name="x" size={13} />
+					<Icon name="x" size={14} />
 				</button>
 			</li>
 		{/each}

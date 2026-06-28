@@ -189,9 +189,9 @@
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<StatusDot status={s.id} />
-				<span class="text-[13px]">{statusLabel(s.id)}</span>
+				<span class="text-[14px]">{statusLabel(s.id)}</span>
 				<span class="ml-auto text-accent {values.includes(s.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={13} />
+					<Icon name="check" size={14} />
 				</span>
 			</button>
 		{/each}
@@ -203,9 +203,9 @@
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<PriorityBars priority={p.id} />
-				<span class="text-[13px]">{priorityLabel(p.id)}</span>
+				<span class="text-[14px]">{priorityLabel(p.id)}</span>
 				<span class="ml-auto text-accent {values.includes(p.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={13} />
+					<Icon name="check" size={14} />
 				</span>
 			</button>
 		{/each}
@@ -219,10 +219,10 @@
 				onclick={() => toggleValue('assignee', u.id)}
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
-				<Avatar user={u} size={20} />
-				<span class="text-[13px]">{u.name}</span>
+				<Avatar user={u} size={22} />
+				<span class="text-[14px]">{u.name}</span>
 				<span class="ml-auto text-accent {values.includes(u.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={13} />
+					<Icon name="check" size={14} />
 				</span>
 			</button>
 		{/each}
@@ -235,9 +235,9 @@
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<span class="h-2 w-2 rounded-full" style:background={p.color}></span>
-				<span class="text-[13px]">{p.name}</span>
+				<span class="text-[14px]">{p.name}</span>
 				<span class="ml-auto text-accent {values.includes(p.key) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={13} />
+					<Icon name="check" size={14} />
 				</span>
 			</button>
 		{/each}
@@ -250,9 +250,9 @@
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<span class="h-2 w-2 rounded-full" style:background={l.color}></span>
-				<span class="truncate text-[13px]">{l.label}</span>
+				<span class="truncate text-[14px]">{l.label}</span>
 				<span class="ml-auto text-accent {values.includes(id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={13} />
+					<Icon name="check" size={14} />
 				</span>
 			</button>
 		{/each}
@@ -264,7 +264,7 @@
 	     widths instead of wrapping or squeezing. New task stays pinned outside. -->
 	<div class="tb-scroll flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
 		<div
-			class="inline-flex h-7 shrink-0 items-center rounded-lg border border-border bg-surface p-0.5 text-[13px]"
+			class="inline-flex h-7 shrink-0 items-center rounded-lg border border-border bg-surface p-0.5 text-[14px]"
 		>
 			<button
 				type="button"
@@ -274,7 +274,7 @@
 					? 'bg-bg-elev text-text'
 					: 'text-text-3 hover:text-text'}"
 			>
-				<Icon name="list" size={13} />
+				<Icon name="list" size={14} />
 				{m.tasks_view_list()}
 			</button>
 			<button
@@ -285,7 +285,7 @@
 					? 'bg-bg-elev text-text'
 					: 'text-text-3 hover:text-text'}"
 			>
-				<Icon name="board" size={13} />
+				<Icon name="board" size={14} />
 				{m.tasks_view_board()}
 			</button>
 		</div>
@@ -297,17 +297,17 @@
 			<button
 				type="button"
 				onclick={(e) => openPop('group', e.currentTarget)}
-				class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[13px] whitespace-nowrap transition-colors hover:bg-surface-2"
+				class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[14px] whitespace-nowrap transition-colors hover:bg-surface-2"
 			>
 				<span class="text-text-3">{m.tasks_group_by()}</span>
 				<span class="font-medium text-text">{groupLabel(group)}</span>
-				<Icon name="chevron" size={10} class="text-text-3" />
+				<Icon name="chevron" size={11} class="text-text-3" />
 			</button>
 			{#if pop === 'group' && popPos}
 				<div
 					use:clickOutside={() => (pop = null)}
 					in:fly={POPOVER_IN}
-					class="fixed z-50 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+					class="fixed z-50 min-w-[187px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 					style:left="{popPos.left}px"
 					style:top="{popPos.top}px"
 				>
@@ -318,11 +318,11 @@
 								setGroup?.(o.id);
 								pop = null;
 							}}
-							class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text"
+							class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
 						>
 							<span>{o.label()}</span>
 							<span class="ml-auto text-accent {group === o.id ? 'opacity-100' : 'opacity-0'}">
-								<Icon name="check" size={12} />
+								<Icon name="check" size={13} />
 							</span>
 						</button>
 					{/each}
@@ -336,17 +336,17 @@
 				<button
 					type="button"
 					onclick={(e) => openPop('sub', e.currentTarget)}
-					class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[13px] whitespace-nowrap transition-colors hover:bg-surface-2"
+					class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[14px] whitespace-nowrap transition-colors hover:bg-surface-2"
 				>
 					<span class="text-text-3">{m.tasks_sub_group()}</span>
 					<span class="font-medium text-text">{subLabel(sub)}</span>
-					<Icon name="chevron" size={10} class="text-text-3" />
+					<Icon name="chevron" size={11} class="text-text-3" />
 				</button>
 				{#if pop === 'sub' && popPos}
 					<div
 						use:clickOutside={() => (pop = null)}
 						in:fly={POPOVER_IN}
-						class="fixed z-50 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+						class="fixed z-50 min-w-[187px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 						style:left="{popPos.left}px"
 						style:top="{popPos.top}px"
 					>
@@ -357,11 +357,11 @@
 									setSub?.(o.id);
 									pop = null;
 								}}
-								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text"
+								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
 							>
 								<span>{o.label()}</span>
 								<span class="ml-auto text-accent {sub === o.id ? 'opacity-100' : 'opacity-0'}">
-									<Icon name="check" size={12} />
+									<Icon name="check" size={13} />
 								</span>
 							</button>
 						{/each}
@@ -377,18 +377,18 @@
 			<button
 				type="button"
 				onclick={(e) => openPop('time', e.currentTarget)}
-				class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[13px] whitespace-nowrap transition-colors hover:bg-surface-2"
+				class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[14px] whitespace-nowrap transition-colors hover:bg-surface-2"
 			>
-				<Icon name="calendar" size={13} class="text-text-3" />
+				<Icon name="calendar" size={14} class="text-text-3" />
 				<span class="text-text-3">{m.tasks_time()}</span>
 				<span class="font-medium text-text">{timeLabel(time)}</span>
-				<Icon name="chevron" size={10} class="text-text-3" />
+				<Icon name="chevron" size={11} class="text-text-3" />
 			</button>
 			{#if pop === 'time' && popPos}
 				<div
 					use:clickOutside={() => (pop = null)}
 					in:fly={POPOVER_IN}
-					class="fixed z-50 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+					class="fixed z-50 min-w-[187px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 					style:left="{popPos.left}px"
 					style:top="{popPos.top}px"
 				>
@@ -399,11 +399,11 @@
 								setTime?.(o.id);
 								pop = null;
 							}}
-							class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text"
+							class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
 						>
 							<span>{o.label()}</span>
 							<span class="ml-auto text-accent {time === o.id ? 'opacity-100' : 'opacity-0'}">
-								<Icon name="check" size={12} />
+								<Icon name="check" size={13} />
 							</span>
 						</button>
 					{/each}
@@ -416,23 +416,23 @@
 		<!-- Filter chips expand to fit their active chips; the "+ Filter" chip stays
 	     pinned at the left edge (min width). On very narrow widths the whole strip
 	     scrolls (its popovers are fixed, so no clipping). -->
-		<div class="min-w-[84px] shrink-0">
+		<div class="min-w-[92px] shrink-0">
 			<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
 		</div>
 
 		<!-- Search stays compact and right-aligned (ml-auto eats the slack), but is
 	     allowed to shrink as the toolbar narrows so the controls never squeeze
 	     or wrap; past its min the whole strip scrolls instead. -->
-		<div class="relative ml-auto w-44 min-w-[120px] shrink">
+		<div class="relative ml-auto w-44 min-w-[132px] shrink">
 			<span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-3">
-				<Icon name="search" size={13} />
+				<Icon name="search" size={14} />
 			</span>
 			<input
 				type="text"
 				placeholder={m.common_search()}
 				value={search}
 				oninput={(e) => setSearch((e.target as HTMLInputElement).value)}
-				class="h-7 w-full rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[13px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
+				class="h-7 w-full rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[14px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
 			/>
 		</div>
 	</div>
@@ -440,7 +440,7 @@
 	{#if canCreate}
 		<div class="shrink-0">
 			<Button variant="primary" size="sm" onclick={onNewTask}>
-				<Icon name="plus" size={13} />
+				<Icon name="plus" size={14} />
 				{m.tasks_new_task()}
 			</Button>
 		</div>

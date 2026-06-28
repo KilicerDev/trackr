@@ -47,9 +47,9 @@
 		</span>
 		<div class="min-w-0 flex-1">
 			<div class="flex items-center gap-2">
-				<div class="truncate text-[14px] font-semibold text-text">{project.name}</div>
+				<div class="truncate text-[15px] font-semibold text-text">{project.name}</div>
 			</div>
-			<div class="flex items-center gap-1.5 font-mono text-[11px] text-text-3">
+			<div class="flex items-center gap-1.5 font-mono text-[12px] text-text-3">
 				<span>{project.key}</span>
 				{#if project.org}
 					<span class="text-text-4">·</span>
@@ -57,21 +57,21 @@
 				{/if}
 			</div>
 		</div>
-		<div class="flex shrink-0 items-center gap-1.5 text-[12px] text-text-2">
+		<div class="flex shrink-0 items-center gap-1.5 text-[13px] text-text-2">
 			<span class="h-2 w-2 rounded-full" style:background={st.color}></span>
 			{projectStatusLabel(project.status)}
 		</div>
 	</div>
 
-	<p class="mb-5 line-clamp-2 min-h-[2.4em] text-[13px] leading-snug text-text-3">
+	<p class="mb-5 line-clamp-2 min-h-[2.4em] text-[14px] leading-snug text-text-3">
 		{project.description ?? m.projects_no_description()}
 	</p>
 
 	<div class="mb-4 h-1 rounded-full" style:background={project.color}></div>
 
 	<div class="flex items-center gap-3">
-		<AvatarStack users={project.members} size={22} max={4} />
-		<div class="ml-auto text-right text-[11px] text-text-3">
+		<AvatarStack users={project.members} size={24} max={4} />
+		<div class="ml-auto text-right text-[12px] text-text-3">
 			{#if project.lead}
 				{m.projects_lead_label()}
 				<span class="font-medium text-text-2">{project.lead.name.split(' ')[0]}</span>

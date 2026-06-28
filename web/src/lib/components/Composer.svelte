@@ -68,7 +68,7 @@
 		{placeholder}
 		rows={2}
 		disabled={disabled || sending}
-		class="w-full resize-none border-0 bg-transparent px-3.5 pt-3 pb-1 text-[13px] leading-relaxed outline-none placeholder:text-text-3 disabled:opacity-60"
+		class="w-full resize-none border-0 bg-transparent px-3.5 pt-3 pb-1 text-[14px] leading-relaxed outline-none placeholder:text-text-3 disabled:opacity-60"
 	/>
 	<div class="flex items-center gap-1 px-2 pb-2">
 		<div class="ml-auto flex items-center gap-1">
@@ -84,7 +84,7 @@
 					<span class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"
 					></span>
 				{:else}
-					<Icon name="send" size={13} />
+					<Icon name="send" size={14} />
 				{/if}
 			</button>
 		</div>

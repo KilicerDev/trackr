@@ -24,8 +24,8 @@
 	{type}
 	{disabled}
 	{onclick}
-	class="inline-flex items-center gap-1.5 rounded-lg text-[13px] font-medium transition-[background,border-color,transform] duration-150 active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50
-	{size === 'sm' ? 'px-2 py-1' : 'px-[11px] py-[7px]'}
+	class="inline-flex items-center gap-1.5 rounded-lg text-[14px] font-medium transition-[background,border-color,transform] duration-150 active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50
+	{size === 'sm' ? 'px-2 py-1' : 'px-[12px] py-[8px]'}
 	{variant === 'primary'
 		? 'border border-transparent bg-accent text-white shadow-btn hover:bg-accent-strong'
 		: variant === 'ghost'

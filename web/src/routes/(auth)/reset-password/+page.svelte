@@ -35,11 +35,11 @@
 
 <div class="relative flex min-h-screen items-center justify-center px-4 py-10">
 	<div
-		class="pointer-events-none absolute inset-x-0 top-[-12%] mx-auto h-[420px] max-w-[640px] opacity-60 blur-[90px]"
+		class="pointer-events-none absolute inset-x-0 top-[-12%] mx-auto h-[462px] max-w-[704px] opacity-60 blur-[90px]"
 		style:background="radial-gradient(closest-side, rgba(239,122,109,0.18), transparent 70%)"
 	></div>
 
-	<div class="relative w-full max-w-[420px]">
+	<div class="relative w-full max-w-[462px]">
 		<BrandMark />
 
 		{#if invalidLink}
@@ -64,15 +64,15 @@
 						<path d="M12 8v4M12 16h.01" />
 					</svg>
 				</div>
-				<h1 class="mt-4 text-[18px] font-semibold tracking-[-0.012em] text-text">
+				<h1 class="mt-4 text-[20px] font-semibold tracking-[-0.012em] text-text">
 					{m.auth_reset_link_invalid()}
 				</h1>
-				<p class="mt-1.5 text-[13px] leading-relaxed text-text-3">
+				<p class="mt-1.5 text-[14px] leading-relaxed text-text-3">
 					{m.auth_reset_link_invalid_desc()}
 				</p>
 				<a
 					href="/forgot-password"
-					class="mt-6 inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-accent px-4 text-[13px] font-semibold text-white shadow-btn-lg transition-colors hover:bg-accent-strong"
+					class="mt-6 inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-accent px-4 text-[14px] font-semibold text-white shadow-btn-lg transition-colors hover:bg-accent-strong"
 				>
 					{m.auth_reset_request_new_link()}
 				</a>
@@ -81,10 +81,10 @@
 			<div
 				class="rounded-[14px] border border-border bg-bg-elev px-7 pt-7 pb-6 shadow-card"
 			>
-				<h1 class="text-[20px] font-semibold tracking-[-0.012em] text-text">
+				<h1 class="text-[22px] font-semibold tracking-[-0.012em] text-text">
 					{m.auth_reset_set_new_password()}
 				</h1>
-				<p class="mt-1 text-[13px] leading-relaxed text-text-3">
+				<p class="mt-1 text-[14px] leading-relaxed text-text-3">
 					{m.auth_reset_subtitle({ min: minLength })}
 				</p>
 
@@ -113,7 +113,7 @@
 					<input type="hidden" name="token" value={data.token} />
 
 					<label class="flex flex-col gap-1.5">
-						<span class="text-[13px] font-medium text-text-2">{m.auth_new_password_label()}</span>
+						<span class="text-[14px] font-medium text-text-2">{m.auth_new_password_label()}</span>
 						<div class="relative">
 							<input
 								bind:this={passwordInput}
@@ -124,7 +124,7 @@
 								minlength={minLength}
 								autocomplete="new-password"
 								placeholder={m.auth_password_min_placeholder({ min: minLength })}
-								class="h-10 w-full rounded-[8px] border border-border bg-surface pr-10 pl-3 text-[14px] text-text transition-colors placeholder:text-text-4 focus:border-border-strong focus:bg-surface-2"
+								class="h-10 w-full rounded-[8px] border border-border bg-surface pr-10 pl-3 text-[15px] text-text transition-colors placeholder:text-text-4 focus:border-border-strong focus:bg-surface-2"
 							/>
 							<button
 								type="button"
@@ -158,7 +158,7 @@
 						</div>
 						{#if strength}
 							<span
-								class="text-[11px] {strength.tone === 'error'
+								class="text-[12px] {strength.tone === 'error'
 									? 'text-prio-urgent'
 									: strength.tone === 'warn'
 										? 'text-text-3'
@@ -170,7 +170,7 @@
 					</label>
 
 					<label class="flex flex-col gap-1.5">
-						<span class="text-[13px] font-medium text-text-2"
+						<span class="text-[14px] font-medium text-text-2"
 							>{m.auth_confirm_password_label()}</span
 						>
 						<input
@@ -179,13 +179,13 @@
 							required
 							autocomplete="new-password"
 							placeholder={m.auth_reenter_password_placeholder()}
-							class="h-10 rounded-[8px] border border-border bg-surface px-3 text-[14px] text-text transition-colors placeholder:text-text-4 focus:border-border-strong focus:bg-surface-2"
+							class="h-10 rounded-[8px] border border-border bg-surface px-3 text-[15px] text-text transition-colors placeholder:text-text-4 focus:border-border-strong focus:bg-surface-2"
 						/>
 					</label>
 
 					{#if clientError || form?.message}
 						<div
-							class="rounded-[8px] border border-prio-urgent/35 px-3 py-2 text-[13px] text-prio-urgent bg-prio-urgent/8"
+							class="rounded-[8px] border border-prio-urgent/35 px-3 py-2 text-[14px] text-prio-urgent bg-prio-urgent/8"
 						>
 							{clientError ?? form?.message}
 						</div>
@@ -194,7 +194,7 @@
 					<button
 						type="submit"
 						disabled={submitting}
-						class="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[13px] font-semibold text-white shadow-btn-lg transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-default disabled:opacity-70"
+						class="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[14px] font-semibold text-white shadow-btn-lg transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-default disabled:opacity-70"
 					>
 						{#if submitting}
 							<span
@@ -208,7 +208,7 @@
 				</form>
 			</div>
 
-			<p class="mt-5 text-center text-[12px]">
+			<p class="mt-5 text-center text-[13px]">
 				<a href="/login" class="text-text-3 transition-colors hover:text-text"
 					>{m.auth_back_to_sign_in()}</a
 				>

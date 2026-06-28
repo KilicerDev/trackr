@@ -283,7 +283,7 @@
 				onclick={() => gotoWeek(addDays(data.weekStartIso, -7))}
 				class="grid h-7 w-7 place-items-center text-text-3 hover:bg-surface-2 hover:text-text"
 			>
-				<Icon name="chevron-r" size={12} class="rotate-180" />
+				<Icon name="chevron-r" size={13} class="rotate-180" />
 			</button>
 			<button
 				type="button"
@@ -291,25 +291,25 @@
 				onclick={() => gotoWeek(addDays(data.weekStartIso, 7))}
 				class="grid h-7 w-7 place-items-center text-text-3 hover:bg-surface-2 hover:text-text"
 			>
-				<Icon name="chevron-r" size={12} />
+				<Icon name="chevron-r" size={13} />
 			</button>
 		</div>
-		<div class="flex items-center gap-2 text-[13px] text-text-2">
+		<div class="flex items-center gap-2 text-[14px] text-text-2">
 			<span class="font-mono font-medium tracking-tight text-text">{weekLabel}</span>
 			{#if weekDelta === 0}
 				<span
-					class="rounded-full px-1.5 py-0.5 text-[10px] font-medium tracking-[0.06em] text-accent uppercase bg-accent-soft">{m.week_now()}</span
+					class="rounded-full px-1.5 py-0.5 text-[11px] font-medium tracking-[0.06em] text-accent uppercase bg-accent-soft">{m.week_now()}</span
 				>
 			{/if}
 			<span class="text-text-4">·</span>
-			<span class="font-mono text-[13px] text-text-3">{weekRangeLabel()}</span>
+			<span class="font-mono text-[14px] text-text-3">{weekRangeLabel()}</span>
 		</div>
 		<div
 			class="ml-auto flex items-center gap-3 rounded-xl border border-border bg-bg-elev px-3.5 py-2"
 		>
 			<div class="text-right">
-				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">{m.week_capacity()}</div>
-				<div class="font-mono text-[13px] text-text">{Math.round(weekMinutes / 60)}h / 40h</div>
+				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">{m.week_capacity()}</div>
+				<div class="font-mono text-[14px] text-text">{Math.round(weekMinutes / 60)}h / 40h</div>
 			</div>
 			<div class="h-1.5 w-24 overflow-hidden rounded-full bg-surface">
 				<div
@@ -343,16 +343,16 @@
 							: ''}"
 					>
 						<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
-							<Icon name="chevron" size={12} />
+							<Icon name="chevron" size={13} />
 						</span>
-						<span class="text-[14px] font-semibold text-text">{WEEK_DAY_LABELS[i]()}</span>
-						<span class="font-mono text-[12px] text-text-4">{dayLabels[i].dayOfMonth}</span>
+						<span class="text-[15px] font-semibold text-text">{WEEK_DAY_LABELS[i]()}</span>
+						<span class="font-mono text-[13px] text-text-4">{dayLabels[i].dayOfMonth}</span>
 						{#if isToday}
 							<span
-								class="rounded-full px-2 py-0.5 text-[11px] font-medium tracking-[0.06em] text-accent uppercase bg-accent-soft">{m.common_today()}</span
+								class="rounded-full px-2 py-0.5 text-[12px] font-medium tracking-[0.06em] text-accent uppercase bg-accent-soft">{m.common_today()}</span
 							>
 						{/if}
-						<span class="font-mono text-[11px] text-text-3">{tasks.length}</span>
+						<span class="font-mono text-[12px] text-text-3">{tasks.length}</span>
 						<div class="ml-auto flex items-center gap-2.5">
 							<div class="h-1 w-28 overflow-hidden rounded-full bg-surface">
 								<div
@@ -361,7 +361,7 @@
 									style:background={over ? '#ef4f5e' : isToday ? 'var(--accent)' : 'var(--text-3)'}
 								></div>
 							</div>
-							<span class="w-12 text-right font-mono text-[11px] text-text-3">
+							<span class="w-12 text-right font-mono text-[12px] text-text-3">
 								{Math.floor(mins / 60)}h{mins % 60 > 0 ? `${mins % 60}m` : ''}
 							</span>
 						</div>
@@ -387,9 +387,9 @@
 									<button
 										type="button"
 										onclick={() => (composerDay = i)}
-										class="flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] text-text-3 transition-colors hover:bg-surface hover:text-text"
+										class="flex items-center gap-1.5 rounded-md px-2 py-1 text-[13px] text-text-3 transition-colors hover:bg-surface hover:text-text"
 									>
-										<Icon name="plus" size={12} />
+										<Icon name="plus" size={13} />
 										{m.week_add_task()}
 									</button>
 								</div>
@@ -403,14 +403,14 @@
 		<aside class="flex flex-col self-start rounded-2xl border border-border bg-bg-elev">
 			<div class="px-4 pt-4 pb-2">
 				<div class="flex items-center gap-2">
-					<span class="text-[13px] font-semibold text-text">{m.week_unscheduled()}</span>
-					<span class="font-mono text-[11px] text-text-3">{unscheduled.length}</span>
+					<span class="text-[14px] font-semibold text-text">{m.week_unscheduled()}</span>
+					<span class="font-mono text-[12px] text-text-3">{unscheduled.length}</span>
 				</div>
-				<p class="mt-1 text-[11px] text-text-4">{m.week_unscheduled_hint()}</p>
+				<p class="mt-1 text-[12px] text-text-4">{m.week_unscheduled_hint()}</p>
 			</div>
 			<div class="px-4 pb-2">
 				<div
-					class="inline-flex h-7 w-full items-center rounded-lg border border-border bg-surface p-0.5 text-[11px]"
+					class="inline-flex h-7 w-full items-center rounded-lg border border-border bg-surface p-0.5 text-[12px]"
 				>
 					{#each [['past', m.week_tab_past()], ['mine', m.week_tab_my_tasks()], ['others', m.week_tab_others()]] as [k, lbl] (k)}
 						<button
@@ -436,17 +436,17 @@
 						<span class="inline-flex h-3 w-3 shrink-0 items-center justify-center">
 							{#if t.inMyPlan}
 								<span class="inline-flex text-accent" title={m.week_in_your_week()}>
-									<Icon name="bookmark" size={11} />
+									<Icon name="bookmark" size={12} />
 								</span>
 							{:else}
 								<span class="h-2 w-2 rounded-full" style:background={proj?.color ?? '#7c7c84'}
 								></span>
 							{/if}
 						</span>
-						<span class="font-mono text-[11px] text-text-3">{t.id}</span>
+						<span class="font-mono text-[12px] text-text-3">{t.id}</span>
 						<PriorityBars priority={t.priority} />
-						<span class="flex-1 truncate text-[13px] text-text">{t.title}</span>
-						<span class="font-mono text-[10px] {t.estimate ? 'text-text-4' : 'text-text-4/60'}">
+						<span class="flex-1 truncate text-[14px] text-text">{t.title}</span>
+						<span class="font-mono text-[11px] {t.estimate ? 'text-text-4' : 'text-text-4/60'}">
 							{t.estimate ? formatEstimate(t.estimate) : '—'}
 						</span>
 					</button>
@@ -456,9 +456,9 @@
 						<div
 							class="mb-2 inline-grid h-9 w-9 place-items-center rounded-xl border border-border bg-surface"
 						>
-							<Icon name="check" size={15} />
+							<Icon name="check" size={16} />
 						</div>
-						<div class="text-[12px] text-text-2">{m.week_inbox_zero()}</div>
+						<div class="text-[13px] text-text-2">{m.week_inbox_zero()}</div>
 					</div>
 				{/if}
 			</div>

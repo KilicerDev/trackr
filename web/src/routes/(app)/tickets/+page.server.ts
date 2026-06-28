@@ -10,7 +10,7 @@ import {
 	task,
 	project
 } from '$lib/server/db/app.schema';
-import { assertCan, can, isTrackrTeam } from '$lib/server/permissions';
+import { assertCan, can, canViewTicket, isTrackrTeam } from '$lib/server/permissions';
 import { attachFormFiles, deleteAttachmentsFor } from '$lib/server/attachments';
 import {
 	addTicketMessage,
@@ -524,6 +524,42 @@ export const actions: Actions = {
 		await db
 			.delete(ticketFavorite)
 			.where(and(eq(ticketFavorite.userId, locals.user.id), eq(ticketFavorite.ticketId, id)));
+		return { ok: true };
+	},
+
+	// Shared checklist. Unlike `update` (agent-only), this is open to every
+	// ticket participant — agents, the org.client admin, and the owning
+	// org.member — gated on `canViewTicket`. Whole array replaced + sanitized,
+	// mirroring the task checklist action.
+	checklist: async ({ request, locals }) => {
+		if (!locals.user) throw error(401, m.tickets_not_authenticated());
+		const form = await request.formData();
+		const id = String(form.get('id') ?? '').trim();
+		if (!id) return fail(400, { message: m.tickets_id_required() });
+
+		const t = await getTicket(id);
+		if (!t) return fail(404, { message: m.tickets_not_found() });
+		if (!(await canViewTicket(locals, t))) return fail(403, { message: m.tickets_no_access() });
+
+		let checklist: { id: string; text: string; done: boolean }[];
+		try {
+			const raw = JSON.parse(String(form.get('checklist') ?? '[]'));
+			if (!Array.isArray(raw)) return fail(400, { message: m.tasks_err_invalid_checklist() });
+			checklist = raw
+				.slice(0, 100)
+				.map((it) => ({
+					id: typeof it?.id === 'string' && it.id ? it.id : crypto.randomUUID(),
+					text: String(it?.text ?? '')
+						.trim()
+						.slice(0, 500),
+					done: !!it?.done
+				}))
+				.filter((it) => it.text.length > 0);
+		} catch {
+			return fail(400, { message: m.tasks_err_invalid_checklist() });
+		}
+
+		await updateTicket(id, { checklist });
 		return { ok: true };
 	}
 };

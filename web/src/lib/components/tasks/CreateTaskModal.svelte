@@ -230,7 +230,7 @@
 					<button
 						type="button"
 						onclick={() => (pop = pop === 'project' ? null : 'project')}
-						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors {projectMeta
+						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors {projectMeta
 							? 'border border-border bg-surface hover:border-border-strong'
 							: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
 					>
@@ -240,7 +240,7 @@
 						{:else}
 							<span>{m.tasks_select_project()}</span>
 						{/if}
-						<Icon name="chevron" size={11} class="text-text-3" />
+						<Icon name="chevron" size={12} class="text-text-3" />
 					</button>
 					{#if pop === 'project'}
 						<ProjectPopover
@@ -253,7 +253,7 @@
 						/>
 					{/if}
 				</div>
-				<div class="ml-1 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+				<div class="ml-1 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 					{m.tasks_new_task()}
 				</div>
 				<button
@@ -262,7 +262,7 @@
 					class="ml-auto grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
 					aria-label={m.common_close()}
 				>
-					<Icon name="x" size={14} />
+					<Icon name="x" size={15} />
 				</button>
 			</div>
 
@@ -274,14 +274,14 @@
 					bind:value={title}
 					required
 					placeholder={m.tasks_title_placeholder()}
-					class="mb-2 w-full border-0 bg-transparent text-[20px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
+					class="mb-2 w-full border-0 bg-transparent text-[22px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
 				/>
 				<textarea
 					name="description"
 					bind:value={description}
 					placeholder={m.tasks_description_placeholder()}
 					rows="3"
-					class="w-full resize-none border-0 bg-transparent text-[13px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
+					class="w-full resize-none border-0 bg-transparent text-[14px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
 				></textarea>
 
 				<!-- Property rail -->
@@ -290,7 +290,7 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'type' ? null : 'type')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
+							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
 						>
 							<TypeBadge {type} showLabel={false} />
 							<span>{typeLabel(type)}</span>
@@ -304,7 +304,7 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'status' ? null : 'status')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
+							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
 						>
 							<StatusDot {status} />
 							<span>{statusLabel(status)}</span>
@@ -322,7 +322,7 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'priority' ? null : 'priority')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
+							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
 						>
 							{#if prioMeta.bars > 0}<PriorityBars {priority} />{/if}
 							<span>{priorityLabel(priority)}</span>
@@ -340,15 +340,15 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'assignees' ? null : 'assignees')}
-							class="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
+							class="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
 						>
 							{#if assignees.length === 1 && assigneeUsers[0]}
-								<Avatar user={assigneeUsers[0]} size={18} />
+								<Avatar user={assigneeUsers[0]} size={20} />
 								<span>{assigneeUsers[0].name}</span>
 							{:else if assignees.length === 0}
 								<span class="text-text-3">{m.common_unassigned()}</span>
 							{:else}
-								<AvatarStack users={assigneeUsers} size={18} max={3} overlap={5} />
+								<AvatarStack users={assigneeUsers} size={20} max={3} overlap={5} />
 								<span>{m.tasks_n_assignees({ n: assignees.length })}</span>
 							{/if}
 						</button>
@@ -366,11 +366,11 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'due' ? null : 'due')}
-							class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors {due
+							class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors {due
 								? 'border border-border bg-surface hover:border-border-strong'
 								: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
 						>
-							<Icon name="calendar" size={13} />
+							<Icon name="calendar" size={14} />
 							{#if due}<span class="font-mono">{formatDateLong(due)}</span>{:else}<span
 									>{m.tasks_due_date()}</span
 								>{/if}
@@ -384,7 +384,7 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'estimate' ? null : 'estimate')}
-							class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors {estimate
+							class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors {estimate
 								? 'border border-border bg-surface hover:border-border-strong'
 								: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
 						>
@@ -405,7 +405,7 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'tags' ? null : 'tags')}
-							class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors {tags.length >
+							class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors {tags.length >
 							0
 								? 'border border-border bg-surface hover:border-border-strong'
 								: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
@@ -414,7 +414,7 @@
 								{#each tags.slice(0, 2) as t (t)}<LabelChip id={t} />{/each}
 								{#if tags.length > 2}<span class="text-text-3">+{tags.length - 2}</span>{/if}
 							{:else}
-								<Icon name="bookmark" size={12} /> {m.tasks_tags()}
+								<Icon name="bookmark" size={13} /> {m.tasks_tags()}
 							{/if}
 						</button>
 						{#if pop === 'tags'}
@@ -453,9 +453,9 @@
 					<button
 						type="button"
 						onclick={() => fileInput?.click()}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[14px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
 					>
-						<Icon name="paperclip" size={13} />
+						<Icon name="paperclip" size={14} />
 						<span>{m.tasks_attach_files()}</span>
 					</button>
 					<input bind:this={fileInput} type="file" multiple hidden onchange={onPick} />
@@ -464,7 +464,7 @@
 
 			<!-- Foot -->
 			<div class="flex items-center gap-2 rounded-b-2xl border-t border-border bg-bg/40 px-5 py-3">
-				<span class="text-[11px] text-text-3">
+				<span class="text-[12px] text-text-3">
 					<Kbd>⌘↵</Kbd>
 					{m.tasks_to_create()}
 				</span>

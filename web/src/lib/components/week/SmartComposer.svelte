@@ -218,8 +218,8 @@
 
 	function chipClass(active: boolean) {
 		return active
-			? 'inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] border border-accent text-text transition-colors hover:bg-accent-soft hover:border-accent'
-			: 'inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] border border-border bg-bg-elev text-text-2 hover:text-text hover:border-border-strong transition-colors';
+			? 'inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[12px] border border-accent text-text transition-colors hover:bg-accent-soft hover:border-accent'
+			: 'inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[12px] border border-border bg-bg-elev text-text-2 hover:text-text hover:border-border-strong transition-colors';
 	}
 </script>
 
@@ -229,7 +229,7 @@
 		: 'border-border'}"
 >
 	<div class="flex items-center gap-2 px-1">
-		<Icon name="plus" size={14} />
+		<Icon name="plus" size={15} />
 		<input
 			bind:this={inputEl}
 			type="text"
@@ -238,14 +238,14 @@
 			onfocus={() => (focused = true)}
 			onblur={() => (focused = false)}
 			placeholder={m.week_composer_placeholder()}
-			class="flex-1 border-0 bg-transparent text-[13px] outline-none placeholder:text-text-3"
+			class="flex-1 border-0 bg-transparent text-[14px] outline-none placeholder:text-text-3"
 		/>
 		<Kbd>⌘↵</Kbd>
-		<IconButton size={26} ariaLabel={m.week_open_in_modal()} onclick={expand}>
-			<Icon name="arrow-up" size={12} class="rotate-45" />
+		<IconButton size={29} ariaLabel={m.week_open_in_modal()} onclick={expand}>
+			<Icon name="arrow-up" size={13} class="rotate-45" />
 		</IconButton>
-		<IconButton size={26} ariaLabel={m.common_cancel()} onclick={oncancel}>
-			<Icon name="x" size={12} />
+		<IconButton size={29} ariaLabel={m.common_cancel()} onclick={oncancel}>
+			<Icon name="x" size={13} />
 		</IconButton>
 	</div>
 	<div class="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border/60 pt-2">
@@ -303,7 +303,7 @@
 				style:background={assigneeActive ? 'rgba(239,122,109,0.14)' : undefined}
 			>
 				{#if assigneeUser}
-					<Avatar user={assigneeUser} size={14} />
+					<Avatar user={assigneeUser} size={15} />
 					{assigneeUser.name}
 				{:else}
 					<span class="text-text-3">{m.common_unassigned()}</span>
@@ -339,7 +339,7 @@
 			{/if}
 		</div>
 
-		<span class="ml-auto text-[11px] text-text-4">
+		<span class="ml-auto text-[12px] text-text-4">
 			{m.week_tokens_label()} <span class="font-mono">+PROJ</span>
 			<span class="font-mono">!prio</span>
 			<span class="font-mono">@user</span>

@@ -68,8 +68,8 @@
 			<div
 				class="flex flex-col items-center gap-2 rounded-xl border border-accent/40 bg-bg-elev px-4 py-3 text-accent shadow-lg"
 			>
-				<Icon name="paperclip" size={20} />
-				<span class="text-[13px] font-medium">{label}</span>
+				<Icon name="paperclip" size={22} />
+				<span class="text-[14px] font-medium">{label}</span>
 			</div>
 		</div>
 	{/if}

@@ -143,10 +143,10 @@
 	>
 		<div class="flex items-center border-b border-border px-5 pt-4 pb-3">
 			<div>
-				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">
+				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
 					{m.projects_workspace_eyebrow()}
 				</div>
-				<div class="text-[14px] font-semibold">{m.projects_create_title()}</div>
+				<div class="text-[15px] font-semibold">{m.projects_create_title()}</div>
 			</div>
 			<button
 				type="button"
@@ -154,7 +154,7 @@
 				aria-label={m.common_close()}
 				class="ml-auto grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
 			>
-				<Icon name="x" size={14} />
+				<Icon name="x" size={15} />
 			</button>
 		</div>
 
@@ -176,10 +176,10 @@
 						bind:value={name}
 						required
 						placeholder={m.projects_name_placeholder()}
-						class="block w-full border-0 bg-transparent text-[20px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
+						class="block w-full border-0 bg-transparent text-[22px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
 					/>
 					<div class="mt-1 flex items-center gap-1.5">
-						<span class="text-[11px] tracking-[0.08em] text-text-4 uppercase"
+						<span class="text-[12px] tracking-[0.08em] text-text-4 uppercase"
 							>{m.projects_key_label()}</span
 						>
 						<input
@@ -195,10 +195,10 @@
 							}}
 							maxlength={5}
 							placeholder={m.projects_key_placeholder()}
-							class="w-[72px] rounded-md border border-border bg-surface px-1.5 py-0.5 font-mono text-[11px] tracking-[0.04em] text-text uppercase outline-none focus:border-border-strong"
+							class="w-[79px] rounded-md border border-border bg-surface px-1.5 py-0.5 font-mono text-[12px] tracking-[0.04em] text-text uppercase outline-none focus:border-border-strong"
 						/>
-						<span class="text-[11px] text-text-4">·</span>
-						<span class="text-[11px] text-text-3">
+						<span class="text-[12px] text-text-4">·</span>
+						<span class="text-[12px] text-text-3">
 							{m.projects_key_prefix_hint_before()}
 							<span class="font-mono text-text-2"
 								>{effectiveKey || m.projects_key_fallback()}-1</span
@@ -213,11 +213,11 @@
 				bind:value={description}
 				placeholder={m.projects_description_placeholder()}
 				rows="2"
-				class="mb-4 w-full resize-none border-0 bg-transparent text-[13px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
+				class="mb-4 w-full resize-none border-0 bg-transparent text-[14px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
 			></textarea>
 
 			<div class="mb-4">
-				<div class="mb-2 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+				<div class="mb-2 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 					{m.projects_color_label()}
 				</div>
 				<div class="flex flex-wrap gap-1.5">
@@ -257,17 +257,17 @@
 					<button
 						type="button"
 						onclick={() => (pop = pop === 'status' ? null : 'status')}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
 					>
 						<span class="h-2 w-2 rounded-full" style:background={statusMeta.color}></span>
 						<span>{projectStatusLabel(status)}</span>
-						<Icon name="chevron" size={11} class="text-text-3" />
+						<Icon name="chevron" size={12} class="text-text-3" />
 					</button>
 					{#if pop === 'status'}
 						<div
 							use:clickOutside={() => (pop = null)}
 							in:fly={POPOVER_IN}
-							class="absolute top-full z-50 mt-1.5 min-w-[180px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+							class="absolute top-full z-50 mt-1.5 min-w-[198px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 						>
 							{#each STATUSES as s (s)}
 								{@const meta = PROJECT_STATUS[s]}
@@ -280,9 +280,9 @@
 									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 								>
 									<span class="h-2 w-2 rounded-full" style:background={meta.color}></span>
-									<span class="text-[13px]">{projectStatusLabel(s)}</span>
+									<span class="text-[14px]">{projectStatusLabel(s)}</span>
 									<span class="ml-auto text-accent {status === s ? 'opacity-100' : 'opacity-0'}">
-										<Icon name="check" size={13} />
+										<Icon name="check" size={14} />
 									</span>
 								</button>
 							{/each}
@@ -294,22 +294,22 @@
 					<button
 						type="button"
 						onclick={() => (pop = pop === 'org' ? null : 'org')}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
 					>
 						{#if selectedOrg}
 							<span class="h-2 w-2 rounded-full" style:background={selectedOrg.color}></span>
 							<span>{selectedOrg.name}</span>
 						{:else}
-							<Icon name="org" size={13} class="text-text-3" />
+							<Icon name="org" size={14} class="text-text-3" />
 							<span>{m.projects_internal()}</span>
 						{/if}
-						<Icon name="chevron" size={11} class="text-text-3" />
+						<Icon name="chevron" size={12} class="text-text-3" />
 					</button>
 					{#if pop === 'org'}
 						<div
 							use:clickOutside={() => (pop = null)}
 							in:fly={POPOVER_IN}
-							class="absolute top-full z-50 mt-1.5 min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+							class="absolute top-full z-50 mt-1.5 min-w-[242px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 						>
 							<button
 								type="button"
@@ -319,10 +319,10 @@
 								}}
 								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 							>
-								<Icon name="org" size={13} class="text-text-3" />
-								<span class="text-[13px]">{m.projects_internal()}</span>
+								<Icon name="org" size={14} class="text-text-3" />
+								<span class="text-[14px]">{m.projects_internal()}</span>
 								<span class="ml-auto text-accent {orgId === '' ? 'opacity-100' : 'opacity-0'}">
-									<Icon name="check" size={13} />
+									<Icon name="check" size={14} />
 								</span>
 							</button>
 							{#each orgs as o (o.id)}
@@ -335,14 +335,14 @@
 									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 								>
 									<span class="h-2 w-2 rounded-full" style:background={o.color}></span>
-									<span class="truncate text-[13px]">{o.name}</span>
+									<span class="truncate text-[14px]">{o.name}</span>
 									<span class="ml-auto text-accent {orgId === o.id ? 'opacity-100' : 'opacity-0'}">
-										<Icon name="check" size={13} />
+										<Icon name="check" size={14} />
 									</span>
 								</button>
 							{/each}
 							{#if orgs.length === 0}
-								<div class="px-2 py-2 text-[11px] text-text-3">
+								<div class="px-2 py-2 text-[12px] text-text-3">
 									{m.projects_no_orgs_hint_before()}
 									<a href="/admin/organizations" class="text-accent hover:underline"
 										>{m.projects_admin_orgs_link()}</a
@@ -359,13 +359,13 @@
 			<input type="hidden" name="status" value={status} />
 			<input type="hidden" name="orgId" value={orgId} />
 
-			<p class="mt-4 text-[11px] text-text-3">
+			<p class="mt-4 text-[12px] text-text-3">
 				{m.projects_create_lead_hint()}
 			</p>
 		</div>
 
 		<div class="flex items-center gap-2 rounded-b-2xl border-t border-border bg-bg/40 px-5 py-3">
-			<span class="text-[11px] text-text-3">
+			<span class="text-[12px] text-text-3">
 				<Kbd>⌘↵</Kbd>
 				{m.projects_kbd_to_create()}
 			</span>
@@ -374,7 +374,7 @@
 				<button
 					type="submit"
 					disabled={submitting || !name.trim() || !effectiveKey}
-					class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[11px] py-[7px] text-[13px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
+					class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[12px] py-[8px] text-[14px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{submitting ? m.common_creating() : m.projects_create_title()}
 				</button>

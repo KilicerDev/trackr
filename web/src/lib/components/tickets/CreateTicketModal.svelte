@@ -125,10 +125,10 @@
 		>
 			<div class="flex items-center border-b border-border px-5 pt-4 pb-3">
 				<div>
-					<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">
+					<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
 						{m.tickets_support_eyebrow()}
 					</div>
-					<div class="text-[14px] font-semibold">{m.tickets_new_title()}</div>
+					<div class="text-[15px] font-semibold">{m.tickets_new_title()}</div>
 				</div>
 				<button
 					type="button"
@@ -136,7 +136,7 @@
 					aria-label={m.common_close()}
 					class="ml-auto grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
 				>
-					<Icon name="x" size={14} />
+					<Icon name="x" size={15} />
 				</button>
 			</div>
 
@@ -147,7 +147,7 @@
 					bind:value={subject}
 					required
 					placeholder={m.tickets_subject_placeholder()}
-					class="mb-3 block w-full border-0 bg-transparent text-[20px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
+					class="mb-3 block w-full border-0 bg-transparent text-[22px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
 				/>
 
 				<textarea
@@ -155,7 +155,7 @@
 					bind:value={description}
 					placeholder={m.tickets_description_placeholder()}
 					rows="4"
-					class="mb-4 w-full resize-none border-0 bg-transparent text-[13px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
+					class="mb-4 w-full resize-none border-0 bg-transparent text-[14px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
 				></textarea>
 
 				<div class="flex flex-wrap gap-2">
@@ -165,22 +165,22 @@
 							type="button"
 							disabled={!!lockedOrgId}
 							onclick={() => (pop = pop === 'org' ? null : 'org')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-70"
+							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-70"
 						>
 							{#if selectedOrg}
 								<span class="h-2 w-2 rounded-full" style:background={selectedOrg.color}></span>
 								<span>{selectedOrg.name}</span>
 							{:else}
-								<Icon name="org" size={13} class="text-text-3" />
+								<Icon name="org" size={14} class="text-text-3" />
 								<span>{m.tickets_select_org_placeholder()}</span>
 							{/if}
-							{#if !lockedOrgId}<Icon name="chevron" size={11} class="text-text-3" />{/if}
+							{#if !lockedOrgId}<Icon name="chevron" size={12} class="text-text-3" />{/if}
 						</button>
 						{#if pop === 'org'}
 							<div
 								use:clickOutside={() => (pop = null)}
 								in:fly={POPOVER_IN}
-								class="absolute top-full z-50 mt-1.5 min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+								class="absolute top-full z-50 mt-1.5 min-w-[242px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 							>
 								{#each orgs as o (o.id)}
 									<button
@@ -192,16 +192,16 @@
 										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 									>
 										<span class="h-2 w-2 rounded-full" style:background={o.color}></span>
-										<span class="truncate text-[13px]">{o.name}</span>
+										<span class="truncate text-[14px]">{o.name}</span>
 										<span
 											class="ml-auto text-accent {orgId === o.id ? 'opacity-100' : 'opacity-0'}"
 										>
-											<Icon name="check" size={13} />
+											<Icon name="check" size={14} />
 										</span>
 									</button>
 								{/each}
 								{#if orgs.length === 0}
-									<div class="px-2 py-2 text-[11px] text-text-3">
+									<div class="px-2 py-2 text-[12px] text-text-3">
 										{m.tickets_no_orgs_available()}
 									</div>
 								{/if}
@@ -214,17 +214,17 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'priority' ? null : 'priority')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
+							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
 						>
 							<PriorityBars {priority} />
 							<span>{priorityLabel(priority)}</span>
-							<Icon name="chevron" size={11} class="text-text-3" />
+							<Icon name="chevron" size={12} class="text-text-3" />
 						</button>
 						{#if pop === 'priority'}
 							<div
 								use:clickOutside={() => (pop = null)}
 								in:fly={POPOVER_IN}
-								class="absolute top-full z-50 mt-1.5 min-w-[160px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+								class="absolute top-full z-50 mt-1.5 min-w-[176px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 							>
 								{#each TICKET_PRIORITIES as p (p.id)}
 									<button
@@ -236,11 +236,11 @@
 										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 									>
 										<PriorityBars priority={p.id} />
-										<span class="text-[13px]">{priorityLabel(p.id)}</span>
+										<span class="text-[14px]">{priorityLabel(p.id)}</span>
 										<span
 											class="ml-auto text-accent {priority === p.id ? 'opacity-100' : 'opacity-0'}"
 										>
-											<Icon name="check" size={13} />
+											<Icon name="check" size={14} />
 										</span>
 									</button>
 								{/each}
@@ -253,17 +253,17 @@
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'category' ? null : 'category')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
+							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
 						>
 							<span class="h-2 w-2 rounded-full" style:background={categoryMeta.color}></span>
 							<span>{ticketCategoryLabel(category)}</span>
-							<Icon name="chevron" size={11} class="text-text-3" />
+							<Icon name="chevron" size={12} class="text-text-3" />
 						</button>
 						{#if pop === 'category'}
 							<div
 								use:clickOutside={() => (pop = null)}
 								in:fly={POPOVER_IN}
-								class="absolute top-full z-50 mt-1.5 min-w-[180px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+								class="absolute top-full z-50 mt-1.5 min-w-[198px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 							>
 								{#each TICKET_CATEGORIES as c (c.id)}
 									<button
@@ -275,11 +275,11 @@
 										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 									>
 										<span class="h-2 w-2 rounded-full" style:background={c.color}></span>
-										<span class="text-[13px]">{ticketCategoryLabel(c.id)}</span>
+										<span class="text-[14px]">{ticketCategoryLabel(c.id)}</span>
 										<span
 											class="ml-auto text-accent {category === c.id ? 'opacity-100' : 'opacity-0'}"
 										>
-											<Icon name="check" size={13} />
+											<Icon name="check" size={14} />
 										</span>
 									</button>
 								{/each}
@@ -305,9 +305,9 @@
 					<button
 						type="button"
 						onclick={() => fileInput?.click()}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[14px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
 					>
-						<Icon name="paperclip" size={13} />
+						<Icon name="paperclip" size={14} />
 						<span>{m.tickets_attach_files()}</span>
 					</button>
 					<input bind:this={fileInput} type="file" multiple hidden onchange={onPick} />
@@ -315,7 +315,7 @@
 			</div>
 
 			<div class="flex items-center gap-2 rounded-b-2xl border-t border-border bg-bg/40 px-5 py-3">
-				<span class="text-[11px] text-text-3">
+				<span class="text-[12px] text-text-3">
 					<Kbd>⌘↵</Kbd>
 					{m.tickets_kbd_to_create()}
 				</span>
@@ -324,7 +324,7 @@
 					<button
 						type="submit"
 						disabled={submitting || !subject.trim() || !orgId}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[11px] py-[7px] text-[13px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[12px] py-[8px] text-[14px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{submitting ? m.common_creating() : m.tickets_create()}
 					</button>

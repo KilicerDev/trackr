@@ -121,20 +121,20 @@
 						class="group flex h-full shrink-0 items-center gap-2.5"
 					>
 						<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
-							<Icon name="chevron" size={12} />
+							<Icon name="chevron" size={13} />
 						</span>
 						<span class="h-2 w-2 rounded-full" style:background={g.dot}></span>
 					</button>
 					{#if href}
 						<a
 							{href}
-							class="truncate text-[13px] font-semibold text-text hover:underline"
+							class="truncate text-[14px] font-semibold text-text hover:underline"
 							title={m.tasks_open_project({ name: g.label })}
 						>
 							{g.label}
 						</a>
 					{:else}
-						<span class="truncate text-[13px] font-semibold text-text">{g.label}</span>
+						<span class="truncate text-[14px] font-semibold text-text">{g.label}</span>
 					{/if}
 					<button
 						type="button"
@@ -142,19 +142,19 @@
 						aria-label={g.label}
 						class="flex h-full min-w-0 flex-1 items-center gap-2.5 text-left"
 					>
-						<span class="font-mono text-[11px] text-text-3">{g.tasks.length}</span>
+						<span class="font-mono text-[12px] text-text-3">{g.tasks.length}</span>
 						<div class="h-1 w-24 overflow-hidden rounded-full bg-surface">
 							<div class="h-full" style:width="{pct}%" style:background={g.dot}></div>
 						</div>
-						<span class="font-mono text-[10px] text-text-4">{pct}%</span>
+						<span class="font-mono text-[11px] text-text-4">{pct}%</span>
 					</button>
 					{#if group === 'project'}
 						<IconButton
-							size={24}
+							size={26}
 							ariaLabel={m.tasks_add_task()}
 							onclick={() => onAddInProject?.(g.id as ProjectId)}
 						>
-							<Icon name="plus" size={13} />
+							<Icon name="plus" size={14} />
 						</IconButton>
 					{/if}
 				</div>
@@ -168,9 +168,9 @@
 						<button
 							type="button"
 							onclick={() => onAddInProject?.(g.id as ProjectId)}
-							class="flex h-9 w-full items-center gap-1.5 border-b border-border px-5 text-left text-[12px] text-text-3 transition-colors hover:bg-surface hover:text-text"
+							class="flex h-9 w-full items-center gap-1.5 border-b border-border px-5 text-left text-[13px] text-text-3 transition-colors hover:bg-surface hover:text-text"
 						>
-							<Icon name="plus" size={12} />
+							<Icon name="plus" size={13} />
 							{m.tasks_new_task()}
 						</button>
 					{/if}

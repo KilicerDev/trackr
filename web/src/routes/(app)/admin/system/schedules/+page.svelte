@@ -13,8 +13,8 @@
 <svelte:head><title>{m.system_tab_schedules()} · {m.system_title()}</title></svelte:head>
 
 <div class="mb-6">
-	<h1 class="text-[24px] font-semibold tracking-[-0.014em]">{m.schedules_title()}</h1>
-	<p class="mt-1 max-w-xl text-[13px] text-text-3">{m.schedules_description()}</p>
+	<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.schedules_title()}</h1>
+	<p class="mt-1 max-w-xl text-[14px] text-text-3">{m.schedules_description()}</p>
 </div>
 
 <div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
@@ -26,7 +26,7 @@
 		/>
 	{:else}
 		<div
-			class="grid h-9 items-center gap-3 border-b border-border px-5 text-[11px] tracking-[0.08em] text-text-4 uppercase"
+			class="grid h-9 items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
 			style:grid-template-columns={cols}
 		>
 			<span>{m.schedules_col_job()}</span>
@@ -38,13 +38,13 @@
 		</div>
 		{#each data.schedules as s (s.id)}
 			<div
-				class="grid items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[13px] last:border-b-0"
+				class="grid items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[14px] last:border-b-0"
 				style:grid-template-columns={cols}
 			>
 				<div class="min-w-0">
 					<span class="font-medium text-text">{s.jobType}</span>
 					{#if s.dedupeKey}
-						<span class="block truncate font-mono text-[11px] text-text-4">{s.dedupeKey}</span>
+						<span class="block truncate font-mono text-[12px] text-text-4">{s.dedupeKey}</span>
 					{/if}
 				</div>
 				<div class="font-mono text-text-3">{s.interval}</div>
@@ -52,7 +52,7 @@
 				<div class="font-mono text-text-3">{s.lastRunAt ?? m.schedules_never()}</div>
 				<div>
 					<span
-						class="inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium {s.enabled
+						class="inline-flex rounded-full px-2.5 py-1 text-[12px] font-medium {s.enabled
 							? 'bg-emerald-500/15 text-emerald-400'
 							: 'bg-surface text-text-3'}"
 					>
@@ -75,7 +75,7 @@
 						<input type="hidden" name="enabled" value={(!s.enabled).toString()} />
 						<button
 							type="submit"
-							class="inline-flex h-7 cursor-pointer items-center rounded-md border border-border bg-surface px-2.5 text-[12px] text-text-2 transition-colors hover:text-text"
+							class="inline-flex h-7 cursor-pointer items-center rounded-md border border-border bg-surface px-2.5 text-[13px] text-text-2 transition-colors hover:text-text"
 						>
 							{s.enabled ? m.schedules_action_disable() : m.schedules_action_enable()}
 						</button>

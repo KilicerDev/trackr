@@ -104,11 +104,11 @@
 					class="group sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-y border-border bg-surface px-5 text-left"
 				>
 					<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
-						<Icon name="chevron" size={12} />
+						<Icon name="chevron" size={13} />
 					</span>
 					<span class="h-2 w-2 rounded-full" style:background={g.dot}></span>
-					<span class="text-[13px] font-semibold text-text">{g.label}</span>
-					<span class="font-mono text-[11px] text-text-3">{g.tickets.length}</span>
+					<span class="text-[14px] font-semibold text-text">{g.label}</span>
+					<span class="font-mono text-[12px] text-text-3">{g.tickets.length}</span>
 				</button>
 			{/if}
 			{#if !isCollapsed}
@@ -119,13 +119,13 @@
 						<button
 							type="button"
 							onclick={() => onSelect?.(t)}
-							class="flex h-10 w-full items-center gap-3 border-b border-border pr-4 pl-5 text-left text-[13px] transition-colors hover:bg-surface {selectedId ===
+							class="flex h-10 w-full items-center gap-3 border-b border-border pr-4 pl-5 text-left text-[14px] transition-colors hover:bg-surface {selectedId ===
 							t.id
 								? 'bg-surface'
 								: ''}"
 						>
 							<PriorityBars priority={t.priority} />
-							<span class="w-[112px] shrink-0 truncate font-mono text-[11px] text-text-3"
+							<span class="w-[123px] shrink-0 truncate font-mono text-[12px] text-text-3"
 								>{t.displayId}</span
 							>
 							<span
@@ -136,33 +136,46 @@
 							<span class="flex-1 truncate text-text">{t.subject}</span>
 							{#if sla}
 								<span
-									class="hidden shrink-0 items-center gap-1.5 text-[11px] text-text-3 lg:inline-flex"
+									class="hidden shrink-0 items-center gap-1.5 text-[12px] text-text-3 lg:inline-flex"
 									title={sla.label}
 								>
 									<span class="h-1.5 w-1.5 rounded-full" style:background={sla.dot}></span>
-									<span class="max-w-[180px] truncate">{sla.label}</span>
+									<span class="max-w-[198px] truncate">{sla.label}</span>
 								</span>
 							{/if}
 							<span
-								class="hidden shrink-0 items-center gap-1 rounded-md border border-border bg-surface px-1.5 py-0.5 text-[11px] text-text-3 md:inline-flex"
+								class="hidden shrink-0 items-center gap-1 rounded-md border border-border bg-surface px-1.5 py-0.5 text-[12px] text-text-3 md:inline-flex"
 								title={t.orgName}
 							>
 								<span class="h-1.5 w-1.5 rounded-full" style:background={t.orgColor}></span>
-								<span class="max-w-[120px] truncate">{t.orgName}</span>
+								<span class="max-w-[132px] truncate">{t.orgName}</span>
 							</span>
 							{#if t.messageCount > 0}
 								<span
-									class="hidden shrink-0 items-center gap-1 text-[11px] text-text-3 md:inline-flex"
+									class="hidden shrink-0 items-center gap-1 text-[12px] text-text-3 md:inline-flex"
 								>
-									<Icon name="msg" size={11} />
+									<Icon name="msg" size={12} />
 									{t.messageCount}
 								</span>
 							{/if}
-							<span class="hidden w-[72px] shrink-0 text-right text-[11px] text-text-3 lg:inline">
+							{#if t.checklist.length}
+								{@const cdone = t.checklist.filter((i) => i.done).length}
+								<span
+									class="hidden shrink-0 items-center gap-1 text-[12px] md:inline-flex {cdone ===
+									t.checklist.length
+										? 'text-[#7fc8a9]'
+										: 'text-text-3'}"
+									title="{cdone}/{t.checklist.length}"
+								>
+									<Icon name="check" size={12} />
+									{cdone}/{t.checklist.length}
+								</span>
+							{/if}
+							<span class="hidden w-[79px] shrink-0 text-right text-[12px] text-text-3 lg:inline">
 								{relTime(t.lastMessageAt ?? t.updatedAt)}
 							</span>
 							{#if assignee}
-								<Avatar user={assignee} size={20} />
+								<Avatar user={assignee} size={22} />
 							{:else}
 								<span class="h-5 w-5 rounded-full border border-dashed border-border-strong"></span>
 							{/if}
@@ -173,7 +186,7 @@
 		</div>
 	{/each}
 	{#if tickets.length === 0}
-		<div class="grid flex-1 place-items-center text-[13px] text-text-3">
+		<div class="grid flex-1 place-items-center text-[14px] text-text-3">
 			{mm.tickets_none_match()}
 		</div>
 	{/if}

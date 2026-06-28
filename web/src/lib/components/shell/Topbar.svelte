@@ -82,7 +82,7 @@
 	}
 </script>
 
-<header class="flex shrink-0 items-center gap-3.5 border-b border-border bg-bg px-[22px] py-3">
+<header class="flex shrink-0 items-center gap-3.5 border-b border-border bg-bg px-[24px] py-3">
 	{#if sidebarUi}
 		<button
 			type="button"
@@ -91,10 +91,10 @@
 			aria-label={sidebarUi.collapsed ? m.shell_expand_sidebar() : m.shell_collapse_sidebar()}
 			class="-ml-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
 		>
-			<Icon name="sidebar" size={16} />
+			<Icon name="sidebar" size={17} />
 		</button>
 	{/if}
-	<div class="flex items-center gap-2 text-[13px]">
+	<div class="flex items-center gap-2 text-[14px]">
 		{#each crumbs as c, i (c.label)}
 			{#if i > 0}<span class="text-text-4">/</span>{/if}
 			{#if c.href}
@@ -112,24 +112,24 @@
 				dot={notifications.unreadCount > 0}
 				onclick={() => (bellOpen = !bellOpen)}
 			>
-				<Icon name="bell" size={15} />
+				<Icon name="bell" size={16} />
 			</IconButton>
 			<Popover open={bellOpen} onclose={() => (bellOpen = false)} align="right" minWidth={340}>
 				<div class="flex items-center justify-between px-2 pt-1 pb-2">
-					<span class="text-[12px] font-medium">{m.shell_notifications()}</span>
+					<span class="text-[13px] font-medium">{m.shell_notifications()}</span>
 					{#if notifications.unreadCount > 0}
-						<span class="text-[11px] tracking-[0.08em] text-text-3 uppercase">
+						<span class="text-[12px] tracking-[0.08em] text-text-3 uppercase">
 							{m.shell_notifications_unread({ n: notifications.unreadCount })}
 						</span>
 					{/if}
 				</div>
 				<div class="-mx-0.5 mb-1 h-px bg-border"></div>
 				{#if notifications.items.length === 0}
-					<div class="px-2 py-6 text-center text-[12px] text-text-3">
+					<div class="px-2 py-6 text-center text-[13px] text-text-3">
 						{m.shell_notifications_empty()}
 					</div>
 				{:else}
-					<div class="-mx-0.5 max-h-[360px] overflow-y-auto">
+					<div class="-mx-0.5 max-h-[396px] overflow-y-auto">
 						{#each notifications.items as n (n.id)}
 							<a
 								href={n.url}
@@ -144,12 +144,12 @@
 									<span class="mt-1.5 h-1.5 w-1.5 shrink-0"></span>
 								{/if}
 								<div class="min-w-0 flex-1">
-									<div class="truncate text-[13px] font-medium">{n.title}</div>
+									<div class="truncate text-[14px] font-medium">{n.title}</div>
 									{#if n.body}
-										<div class="mt-0.5 line-clamp-2 text-[11px] text-text-3">{n.body}</div>
+										<div class="mt-0.5 line-clamp-2 text-[12px] text-text-3">{n.body}</div>
 									{/if}
 								</div>
-								<span class="mt-0.5 shrink-0 text-[11px] text-text-4">{timeAgo(n.createdAt)}</span
+								<span class="mt-0.5 shrink-0 text-[12px] text-text-4">{timeAgo(n.createdAt)}</span
 								>
 							</a>
 						{/each}
@@ -158,7 +158,7 @@
 					<a
 						href="/me/notifications"
 						onclick={() => (bellOpen = false)}
-						class="block px-2 py-1.5 text-center text-[11px] text-text-3 hover:text-text"
+						class="block px-2 py-1.5 text-center text-[12px] text-text-3 hover:text-text"
 					>
 						{m.shell_notifications_view_all()}
 					</a>
@@ -173,15 +173,15 @@
 				class="grid h-8 w-8 place-items-center rounded-full transition-shadow hover:shadow-[0_0_0_2px_var(--border-strong)]"
 				aria-label={m.shell_account()}
 			>
-				<Avatar user={me} size={28} />
+				<Avatar user={me} size={31} />
 			</button>
 			<Popover open={acctOpen} onclose={() => (acctOpen = false)} align="right" minWidth={240}>
 				{#if me}
 					<div class="flex items-center gap-2.5 px-2 pt-2 pb-3">
-						<Avatar user={me} size={32} />
+						<Avatar user={me} size={35} />
 						<div class="flex min-w-0 flex-col">
-							<span class="truncate text-[13px] font-medium">{me.name}</span>
-							<span class="truncate text-[11px] text-text-3">{me.email}</span>
+							<span class="truncate text-[14px] font-medium">{me.name}</span>
+							<span class="truncate text-[12px] text-text-3">{me.email}</span>
 						</div>
 					</div>
 					<div class="-mx-0.5 mb-1 h-px bg-border"></div>
@@ -189,30 +189,30 @@
 				<a
 					href="/me/profile"
 					onclick={() => (acctOpen = false)}
-					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 				>
 					<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
-						><Icon name="user" size={14} /></span
+						><Icon name="user" size={15} /></span
 					>
 					<span>{m.shell_account_profile()}</span>
 				</a>
 				<a
 					href="/me/settings"
 					onclick={() => (acctOpen = false)}
-					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 				>
 					<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
-						><Icon name="settings" size={14} /></span
+						><Icon name="settings" size={15} /></span
 					>
 					<span>{m.shell_account_settings()}</span>
 				</a>
 				<a
 					href="/me/notifications"
 					onclick={() => (acctOpen = false)}
-					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 				>
 					<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
-						><Icon name="bell" size={14} /></span
+						><Icon name="bell" size={15} /></span
 					>
 					<span>{m.shell_notifications()}</span>
 				</a>
@@ -221,14 +221,14 @@
 					<button
 						type="button"
 						onclick={() => (orgListOpen = !orgListOpen)}
-						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 					>
 						<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
-							><Icon name="org" size={14} /></span
+							><Icon name="org" size={15} /></span
 						>
 						<span>{m.shell_switch_organization()}</span>
 						<span class="ml-auto text-text-3"
-							><Icon name={orgListOpen ? 'chevron' : 'chevron-r'} size={12} /></span
+							><Icon name={orgListOpen ? 'chevron' : 'chevron-r'} size={13} /></span
 						>
 					</button>
 					{#if orgListOpen}
@@ -240,14 +240,14 @@
 										acctOpen = false;
 										if (o.id !== activeOrgId) void setActiveOrg(o.id);
 									}}
-									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 								>
 									<span class="h-2 w-2 shrink-0 rounded-full" style:background={o.color}></span>
 									<span class="truncate">{o.name}</span>
 									<span
 										class="ml-auto text-accent {o.id === activeOrgId ? 'opacity-100' : 'opacity-0'}"
 									>
-										<Icon name="check" size={13} />
+										<Icon name="check" size={14} />
 									</span>
 								</button>
 							{/each}
@@ -255,10 +255,10 @@
 					{/if}
 				{:else if !page.data?.isPortalUser}
 					<button
-						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 					>
 						<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
-							><Icon name="home" size={14} /></span
+							><Icon name="home" size={15} /></span
 						>
 						<span>{m.shell_switch_workspace()}</span>
 						<span class="ml-auto"><Kbd>⌘O</Kbd></span>
@@ -270,10 +270,10 @@
 						acctOpen = false;
 						feedbackOpen = true;
 					}}
-					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 				>
 					<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
-						><Icon name="send" size={14} /></span
+						><Icon name="send" size={15} /></span
 					>
 					<span>{m.shell_send_feedback()}</span>
 				</button>
@@ -281,10 +281,10 @@
 				<form method="post" action="/logout" class="contents">
 					<button
 						type="submit"
-						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none hover:bg-[#ef4f5e]/10 text-prio-urgent"
+						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none hover:bg-[#ef4f5e]/10 text-prio-urgent"
 					>
 						<span class="grid h-4 w-4 shrink-0 place-items-center"
-							><Icon name="logout" size={14} /></span
+							><Icon name="logout" size={15} /></span
 						>
 						<span>{m.shell_sign_out()}</span>
 					</button>

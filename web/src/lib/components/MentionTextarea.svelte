@@ -314,7 +314,7 @@
 	{#if open && optionCount}
 		<div
 			use:autoPlace
-			class="absolute top-full left-0 z-50 mt-1 max-w-[280px] min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1 shadow-lg"
+			class="absolute top-full left-0 z-50 mt-1 max-w-[308px] min-w-[242px] rounded-[10px] border border-border bg-bg-elev p-1 shadow-lg"
 		>
 			{#if mode === '@'}
 				{#each candidates as u, i (u.id)}
@@ -330,8 +330,8 @@
 							? 'bg-surface-2 text-text'
 							: 'text-text-2'}"
 					>
-						<Avatar user={u} size={20} />
-						<span class="truncate text-[13px]">{u.name}</span>
+						<Avatar user={u} size={22} />
+						<span class="truncate text-[14px]">{u.name}</span>
 					</button>
 				{/each}
 			{:else}
@@ -343,7 +343,7 @@
 							void chooseTag(t.id, t.label);
 						}}
 						onmouseenter={() => (activeIndex = i)}
-						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] {i ===
+						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] {i ===
 						activeIndex
 							? 'bg-surface-2 text-text'
 							: 'text-text-2'}"
@@ -360,12 +360,12 @@
 							void chooseTag(null, query.trim());
 						}}
 						onmouseenter={() => (activeIndex = tagMatches.length)}
-						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] {activeIndex ===
+						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] {activeIndex ===
 						tagMatches.length
 							? 'bg-surface-2 text-text'
 							: 'text-text-2'}"
 					>
-						<Icon name="plus" size={12} class="text-text-3" />
+						<Icon name="plus" size={13} class="text-text-3" />
 						<span class="truncate">{m.chat_tag_create({ label: query.trim() })}</span>
 					</button>
 				{/if}

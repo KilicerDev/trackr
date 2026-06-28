@@ -27,7 +27,7 @@
 				type="button"
 				transition:fly={{ y: 12, duration: 180, easing: cubicOut }}
 				onclick={() => dismissToast(t.id)}
-				class="pointer-events-auto max-w-[420px] rounded-xl border px-4 py-2.5 text-center text-[13px] shadow-[0_8px_24px_-12px_rgba(0,0,0,0.5)]"
+				class="pointer-events-auto max-w-[462px] rounded-xl border px-4 py-2.5 text-center text-[14px] shadow-[0_8px_24px_-12px_rgba(0,0,0,0.5)]"
 				style:background={c.bg}
 				style:border-color={c.border}
 				style:color={c.text}

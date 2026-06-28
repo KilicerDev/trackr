@@ -1,0 +1,1 @@
+ALTER TABLE "ticket" ADD COLUMN "checklist" jsonb DEFAULT '[]'::jsonb NOT NULL;

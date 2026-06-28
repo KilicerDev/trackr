@@ -59,7 +59,7 @@
 <div class="flex flex-wrap items-center gap-1.5">
 	{#each selectedTags as t (t.id)}
 		<span
-			class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] text-text-2"
+			class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[12px] text-text-2"
 			style:background="{tagColor(t)}22"
 		>
 			<span class="h-1.5 w-1.5 rounded-full" style:background={tagColor(t)}></span>
@@ -68,7 +68,7 @@
 				type="button"
 				aria-label={m.chat_tag_remove()}
 				onclick={() => toggle(t.id)}
-				class="text-text-4 hover:text-text"><Icon name="x" size={11} /></button
+				class="text-text-4 hover:text-text"><Icon name="x" size={12} /></button
 			>
 		</span>
 	{/each}
@@ -77,9 +77,9 @@
 		<button
 			type="button"
 			onclick={() => (open = !open)}
-			class="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[11px] text-text-3 hover:border-border-strong hover:text-text"
+			class="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[12px] text-text-3 hover:border-border-strong hover:text-text"
 		>
-			<Icon name="plus" size={12} />
+			<Icon name="plus" size={13} />
 			{m.chat_tags()}
 		</button>
 		<Popover open={open} onclose={() => (open = false)} minWidth={220} {dropUp}>
@@ -87,7 +87,7 @@
 				<input
 					bind:value={query}
 					placeholder={m.chat_tag_add()}
-					class="w-full rounded-md border border-border bg-bg px-2 py-1 text-[12px] outline-none focus:border-border-strong"
+					class="w-full rounded-md border border-border bg-bg px-2 py-1 text-[13px] outline-none focus:border-border-strong"
 				/>
 			</div>
 			<div class="max-h-56 overflow-y-auto">
@@ -98,9 +98,9 @@
 						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-surface-2"
 					>
 						<span class="h-2 w-2 rounded-full" style:background={tagColor(t)}></span>
-						<span class="truncate text-[13px] text-text-2">{t.label}</span>
+						<span class="truncate text-[14px] text-text-2">{t.label}</span>
 						{#if selected.includes(t.id)}
-							<span class="ml-auto text-accent"><Icon name="check" size={13} /></span>
+							<span class="ml-auto text-accent"><Icon name="check" size={14} /></span>
 						{/if}
 					</button>
 				{/each}
@@ -111,12 +111,12 @@
 						disabled={creating}
 						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-surface-2 disabled:opacity-50"
 					>
-						<Icon name="plus" size={12} class="text-text-3" />
-						<span class="truncate text-[13px] text-text-2">{m.chat_tag_create({ label: query.trim() })}</span>
+						<Icon name="plus" size={13} class="text-text-3" />
+						<span class="truncate text-[14px] text-text-2">{m.chat_tag_create({ label: query.trim() })}</span>
 					</button>
 				{/if}
 				{#if filtered.length === 0 && !showCreate}
-					<div class="px-2 py-1.5 text-[12px] text-text-4">{m.chat_no_tags()}</div>
+					<div class="px-2 py-1.5 text-[13px] text-text-4">{m.chat_no_tags()}</div>
 				{/if}
 			</div>
 		</Popover>

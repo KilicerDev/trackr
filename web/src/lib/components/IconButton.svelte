@@ -8,7 +8,7 @@
 		children: Snippet;
 		class?: string;
 	}
-	let { onclick, dot = false, size = 32, ariaLabel, children, class: cls = '' }: Props = $props();
+	let { onclick, dot = false, size = 35, ariaLabel, children, class: cls = '' }: Props = $props();
 </script>
 
 <button
@@ -22,7 +22,7 @@
 	{@render children()}
 	{#if dot}
 		<span
-			class="absolute top-[6px] right-[6px] h-[7px] w-[7px] rounded-full bg-accent ring-2 ring-bg"
+			class="absolute top-[6px] right-[6px] h-[8px] w-[8px] rounded-full bg-accent ring-2 ring-bg"
 		></span>
 	{/if}
 </button>

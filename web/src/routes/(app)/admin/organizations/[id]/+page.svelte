@@ -197,16 +197,16 @@
 	<div class="px-6 py-6">
 		<a
 			href="/admin/organizations"
-			class="mb-5 inline-flex items-center gap-1.5 text-[13px] text-text-3 hover:text-text"
+			class="mb-5 inline-flex items-center gap-1.5 text-[14px] text-text-3 hover:text-text"
 		>
-			<Icon name="chevron-r" size={11} class="rotate-180" />
+			<Icon name="chevron-r" size={12} class="rotate-180" />
 			{m.admin_organizations_title()}
 		</a>
 
 		<!-- hero -->
 		<div class="mb-6 flex items-start gap-4">
 			<div
-				class="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-[16px] font-semibold text-white shadow-edge"
+				class="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-[17px] font-semibold text-white shadow-edge"
 				style:background="linear-gradient(140deg, {data.org.color}, color-mix(in oklch, {data.org
 					.color} 70%, #000) 85%)"
 			>
@@ -214,26 +214,26 @@
 			</div>
 			<div class="min-w-0 flex-1">
 				<div class="flex items-center gap-2">
-					<h1 class="text-[24px] font-semibold tracking-[-0.014em] text-text">{data.org.name}</h1>
+					<h1 class="text-[26px] font-semibold tracking-[-0.014em] text-text">{data.org.name}</h1>
 					{#if data.org.archivedAt}
 						<span
-							class="rounded px-1.5 py-0.5 text-[11px] tracking-[0.06em] text-text-3 uppercase bg-status-todo/16"
+							class="rounded px-1.5 py-0.5 text-[12px] tracking-[0.06em] text-text-3 uppercase bg-status-todo/16"
 						>
 							{m.admin_org_archived_badge()}
 						</span>
 					{/if}
 				</div>
-				<div class="mt-1 font-mono text-[13px] text-text-3">{data.org.slug}</div>
+				<div class="mt-1 font-mono text-[14px] text-text-3">{data.org.slug}</div>
 			</div>
 			<div class="flex items-center gap-2">
 				{#if !editing}
 					<Button variant="default" size="sm" onclick={() => (editing = true)}>
-						<Icon name="settings" size={13} />
+						<Icon name="settings" size={14} />
 						{m.common_edit()}
 					</Button>
 				{/if}
 				<Button variant="default" size="sm" onclick={onArchive}>
-					<Icon name={data.org.archivedAt ? 'refresh' : 'x'} size={13} />
+					<Icon name={data.org.archivedAt ? 'refresh' : 'x'} size={14} />
 					{data.org.archivedAt ? m.admin_org_unarchive_confirm() : m.common_archive()}
 				</Button>
 			</div>
@@ -264,7 +264,7 @@
 				<div>
 					<label
 						for="o-name"
-						class="mb-1.5 block text-[11px] tracking-[0.08em] text-text-4 uppercase"
+						class="mb-1.5 block text-[12px] tracking-[0.08em] text-text-4 uppercase"
 					>
 						{m.admin_name()}
 					</label>
@@ -273,13 +273,13 @@
 						name="name"
 						bind:value={name}
 						required
-						class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-[13px] outline-none focus:border-border-strong"
+						class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-[14px] outline-none focus:border-border-strong"
 					/>
 				</div>
 				<div>
 					<label
 						for="o-slug"
-						class="mb-1.5 block text-[11px] tracking-[0.08em] text-text-4 uppercase"
+						class="mb-1.5 block text-[12px] tracking-[0.08em] text-text-4 uppercase"
 					>
 						{m.admin_slug()}
 					</label>
@@ -287,13 +287,13 @@
 						id="o-slug"
 						name="slug"
 						bind:value={slug}
-						class="w-full rounded-lg border border-border bg-surface px-3 py-2 font-mono text-[13px] outline-none focus:border-border-strong"
+						class="w-full rounded-lg border border-border bg-surface px-3 py-2 font-mono text-[14px] outline-none focus:border-border-strong"
 					/>
 				</div>
 				<div>
 					<label
 						for="o-desc"
-						class="mb-1.5 block text-[11px] tracking-[0.08em] text-text-4 uppercase"
+						class="mb-1.5 block text-[12px] tracking-[0.08em] text-text-4 uppercase"
 					>
 						{m.admin_org_description_label()}
 					</label>
@@ -302,11 +302,11 @@
 						name="description"
 						bind:value={description}
 						rows="3"
-						class="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-[13px] outline-none focus:border-border-strong"
+						class="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-[14px] outline-none focus:border-border-strong"
 					></textarea>
 				</div>
 				<div>
-					<div class="mb-2 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+					<div class="mb-2 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 						{m.admin_color()}
 					</div>
 					<div class="flex flex-wrap gap-1.5">
@@ -327,7 +327,7 @@
 				</div>
 				{#if serverError}
 					<div
-						class="rounded-lg border px-3 py-2 text-[13px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
+						class="rounded-lg border px-3 py-2 text-[14px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
 					>
 						{serverError}
 					</div>
@@ -345,7 +345,7 @@
 					<button
 						type="submit"
 						disabled={saving || !name.trim()}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[11px] py-[7px] text-[13px] font-medium text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[12px] py-[8px] text-[14px] font-medium text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{saving ? m.common_saving() : m.common_save_changes()}
 					</button>
@@ -353,18 +353,18 @@
 			</form>
 		{:else if data.org.description}
 			<div class="mb-6 rounded-2xl border border-border bg-bg-elev p-4">
-				<div class="mb-1.5 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+				<div class="mb-1.5 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 					{m.admin_org_about()}
 				</div>
-				<p class="text-[13px] leading-relaxed text-text-2">{data.org.description}</p>
+				<p class="text-[14px] leading-relaxed text-text-2">{data.org.description}</p>
 			</div>
 		{/if}
 
 		<!-- members -->
 		<div class="relative mb-5 rounded-2xl border border-border bg-bg-elev">
 			<div class="flex items-center gap-2.5 border-b border-border px-4 py-3">
-				<span class="text-[14px] font-semibold">{m.admin_members()}</span>
-				<span class="font-mono text-[11px] text-text-3">{data.members.length}</span>
+				<span class="text-[15px] font-semibold">{m.admin_members()}</span>
+				<span class="font-mono text-[12px] text-text-3">{data.members.length}</span>
 				<div class="relative ml-auto">
 					<Button
 						variant="default"
@@ -374,7 +374,7 @@
 							memberSearch = '';
 						}}
 					>
-						<Icon name="plus" size={13} />
+						<Icon name="plus" size={14} />
 						{m.admin_org_add_member()}
 					</Button>
 					{#if addingMember}
@@ -382,18 +382,18 @@
 							use:clickOutside={() => (addingMember = false)}
 							use:autoPlace
 							in:fly={POPOVER_IN}
-							class="absolute top-full z-50 mt-1.5 w-[280px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+							class="absolute top-full z-50 mt-1.5 w-[308px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 						>
 							<div class="mb-1.5 flex items-center gap-2 border-b border-border px-2 pt-1 pb-2">
-								<span class="text-text-3"><Icon name="search" size={13} /></span>
+								<span class="text-text-3"><Icon name="search" size={14} /></span>
 								<input
 									type="text"
 									bind:value={memberSearch}
 									placeholder={m.admin_org_add_user_placeholder()}
-									class="flex-1 border-0 bg-transparent text-[13px] outline-none placeholder:text-text-3"
+									class="flex-1 border-0 bg-transparent text-[14px] outline-none placeholder:text-text-3"
 								/>
 							</div>
-							<div class="max-h-[280px] overflow-y-auto">
+							<div class="max-h-[308px] overflow-y-auto">
 								{#each candidates as u (u.id)}
 									<button
 										type="button"
@@ -401,16 +401,16 @@
 										disabled={busyMember === `memberAdd:${u.id}`}
 										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
 									>
-										<Avatar user={u} size={22} />
+										<Avatar user={u} size={24} />
 										<span class="min-w-0 flex-1">
-											<span class="block truncate text-[13px]">{u.name}</span>
-											<span class="block truncate font-mono text-[11px] text-text-3">{u.email}</span
+											<span class="block truncate text-[14px]">{u.name}</span>
+											<span class="block truncate font-mono text-[12px] text-text-3">{u.email}</span
 											>
 										</span>
 									</button>
 								{/each}
 								{#if candidates.length === 0}
-									<div class="px-2 py-3 text-center text-[12px] text-text-3">
+									<div class="px-2 py-3 text-center text-[13px] text-text-3">
 										{memberSearch ? m.admin_org_no_matches() : m.admin_org_everyone_member()}
 									</div>
 								{/if}
@@ -421,7 +421,7 @@
 			</div>
 
 			{#if data.members.length === 0}
-				<div class="px-5 py-8 text-center text-[13px] text-text-3">
+				<div class="px-5 py-8 text-center text-[14px] text-text-3">
 					{m.admin_org_no_members()}
 				</div>
 			{:else}
@@ -431,31 +431,31 @@
 					) as OrgRole}
 					{@const meta = ROLE_META[role] ?? { label: orgRoleLabel(role), color: '#7c7c84' }}
 					<div
-						class="flex items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[13px] last:border-b-0"
+						class="flex items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[14px] last:border-b-0"
 					>
-						<Avatar user={member} size={28} />
+						<Avatar user={member} size={31} />
 						<div class="min-w-0 flex-1">
 							<div class="truncate font-medium text-text">{member.name}</div>
-							<div class="truncate font-mono text-[11px] text-text-3">{member.email}</div>
+							<div class="truncate font-mono text-[12px] text-text-3">{member.email}</div>
 						</div>
 						<div class="relative">
 							<button
 								type="button"
 								onclick={() => (openRoleMenu = openRoleMenu === member.id ? null : member.id)}
-								class="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium hover:bg-surface"
+								class="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[12px] font-medium hover:bg-surface"
 								style:color={meta.color}
 								style:background={meta.color + '22'}
 							>
 								<span class="h-1.5 w-1.5 rounded-full" style:background={meta.color}></span>
 								{orgRoleLabel(role)}
-								<Icon name="chevron" size={10} />
+								<Icon name="chevron" size={11} />
 							</button>
 							{#if openRoleMenu === member.id}
 								<div
 									use:clickOutside={() => (openRoleMenu = null)}
 									use:autoPlace
 									in:fly={POPOVER_IN}
-									class="absolute top-full z-40 mt-1.5 min-w-[140px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+									class="absolute top-full z-40 mt-1.5 min-w-[154px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 								>
 									{#each ROLES as r (r)}
 										<button
@@ -465,9 +465,9 @@
 										>
 											<span class="h-1.5 w-1.5 rounded-full" style:background={ROLE_META[r].color}
 											></span>
-											<span class="text-[13px]">{orgRoleLabel(r)}</span>
+											<span class="text-[14px]">{orgRoleLabel(r)}</span>
 											{#if r === role}
-												<span class="ml-auto text-accent"><Icon name="check" size={12} /></span>
+												<span class="ml-auto text-accent"><Icon name="check" size={13} /></span>
 											{/if}
 										</button>
 									{/each}
@@ -475,7 +475,7 @@
 							{/if}
 						</div>
 						<IconButton
-							size={28}
+							size={31}
 							ariaLabel={m.admin_org_remove_member()}
 							onclick={() => removeMember(member.id, member.name)}
 						>
@@ -484,7 +484,7 @@
 									class="h-3 w-3 animate-spin rounded-full border-2 border-text-3 border-t-transparent"
 								></span>
 							{:else}
-								<Icon name="x" size={13} />
+								<Icon name="x" size={14} />
 							{/if}
 						</IconButton>
 					</div>
@@ -495,8 +495,8 @@
 		<!-- projects -->
 		<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
 			<div class="flex items-center gap-2.5 border-b border-border px-4 py-3">
-				<span class="text-[14px] font-semibold">{m.admin_projects()}</span>
-				<span class="font-mono text-[11px] text-text-3">{data.projects.length}</span>
+				<span class="text-[15px] font-semibold">{m.admin_projects()}</span>
+				<span class="font-mono text-[12px] text-text-3">{data.projects.length}</span>
 			</div>
 			{#if data.projects.length === 0}
 				<EmptyState
@@ -508,20 +508,20 @@
 				{#each data.projects as p (p.id)}
 					<a
 						href="/projects/{p.id}"
-						class="flex items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[13px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)]"
+						class="flex items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[14px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)]"
 					>
 						<span
-							class="grid h-7 w-7 shrink-0 place-items-center rounded-md text-[12px] font-semibold text-white"
+							class="grid h-7 w-7 shrink-0 place-items-center rounded-md text-[13px] font-semibold text-white"
 							style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%,
 							#000) 85%)">{p.icon}</span
 						>
 						<span class="min-w-0 flex-1">
 							<span class="block truncate font-medium text-text">{p.name}</span>
-							<span class="block font-mono text-[11px] text-text-3">{p.key}</span>
+							<span class="block font-mono text-[12px] text-text-3">{p.key}</span>
 						</span>
-						<span class="text-[13px] text-text-2">{projectStatusLabel(p.status)}</span>
+						<span class="text-[14px] text-text-2">{projectStatusLabel(p.status)}</span>
 						<span class="grid place-items-center text-text-3"
-							><Icon name="chevron-r" size={12} /></span
+							><Icon name="chevron-r" size={13} /></span
 						>
 					</a>
 				{/each}

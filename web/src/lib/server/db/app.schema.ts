@@ -860,6 +860,13 @@ export const ticket = pgTable(
 		closedAt: timestamp('closed_at'),
 		satisfactionScore: integer('satisfaction_score'),
 		tags: text('tags').array().notNull().default([]),
+		// Lightweight shared checklist (tick-boxes) on the ticket. Stored inline
+		// as an ordered array — same shape as tasks — so progress (done/total) is
+		// a trivial read for cards/rows without joins.
+		checklist: jsonb('checklist')
+			.$type<{ id: string; text: string; done: boolean }[]>()
+			.notNull()
+			.default([]),
 		// Soft delete: set when an admin deletes the ticket. Non-null rows are
 		// excluded from every read path (list, detail, mutations).
 		deletedAt: timestamp('deleted_at'),

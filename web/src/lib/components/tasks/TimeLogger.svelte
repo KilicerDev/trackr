@@ -58,12 +58,12 @@
 		<span
 			class="grid h-7 w-7 place-items-center rounded-md border border-border bg-bg-elev text-text-3"
 		>
-			<Icon name="calendar" size={13} />
+			<Icon name="calendar" size={14} />
 		</span>
-		<span class="text-[13px] font-medium text-text">{m.tasks_log_time()}</span>
-		<span class="ml-auto font-mono text-[11px] text-text-3">{summary}</span>
+		<span class="text-[14px] font-medium text-text">{m.tasks_log_time()}</span>
+		<span class="ml-auto font-mono text-[12px] text-text-3">{summary}</span>
 		<span class="text-text-3">
-			<Icon name="chevron" size={11} />
+			<Icon name="chevron" size={12} />
 		</span>
 	</button>
 
@@ -81,12 +81,12 @@
 				<span
 					class="grid h-7 w-7 place-items-center rounded-md border border-border bg-surface text-text-3"
 				>
-					<Icon name="calendar" size={13} />
+					<Icon name="calendar" size={14} />
 				</span>
-				<span class="text-[13px] font-medium text-text">{m.tasks_log_time()}</span>
-				<span class="ml-auto font-mono text-[11px] text-text-3">{summary}</span>
+				<span class="text-[14px] font-medium text-text">{m.tasks_log_time()}</span>
+				<span class="ml-auto font-mono text-[12px] text-text-3">{summary}</span>
 				<span class="rotate-180 text-text-3">
-					<Icon name="chevron" size={11} />
+					<Icon name="chevron" size={12} />
 				</span>
 			</button>
 			<div class="space-y-2.5 border-t border-border p-3">
@@ -96,10 +96,10 @@
 							type="number"
 							min="0"
 							bind:value={h}
-							class="w-full rounded-lg border border-border bg-surface px-3 py-2 pr-7 font-mono text-[13px] outline-none focus:border-border-strong"
+							class="w-full rounded-lg border border-border bg-surface px-3 py-2 pr-7 font-mono text-[14px] outline-none focus:border-border-strong"
 						/>
 						<span
-							class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[11px] text-text-3"
+							class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[12px] text-text-3"
 							>h</span
 						>
 					</div>
@@ -109,24 +109,24 @@
 							min="0"
 							max="59"
 							bind:value={min}
-							class="w-full rounded-lg border border-border bg-surface px-3 py-2 pr-7 font-mono text-[13px] outline-none focus:border-border-strong"
+							class="w-full rounded-lg border border-border bg-surface px-3 py-2 pr-7 font-mono text-[14px] outline-none focus:border-border-strong"
 						/>
 						<span
-							class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[11px] text-text-3"
+							class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[12px] text-text-3"
 							>m</span
 						>
 					</div>
 					<input
 						type="date"
 						bind:value={date}
-						class="rounded-lg border border-border bg-surface px-3 py-2 font-mono text-[13px] outline-none focus:border-border-strong"
+						class="rounded-lg border border-border bg-surface px-3 py-2 font-mono text-[14px] outline-none focus:border-border-strong"
 					/>
 				</div>
 				<textarea
 					bind:value={note}
 					placeholder={m.tasks_what_did_you_work_on()}
 					rows="2"
-					class="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-[13px] outline-none placeholder:text-text-3 focus:border-border-strong"
+					class="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-[14px] outline-none placeholder:text-text-3 focus:border-border-strong"
 				></textarea>
 				<div class="flex items-center justify-end gap-2">
 					<Button size="sm" variant="default" onclick={cancel}>{m.common_cancel()}</Button>

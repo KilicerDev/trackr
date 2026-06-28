@@ -16,6 +16,7 @@
 	import IconButton from '../IconButton.svelte';
 	import Composer from '../Composer.svelte';
 	import MentionText from '../MentionText.svelte';
+	import Checklist from '../Checklist.svelte';
 	import TypeBadge from '../TypeBadge.svelte';
 	import TimeLogger from './TimeLogger.svelte';
 	import AttachmentList from '../attachments/AttachmentList.svelte';
@@ -267,40 +268,12 @@
 	});
 
 	// ─── Checklist ───────────────────────────────────────────────────────────
-	let newChecklistItem = $state('');
 	const checklistItems = $derived(draft?.checklist ?? []);
-	const checklistDone = $derived(checklistItems.filter((it) => it.done).length);
 
-	function saveChecklist() {
+	function onChecklistChange(items: { id: string; text: string; done: boolean }[]) {
 		if (!draft) return;
-		void postAction('update', 'checklist', { checklist: JSON.stringify(draft.checklist ?? []) });
-	}
-	function addChecklistItem() {
-		const text = newChecklistItem.trim();
-		if (!text || !draft) return;
-		draft.checklist = [...(draft.checklist ?? []), { id: crypto.randomUUID(), text, done: false }];
-		newChecklistItem = '';
-		saveChecklist();
-	}
-	function toggleChecklistItem(id: string) {
-		if (!draft) return;
-		draft.checklist = (draft.checklist ?? []).map((it) =>
-			it.id === id ? { ...it, done: !it.done } : it
-		);
-		saveChecklist();
-	}
-	function editChecklistItem(id: string, text: string) {
-		if (!draft) return;
-		const t = text.trim();
-		draft.checklist = (draft.checklist ?? [])
-			.map((it) => (it.id === id ? { ...it, text: t } : it))
-			.filter((it) => it.text.length > 0);
-		saveChecklist();
-	}
-	function removeChecklistItem(id: string) {
-		if (!draft) return;
-		draft.checklist = (draft.checklist ?? []).filter((it) => it.id !== id);
-		saveChecklist();
+		draft.checklist = items;
+		void postAction('update', 'checklist', { checklist: JSON.stringify(items) });
 	}
 
 	type PopId =
@@ -446,11 +419,11 @@
 	{#if draft && status && prio && project}
 		<div class="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3">
 			<TypeBadge type={draft.type ?? 'task'} idText={draft.id} showLabel={false} />
-			<span class="rounded bg-surface px-1.5 py-0.5 font-mono text-[11px] text-text-3">
+			<span class="rounded bg-surface px-1.5 py-0.5 font-mono text-[12px] text-text-3">
 				{project.name}
 			</span>
 			{#if savingField}
-				<span class="inline-flex items-center gap-1.5 text-[11px] text-text-3">
+				<span class="inline-flex items-center gap-1.5 text-[12px] text-text-3">
 					<span
 						class="h-2.5 w-2.5 animate-spin rounded-full border border-text-3 border-t-transparent"
 					></span>
@@ -458,12 +431,12 @@
 				</span>
 			{/if}
 			<div class="ml-auto flex items-center gap-1">
-				<IconButton size={28} ariaLabel={m.tasks_copy_link()}
-					><Icon name="link" size={14} /></IconButton
+				<IconButton size={31} ariaLabel={m.tasks_copy_link()}
+					><Icon name="link" size={15} /></IconButton
 				>
 				<div class="relative">
-					<IconButton size={28} ariaLabel={m.tasks_more()} onclick={() => toggle('menu')}>
-						<Icon name="settings" size={14} />
+					<IconButton size={31} ariaLabel={m.tasks_more()} onclick={() => toggle('menu')}>
+						<Icon name="settings" size={15} />
 					</IconButton>
 					{#if openPop === 'menu'}
 						<TaskMenuPopover
@@ -473,8 +446,8 @@
 						/>
 					{/if}
 				</div>
-				<IconButton size={28} ariaLabel={m.common_close()} onclick={onclose}
-					><Icon name="x" size={14} /></IconButton
+				<IconButton size={31} ariaLabel={m.common_close()} onclick={onclose}
+					><Icon name="x" size={15} /></IconButton
 				>
 			</div>
 		</div>
@@ -507,7 +480,7 @@
 					}
 					void patch('title', { title: next });
 				}}
-				class="mb-4 w-full resize-none border-0 bg-transparent text-[20px] leading-tight font-semibold tracking-[-0.012em] text-text outline-none placeholder:text-text-4"
+				class="mb-4 w-full resize-none border-0 bg-transparent text-[22px] leading-tight font-semibold tracking-[-0.012em] text-text outline-none placeholder:text-text-4"
 			></textarea>
 
 			<!-- properties rail -->
@@ -519,7 +492,7 @@
 							type="button"
 							onclick={() => toggle('type')}
 							disabled={!canEdit}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
+							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
 								? 'hover:border-border-strong'
 								: ''} {openPop === 'type' ? 'ring-2 ring-accent/40' : ''}"
 						>
@@ -545,7 +518,7 @@
 						type="button"
 						onclick={() => toggle('status')}
 						disabled={!canEdit}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
+						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
 							? 'hover:border-border-strong'
 							: ''} {openPop === 'status' ? 'ring-2 ring-accent/40' : ''}"
 					>
@@ -570,7 +543,7 @@
 						type="button"
 						onclick={() => toggle('priority')}
 						disabled={!canEdit}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
+						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
 							? 'hover:border-border-strong'
 							: ''} {openPop === 'priority' ? 'ring-2 ring-accent/40' : ''}"
 					>
@@ -597,17 +570,17 @@
 						type="button"
 						onclick={() => toggle('assignees')}
 						disabled={!canEdit}
-						class="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
+						class="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
 							? 'hover:border-border-strong'
 							: ''} {openPop === 'assignees' ? 'ring-2 ring-accent/40' : ''}"
 					>
 						{#if assignees.length === 1}
-							<Avatar user={assignees[0]} size={18} />
+							<Avatar user={assignees[0]} size={20} />
 							<span>{assignees[0]?.name}</span>
 						{:else if assignees.length === 0}
 							<span class="text-text-3">{m.common_unassigned()}</span>
 						{:else}
-							<AvatarStack users={assignees} size={18} max={3} overlap={5} />
+							<AvatarStack users={assignees} size={20} max={3} overlap={5} />
 							<span>{m.tasks_n_assignees({ n: assignees.length })}</span>
 						{/if}
 					</button>
@@ -634,7 +607,7 @@
 						type="button"
 						onclick={() => toggle('due')}
 						disabled={!canEdit}
-						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {draft.due
+						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {draft.due
 							? 'border border-border bg-surface'
 							: 'border border-dashed border-border text-text-3'} {canEdit
 							? draft.due
@@ -642,7 +615,7 @@
 								: 'hover:border-border-strong hover:text-text'
 							: ''} {openPop === 'due' ? 'ring-2 ring-accent/40' : ''}"
 					>
-						<Icon name="calendar" size={13} />
+						<Icon name="calendar" size={14} />
 						{#if draft.due}
 							<span class="font-mono">{formatDateLong(draft.due)}</span>
 						{:else}
@@ -666,7 +639,7 @@
 					<button
 						type="button"
 						onclick={() => toggle('plan')}
-						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors {draft.inMyPlan
+						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors {draft.inMyPlan
 							? 'border border-transparent bg-accent-soft text-accent'
 							: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'} {openPop ===
 						'plan'
@@ -674,7 +647,7 @@
 							: ''}"
 						style:background={draft.inMyPlan ? 'rgba(239,122,109,0.14)' : ''}
 					>
-						<Icon name="bookmark" size={13} />
+						<Icon name="bookmark" size={14} />
 						{#if draft.plannedFor}
 							<span class="font-mono">{formatDateLong(draft.plannedFor)}</span>
 						{:else if draft.inMyPlan}
@@ -701,7 +674,7 @@
 						type="button"
 						onclick={() => toggle('estimate')}
 						disabled={!canEdit}
-						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {draft.estimate
+						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {draft.estimate
 							? 'border border-border bg-surface'
 							: 'border border-dashed border-border text-text-3'} {canEdit
 							? draft.estimate
@@ -747,109 +720,24 @@
 					if (next === current) return;
 					void patch('description', { description: next });
 				}}
-				class="mb-5 min-h-[60px] w-full resize-none border-0 bg-transparent text-[13px] leading-relaxed text-text-2 outline-none placeholder:text-text-4"
+				class="mb-5 min-h-[66px] w-full resize-none border-0 bg-transparent text-[14px] leading-relaxed text-text-2 outline-none placeholder:text-text-4"
 			></textarea>
 
-			{#if canEdit || checklistItems.length > 0}
-				{@const total = checklistItems.length}
-				{@const allDone = total > 0 && checklistDone === total}
-				<div class="mb-6">
-					<div class="mb-2.5 flex items-center gap-2.5">
-						<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">
-							{m.tasks_checklist()}
-						</div>
-						{#if total > 0}
-							<span class="font-mono text-[11px] {allDone ? 'text-[#7fc8a9]' : 'text-text-3'}">
-								{checklistDone}/{total}
-							</span>
-							<div class="ml-auto h-1.5 w-24 overflow-hidden rounded-full bg-surface-2">
-								<div
-									class="h-full rounded-full transition-all duration-300 {allDone
-										? 'bg-[#7fc8a9]'
-										: 'bg-accent'}"
-									style:width="{(checklistDone / total) * 100}%"
-								></div>
-							</div>
-						{/if}
-					</div>
-					<div
-						class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface/40"
-					>
-						{#each checklistItems as item (item.id)}
-							<div
-								class="group flex items-center gap-2.5 px-2.5 py-2 transition-colors hover:bg-surface-2/60"
-							>
-								<button
-									type="button"
-									disabled={!canEdit}
-									onclick={() => toggleChecklistItem(item.id)}
-									aria-label={item.text}
-									class="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-md border-[1.5px] transition-all {item.done
-										? 'border-accent bg-accent text-white'
-										: 'border-border-strong hover:border-accent/60'} disabled:cursor-default"
-								>
-									{#if item.done}<Icon name="check" size={12} />{/if}
-								</button>
-								{#if canEdit}
-									<input
-										value={item.text}
-										onblur={(e) => editChecklistItem(item.id, e.currentTarget.value)}
-										onkeydown={(e) => {
-											if (e.key === 'Enter') {
-												e.preventDefault();
-												(e.currentTarget as HTMLInputElement).blur();
-											}
-										}}
-										class="flex-1 border-0 bg-transparent text-[13px] outline-none {item.done
-											? 'text-text-4 line-through'
-											: 'text-text-2'}"
-									/>
-									<button
-										type="button"
-										onclick={() => removeChecklistItem(item.id)}
-										aria-label={m.common_delete()}
-										class="grid h-5 w-5 shrink-0 place-items-center rounded text-text-4 opacity-0 transition-colors group-hover:opacity-100 hover:text-accent"
-									>
-										<Icon name="x" size={12} />
-									</button>
-								{:else}
-									<span
-										class="flex-1 text-[13px] {item.done
-											? 'text-text-4 line-through'
-											: 'text-text-2'}">{item.text}</span
-									>
-								{/if}
-							</div>
-						{/each}
-						{#if canEdit}
-							<div class="flex items-center gap-2.5 px-2.5 py-2">
-								<span class="grid h-[18px] w-[18px] shrink-0 place-items-center text-text-4">
-									<Icon name="plus" size={13} />
-								</span>
-								<input
-									bind:value={newChecklistItem}
-									placeholder={m.tasks_checklist_add()}
-									onkeydown={(e) => {
-										if (e.key === 'Enter') {
-											e.preventDefault();
-											addChecklistItem();
-										}
-									}}
-									class="flex-1 border-0 bg-transparent text-[13px] text-text-2 outline-none placeholder:text-text-4"
-								/>
-							</div>
-						{/if}
-					</div>
-				</div>
-			{/if}
+			<Checklist
+				items={checklistItems}
+				{canEdit}
+				label={m.tasks_checklist()}
+				addPlaceholder={m.tasks_checklist_add()}
+				onChange={onChecklistChange}
+			/>
 
 			{#if draft.parent || draft.sourceTicket || (draft.labels && draft.labels.length > 0) || canEdit}
 				<div class="mb-6 flex flex-wrap items-center gap-2">
 					{#if draft.parent}
 						<span
-							class="inline-flex items-center gap-1.5 rounded border border-border bg-surface px-2 py-1 font-mono text-[11px] text-text-3"
+							class="inline-flex items-center gap-1.5 rounded border border-border bg-surface px-2 py-1 font-mono text-[12px] text-text-3"
 						>
-							<Icon name="chevron-r" size={11} />
+							<Icon name="chevron-r" size={12} />
 							{draft.parent}
 						</span>
 					{/if}
@@ -857,9 +745,9 @@
 						<a
 							href="/tickets/{draft.sourceTicket.id}"
 							title={m.tasks_source_ticket()}
-							class="inline-flex items-center gap-1.5 rounded border border-border bg-surface px-2 py-1 text-[11px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
+							class="inline-flex items-center gap-1.5 rounded border border-border bg-surface px-2 py-1 text-[12px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
 						>
-							<Icon name="link" size={11} />
+							<Icon name="link" size={12} />
 							<span class="font-mono">{draft.sourceTicket.displayId}</span>
 						</a>
 					{/if}
@@ -869,12 +757,12 @@
 							<button
 								type="button"
 								onclick={() => toggle('tags')}
-								class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-[12px] text-text-3 transition-colors hover:border-border-strong hover:text-text {openPop ===
+								class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text {openPop ===
 								'tags'
 									? 'ring-2 ring-accent/40'
 									: ''}"
 							>
-								<Icon name="bookmark" size={12} />
+								<Icon name="bookmark" size={13} />
 								<span>{draft.labels.length > 0 ? m.tasks_add_tag() : m.tasks_add_tags()}</span>
 							</button>
 							{#if openPop === 'tags'}
@@ -896,7 +784,7 @@
 			{#if draft.uuid}
 				<div class="mb-6">
 					<div class="mb-2 flex items-center justify-between">
-						<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">
+						<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
 							{m.tasks_attachments()}{#if draft.files?.length}<span class="ml-1.5 text-text-3"
 									>{draft.files.length}</span
 								>{/if}
@@ -910,7 +798,7 @@
 							currentUserId={(page.data as { currentUserId?: string }).currentUserId ?? null}
 						/>
 					{:else}
-						<p class="text-[13px] text-text-3">{m.tasks_no_files_attached()}</p>
+						<p class="text-[14px] text-text-3">{m.tasks_no_files_attached()}</p>
 					{/if}
 				</div>
 			{/if}
@@ -918,7 +806,7 @@
 			{#if isTeam && draft.uuid}
 				<div class="mb-6">
 					<div class="mb-2 flex items-center justify-between">
-						<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">
+						<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
 							{m.notes_section_meetings()}{#if meetingNotes.length}<span class="ml-1.5 text-text-3"
 									>{meetingNotes.length}</span
 								>{/if}
@@ -927,9 +815,9 @@
 							<button
 								type="button"
 								onclick={() => (newMeetingOpen = true)}
-								class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-[12px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
+								class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
 							>
-								<Icon name="plus" size={12} />
+								<Icon name="plus" size={13} />
 								{m.notes_new_meeting()}
 							</button>
 						{/if}
@@ -941,12 +829,12 @@
 									href="/notes/{n.id}"
 									class="group flex items-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-2 transition-colors hover:border-border-strong"
 								>
-									<Icon name="users" size={14} class="shrink-0 text-text-3" />
-									<span class="flex-1 truncate text-[13px] text-text-2 group-hover:text-text"
+									<Icon name="users" size={15} class="shrink-0 text-text-3" />
+									<span class="flex-1 truncate text-[14px] text-text-2 group-hover:text-text"
 										>{n.title || m.notes_untitled()}</span
 									>
 									{#if n.meetingDate}
-										<span class="shrink-0 text-[11px] text-text-4"
+										<span class="shrink-0 text-[12px] text-text-4"
 											>{meetingDateLabel(n.meetingDate)}</span
 										>
 									{/if}
@@ -954,13 +842,13 @@
 							{/each}
 						</div>
 					{:else}
-						<p class="text-[13px] text-text-3">{m.notes_task_no_meetings()}</p>
+						<p class="text-[14px] text-text-3">{m.notes_task_no_meetings()}</p>
 					{/if}
 				</div>
 			{/if}
 
 			<div class="mt-4">
-				<div class="mb-3 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+				<div class="mb-3 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 					{m.tasks_activity()}
 				</div>
 				<div class="mb-4">
@@ -975,14 +863,14 @@
 								class="absolute top-0.5 -left-7 grid h-5 w-5 place-items-center rounded-full border border-border bg-bg-elev"
 							>
 								{#if e.kind === 'comment'}
-									<Avatar user={u} size={18} />
+									<Avatar user={u} size={20} />
 								{:else if e.kind === 'time'}
-									<Icon name="calendar" size={11} />
+									<Icon name="calendar" size={12} />
 								{:else if e.kind === 'created'}
-									<Icon name="plus" size={11} />
+									<Icon name="plus" size={12} />
 								{/if}
 							</span>
-							<div class="text-[13px] text-text-2">
+							<div class="text-[14px] text-text-2">
 								<span class="font-medium text-text">{u?.name ?? e.user}</span>
 								{#if e.kind === 'comment'}{m.tasks_event_commented()}
 								{:else if e.kind === 'time'}{m.tasks_event_logged()}
@@ -993,7 +881,7 @@
 							</div>
 							{#if e.kind === 'comment'}
 								<div
-									class="mt-2 rounded-lg border border-border bg-surface p-3 text-[13px] leading-relaxed whitespace-pre-wrap text-text"
+									class="mt-2 rounded-lg border border-border bg-surface p-3 text-[14px] leading-relaxed whitespace-pre-wrap text-text"
 								>
 									<MentionText text={e.data} />
 								</div>
@@ -1008,7 +896,7 @@
 									</div>
 								{/if}
 							{:else if e.kind === 'time' && e.data.note}
-								<div class="mt-1.5 text-[13px] text-text-3 italic">{e.data.note}</div>
+								<div class="mt-1.5 text-[14px] text-text-3 italic">{e.data.note}</div>
 							{/if}
 						</div>
 					{/each}
@@ -1016,7 +904,7 @@
 			</div>
 
 			<div
-				class="mt-8 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-4 text-[11px] text-text-4"
+				class="mt-8 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-4 text-[12px] text-text-4"
 			>
 				{#if draft.createdBy}<span
 						>{m.tasks_created_by()}
@@ -1059,7 +947,7 @@
 							onclick={() => commentFileInput?.click()}
 							class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-text-3 transition-colors hover:bg-surface-2 hover:text-text"
 						>
-							<Icon name="paperclip" size={14} />
+							<Icon name="paperclip" size={15} />
 						</button>
 					{/snippet}
 				</Composer>

@@ -62,14 +62,14 @@
 <Topbar crumbs={[{ label: data.org.name }, { label: m.tickets_new_title() }]} />
 
 <div class="min-h-0 flex-1 overflow-auto">
-	<div class="mx-auto max-w-[720px] px-6 py-8">
-		<div class="mb-3 flex items-center gap-2 text-[11px] text-text-3">
+	<div class="mx-auto max-w-[792px] px-6 py-8">
+		<div class="mb-3 flex items-center gap-2 text-[12px] text-text-3">
 			<span class="inline-flex items-center gap-1.5">
 				<span class="h-1.5 w-1.5 rounded-full" style:background={data.org.color}></span>
 				<span>{data.org.name}</span>
 			</span>
 		</div>
-		<h1 class="mb-5 text-[24px] font-semibold tracking-[-0.012em]">
+		<h1 class="mb-5 text-[26px] font-semibold tracking-[-0.012em]">
 			{m.tickets_new_open_heading()}
 		</h1>
 
@@ -107,14 +107,14 @@
 						bind:value={subject}
 						required
 						placeholder={m.tickets_subject_placeholder()}
-						class="mb-3 block w-full border-0 bg-transparent text-[20px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
+						class="mb-3 block w-full border-0 bg-transparent text-[22px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
 					/>
 					<textarea
 						name="description"
 						bind:value={description}
 						placeholder={m.tickets_description_placeholder()}
 						rows="6"
-						class="mb-4 w-full resize-none border-0 bg-transparent text-[14px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
+						class="mb-4 w-full resize-none border-0 bg-transparent text-[15px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
 					></textarea>
 
 					<div class="flex flex-wrap gap-2">
@@ -123,17 +123,17 @@
 							<button
 								type="button"
 								onclick={() => (pop = pop === 'priority' ? null : 'priority')}
-								class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
+								class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
 							>
 								<PriorityBars {priority} />
 								<span>{priorityLabel(priority)}</span>
-								<Icon name="chevron" size={11} class="text-text-3" />
+								<Icon name="chevron" size={12} class="text-text-3" />
 							</button>
 							{#if pop === 'priority'}
 								<div
 									use:clickOutside={() => (pop = null)}
 									in:fly={POPOVER_IN}
-									class="absolute top-full z-50 mt-1.5 min-w-[160px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+									class="absolute top-full z-50 mt-1.5 min-w-[176px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 								>
 									{#each TICKET_PRIORITIES as p (p.id)}
 										<button
@@ -145,13 +145,13 @@
 											class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 										>
 											<PriorityBars priority={p.id} />
-											<span class="text-[13px]">{priorityLabel(p.id)}</span>
+											<span class="text-[14px]">{priorityLabel(p.id)}</span>
 											<span
 												class="ml-auto text-accent {priority === p.id
 													? 'opacity-100'
 													: 'opacity-0'}"
 											>
-												<Icon name="check" size={13} />
+												<Icon name="check" size={14} />
 											</span>
 										</button>
 									{/each}
@@ -164,17 +164,17 @@
 							<button
 								type="button"
 								onclick={() => (pop = pop === 'category' ? null : 'category')}
-								class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
+								class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
 							>
 								<span class="h-2 w-2 rounded-full" style:background={categoryMeta.color}></span>
 								<span>{ticketCategoryLabel(category)}</span>
-								<Icon name="chevron" size={11} class="text-text-3" />
+								<Icon name="chevron" size={12} class="text-text-3" />
 							</button>
 							{#if pop === 'category'}
 								<div
 									use:clickOutside={() => (pop = null)}
 									in:fly={POPOVER_IN}
-									class="absolute top-full z-50 mt-1.5 min-w-[180px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+									class="absolute top-full z-50 mt-1.5 min-w-[198px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 								>
 									{#each TICKET_CATEGORIES as c (c.id)}
 										<button
@@ -186,13 +186,13 @@
 											class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 										>
 											<span class="h-2 w-2 rounded-full" style:background={c.color}></span>
-											<span class="text-[13px]">{ticketCategoryLabel(c.id)}</span>
+											<span class="text-[14px]">{ticketCategoryLabel(c.id)}</span>
 											<span
 												class="ml-auto text-accent {category === c.id
 													? 'opacity-100'
 													: 'opacity-0'}"
 											>
-												<Icon name="check" size={13} />
+												<Icon name="check" size={14} />
 											</span>
 										</button>
 									{/each}
@@ -203,9 +203,9 @@
 						<button
 							type="button"
 							onclick={() => fileInput?.click()}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
+							class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[14px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
 						>
-							<Icon name="paperclip" size={13} />
+							<Icon name="paperclip" size={14} />
 							<span>{m.tickets_attach_files()}</span>
 						</button>
 						<input bind:this={fileInput} type="file" multiple hidden onchange={onPick} />
@@ -229,13 +229,13 @@
 			</AttachmentDropzone>
 
 			<div class="mt-4 flex items-center gap-2">
-				<span class="text-[11px] text-text-3"><Kbd>⌘↵</Kbd> {m.tickets_kbd_to_submit()}</span>
+				<span class="text-[12px] text-text-3"><Kbd>⌘↵</Kbd> {m.tickets_kbd_to_submit()}</span>
 				<div class="ml-auto flex items-center gap-2">
 					<Button variant="default" onclick={() => history.back()}>{m.common_cancel()}</Button>
 					<button
 						type="submit"
 						disabled={submitting || !subject.trim()}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[13px] py-[8px] text-[13px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[14px] py-[9px] text-[14px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
 					>
 						{submitting ? m.common_creating() : m.tickets_create()}
 					</button>

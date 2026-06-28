@@ -367,8 +367,8 @@
 	<div class="px-6 py-6">
 		<div class="mb-6 flex items-end gap-4">
 			<div>
-				<h1 class="text-[24px] font-semibold tracking-[-0.014em]">{m.admin_users_title()}</h1>
-				<p class="mt-1 text-[13px] text-text-3">
+				<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.admin_users_title()}</h1>
+				<p class="mt-1 text-[14px] text-text-3">
 					{m.admin_users_subtitle({
 						total: counts.all,
 						active: counts.active,
@@ -378,11 +378,11 @@
 			</div>
 			<div class="ml-auto flex items-center gap-2">
 				<Button variant="default" size="sm" onclick={() => (createOpen = true)}>
-					<Icon name="user" size={13} />
+					<Icon name="user" size={14} />
 					{m.admin_users_create()}
 				</Button>
 				<Button variant="primary" size="sm" onclick={() => (inviteOpen = true)}>
-					<Icon name="plus" size={13} />
+					<Icon name="plus" size={14} />
 					{m.admin_users_invite()}
 				</Button>
 			</div>
@@ -394,13 +394,13 @@
 					<button
 						type="button"
 						onclick={() => (filter = t.id)}
-						class="inline-flex h-full items-center gap-1.5 rounded-md px-2.5 text-[13px] transition-colors {filter ===
+						class="inline-flex h-full items-center gap-1.5 rounded-md px-2.5 text-[14px] transition-colors {filter ===
 						t.id
 							? 'bg-bg-elev text-text'
 							: 'text-text-3 hover:text-text'}"
 					>
 						{t.label}
-						<span class="font-mono text-[11px] text-text-3">
+						<span class="font-mono text-[12px] text-text-3">
 							{counts[t.id]}
 						</span>
 					</button>
@@ -408,20 +408,20 @@
 			</div>
 			<div class="relative ml-auto">
 				<span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-3">
-					<Icon name="search" size={13} />
+					<Icon name="search" size={14} />
 				</span>
 				<input
 					type="text"
 					bind:value={search}
 					placeholder={m.admin_users_search_placeholder()}
-					class="h-8 w-64 rounded-lg border border-border bg-surface pr-3 pl-8 text-[13px] outline-none focus:border-border-strong"
+					class="h-8 w-64 rounded-lg border border-border bg-surface pr-3 pl-8 text-[14px] outline-none focus:border-border-strong"
 				/>
 			</div>
 		</div>
 
 		{#if data.invitations.length > 0}
 			<div class="mb-5">
-				<div class="mb-2 px-1 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+				<div class="mb-2 px-1 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 					{m.admin_users_pending_invitations({ count: data.invitations.length })}
 				</div>
 				<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
@@ -439,13 +439,13 @@
 							<span
 								class="grid h-8 w-8 place-items-center rounded-lg border border-border bg-surface text-text-3"
 							>
-								<Icon name="msg" size={14} />
+								<Icon name="msg" size={15} />
 							</span>
 							<div class="min-w-0 flex-1">
 								<div class="flex items-center gap-2">
-									<span class="truncate text-[13px] font-medium text-text">{inv.email}</span>
+									<span class="truncate text-[14px] font-medium text-text">{inv.email}</span>
 									<span
-										class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium"
+										class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] font-medium"
 										style:background={meta.color + '22'}
 										style:color={meta.color}
 									>
@@ -453,7 +453,7 @@
 										{metaLabel}
 									</span>
 								</div>
-								<div class="mt-0.5 text-[11px] text-text-3">
+								<div class="mt-0.5 text-[12px] text-text-3">
 									{m.admin_users_invited_as()} <span class="text-text-2">{inv.name}</span>
 									{' · '}
 									<span class={expired ? 'text-prio-urgent' : ''}>{fmtRelative(inv.expiresAt)}</span
@@ -462,7 +462,7 @@
 							</div>
 							<div class="flex items-center gap-1">
 								<IconButton
-									size={28}
+									size={31}
 									ariaLabel={m.admin_users_resend_invitation()}
 									onclick={() => handleResend(inv)}
 								>
@@ -471,15 +471,15 @@
 											class="h-3 w-3 animate-spin rounded-full border-2 border-text-3 border-t-transparent"
 										></span>
 									{:else}
-										<Icon name="refresh" size={13} />
+										<Icon name="refresh" size={14} />
 									{/if}
 								</IconButton>
 								<IconButton
-									size={28}
+									size={31}
 									ariaLabel={m.admin_users_revoke_invitation()}
 									onclick={() => handleRevoke(inv)}
 								>
-									<Icon name="x" size={13} />
+									<Icon name="x" size={14} />
 								</IconButton>
 							</div>
 						</div>
@@ -490,7 +490,7 @@
 
 		<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
 			<div
-				class="grid h-9 items-center gap-3 border-b border-border px-5 text-[11px] tracking-[0.08em] text-text-4 uppercase"
+				class="grid h-9 items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
 				style:grid-template-columns="2fr 1fr 1fr 1fr 36px"
 			>
 				<span>{m.admin_users_col_user()}</span>
@@ -500,7 +500,7 @@
 				<span></span>
 			</div>
 			{#if users.length === 0}
-				<div class="px-5 py-10 text-center text-[13px] text-text-3">
+				<div class="px-5 py-10 text-center text-[14px] text-text-3">
 					{m.admin_users_no_match()}
 				</div>
 			{/if}
@@ -511,22 +511,22 @@
 				<button
 					type="button"
 					onclick={() => (selected = u)}
-					class="grid w-full items-center gap-3 border-b border-border/40 px-5 py-2.5 text-left text-[13px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)] {banned
+					class="grid w-full items-center gap-3 border-b border-border/40 px-5 py-2.5 text-left text-[14px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)] {banned
 						? 'opacity-55 hover:opacity-100'
 						: ''}"
 					style:grid-template-columns="2fr 1fr 1fr 1fr 36px"
 				>
 					<span class="flex min-w-0 items-center gap-2.5">
-						<Avatar user={makeAvatar(u)} size={28} />
+						<Avatar user={makeAvatar(u)} size={31} />
 						<span class="min-w-0">
 							<span class="block truncate font-medium text-text">
 								{u.name ?? '—'}
 								{#if isSelf}
-									<span class="ml-1 font-mono text-[11px] text-text-4">{m.admin_users_you()}</span
+									<span class="ml-1 font-mono text-[12px] text-text-4">{m.admin_users_you()}</span
 									>
 								{/if}
 							</span>
-							<span class="block truncate font-mono text-[11px] text-text-3">{u.email}</span>
+							<span class="block truncate font-mono text-[12px] text-text-3">{u.email}</span>
 						</span>
 					</span>
 					<span class="flex items-center gap-1.5">
@@ -536,23 +536,23 @@
 					<span>
 						{#if banned}
 							<span
-								class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] bg-prio-urgent/16 text-prio-urgent"
+								class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] bg-prio-urgent/16 text-prio-urgent"
 							>
 								<span class="h-1.5 w-1.5 rounded-full bg-prio-urgent"></span>
 								{m.admin_users_status_banned()}
 							</span>
 						{:else}
 							<span
-								class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] bg-status-done/16 text-status-done"
+								class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] bg-status-done/16 text-status-done"
 							>
 								<span class="h-1.5 w-1.5 rounded-full bg-status-done"></span>
 								{m.admin_users_status_active()}
 							</span>
 						{/if}
 					</span>
-					<span class="font-mono text-[12px] text-text-3">{fmtDate(u.createdAt)}</span>
+					<span class="font-mono text-[13px] text-text-3">{fmtDate(u.createdAt)}</span>
 					<span class="grid place-items-center text-text-3"
-						><Icon name="chevron-r" size={12} /></span
+						><Icon name="chevron-r" size={13} /></span
 					>
 				</button>
 			{/each}
@@ -563,7 +563,7 @@
 <!-- Toast -->
 {#if toast}
 	<div
-		class="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg border px-3.5 py-2 text-[13px] shadow-lg backdrop-blur-md"
+		class="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-lg border px-3.5 py-2 text-[14px] shadow-lg backdrop-blur-md"
 		class:bg-bg-elev={toast.kind === 'ok'}
 		style:background={toast.kind === 'ok' ? 'rgba(127,200,169,0.12)' : 'rgba(239,79,94,0.12)'}
 		style:border-color={toast.kind === 'ok' ? 'rgba(127,200,169,0.35)' : 'rgba(239,79,94,0.35)'}
@@ -582,30 +582,30 @@
 		{@const isSelf = sel.id === data.currentUserId}
 		{@const canImpersonate = data.viewerIsSuperadmin && !isSelf && !banned}
 		<div class="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3">
-			<span class="font-mono text-[11px] tracking-[0.08em] text-text-4 uppercase"
+			<span class="font-mono text-[12px] tracking-[0.08em] text-text-4 uppercase"
 				>{m.admin_users_drawer_user()}</span
 			>
 			<div class="ml-auto flex items-center gap-1">
-				<IconButton size={28} ariaLabel={m.common_close()} onclick={() => (selected = null)}>
-					<Icon name="x" size={14} />
+				<IconButton size={31} ariaLabel={m.common_close()} onclick={() => (selected = null)}>
+					<Icon name="x" size={15} />
 				</IconButton>
 			</div>
 		</div>
 		<div class="flex-1 overflow-y-auto px-5 py-5">
 			<div class="mb-5 flex items-center gap-3">
-				<Avatar user={makeAvatar(sel)} size={56} />
+				<Avatar user={makeAvatar(sel)} size={62} />
 				<div class="min-w-0">
-					<div class="truncate text-[18px] font-semibold tracking-[-0.01em] text-text">
+					<div class="truncate text-[20px] font-semibold tracking-[-0.01em] text-text">
 						{sel.name ?? '—'}
 						{#if isSelf}
-							<span class="ml-1 font-mono text-[12px] text-text-4">{m.admin_users_you()}</span>
+							<span class="ml-1 font-mono text-[13px] text-text-4">{m.admin_users_you()}</span>
 						{/if}
 					</div>
-					<div class="truncate font-mono text-[13px] text-text-3">{sel.email}</div>
+					<div class="truncate font-mono text-[14px] text-text-3">{sel.email}</div>
 				</div>
 			</div>
 
-			<div class="mb-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-[13px]">
+			<div class="mb-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-[14px]">
 				<div class="text-text-4">{m.admin_users_col_role()}</div>
 				<div class="flex items-center gap-1.5">
 					<span class="h-1.5 w-1.5 rounded-full" style:background={meta.color}></span>
@@ -632,7 +632,7 @@
 					disabled={pendingAction === `reset:${sel.id}`}
 					onclick={() => handleResetPassword(sel)}
 				>
-					<Icon name="shield" size={13} />
+					<Icon name="shield" size={14} />
 					{pendingAction === `reset:${sel.id}`
 						? m.admin_users_sending()
 						: m.admin_users_send_password_reset()}
@@ -644,7 +644,7 @@
 						disabled={pendingAction === `imp:${sel.id}`}
 						onclick={() => handleImpersonate(sel)}
 					>
-						<Icon name="user" size={13} />
+						<Icon name="user" size={14} />
 						{pendingAction === `imp:${sel.id}`
 							? m.admin_users_starting()
 							: m.admin_users_impersonate()}
@@ -657,7 +657,7 @@
 						disabled={pendingAction === `del:${sel.id}`}
 						onclick={() => handleDelete(sel)}
 					>
-						<Icon name="x" size={13} />
+						<Icon name="x" size={14} />
 						{pendingAction === `del:${sel.id}`
 							? m.admin_users_deleting()
 							: m.admin_users_delete_confirm()}
@@ -672,13 +672,13 @@
 {#snippet orgRolePicker(p: OrgRolePickerProps)}
 	<div class="grid grid-cols-2 gap-3">
 		<div class="relative">
-			<span class="mb-1.5 block text-[11px] tracking-[0.06em] text-text-4 uppercase"
+			<span class="mb-1.5 block text-[12px] tracking-[0.06em] text-text-4 uppercase"
 				>{m.admin_organization()}</span
 			>
 			<button
 				type="button"
 				onclick={() => p.onTogglePop('org')}
-				class="inline-flex w-full items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-left text-[13px] transition-colors hover:border-border-strong {p.pop ===
+				class="inline-flex w-full items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-left text-[14px] transition-colors hover:border-border-strong {p.pop ===
 				'org'
 					? 'border-border-strong'
 					: ''}"
@@ -689,9 +689,9 @@
 				></span>
 				<span class="truncate">{p.selectedOrg?.name ?? m.admin_users_select_placeholder()}</span>
 				{#if p.selectedOrg?.isInternal}
-					<span class="font-mono text-[10px] text-text-4">{m.admin_users_internal()}</span>
+					<span class="font-mono text-[11px] text-text-4">{m.admin_users_internal()}</span>
 				{/if}
-				<Icon name="chevron" size={11} class="ml-auto shrink-0 text-text-3" />
+				<Icon name="chevron" size={12} class="ml-auto shrink-0 text-text-3" />
 			</button>
 			{#if p.pop === 'org'}
 				<div
@@ -706,12 +706,12 @@
 							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 						>
 							<span class="h-2 w-2 shrink-0 rounded-full" style:background={o.color}></span>
-							<span class="truncate text-[13px]">{o.name}</span>
+							<span class="truncate text-[14px]">{o.name}</span>
 							{#if o.isInternal}
-								<span class="font-mono text-[10px] text-text-4">{m.admin_users_internal()}</span>
+								<span class="font-mono text-[11px] text-text-4">{m.admin_users_internal()}</span>
 							{/if}
 							<span class="ml-auto text-accent {p.orgId === o.id ? 'opacity-100' : 'opacity-0'}">
-								<Icon name="check" size={13} />
+								<Icon name="check" size={14} />
 							</span>
 						</button>
 					{/each}
@@ -719,13 +719,13 @@
 			{/if}
 		</div>
 		<div class="relative">
-			<span class="mb-1.5 block text-[11px] tracking-[0.06em] text-text-4 uppercase"
+			<span class="mb-1.5 block text-[12px] tracking-[0.06em] text-text-4 uppercase"
 				>{m.admin_users_col_role()}</span
 			>
 			<button
 				type="button"
 				onclick={() => p.onTogglePop('role')}
-				class="inline-flex w-full items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-left text-[13px] transition-colors hover:border-border-strong {p.pop ===
+				class="inline-flex w-full items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-left text-[14px] transition-colors hover:border-border-strong {p.pop ===
 				'role'
 					? 'border-border-strong'
 					: ''}"
@@ -735,7 +735,7 @@
 					style:background={ORG_ROLE_META[p.orgRole]?.color ?? '#7a9cf0'}
 				></span>
 				<span class="truncate">{p.orgRole ? orgRoleLabel(p.orgRole) : p.orgRole}</span>
-				<Icon name="chevron" size={11} class="ml-auto shrink-0 text-text-3" />
+				<Icon name="chevron" size={12} class="ml-auto shrink-0 text-text-3" />
 			</button>
 			{#if p.pop === 'role'}
 				<div
@@ -753,9 +753,9 @@
 								class="h-2 w-2 shrink-0 rounded-full"
 								style:background={ORG_ROLE_META[r]?.color ?? '#7a9cf0'}
 							></span>
-							<span class="truncate text-[13px]">{orgRoleLabel(r)}</span>
+							<span class="truncate text-[14px]">{orgRoleLabel(r)}</span>
 							<span class="ml-auto text-accent {p.orgRole === r ? 'opacity-100' : 'opacity-0'}">
-								<Icon name="check" size={13} />
+								<Icon name="check" size={14} />
 							</span>
 						</button>
 					{/each}
@@ -764,7 +764,7 @@
 		</div>
 	</div>
 	{#if p.orgRole}
-		<p class="mt-2 text-[11px] text-text-3">{orgRolePerm(p.orgRole)}</p>
+		<p class="mt-2 text-[12px] text-text-3">{orgRolePerm(p.orgRole)}</p>
 	{/if}
 {/snippet}
 
@@ -780,8 +780,8 @@
 	<form onsubmit={submitCreate}>
 		<div class="flex items-center border-b border-border px-5 pt-4 pb-3">
 			<div>
-				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">{m.admin_workspace()}</div>
-				<div class="text-[14px] font-semibold">{m.admin_users_create_title()}</div>
+				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">{m.admin_workspace()}</div>
+				<div class="text-[15px] font-semibold">{m.admin_users_create_title()}</div>
 			</div>
 			<button
 				type="button"
@@ -792,14 +792,14 @@
 				}}
 				aria-label={m.common_close()}
 			>
-				<Icon name="x" size={14} />
+				<Icon name="x" size={15} />
 			</button>
 		</div>
 		<div class="space-y-4 p-5">
 			<div>
 				<label
 					for="c-name"
-					class="mb-1.5 block text-[11px] tracking-[0.06em] text-text-4 uppercase"
+					class="mb-1.5 block text-[12px] tracking-[0.06em] text-text-4 uppercase"
 					>{m.admin_name()}</label
 				>
 				<input
@@ -808,13 +808,13 @@
 					required
 					type="text"
 					placeholder={m.admin_users_name_placeholder()}
-					class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-[13px] outline-none focus:border-border-strong"
+					class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-[14px] outline-none focus:border-border-strong"
 				/>
 			</div>
 			<div>
 				<label
 					for="c-email"
-					class="mb-1.5 block text-[11px] tracking-[0.06em] text-text-4 uppercase"
+					class="mb-1.5 block text-[12px] tracking-[0.06em] text-text-4 uppercase"
 					>{m.admin_users_email()}</label
 				>
 				<input
@@ -823,13 +823,13 @@
 					required
 					type="email"
 					placeholder={m.admin_users_email_placeholder()}
-					class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-[13px] outline-none focus:border-border-strong"
+					class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-[14px] outline-none focus:border-border-strong"
 				/>
 			</div>
 			<div>
 				<label
 					for="c-password"
-					class="mb-1.5 block text-[11px] tracking-[0.06em] text-text-4 uppercase"
+					class="mb-1.5 block text-[12px] tracking-[0.06em] text-text-4 uppercase"
 					>{m.admin_users_initial_password()}</label
 				>
 				<div class="relative">
@@ -840,7 +840,7 @@
 						minlength={8}
 						type={showPassword ? 'text' : 'password'}
 						placeholder={m.admin_users_password_placeholder()}
-						class="w-full rounded-lg border border-border bg-surface py-2 pr-20 pl-3 font-mono text-[13px] outline-none focus:border-border-strong"
+						class="w-full rounded-lg border border-border bg-surface py-2 pr-20 pl-3 font-mono text-[14px] outline-none focus:border-border-strong"
 					/>
 					<div class="absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center gap-0.5">
 						<button
@@ -852,12 +852,12 @@
 								: m.admin_users_show_password()}
 							tabindex={-1}
 						>
-							<Icon name={showPassword ? 'x' : 'user'} size={13} />
+							<Icon name={showPassword ? 'x' : 'user'} size={14} />
 						</button>
 						<button
 							type="button"
 							onclick={generatePassword}
-							class="h-7 rounded-md px-1.5 text-[11px] font-medium text-text-3 hover:bg-[var(--row-hover)] hover:text-text"
+							class="h-7 rounded-md px-1.5 text-[12px] font-medium text-text-3 hover:bg-[var(--row-hover)] hover:text-text"
 							tabindex={-1}
 						>
 							{m.admin_users_generate()}
@@ -881,7 +881,7 @@
 			})}
 			{#if cError}
 				<div
-					class="rounded-lg border px-3 py-2 text-[13px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
+					class="rounded-lg border px-3 py-2 text-[14px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
 				>
 					{cError}
 				</div>
@@ -903,7 +903,7 @@
 			<button
 				type="submit"
 				disabled={cSubmitting}
-				class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[11px] py-[7px] text-[13px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
+				class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[12px] py-[8px] text-[14px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{cSubmitting ? m.common_creating() : m.admin_users_create()}
 			</button>
@@ -923,8 +923,8 @@
 	<form onsubmit={submitInvite}>
 		<div class="flex items-center border-b border-border px-5 pt-4 pb-3">
 			<div>
-				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">{m.admin_workspace()}</div>
-				<div class="text-[14px] font-semibold">{m.admin_users_invite_title()}</div>
+				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">{m.admin_workspace()}</div>
+				<div class="text-[15px] font-semibold">{m.admin_users_invite_title()}</div>
 			</div>
 			<button
 				type="button"
@@ -935,14 +935,14 @@
 				}}
 				aria-label={m.common_close()}
 			>
-				<Icon name="x" size={14} />
+				<Icon name="x" size={15} />
 			</button>
 		</div>
 		<div class="space-y-4 p-5">
 			<div>
 				<label
 					for="i-name"
-					class="mb-1.5 block text-[11px] tracking-[0.06em] text-text-4 uppercase"
+					class="mb-1.5 block text-[12px] tracking-[0.06em] text-text-4 uppercase"
 					>{m.admin_name()}</label
 				>
 				<input
@@ -951,13 +951,13 @@
 					required
 					type="text"
 					placeholder={m.admin_users_name_placeholder()}
-					class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-[13px] outline-none focus:border-border-strong"
+					class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-[14px] outline-none focus:border-border-strong"
 				/>
 			</div>
 			<div>
 				<label
 					for="i-email"
-					class="mb-1.5 block text-[11px] tracking-[0.06em] text-text-4 uppercase"
+					class="mb-1.5 block text-[12px] tracking-[0.06em] text-text-4 uppercase"
 					>{m.admin_users_email()}</label
 				>
 				<input
@@ -966,7 +966,7 @@
 					required
 					type="email"
 					placeholder={m.admin_users_email_placeholder()}
-					class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-[13px] outline-none focus:border-border-strong"
+					class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-[14px] outline-none focus:border-border-strong"
 				/>
 			</div>
 			{@render orgRolePicker({
@@ -983,12 +983,12 @@
 					iPop = null;
 				}
 			})}
-			<p class="text-[12px] leading-relaxed text-text-3">
+			<p class="text-[13px] leading-relaxed text-text-3">
 				{m.admin_users_invite_note()}
 			</p>
 			{#if iError}
 				<div
-					class="rounded-lg border px-3 py-2 text-[13px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
+					class="rounded-lg border px-3 py-2 text-[14px] border-prio-urgent/35 bg-prio-urgent/8 text-accent"
 				>
 					{iError}
 				</div>
@@ -1010,7 +1010,7 @@
 			<button
 				type="submit"
 				disabled={iSubmitting}
-				class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[11px] py-[7px] text-[13px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
+				class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[12px] py-[8px] text-[14px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				{iSubmitting ? m.admin_users_sending() : m.admin_users_send_invite()}
 			</button>

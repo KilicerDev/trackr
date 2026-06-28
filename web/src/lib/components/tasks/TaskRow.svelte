@@ -41,22 +41,22 @@
 	style:height="var(--row-h)"
 >
 	<StatusDot status={task.status} />
-	<span class="truncate font-mono text-[12px] text-text-3">{task.id}</span>
+	<span class="truncate font-mono text-[13px] text-text-3">{task.id}</span>
 	<span class="flex min-w-0 items-center gap-2">
 		<span class="shrink-0"><TypeBadge type={task.type ?? 'task'} showLabel={false} /></span>
-		<span class="truncate text-[13px] text-text">{task.title}</span>
+		<span class="truncate text-[14px] text-text">{task.title}</span>
 		{#if task.plannedFor || task.inMyPlan}
 			<span
-				class="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] text-accent bg-accent-soft"
+				class="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-0.5 text-[12px] text-accent bg-accent-soft"
 				title={task.plannedFor
 					? m.tasks_planned_for({ date: formatDateShort(task.plannedFor) })
 					: m.tasks_in_your_week_no_date()}
 			>
 				{#if task.plannedFor}
-					<Icon name="calendar" size={12} />
+					<Icon name="calendar" size={13} />
 					<span class="font-mono">{formatDateShort(task.plannedFor)}</span>
 				{:else}
-					<Icon name="bookmark" size={12} />
+					<Icon name="bookmark" size={13} />
 					<span>{m.tasks_this_week()}</span>
 				{/if}
 			</span>
@@ -66,19 +66,19 @@
 		{/each}
 		{#if task.checklist && task.checklist.length > 0}
 			<span
-				class="inline-flex items-center gap-1 text-[11px] {task.checklist.every((i) => i.done)
+				class="inline-flex items-center gap-1 text-[12px] {task.checklist.every((i) => i.done)
 					? 'text-[#7fc8a9]'
 					: 'text-text-3'}"
 				title={m.tasks_checklist()}
 			>
-				<Icon name="check-square" size={11} />
+				<Icon name="check-square" size={12} />
 				<span class="font-mono"
 					>{task.checklist.filter((i) => i.done).length}/{task.checklist.length}</span
 				>
 			</span>
 		{/if}
 	</span>
-	<span class="flex items-center gap-2 text-[13px] text-text-3">
+	<span class="flex items-center gap-2 text-[14px] text-text-3">
 		{#if task.priority !== 'none'}
 			<PriorityBars priority={task.priority} />
 			<span>{priorityLabel(prio.id)}</span>
@@ -86,7 +86,7 @@
 			<span class="text-text-4">—</span>
 		{/if}
 	</span>
-	<span class="text-[12px]">
+	<span class="text-[13px]">
 		{#if !task.due}
 			<span class="font-mono text-text-3">—</span>
 		{:else if due && due.label}
@@ -95,13 +95,13 @@
 			<span class="font-mono text-text-3">{formatDateShort(task.due)}</span>
 		{/if}
 	</span>
-	<span class="font-mono text-[12px] text-text-3">
+	<span class="font-mono text-[13px] text-text-3">
 		{formatDateShort(task.updated)}
 	</span>
 	<span class="flex justify-start">
-		<Avatar user={assignee} size={22} />
+		<Avatar user={assignee} size={24} />
 	</span>
 	<span class="text-text-3 opacity-0 transition-opacity group-hover:opacity-100">
-		<Icon name="chevron-r" size={14} />
+		<Icon name="chevron-r" size={15} />
 	</span>
 </button>

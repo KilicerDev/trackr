@@ -31,6 +31,7 @@
 		users?: AppUser[];
 		isTrackrTeam?: boolean;
 		isPortalUser?: boolean;
+		portalRole?: string | null;
 		activeOrgId?: string | null;
 		effectivePermissions?: string[];
 		savedView?: Record<string, unknown>;
@@ -42,6 +43,10 @@
 	// controls, and the New button routes to the full /tickets/new page (not the
 	// in-app compose modal).
 	const isPortal = $derived(!!data.isPortalUser);
+	// Portal *members* (own-tickets-only) get a stripped-down, list-only bar:
+	// no board/group/filter chrome. Portal *clients* (org.client, see-all) keep
+	// the full board/list experience. `memberOnly` reads the per-active-org role.
+	const memberOnly = $derived(isPortal && data.portalRole !== 'org.client');
 
 	type GroupBy = 'status' | 'priority' | 'category' | 'org' | 'assignee' | 'none';
 	type SubGroup = 'none' | 'status' | 'priority' | 'category' | 'assignee';
@@ -59,8 +64,39 @@
 	};
 	const urlView = page.url.searchParams.get('view');
 
+	// Saved-view deep-links (sidebar shortcuts like ?status=open or
+	// ?assignee=__unassigned__) seed the filter state and win over the saved
+	// snapshot. Reads the five filterable fields; comma-splits multi-values.
+	// Returns null when the URL carries no filter params so the saved snapshot
+	// keeps precedence.
+	function parseFiltersFromUrl(sp: URLSearchParams): Record<string, string[]> | null {
+		const fields = ['status', 'priority', 'category', 'assignee', 'org'];
+		const out: Record<string, string[]> = {};
+		for (const f of fields) {
+			const raw = sp.get(f);
+			if (!raw) continue;
+			const values = raw
+				.split(',')
+				.map((v) => v.trim())
+				.filter(Boolean);
+			if (values.length) out[f] = values;
+		}
+		return Object.keys(out).length ? out : null;
+	}
+	const urlFilters = parseFiltersFromUrl(page.url.searchParams);
+
+	// Portal members can't reach the board (the toggle is hidden), so clamp a
+	// stale board snapshot to list for them.
+	const memberOnlyInit = !!data.isPortalUser && data.portalRole !== 'org.client';
+
 	let view = $state<'list' | 'board'>(
-		urlView === 'board' ? 'board' : urlView === 'list' ? 'list' : (saved.view ?? 'list')
+		memberOnlyInit
+			? 'list'
+			: urlView === 'board'
+				? 'board'
+				: urlView === 'list'
+					? 'list'
+					: (saved.view ?? 'list')
 	);
 	// Separate group state per view: list defaults to status sections, board to
 	// status columns.
@@ -68,8 +104,26 @@
 	let boardGroup = $state<GroupBy>(saved.boardGroup ?? 'status');
 	let group = $derived(view === 'list' ? listGroup : boardGroup);
 	let sub = $state<SubGroup>(saved.sub ?? 'none');
-	let filters = $state<Record<string, string[]>>(saved.filters ?? {});
+	// URL deep-link wins over the persisted snapshot. Transient: not written back
+	// via saveView, so it doesn't stick once the user navigates away.
+	let filters = $state<Record<string, string[]>>(urlFilters ?? saved.filters ?? {});
 	let search = $state('');
+
+	// Switching between the sidebar's saved-view shortcuts navigates within the
+	// same /tickets page — SvelteKit reuses the component, so the $state
+	// initializers above don't re-run. Re-apply the URL's filter + view params
+	// whenever the query string actually changes. Manual filter/view edits don't
+	// touch the URL, so this never fires for (or clobbers) them.
+	let lastSearch = page.url.search;
+	$effect(() => {
+		const currentSearch = page.url.search;
+		if (currentSearch === lastSearch) return;
+		lastSearch = currentSearch;
+		const parsed = parseFiltersFromUrl(page.url.searchParams);
+		if (parsed) filters = parsed;
+		const v = page.url.searchParams.get('view');
+		if (v === 'board' || v === 'list') view = v;
+	});
 	let createOpen = $state(false);
 	let createPrefillOrg = $state<string | null>(null);
 
@@ -99,6 +153,13 @@
 	// Internal agents are the assignable users for tickets.
 	const agents = $derived((data.users ?? []).filter((u) => u.internal && u.status !== 'disabled'));
 	const canDelete = $derived((data.effectivePermissions ?? []).includes('org.tickets.delete.any'));
+	// Checklist is participant-editable: agents (edit.any) and anyone who can
+	// comment (the org.client admin + owning org.member). The server re-checks
+	// per-ticket via canViewTicket.
+	const canEditChecklist = $derived(
+		(data.effectivePermissions ?? []).includes('org.tickets.comment') ||
+			(data.effectivePermissions ?? []).includes('org.tickets.edit.any')
+	);
 
 	function canEditTicket(t: TicketRow): boolean {
 		return !!data.isTrackrTeam || (data.editableOrgIds ?? []).includes(t.orgId);
@@ -146,7 +207,13 @@
 				if (field === 'status' && !values.includes(t.status)) return false;
 				if (field === 'priority' && !values.includes(t.priority)) return false;
 				if (field === 'category' && !values.includes(t.category)) return false;
-				if (field === 'assignee' && !values.includes(t.assignedAgentId ?? '')) return false;
+				// Unassigned is matched via the `__unassigned__` sentinel (used by the
+				// admin dashboard / sidebar deep-links), so a null assignee filters
+				// correctly instead of collapsing to an empty string.
+				if (field === 'assignee') {
+					const a = t.assignedAgentId ?? '__unassigned__';
+					if (!values.includes(a)) return false;
+				}
 				if (field === 'org' && !values.includes(t.orgId)) return false;
 			}
 			return true;
@@ -180,6 +247,7 @@
 	onNew={() => openCreate()}
 	{orgs}
 	portal={isPortal}
+	minimal={memberOnly}
 />
 
 {#if data.tickets.length === 0}
@@ -214,6 +282,7 @@
 	ticket={selected}
 	onclose={closeInspector}
 	canEdit={selected ? canEditTicket(selected) : false}
+	{canEditChecklist}
 	{canDelete}
 	users={agents}
 	linkedTasks={selected ? (data.linkedTasksByTicket?.[selected.id] ?? []) : []}

@@ -116,7 +116,7 @@
 
 <aside class="flex min-h-0 w-full flex-col overflow-hidden border-r border-border bg-bg-elev">
 	<div
-		class="flex items-center gap-2.5 px-[18px] pt-[18px] pb-[14px] text-[14px] font-semibold tracking-[-0.01em]"
+		class="flex items-center gap-2.5 px-[20px] pt-[20px] pb-[15px] text-[15px] font-semibold tracking-[-0.01em]"
 	>
 		<span class="grid h-6 w-6 shrink-0 place-items-center" aria-hidden="true">
 			<svg
@@ -132,16 +132,16 @@
 			</svg>
 		</span>
 		<span class={fade}>Trackr</span>
-		<span class="ml-auto font-mono text-[11px] font-normal text-text-3 {fade}">v2</span>
+		<span class="ml-auto font-mono text-[12px] font-normal text-text-3 {fade}">v2</span>
 	</div>
 
 	<button
 		type="button"
 		onclick={() => window.dispatchEvent(new CustomEvent('trackr:open-palette'))}
 		title={collapsed ? m.shell_search_placeholder() : undefined}
-		class="mx-3 mt-1 mb-3.5 flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-2 text-[14px] text-text-3 transition-colors hover:text-text-2"
+		class="mx-3 mt-1 mb-3.5 flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-2 text-[15px] text-text-3 transition-colors hover:text-text-2"
 	>
-		<Icon name="search" size={14} class="shrink-0" />
+		<Icon name="search" size={15} class="shrink-0" />
 		<span class={fade}>{m.shell_search_placeholder()}</span>
 		<span class="ml-auto {fade}"><Kbd>⌘K</Kbd></span>
 	</button>
@@ -149,7 +149,7 @@
 	<div class="flex-1 overflow-x-hidden overflow-y-auto px-2 pb-2">
 		<div class="py-1.5">
 			<div
-				class="px-3 pt-2.5 pb-1.5 text-[11px] font-medium tracking-[0.08em] text-text-4 uppercase {fade}"
+				class="px-3 pt-2.5 pb-1.5 text-[12px] font-medium tracking-[0.08em] text-text-4 uppercase {fade}"
 			>
 				{m.shell_section_workspace()}
 			</div>
@@ -158,7 +158,7 @@
 				<a
 					href={item.href}
 					title={collapsed ? item.label : undefined}
-					class="mx-1 my-[1px] flex items-center gap-2.5 rounded-[7px] px-3 py-[7px] text-[14px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text
+					class="mx-1 my-[1px] flex items-center gap-2.5 rounded-[7px] px-3 py-[8px] text-[15px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text
 						{active ? 'bg-[var(--row-active)] !text-text' : ''}"
 				>
 					<span
@@ -166,11 +166,11 @@
 							? 'text-accent'
 							: 'text-text-3'}"
 					>
-						<Icon name={item.icon} size={15} />
+						<Icon name={item.icon} size={16} />
 					</span>
 					<span class={fade}>{item.label}</span>
 					{#if item.count !== undefined}
-						<span class="ml-auto font-mono text-[11px] text-text-3 {fade}">{item.count}</span>
+						<span class="ml-auto font-mono text-[12px] text-text-3 {fade}">{item.count}</span>
 					{/if}
 				</a>
 			{/each}
@@ -178,7 +178,7 @@
 
 		<div class="py-1.5">
 			<div
-				class="px-3 pt-2.5 pb-1.5 text-[11px] font-medium tracking-[0.08em] text-text-4 uppercase {fade}"
+				class="px-3 pt-2.5 pb-1.5 text-[12px] font-medium tracking-[0.08em] text-text-4 uppercase {fade}"
 			>
 				{m.shell_section_favorites()}
 			</div>
@@ -186,14 +186,14 @@
 				<a
 					href="/projects/{p.id}"
 					title={collapsed ? p.name : undefined}
-					class="mx-1 my-[1px] flex items-center gap-2.5 rounded-[7px] px-3 py-[7px] text-[14px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text"
+					class="mx-1 my-[1px] flex items-center gap-2.5 rounded-[7px] px-3 py-[8px] text-[15px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text"
 				>
 					<span class="h-2 w-2 shrink-0 rounded-[2.5px]" style:background={p.color}></span>
 					<span class="truncate {fade}">{p.name}</span>
 				</a>
 			{/each}
 			{#if favorites.length === 0}
-				<div class="px-3 py-1.5 text-[12px] leading-snug text-text-4 {fade}">
+				<div class="px-3 py-1.5 text-[13px] leading-snug text-text-4 {fade}">
 					{m.shell_favorites_empty()}
 				</div>
 			{/if}
@@ -202,7 +202,7 @@
 		{#if isAdmin}
 			<div class="py-1.5">
 				<div
-					class="px-3 pt-2.5 pb-1.5 text-[11px] font-medium tracking-[0.08em] text-text-4 uppercase {fade}"
+					class="px-3 pt-2.5 pb-1.5 text-[12px] font-medium tracking-[0.08em] text-text-4 uppercase {fade}"
 				>
 					{m.shell_section_admin()}
 				</div>
@@ -211,7 +211,7 @@
 					<a
 						href={item.href}
 						title={collapsed ? item.label : undefined}
-						class="mx-1 my-[1px] flex items-center gap-2.5 rounded-[7px] px-3 py-[7px] text-[14px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text
+						class="mx-1 my-[1px] flex items-center gap-2.5 rounded-[7px] px-3 py-[8px] text-[15px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text
 						{active ? 'bg-[var(--row-active)] !text-text' : ''}"
 					>
 						<span
@@ -219,7 +219,7 @@
 								? 'text-accent'
 								: 'text-text-3'}"
 						>
-							<Icon name={item.icon} size={15} />
+							<Icon name={item.icon} size={16} />
 						</span>
 						<span class={fade}>{item.label}</span>
 					</a>

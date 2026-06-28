@@ -35,8 +35,8 @@
 </script>
 
 <header class="mb-6">
-	<h1 class="text-[24px] font-semibold tracking-[-0.014em]">{m.profile_title()}</h1>
-	<p class="mt-1 text-[13px] text-text-3">{m.profile_subtitle()}</p>
+	<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.profile_title()}</h1>
+	<p class="mt-1 text-[14px] text-text-3">{m.profile_subtitle()}</p>
 </header>
 
 <form
@@ -61,15 +61,15 @@
 	class="space-y-5"
 >
 	<section class="rounded-2xl border border-border bg-bg-elev p-5">
-		<div class="mb-4 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+		<div class="mb-4 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 			{m.profile_identity()}
 		</div>
 		<div class="flex items-start gap-5">
 			<div class="flex flex-col items-center gap-2 pt-1">
-				<Avatar user={previewUser} size={64} />
-				<span class="text-[11px] text-text-4">{m.profile_preview()}</span>
+				<Avatar user={previewUser} size={70} />
+				<span class="text-[12px] text-text-4">{m.profile_preview()}</span>
 			</div>
-			<div class="grid flex-1 grid-cols-[120px_1fr] items-center gap-x-4 gap-y-3 text-[13px]">
+			<div class="grid flex-1 grid-cols-[120px_1fr] items-center gap-x-4 gap-y-3 text-[14px]">
 				<label for="pf-name" class="text-text-3">{m.profile_name()}</label>
 				<input
 					id="pf-name"
@@ -84,10 +84,10 @@
 					name="image"
 					placeholder="https://…"
 					bind:value={image}
-					class="rounded-lg border border-border bg-surface px-3 py-2 font-mono text-[12px] outline-none focus:border-border-strong"
+					class="rounded-lg border border-border bg-surface px-3 py-2 font-mono text-[13px] outline-none focus:border-border-strong"
 				/>
 				<div class="text-text-3">{m.profile_email()}</div>
-				<div class="font-mono text-[13px] text-text-2">{data.profile?.email ?? '—'}</div>
+				<div class="font-mono text-[14px] text-text-2">{data.profile?.email ?? '—'}</div>
 				<div class="text-text-3">{m.profile_member_since()}</div>
 				<div class="text-text-2">
 					{data.profile?.createdAt

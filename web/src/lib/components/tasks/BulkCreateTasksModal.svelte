@@ -212,16 +212,16 @@
 	{#if current}
 		<!-- Head -->
 		<div class="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3">
-			<Icon name="check-square" size={15} class="text-text-2" />
-			<div class="text-[13px] font-medium text-text">{m.notes_bulk_title()}</div>
-			<span class="font-mono text-[11px] text-text-3">{index + 1} / {total}</span>
+			<Icon name="check-square" size={16} class="text-text-2" />
+			<div class="text-[14px] font-medium text-text">{m.notes_bulk_title()}</div>
+			<span class="font-mono text-[12px] text-text-3">{index + 1} / {total}</span>
 			<button
 				type="button"
 				onclick={onclose}
 				class="ml-auto grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
 				aria-label={m.common_close()}
 			>
-				<Icon name="x" size={14} />
+				<Icon name="x" size={15} />
 			</button>
 		</div>
 
@@ -234,7 +234,7 @@
 				class="grid h-7 w-7 place-items-center rounded-lg border border-border text-text-2 transition-colors hover:border-border-strong hover:text-text disabled:pointer-events-none disabled:opacity-40"
 				aria-label={m.notes_bulk_prev()}
 			>
-				<Icon name="chevron" size={14} class="rotate-90" />
+				<Icon name="chevron" size={15} class="rotate-90" />
 			</button>
 			<button
 				type="button"
@@ -243,11 +243,11 @@
 				class="grid h-7 w-7 place-items-center rounded-lg border border-border text-text-2 transition-colors hover:border-border-strong hover:text-text disabled:pointer-events-none disabled:opacity-40"
 				aria-label={m.notes_bulk_next()}
 			>
-				<Icon name="chevron" size={14} class="-rotate-90" />
+				<Icon name="chevron" size={15} class="-rotate-90" />
 			</button>
 
 			<label
-				class="ml-auto inline-flex cursor-pointer items-center gap-2 text-[13px] select-none {current.created
+				class="ml-auto inline-flex cursor-pointer items-center gap-2 text-[14px] select-none {current.created
 					? 'pointer-events-none opacity-50'
 					: ''}"
 			>
@@ -263,14 +263,14 @@
 				bind:value={current.title}
 				disabled={current.created}
 				placeholder={m.tasks_title_placeholder()}
-				class="mb-2 w-full border-0 bg-transparent text-[20px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3 disabled:text-text-3"
+				class="mb-2 w-full border-0 bg-transparent text-[22px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3 disabled:text-text-3"
 			/>
 			<textarea
 				bind:value={current.description}
 				disabled={current.created}
 				placeholder={m.tasks_description_placeholder()}
 				rows="2"
-				class="w-full resize-none border-0 bg-transparent text-[13px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
+				class="w-full resize-none border-0 bg-transparent text-[14px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
 			></textarea>
 
 			<div class="mt-3">
@@ -291,12 +291,12 @@
 			</div>
 
 			{#if current.created}
-				<div class="mt-3 inline-flex items-center gap-1.5 text-[12px] text-accent">
-					<Icon name="check" size={13} />
+				<div class="mt-3 inline-flex items-center gap-1.5 text-[13px] text-accent">
+					<Icon name="check" size={14} />
 					{m.notes_bulk_created_badge()}
 				</div>
 			{:else if current.error}
-				<div class="mt-3 text-[12px] text-accent">{current.error}</div>
+				<div class="mt-3 text-[13px] text-accent">{current.error}</div>
 			{/if}
 		</div>
 

@@ -192,7 +192,7 @@
 				ondragend={resetDrag}
 				ondragover={(e) => onRowDragOver(e, p)}
 				ondrop={(e) => onRowDrop(e, p)}
-				class="tree-row group relative flex h-[34px] items-center rounded-lg {active
+				class="tree-row group relative flex h-[37px] items-center rounded-lg {active
 					? 'is-active'
 					: ''} {p.isFolder ? 'is-folder' : ''}"
 				style:padding-left="{8 + depth * STEP}px"
@@ -211,7 +211,7 @@
 				{/if}
 
 				<!-- Chevron (folders only) — sits in a fixed-width column so icons align -->
-				<span class="grid h-[18px] w-[18px] shrink-0 place-items-center">
+				<span class="grid h-[20px] w-[20px] shrink-0 place-items-center">
 					{#if hasKids}
 						<button
 							type="button"
@@ -220,21 +220,21 @@
 								e.stopPropagation();
 								toggle(p.id);
 							}}
-							class="tree-chevron grid h-[18px] w-[18px] place-items-center rounded-md text-text-4 transition-transform duration-150 {isExpanded
+							class="tree-chevron grid h-[20px] w-[20px] place-items-center rounded-md text-text-4 transition-transform duration-150 {isExpanded
 								? ''
 								: '-rotate-90'}"
 							aria-label={m.wiki_tree_toggle()}
 						>
-							<Icon name="chevron" size={11} />
+							<Icon name="chevron" size={12} />
 						</button>
 					{/if}
 				</span>
 
 				<span class="tree-icon mr-2 grid shrink-0 place-items-center">
-					<Icon name={p.isFolder ? 'folder' : 'file'} size={16} stroke={1.75} />
+					<Icon name={p.isFolder ? 'folder' : 'file'} size={17} stroke={1.75} />
 				</span>
 
-				<span class="tree-label min-w-0 flex-1 truncate text-[13px]">{p.title}</span>
+				<span class="tree-label min-w-0 flex-1 truncate text-[14px]">{p.title}</span>
 
 				{#if p.isFolder}
 					<span class="relative shrink-0">
@@ -245,13 +245,13 @@
 								e.stopPropagation();
 								createForId = createForId === p.id ? null : p.id;
 							}}
-							class="grid h-[22px] w-[22px] place-items-center rounded-md text-text-4 opacity-0 transition group-hover:opacity-100 hover:bg-bg-elev hover:text-text {createForId ===
+							class="grid h-[24px] w-[24px] place-items-center rounded-md text-text-4 opacity-0 transition group-hover:opacity-100 hover:bg-bg-elev hover:text-text {createForId ===
 							p.id
 								? 'opacity-100'
 								: ''}"
 							aria-label={m.wiki_tree_add_inside_folder()}
 						>
-							<Icon name="plus" size={13} />
+							<Icon name="plus" size={14} />
 						</button>
 						<Popover
 							open={createForId === p.id}
@@ -268,10 +268,10 @@
 									expanded = new Set(expanded).add(p.id);
 									oncreate(p.id, false);
 								}}
-								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 							>
 								<span class="grid h-4 w-4 place-items-center text-text-3"
-									><Icon name="file" size={13} /></span
+									><Icon name="file" size={14} /></span
 								>
 								<span>{m.wiki_new_page()}</span>
 							</button>
@@ -284,10 +284,10 @@
 									expanded = new Set(expanded).add(p.id);
 									oncreate(p.id, true);
 								}}
-								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 							>
 								<span class="grid h-4 w-4 place-items-center text-text-3"
-									><Icon name="folder" size={13} /></span
+									><Icon name="folder" size={14} /></span
 								>
 								<span>{m.wiki_new_folder()}</span>
 							</button>
@@ -306,7 +306,7 @@
 	{/if}
 {/snippet}
 
-<aside class="flex min-h-0 flex-col border-r border-border bg-bg-elev w-[260px]">
+<aside class="flex min-h-0 flex-col border-r border-border bg-bg-elev w-[286px]">
 	<div class="flex items-center gap-2 px-4 pt-4 pb-2.5">
 		<span class="wiki-eyebrow">{m.wiki_breadcrumb_root()}</span>
 		{#if pageCount > 0}
@@ -315,10 +315,10 @@
 		<div class="relative ml-auto">
 			<button
 				onclick={() => (createOpen = !createOpen)}
-				class="grid h-[26px] w-[26px] place-items-center rounded-md text-text-3 transition-colors hover:bg-surface hover:text-text"
+				class="grid h-[29px] w-[29px] place-items-center rounded-md text-text-3 transition-colors hover:bg-surface hover:text-text"
 				aria-label={m.wiki_tree_new_page_or_folder()}
 			>
-				<Icon name="plus" size={14} />
+				<Icon name="plus" size={15} />
 			</button>
 			<Popover open={createOpen} onclose={() => (createOpen = false)} align="right" minWidth={180}>
 				<button
@@ -327,10 +327,10 @@
 						createOpen = false;
 						oncreate(null, false);
 					}}
-					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 				>
 					<span class="grid h-4 w-4 place-items-center text-text-3"
-						><Icon name="file" size={13} /></span
+						><Icon name="file" size={14} /></span
 					>
 					<span>{m.wiki_new_page()}</span>
 				</button>
@@ -340,10 +340,10 @@
 						createOpen = false;
 						oncreate(null, true);
 					}}
-					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
 				>
 					<span class="grid h-4 w-4 place-items-center text-text-3"
-						><Icon name="folder" size={13} /></span
+						><Icon name="folder" size={14} /></span
 					>
 					<span>{m.wiki_new_folder()}</span>
 				</button>
@@ -352,8 +352,8 @@
 	</div>
 
 	<div class="px-3 pb-2">
-		<div class="wiki-search flex items-center gap-2 rounded-lg px-2.5 py-[6px] text-[13px]">
-			<span class="text-text-4"><Icon name="search" size={13} /></span>
+		<div class="wiki-search flex items-center gap-2 rounded-lg px-2.5 py-[7px] text-[14px]">
+			<span class="text-text-4"><Icon name="search" size={14} /></span>
 			<input
 				type="text"
 				bind:value={search}
@@ -365,7 +365,7 @@
 
 	<div class="min-h-0 flex-1 overflow-y-auto px-2 pt-1 pb-4">
 		{#if topLevel.length === 0}
-			<div class="px-3 py-6 text-center text-[13px] text-text-4">{m.wiki_tree_no_pages()}</div>
+			<div class="px-3 py-6 text-center text-[14px] text-text-4">{m.wiki_tree_no_pages()}</div>
 		{:else}
 			{#each topLevel as p (p.id)}
 				{@render row(p, 0, filtered)}

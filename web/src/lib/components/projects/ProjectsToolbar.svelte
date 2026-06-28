@@ -103,9 +103,9 @@
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<span class="h-2 w-2 rounded-full" style:background={meta.color}></span>
-				<span class="text-[13px]">{projectStatusLabel(id)}</span>
+				<span class="text-[14px]">{projectStatusLabel(id)}</span>
 				<span class="ml-auto text-accent {values.includes(id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={13} />
+					<Icon name="check" size={14} />
 				</span>
 			</button>
 		{/each}
@@ -115,10 +115,10 @@
 			onclick={() => toggleValue('org', INTERNAL)}
 			class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 		>
-			<span class="text-text-3"><Icon name="org" size={13} /></span>
-			<span class="text-[13px]">{m.projects_internal()}</span>
+			<span class="text-text-3"><Icon name="org" size={14} /></span>
+			<span class="text-[14px]">{m.projects_internal()}</span>
 			<span class="ml-auto text-accent {values.includes(INTERNAL) ? 'opacity-100' : 'opacity-0'}">
-				<Icon name="check" size={13} />
+				<Icon name="check" size={14} />
 			</span>
 		</button>
 		{#each orgs as o (o.id)}
@@ -128,9 +128,9 @@
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
 				<span class="h-2 w-2 rounded-full" style:background={o.color}></span>
-				<span class="truncate text-[13px]">{o.name}</span>
+				<span class="truncate text-[14px]">{o.name}</span>
 				<span class="ml-auto text-accent {values.includes(o.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={13} />
+					<Icon name="check" size={14} />
 				</span>
 			</button>
 		{/each}
@@ -141,10 +141,10 @@
 				onclick={() => toggleValue('assignee', u.id)}
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
-				<Avatar user={u} size={20} />
-				<span class="truncate text-[13px]">{u.name}</span>
+				<Avatar user={u} size={22} />
+				<span class="truncate text-[14px]">{u.name}</span>
 				<span class="ml-auto text-accent {values.includes(u.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={13} />
+					<Icon name="check" size={14} />
 				</span>
 			</button>
 		{/each}
@@ -154,7 +154,7 @@
 <div class="flex shrink-0 items-center gap-2 border-b border-border bg-bg px-5 py-2.5">
 	<!-- View toggle -->
 	<div
-		class="inline-flex h-7 items-center rounded-lg border border-border bg-surface p-0.5 text-[13px]"
+		class="inline-flex h-7 items-center rounded-lg border border-border bg-surface p-0.5 text-[14px]"
 	>
 		{#each VIEWS as v (v.id)}
 			<button
@@ -165,7 +165,7 @@
 					? 'bg-bg-elev text-text'
 					: 'text-text-3 hover:text-text'}"
 			>
-				<Icon name={v.icon} size={13} />
+				<Icon name={v.icon} size={14} />
 				{v.label}
 			</button>
 		{/each}
@@ -177,17 +177,17 @@
 		<button
 			type="button"
 			onclick={() => (pop = pop === 'group' ? null : 'group')}
-			class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[13px] transition-colors hover:bg-surface-2"
+			class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[14px] transition-colors hover:bg-surface-2"
 		>
 			<span class="text-text-3">{m.projects_group_label()}</span>
 			<span class="font-medium text-text">{groupLabel(group)}</span>
-			<Icon name="chevron" size={10} class="text-text-3" />
+			<Icon name="chevron" size={11} class="text-text-3" />
 		</button>
 		{#if pop === 'group'}
 			<div
 				use:clickOutside={() => (pop = null)}
 				in:fly={POPOVER_IN}
-				class="absolute top-full left-0 z-50 mt-1.5 min-w-[170px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+				class="absolute top-full left-0 z-50 mt-1.5 min-w-[187px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 			>
 				{#each GROUP_OPTIONS as o (o.id)}
 					<button
@@ -196,11 +196,11 @@
 							setGroup(o.id);
 							pop = null;
 						}}
-						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] text-text-2 hover:bg-surface-2 hover:text-text"
+						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
 					>
 						<span>{o.label}</span>
 						<span class="ml-auto text-accent {group === o.id ? 'opacity-100' : 'opacity-0'}">
-							<Icon name="check" size={12} />
+							<Icon name="check" size={13} />
 						</span>
 					</button>
 				{/each}
@@ -215,19 +215,19 @@
 	<div class="ml-auto flex shrink-0 items-center gap-2">
 		<div class="relative">
 			<span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-3">
-				<Icon name="search" size={13} />
+				<Icon name="search" size={14} />
 			</span>
 			<input
 				type="text"
 				placeholder={m.projects_search_placeholder()}
 				value={search}
 				oninput={(e) => setSearch((e.target as HTMLInputElement).value)}
-				class="h-7 w-44 rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[13px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
+				class="h-7 w-44 rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[14px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
 			/>
 		</div>
 		{#if canCreate}
 			<Button variant="primary" size="sm" onclick={onNew}>
-				<Icon name="plus" size={13} />
+				<Icon name="plus" size={14} />
 				{m.projects_new_project()}
 			</Button>
 		{/if}

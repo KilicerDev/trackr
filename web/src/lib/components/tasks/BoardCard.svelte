@@ -38,28 +38,28 @@
 		{#if task.type}
 			<TypeBadge type={task.type} />
 		{/if}
-		<span class="font-mono text-[11px] text-text-3">{task.id}</span>
+		<span class="font-mono text-[12px] text-text-3">{task.id}</span>
 		{#if task.plannedFor || task.inMyPlan}
 			<span
-				class="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] text-accent bg-accent-soft"
+				class="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[12px] text-accent bg-accent-soft"
 				title={task.plannedFor
 					? m.tasks_planned_for({ date: formatDateShort(task.plannedFor) })
 					: m.tasks_in_your_week_no_date()}
 			>
 				{#if task.plannedFor}
-					<Icon name="calendar" size={12} />
+					<Icon name="calendar" size={13} />
 					<span class="font-mono">{formatDateShort(task.plannedFor)}</span>
 				{:else}
-					<Icon name="bookmark" size={12} />
+					<Icon name="bookmark" size={13} />
 					<span>{m.tasks_this_week()}</span>
 				{/if}
 			</span>
 		{/if}
 	</div>
-	<div class="mb-1.5 line-clamp-3 text-[13px] leading-snug font-medium text-text">
+	<div class="mb-1.5 line-clamp-3 text-[14px] leading-snug font-medium text-text">
 		{task.title}
 	</div>
-	<div class="flex items-center gap-2 text-[11px] text-text-3">
+	<div class="flex items-center gap-2 text-[12px] text-text-3">
 		{#if task.priority !== 'none'}
 			<PriorityBars priority={task.priority} />
 		{/if}
@@ -69,12 +69,12 @@
 					class="inline-flex items-center gap-1 {DUE_TONE[due.tone]}"
 					title={formatDateLong(dueDate)}
 				>
-					<Icon name="calendar" size={11} />
+					<Icon name="calendar" size={12} />
 					<span>{due.label}</span>
 				</span>
 			{:else}
 				<span class="inline-flex items-center gap-1">
-					<Icon name="calendar" size={11} />
+					<Icon name="calendar" size={12} />
 					<span class="font-mono">{formatDateLong(dueDate)}</span>
 				</span>
 			{/if}
@@ -89,14 +89,14 @@
 					: ''}"
 				title={m.tasks_checklist()}
 			>
-				<Icon name="check-square" size={11} />
+				<Icon name="check-square" size={12} />
 				<span class="font-mono"
 					>{task.checklist.filter((i) => i.done).length}/{task.checklist.length}</span
 				>
 			</span>
 		{/if}
 		<span class="ml-auto">
-			<AvatarStack users={assignees} size={20} max={3} overlap={5} />
+			<AvatarStack users={assignees} size={22} max={3} overlap={5} />
 		</span>
 	</div>
 </button>

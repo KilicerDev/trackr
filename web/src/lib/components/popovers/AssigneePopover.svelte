@@ -48,28 +48,28 @@
 	use:clickOutside={onclose}
 	use:autoPlace
 	in:fly={POPOVER_IN}
-	class="absolute top-full z-50 mt-1.5 min-w-[260px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+	class="absolute top-full z-50 mt-1.5 min-w-[286px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 >
 	<div class="mb-1.5 flex items-center gap-2 border-b border-border px-2 pt-1 pb-2">
-		<span class="text-text-3"><Icon name="search" size={13} /></span>
+		<span class="text-text-3"><Icon name="search" size={14} /></span>
 		<input
 			type="text"
 			bind:value={q}
 			placeholder={m.tasks_assign_to_placeholder()}
-			class="flex-1 border-0 bg-transparent text-[13px] outline-none placeholder:text-text-3"
+			class="flex-1 border-0 bg-transparent text-[14px] outline-none placeholder:text-text-3"
 		/>
 	</div>
-	<div class="max-h-[280px] overflow-y-auto">
+	<div class="max-h-[308px] overflow-y-auto">
 		{#each users as u (u.id)}
 			<button
 				type="button"
 				onclick={() => toggle(u.id)}
 				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 			>
-				<Avatar user={u} size={22} />
-				<span class="text-[13px]">{u.name}</span>
+				<Avatar user={u} size={24} />
+				<span class="text-[14px]">{u.name}</span>
 				<span class="ml-auto text-accent {value.includes(u.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={13} />
+					<Icon name="check" size={14} />
 				</span>
 			</button>
 		{/each}

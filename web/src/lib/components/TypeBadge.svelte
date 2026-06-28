@@ -12,12 +12,12 @@
 </script>
 
 <span
-	class="inline-flex h-[18px] items-center gap-1.5 rounded-md border px-1.5 font-mono text-[11px] leading-none font-medium"
+	class="inline-flex h-[20px] items-center gap-1.5 rounded-md border px-1.5 font-mono text-[12px] leading-none font-medium"
 	style:color={meta.color}
 	style:border-color={meta.color + '40'}
 	style:background={meta.color + '14'}
 >
-	<span class="grid h-[11px] w-[11px] shrink-0 place-items-center">
+	<span class="grid h-[12px] w-[12px] shrink-0 place-items-center">
 		<svg
 			width="11"
 			height="11"

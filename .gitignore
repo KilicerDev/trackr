@@ -1,5 +1,8 @@
-# Repo-root, general ignores shared across the monorepo. SvelteKit/web-specific
-# ignores (node_modules, .svelte-kit, build, paraglide, …) live in web/.gitignore.
+# Repo-root, general ignores for the monorepo. web/.gitignore keeps a copy of a
+# few of these because eslint/prettier read it when run from web/, but the
+# dependency and build artifacts below are ignored here repo-wide (patterns with
+# no leading slash match at any depth) so stray copies — e.g. ones accidentally
+# generated at the repo root — never get committed.
 
 # OS
 .DS_Store
@@ -10,6 +13,26 @@ Thumbs.db
 .env.*
 !.env.example
 !.env.test
+
+# Dependencies
+node_modules/
+
+# Build / framework output (any package in the monorepo)
+.svelte-kit/
+build/
+dist/
+.output/
+.vercel/
+.netlify/
+.wrangler/
+vite.config.*.timestamp-*
+
+# Generated i18n (paraglide) + project.inlang cache
+src/lib/paraglide/
+project.inlang/cache/
+
+# Local file storage (storage driver "local")
+data/
 
 # Go build artifacts
 *.exe

@@ -114,14 +114,14 @@
 	}
 </script>
 
-<aside class="flex min-h-0 flex-col border-r border-border bg-bg-elev w-[260px]">
+<aside class="flex min-h-0 flex-col border-r border-border bg-bg-elev w-[286px]">
 	<!-- Tabs + contextual create -->
 	<div class="flex items-center gap-2 px-3 pt-3 pb-2.5">
 		<div class="flex flex-1 items-center gap-0.5 rounded-lg border border-border bg-surface p-0.5">
 			<button
 				type="button"
 				onclick={() => setTab('notes')}
-				class="flex-1 rounded-[6px] px-2 py-1 text-[13px] font-medium transition-colors {tab ===
+				class="flex-1 rounded-[6px] px-2 py-1 text-[14px] font-medium transition-colors {tab ===
 				'notes'
 					? 'bg-bg-elev text-text shadow-sm'
 					: 'text-text-3 hover:text-text-2'}"
@@ -131,7 +131,7 @@
 			<button
 				type="button"
 				onclick={() => setTab('meetings')}
-				class="flex-1 rounded-[6px] px-2 py-1 text-[13px] font-medium transition-colors {tab ===
+				class="flex-1 rounded-[6px] px-2 py-1 text-[14px] font-medium transition-colors {tab ===
 				'meetings'
 					? 'bg-bg-elev text-text shadow-sm'
 					: 'text-text-3 hover:text-text-2'}"
@@ -158,9 +158,9 @@
 					disabled={creating}
 					aria-label={m.notes_new_note()}
 					title={m.notes_new_note()}
-					class="grid h-[30px] w-[30px] place-items-center rounded-lg border border-border text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text disabled:opacity-50"
+					class="grid h-[33px] w-[33px] place-items-center rounded-lg border border-border text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text disabled:opacity-50"
 				>
-					<Icon name="plus" size={15} />
+					<Icon name="plus" size={16} />
 				</button>
 			</form>
 		{:else}
@@ -169,9 +169,9 @@
 				onclick={onNewMeeting}
 				aria-label={m.notes_new_meeting()}
 				title={m.notes_new_meeting()}
-				class="grid h-[30px] w-[30px] place-items-center rounded-lg border border-border text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text"
+				class="grid h-[33px] w-[33px] place-items-center rounded-lg border border-border text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text"
 			>
-				<Icon name="plus" size={15} />
+				<Icon name="plus" size={16} />
 			</button>
 		{/if}
 	</div>
@@ -179,18 +179,18 @@
 	<div class="flex-1 overflow-y-auto px-2 pb-3">
 		{#if tab === 'notes'}
 			{#if mine.length === 0 && shared.length === 0}
-				<div class="px-2 py-1.5 text-[12px] text-text-4">{m.notes_sidebar_empty()}</div>
+				<div class="px-2 py-1.5 text-[13px] text-text-4">{m.notes_sidebar_empty()}</div>
 			{/if}
 			{#each mine as n (n.id)}
 				<a
 					href="/notes/{n.id}"
-					class="group my-[1px] flex items-center gap-2 rounded-[7px] px-2 py-[7px] text-[13px] transition-colors {activeId ===
+					class="group my-[1px] flex items-center gap-2 rounded-[7px] px-2 py-[8px] text-[14px] transition-colors {activeId ===
 					n.id
 						? 'bg-[var(--row-active)] text-text'
 						: 'text-text-2 hover:bg-[var(--row-hover)] hover:text-text'}"
 				>
 					<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3">
-						<Icon name={n.icon || 'file'} size={14} />
+						<Icon name={n.icon || 'file'} size={15} />
 					</span>
 					<span class="flex-1 truncate">{n.title || m.notes_untitled()}</span>
 					<button
@@ -201,56 +201,56 @@
 							? 'text-accent'
 							: 'text-text-4 opacity-0 group-hover:opacity-100 hover:text-text-2'}"
 					>
-						<Icon name="star" size={13} class={n.pinned ? 'fill-current' : ''} />
+						<Icon name="star" size={14} class={n.pinned ? 'fill-current' : ''} />
 					</button>
 				</a>
 			{/each}
 
 			{#if shared.length > 0}
 				<div
-					class="px-1 pt-3.5 pb-1 text-[11px] font-medium tracking-[0.1em] text-text-4 uppercase"
+					class="px-1 pt-3.5 pb-1 text-[12px] font-medium tracking-[0.1em] text-text-4 uppercase"
 				>
 					{m.notes_shared_with_me()}
 				</div>
 				{#each shared as n (n.id)}
 					<a
 						href="/notes/{n.id}"
-						class="my-[1px] flex items-center gap-2 rounded-[7px] px-2 py-[7px] text-[13px] transition-colors {activeId ===
+						class="my-[1px] flex items-center gap-2 rounded-[7px] px-2 py-[8px] text-[14px] transition-colors {activeId ===
 						n.id
 							? 'bg-[var(--row-active)] text-text'
 							: 'text-text-2 hover:bg-[var(--row-hover)] hover:text-text'}"
 					>
 						<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3">
-							<Icon name={n.icon || 'file'} size={14} />
+							<Icon name={n.icon || 'file'} size={15} />
 						</span>
 						<span class="flex-1 truncate">{n.title || m.notes_untitled()}</span>
-						<Icon name="link" size={12} class="shrink-0 text-text-4" />
+						<Icon name="link" size={13} class="shrink-0 text-text-4" />
 					</a>
 				{/each}
 			{/if}
 		{:else}
 			<!-- Meetings — grouped by day, newest first (Apple Calendar list style) -->
 			{#if meetings.length === 0}
-				<div class="px-2 py-1.5 text-[12px] text-text-4">{m.notes_meetings_sidebar_empty()}</div>
+				<div class="px-2 py-1.5 text-[13px] text-text-4">{m.notes_meetings_sidebar_empty()}</div>
 			{/if}
 			{#each meetingGroups as g (g.key)}
-				<div class="px-2 pt-2 pb-0.5 text-[11px] font-medium text-text-3">{g.label}</div>
+				<div class="px-2 pt-2 pb-0.5 text-[12px] font-medium text-text-3">{g.label}</div>
 				{#each g.items as n (n.id)}
 					{@const proj = n.projectId ? projectById.get(n.projectId) : null}
 					<a
 						href="/notes/{n.id}"
-						class="my-[1px] flex items-start gap-2 rounded-[7px] px-2 py-[7px] text-[13px] transition-colors {activeId ===
+						class="my-[1px] flex items-start gap-2 rounded-[7px] px-2 py-[8px] text-[14px] transition-colors {activeId ===
 						n.id
 							? 'bg-[var(--row-active)] text-text'
 							: 'text-text-2 hover:bg-[var(--row-hover)] hover:text-text'}"
 					>
 						<span class="mt-px grid h-4 w-4 shrink-0 place-items-center text-text-3">
-							<Icon name={n.icon || 'users'} size={14} />
+							<Icon name={n.icon || 'users'} size={15} />
 						</span>
 						<span class="min-w-0 flex-1">
 							<span class="block truncate">{n.title || m.notes_untitled()}</span>
 							{#if proj}
-								<span class="mt-0.5 flex items-center gap-1.5 text-[11px] text-text-4">
+								<span class="mt-0.5 flex items-center gap-1.5 text-[12px] text-text-4">
 									<span class="h-2 w-2 shrink-0 rounded-[2.5px]" style:background={proj.color}
 									></span>
 									<span class="truncate">{proj.name}</span>
@@ -267,12 +267,12 @@
 	<div class="border-t border-border px-2 py-2">
 		<a
 			href="/notes/templates"
-			class="flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors {page
+			class="flex items-center gap-2 rounded-md px-2 py-1.5 text-[14px] transition-colors {page
 				.url.pathname === '/notes/templates'
 				? 'text-text'
 				: 'text-text-3 hover:bg-[var(--row-hover)] hover:text-text'}"
 		>
-			<Icon name="bookmark" size={13} />
+			<Icon name="bookmark" size={14} />
 			{m.notes_templates_title()}
 		</a>
 	</div>

@@ -210,18 +210,18 @@
 	>
 		<div
 			transition:fly={{ y: -8, duration: 180, easing: cubicOut }}
-			class="pointer-events-auto flex w-full max-w-[640px] flex-col self-start overflow-hidden rounded-2xl border border-border bg-bg-elev shadow-lg"
+			class="pointer-events-auto flex w-full max-w-[704px] flex-col self-start overflow-hidden rounded-2xl border border-border bg-bg-elev shadow-lg"
 			style:margin-top="calc(30vh - 24px)"
 		>
 			<!-- Search row -->
 			<div class="flex h-12 items-center gap-2.5 border-b border-border px-4">
-				<Icon name="search" size={15} class="text-text-3" />
+				<Icon name="search" size={16} class="text-text-3" />
 				<input
 					bind:this={inputEl}
 					bind:value={query}
 					type="text"
 					placeholder={m.shell_palette_search_placeholder()}
-					class="flex-1 border-0 bg-transparent text-[14px] text-text outline-none placeholder:text-text-4"
+					class="flex-1 border-0 bg-transparent text-[15px] text-text outline-none placeholder:text-text-4"
 					autocomplete="off"
 					spellcheck="false"
 				/>
@@ -235,10 +235,10 @@
 						<div
 							class="mb-2 inline-grid h-10 w-10 place-items-center rounded-xl border border-border bg-surface text-text-3"
 						>
-							<Icon name="search" size={16} />
+							<Icon name="search" size={17} />
 						</div>
-						<div class="text-[13px] text-text-2">{m.shell_palette_no_results()}</div>
-						<div class="mt-0.5 text-[11px] text-text-4">
+						<div class="text-[14px] text-text-2">{m.shell_palette_no_results()}</div>
+						<div class="mt-0.5 text-[12px] text-text-4">
 							{m.shell_palette_no_results_hint()}
 						</div>
 					</div>
@@ -247,7 +247,7 @@
 						{#if gi > 0}
 							<div class="mx-3 my-1.5 h-px bg-border/70"></div>
 						{/if}
-						<div class="px-3 pt-1.5 pb-1 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+						<div class="px-3 pt-1.5 pb-1 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 							{g.section}
 						</div>
 						<div class="px-1.5">
@@ -264,14 +264,14 @@
 										: 'hover:bg-surface/60'}"
 								>
 									<span class={iconBgClasses(it.tone, selected)}>
-										<Icon name={it.icon} size={13} />
+										<Icon name={it.icon} size={14} />
 									</span>
 									<span class="min-w-0 flex-1">
-										<span class="block truncate text-[13px] leading-tight {toneClasses(it.tone)}">
+										<span class="block truncate text-[14px] leading-tight {toneClasses(it.tone)}">
 											{it.label}
 										</span>
 										{#if it.hint}
-											<span class="mt-0.5 block truncate text-[11px] leading-tight text-text-4">
+											<span class="mt-0.5 block truncate text-[12px] leading-tight text-text-4">
 												{it.hint}
 											</span>
 										{/if}
@@ -288,7 +288,7 @@
 											? 'opacity-100'
 											: ''}"
 									>
-										<Icon name="chevron-r" size={12} />
+										<Icon name="chevron-r" size={13} />
 									</span>
 								</button>
 							{/each}
@@ -299,7 +299,7 @@
 
 			<!-- Footer -->
 			<div
-				class="flex h-9 items-center gap-3 border-t border-border bg-surface/40 px-4 text-[11px] text-text-3"
+				class="flex h-9 items-center gap-3 border-t border-border bg-surface/40 px-4 text-[12px] text-text-3"
 			>
 				<div class="flex items-center gap-1.5">
 					<Kbd>↑</Kbd><Kbd>↓</Kbd>
@@ -309,7 +309,7 @@
 					<Kbd>↵</Kbd>
 					<span class="text-text-4">{m.common_open()}</span>
 				</div>
-				<div class="ml-auto flex items-center gap-1.5 font-mono text-[11px] text-text-4">
+				<div class="ml-auto flex items-center gap-1.5 font-mono text-[12px] text-text-4">
 					<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
 					Trackr
 				</div>

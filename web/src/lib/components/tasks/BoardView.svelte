@@ -182,13 +182,13 @@
 	<div class="flex h-full">
 		{#each columns as col (col.key)}
 			{@const groups = subGroupsForColumn(col)}
-			<div class="flex w-[330px] shrink-0 flex-col border-r border-border last:border-r-0">
+			<div class="flex w-[363px] shrink-0 flex-col border-r border-border last:border-r-0">
 				<div class="flex items-center gap-2 border-b border-border px-4 py-3">
 					{#if col.statusId}
-						<StatusDot status={col.statusId} size={11} />
+						<StatusDot status={col.statusId} size={12} />
 					{:else if col.userId}
 						{@const u = resolveUser(col.userId)}
-						<Avatar user={u} size={16} />
+						<Avatar user={u} size={17} />
 					{:else if col.priorityId && col.priorityId !== 'none'}
 						<PriorityBars priority={col.priorityId} />
 					{:else if col.color !== 'transparent'}
@@ -197,22 +197,22 @@
 					{#if projectHref(col.project)}
 						<a
 							href={projectHref(col.project)}
-							class="truncate text-[13px] font-semibold text-text hover:underline"
+							class="truncate text-[14px] font-semibold text-text hover:underline"
 							title={m.tasks_open_project({ name: col.label })}
 						>
 							{col.label}
 						</a>
 					{:else}
-						<span class="truncate text-[13px] font-semibold text-text">{col.label}</span>
+						<span class="truncate text-[14px] font-semibold text-text">{col.label}</span>
 					{/if}
-					<span class="font-mono text-[11px] text-text-3">{col.tasks.length}</span>
+					<span class="font-mono text-[12px] text-text-3">{col.tasks.length}</span>
 					<span class="ml-auto">
 						<IconButton
-							size={24}
+							size={26}
 							ariaLabel={m.tasks_add_task()}
 							onclick={() => onAddInProject?.(col.project ?? ('TRACKR' as ProjectId), col.statusId)}
 						>
-							<Icon name="plus" size={13} />
+							<Icon name="plus" size={14} />
 						</IconButton>
 					</span>
 				</div>
@@ -224,18 +224,18 @@
 								<button
 									type="button"
 									onclick={() => toggle(g.key)}
-									class="flex w-full items-center gap-2 px-1 py-1 text-left text-[11px] font-medium tracking-[0.08em] text-text-3 uppercase hover:text-text"
+									class="flex w-full items-center gap-2 px-1 py-1 text-left text-[12px] font-medium tracking-[0.08em] text-text-3 uppercase hover:text-text"
 								>
 									<span class="text-text-4 transition-transform {isCollapsed ? '-rotate-90' : ''}">
-										<Icon name="chevron" size={10} />
+										<Icon name="chevron" size={11} />
 									</span>
 									{#if g.statusId}
-										<StatusDot status={g.statusId} size={11} />
+										<StatusDot status={g.statusId} size={12} />
 									{:else if g.priorityId && g.priorityId !== 'none'}
 										<PriorityBars priority={g.priorityId} />
 									{:else if g.userId}
 										{@const u = resolveUser(g.userId)}
-										<Avatar user={u} size={14} />
+										<Avatar user={u} size={15} />
 									{:else if g.color}
 										<span class="h-2 w-2 rounded-full" style:background={g.color}></span>
 									{/if}
@@ -258,9 +258,9 @@
 					<button
 						type="button"
 						onclick={() => onAddInProject?.(col.project ?? ('TRACKR' as ProjectId), col.statusId)}
-						class="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-[12px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
+						class="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
 					>
-						<Icon name="plus" size={12} />
+						<Icon name="plus" size={13} />
 						{m.tasks_new_task()}
 					</button>
 				</div>

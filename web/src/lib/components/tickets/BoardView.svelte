@@ -190,26 +190,26 @@
 	<div class="flex h-full">
 		{#each columns as col (col.key)}
 			{@const groups = subGroupsForColumn(col)}
-			<div class="flex w-[330px] shrink-0 flex-col border-r border-border last:border-r-0">
+			<div class="flex w-[363px] shrink-0 flex-col border-r border-border last:border-r-0">
 				<div class="flex items-center gap-2 border-b border-border px-4 py-3">
 					{#if col.userId}
 						{@const u = resolveUser(col.userId)}
-						<Avatar user={u} size={16} />
+						<Avatar user={u} size={17} />
 					{:else if col.priorityId}
 						<PriorityBars priority={col.priorityId} />
 					{:else if col.dot !== 'transparent'}
 						<span class="h-2.5 w-2.5 rounded-full" style:background={col.dot}></span>
 					{/if}
-					<span class="truncate text-[13px] font-semibold text-text">{col.label}</span>
-					<span class="font-mono text-[11px] text-text-3">{col.tickets.length}</span>
+					<span class="truncate text-[14px] font-semibold text-text">{col.label}</span>
+					<span class="font-mono text-[12px] text-text-3">{col.tickets.length}</span>
 					{#if canCreate && group === 'org'}
 						<span class="ml-auto">
 							<IconButton
-								size={24}
+								size={26}
 								ariaLabel={m.tickets_new_title()}
 								onclick={() => onAddInOrg?.(col.orgId ?? null)}
 							>
-								<Icon name="plus" size={13} />
+								<Icon name="plus" size={14} />
 							</IconButton>
 						</span>
 					{/if}
@@ -222,16 +222,16 @@
 								<button
 									type="button"
 									onclick={() => toggle(g.key)}
-									class="flex w-full items-center gap-2 px-1 py-1 text-left text-[11px] font-medium tracking-[0.08em] text-text-3 uppercase hover:text-text"
+									class="flex w-full items-center gap-2 px-1 py-1 text-left text-[12px] font-medium tracking-[0.08em] text-text-3 uppercase hover:text-text"
 								>
 									<span class="text-text-4 transition-transform {isCollapsed ? '-rotate-90' : ''}">
-										<Icon name="chevron" size={10} />
+										<Icon name="chevron" size={11} />
 									</span>
 									{#if g.priorityId}
 										<PriorityBars priority={g.priorityId} />
 									{:else if g.userId}
 										{@const u = resolveUser(g.userId)}
-										<Avatar user={u} size={14} />
+										<Avatar user={u} size={15} />
 									{:else if g.dot}
 										<span class="h-2 w-2 rounded-full" style:background={g.dot}></span>
 									{/if}
@@ -252,7 +252,7 @@
 			</div>
 		{/each}
 		{#if columns.length === 0}
-			<div class="grid flex-1 place-items-center text-[13px] text-text-3">
+			<div class="grid flex-1 place-items-center text-[14px] text-text-3">
 				{m.tickets_none_match()}
 			</div>
 		{/if}

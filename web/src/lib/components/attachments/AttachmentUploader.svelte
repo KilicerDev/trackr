@@ -68,11 +68,11 @@
 		type="button"
 		disabled={uploading}
 		onclick={() => input?.click()}
-		class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border bg-surface px-2.5 py-1.5 text-[13px] text-text-2 transition-colors hover:border-border-strong hover:text-text disabled:opacity-60"
+		class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border bg-surface px-2.5 py-1.5 text-[14px] text-text-2 transition-colors hover:border-border-strong hover:text-text disabled:opacity-60"
 	>
 		<Icon
 			name={uploading ? 'refresh' : 'paperclip'}
-			size={13}
+			size={14}
 			class={uploading ? 'animate-spin' : ''}
 		/>
 		<span>{uploading ? m.attach_uploading() : label}</span>

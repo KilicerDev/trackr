@@ -205,11 +205,11 @@
 					class="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-surface"
 				>
 					<span
-						class="grid h-5 w-5 place-items-center rounded text-[10px] font-semibold text-white"
+						class="grid h-5 w-5 place-items-center rounded text-[11px] font-semibold text-white"
 						style:background={activeOrg?.color ?? '#7c7c84'}>{(activeOrg?.name ?? '?')[0]}</span
 					>
-					<span class="text-[14px] font-semibold">{activeOrg?.name}</span>
-					<Icon name="chevron" size={12} class="text-text-3" />
+					<span class="text-[15px] font-semibold">{activeOrg?.name}</span>
+					<Icon name="chevron" size={13} class="text-text-3" />
 				</button>
 				<Popover open={orgOpen} onclose={() => (orgOpen = false)} minWidth={220}>
 					{#each data.orgs as o (o.id)}
@@ -219,16 +219,16 @@
 							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 						>
 							<span class="h-2 w-2 rounded-full" style:background={o.color}></span>
-							<span class="truncate text-[13px]">{o.name}</span>
+							<span class="truncate text-[14px]">{o.name}</span>
 							{#if o.id === data.activeOrgId}<span class="ml-auto text-accent"
-									><Icon name="check" size={13} /></span
+									><Icon name="check" size={14} /></span
 								>{/if}
 						</button>
 					{/each}
 				</Popover>
 			</div>
 		{:else}
-			<h1 class="text-[14px] font-semibold">{m.chat_title()}</h1>
+			<h1 class="text-[15px] font-semibold">{m.chat_title()}</h1>
 		{/if}
 
 		{#if data.tags.length}
@@ -236,7 +236,7 @@
 				<button
 					type="button"
 					onclick={() => filterTag(null)}
-					class="rounded-full px-2 py-0.5 text-[11px] {data.tagFilter === null
+					class="rounded-full px-2 py-0.5 text-[12px] {data.tagFilter === null
 						? 'bg-surface-2 text-text'
 						: 'text-text-3 hover:text-text-2'}">{m.chat_filter_all()}</button
 				>
@@ -244,7 +244,7 @@
 					<button
 						type="button"
 						onclick={() => filterTag(t.id)}
-						class="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] {data.tagFilter ===
+						class="inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[12px] {data.tagFilter ===
 						t.id
 							? 'border-accent bg-accent/10 text-accent'
 							: 'border-transparent text-text-3 hover:text-text-2'}"
@@ -263,14 +263,14 @@
 				onclick={() => (topicsOpen = !topicsOpen)}
 				class="grid h-8 w-8 place-items-center rounded-lg text-text-3 hover:bg-surface hover:text-text"
 			>
-				<Icon name="sliders" size={15} />
+				<Icon name="sliders" size={16} />
 			</button>
 			<Popover open={topicsOpen} onclose={() => (topicsOpen = false)} align="right" minWidth={248}>
-				<div class="px-2 pt-1 pb-1.5 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+				<div class="px-2 pt-1 pb-1.5 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 					{m.chat_topic_notifications()}
 				</div>
 				{#if data.tags.length === 0}
-					<div class="px-2 py-1.5 text-[12px] text-text-4">{m.chat_no_tags()}</div>
+					<div class="px-2 py-1.5 text-[13px] text-text-4">{m.chat_no_tags()}</div>
 				{/if}
 				{#each data.tags as t (t.id)}
 					{@const mode = data.subscriptions[t.id]}
@@ -280,15 +280,15 @@
 						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-surface-2"
 					>
 						<span class="h-2 w-2 rounded-full" style:background={tagColor(t)}></span>
-						<span class="truncate text-[13px] text-text-2">{t.label}</span>
+						<span class="truncate text-[14px] text-text-2">{t.label}</span>
 						<span
-							class="ml-auto inline-flex items-center gap-1 text-[11px] {mode === 'all'
+							class="ml-auto inline-flex items-center gap-1 text-[12px] {mode === 'all'
 								? 'text-accent'
 								: mode === 'muted'
 									? 'text-text-4'
 									: 'text-text-3'}"
 						>
-							<Icon name={mode === 'muted' ? 'x' : 'bell'} size={12} />
+							<Icon name={mode === 'muted' ? 'x' : 'bell'} size={13} />
 							{mode === 'all' ? m.chat_following() : mode === 'muted' ? m.chat_muted() : m.chat_default()}
 						</span>
 					</button>
@@ -302,8 +302,8 @@
 		<div class="mx-auto max-w-3xl space-y-5">
 			{#if data.feed.length === 0}
 				<div class="grid place-items-center py-20 text-center">
-					<Icon name="msg" size={26} class="mb-2 text-text-4" />
-					<div class="text-[13px] text-text-4">{m.chat_empty()}</div>
+					<Icon name="msg" size={29} class="mb-2 text-text-4" />
+					<div class="text-[14px] text-text-4">{m.chat_empty()}</div>
 				</div>
 			{/if}
 
@@ -315,9 +315,9 @@
 					<!-- Post head -->
 					<div class="px-4 pt-3.5 pb-1">
 						<div class="flex items-center gap-2.5">
-							<Avatar user={author} size={28} />
-							<span class="text-[13px] font-medium text-text">{author?.name ?? m.chat_unknown_user()}</span>
-							<span class="font-mono text-[10px] text-text-4">{relTime(t.createdAt)}</span>
+							<Avatar user={author} size={31} />
+							<span class="text-[14px] font-medium text-text">{author?.name ?? m.chat_unknown_user()}</span>
+							<span class="font-mono text-[11px] text-text-4">{relTime(t.createdAt)}</span>
 							<div class="relative ml-auto">
 								<button
 									type="button"
@@ -325,7 +325,7 @@
 									onclick={() => (tagEditId = tagEditId === t.id ? null : t.id)}
 									class="grid h-7 w-7 place-items-center rounded-lg text-text-4 hover:bg-bg-elev hover:text-text"
 								>
-									<Icon name="bookmark" size={13} />
+									<Icon name="bookmark" size={14} />
 								</button>
 								<Popover
 									open={tagEditId === t.id}
@@ -344,9 +344,9 @@
 								</Popover>
 							</div>
 						</div>
-						<h2 class="mt-2 text-[15px] leading-snug font-semibold text-text">{t.title}</h2>
+						<h2 class="mt-2 text-[16px] leading-snug font-semibold text-text">{t.title}</h2>
 						{#if root}
-							<div class="mt-1 text-[13px] leading-relaxed whitespace-pre-wrap text-text-2">
+							<div class="mt-1 text-[14px] leading-relaxed whitespace-pre-wrap text-text-2">
 								<MentionText text={root.body} />
 							</div>
 							{#if root.files?.length}
@@ -359,7 +359,7 @@
 									{@const tg = tagMap.get(id)}
 									{#if tg}
 										<span
-											class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] text-text-3"
+											class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] text-text-3"
 											style:background="{tagColor(tg)}1f"
 										>
 											<span class="h-1 w-1 rounded-full" style:background={tagColor(tg)}></span>
@@ -377,15 +377,15 @@
 							{#each replies as r (r.id)}
 								{@const ru = who(r.authorId)}
 								<div class="flex gap-2.5">
-									<Avatar user={ru} size={22} />
+									<Avatar user={ru} size={24} />
 									<div class="min-w-0 flex-1">
 										<div class="flex items-baseline gap-2">
-											<span class="text-[12px] font-medium text-text"
+											<span class="text-[13px] font-medium text-text"
 												>{ru?.name ?? m.chat_unknown_user()}</span
 											>
-											<span class="font-mono text-[10px] text-text-4">{relTime(r.createdAt)}</span>
+											<span class="font-mono text-[11px] text-text-4">{relTime(r.createdAt)}</span>
 										</div>
-										<div class="text-[13px] leading-relaxed whitespace-pre-wrap text-text-2">
+										<div class="text-[14px] leading-relaxed whitespace-pre-wrap text-text-2">
 											<MentionText text={r.body} />
 										</div>
 										{#if r.files?.length}
@@ -423,7 +423,7 @@
 											onclick={() => replyFileInput?.click()}
 											class="grid h-8 w-8 place-items-center rounded-lg text-text-3 hover:bg-surface hover:text-text"
 										>
-											<Icon name="paperclip" size={15} />
+											<Icon name="paperclip" size={16} />
 										</button>
 										<input
 											bind:this={replyFileInput}
@@ -439,9 +439,9 @@
 							<button
 								type="button"
 								onclick={() => openReply(t.id)}
-								class="flex items-center gap-2 text-[12px] text-text-3 hover:text-text"
+								class="flex items-center gap-2 text-[13px] text-text-3 hover:text-text"
 							>
-								<Icon name="msg" size={13} />
+								<Icon name="msg" size={14} />
 								{m.chat_reply()}
 							</button>
 						{/if}
@@ -462,7 +462,7 @@
 						bind:value={newTitle}
 						placeholder={m.chat_title_placeholder()}
 						onkeydown={newKey}
-						class="w-full bg-transparent px-3.5 pt-3 text-[15px] font-semibold outline-none placeholder:text-text-3"
+						class="w-full bg-transparent px-3.5 pt-3 text-[16px] font-semibold outline-none placeholder:text-text-3"
 					/>
 					<MentionTextarea
 						bind:value={newBody}
@@ -471,7 +471,7 @@
 						onkeydown={newKey}
 						placeholder={m.chat_message_placeholder()}
 						rows={2}
-						class="w-full resize-none border-0 bg-transparent px-3.5 pt-1.5 pb-1 text-[13px] leading-relaxed outline-none placeholder:text-text-3"
+						class="w-full resize-none border-0 bg-transparent px-3.5 pt-1.5 pb-1 text-[14px] leading-relaxed outline-none placeholder:text-text-3"
 					/>
 					{#if newFiles.length}
 						<div class="px-3.5 pb-1">
@@ -488,7 +488,7 @@
 							onclick={() => newFileInput?.click()}
 							class="grid h-8 w-8 place-items-center rounded-lg text-text-3 hover:bg-bg-elev hover:text-text"
 						>
-							<Icon name="paperclip" size={15} />
+							<Icon name="paperclip" size={16} />
 						</button>
 						<input
 							bind:this={newFileInput}
@@ -516,7 +516,7 @@
 									class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"
 								></span>
 							{:else}
-								<Icon name="send" size={13} />
+								<Icon name="send" size={14} />
 							{/if}
 						</button>
 					</div>

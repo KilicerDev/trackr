@@ -16,6 +16,6 @@
 >
 	{@render children()}
 	<span class="ml-auto text-accent {selected ? 'opacity-100' : 'opacity-0'}">
-		<Icon name="check" size={13} />
+		<Icon name="check" size={14} />
 	</span>
 </button>

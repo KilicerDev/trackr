@@ -63,8 +63,8 @@
 </script>
 
 <header class="mb-6">
-	<h1 class="text-[24px] font-semibold tracking-[-0.014em]">{m.settings_title()}</h1>
-	<p class="mt-1 text-[13px] text-text-3">{m.settings_subtitle()}</p>
+	<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.settings_title()}</h1>
+	<p class="mt-1 text-[14px] text-text-3">{m.settings_subtitle()}</p>
 </header>
 
 <form
@@ -97,17 +97,17 @@
 	class="space-y-5"
 >
 	<section class="rounded-2xl border border-border bg-bg-elev p-5">
-		<div class="mb-4 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+		<div class="mb-4 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 			{m.settings_appearance()}
 		</div>
-		<div class="grid grid-cols-[140px_1fr] items-center gap-x-4 gap-y-4 text-[13px]">
+		<div class="grid grid-cols-[140px_1fr] items-center gap-x-4 gap-y-4 text-[14px]">
 			<div class="text-text-3">{m.settings_theme()}</div>
 			<div class="inline-flex h-8 items-center rounded-lg border border-border bg-surface p-0.5">
 				{#each themes as t (t.value)}
 					<button
 						type="button"
 						onclick={() => (theme = t.value)}
-						class="h-full rounded-md px-3 text-[13px] {theme === t.value
+						class="h-full rounded-md px-3 text-[14px] {theme === t.value
 							? 'bg-bg-elev text-text shadow-sm'
 							: 'text-text-3 hover:text-text'}"
 					>
@@ -122,7 +122,7 @@
 					<button
 						type="button"
 						onclick={() => (density = d.value)}
-						class="h-full rounded-md px-3 text-[13px] {density === d.value
+						class="h-full rounded-md px-3 text-[14px] {density === d.value
 							? 'bg-bg-elev text-text shadow-sm'
 							: 'text-text-3 hover:text-text'}"
 					>
@@ -137,10 +137,10 @@
 	</section>
 
 	<section class="rounded-2xl border border-border bg-bg-elev p-5">
-		<div class="mb-4 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+		<div class="mb-4 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 			{m.settings_defaults()}
 		</div>
-		<div class="grid grid-cols-[140px_1fr] items-center gap-x-4 gap-y-4 text-[13px]">
+		<div class="grid grid-cols-[140px_1fr] items-center gap-x-4 gap-y-4 text-[14px]">
 			<span class="text-text-3">{m.settings_landing_page()}</span>
 			<Select
 				bind:value={defaultLanding}
@@ -154,7 +154,7 @@
 					<button
 						type="button"
 						onclick={() => (weekStartsOn = opt.v)}
-						class="h-full rounded-md px-3 text-[13px] {weekStartsOn === opt.v
+						class="h-full rounded-md px-3 text-[14px] {weekStartsOn === opt.v
 							? 'bg-bg-elev text-text shadow-sm'
 							: 'text-text-3 hover:text-text'}"
 					>

@@ -74,19 +74,19 @@
 					<span
 						class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-surface-2 text-text-3"
 					>
-						<Icon name="file" size={16} />
+						<Icon name="file" size={17} />
 					</span>
 				{/if}
 				<div class="min-w-0 flex-1">
-					<div class="truncate text-[13px] text-text">{att.filename}</div>
-					<div class="text-[11px] text-text-3">{formatBytes(att.sizeBytes)}</div>
+					<div class="truncate text-[14px] text-text">{att.filename}</div>
+					<div class="text-[12px] text-text-3">{formatBytes(att.sizeBytes)}</div>
 				</div>
 				<a
 					href={`/api/attachments/${att.id}/download`}
 					class="grid h-7 w-7 place-items-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text"
 					aria-label={m.attach_download({ filename: att.filename })}
 				>
-					<Icon name="download" size={14} />
+					<Icon name="download" size={15} />
 				</a>
 				{#if deletable(att)}
 					<button
@@ -96,7 +96,7 @@
 						aria-label={m.attach_delete_file({ filename: att.filename })}
 						class="grid h-7 w-7 place-items-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-red-500 disabled:opacity-50"
 					>
-						<Icon name="trash" size={14} />
+						<Icon name="trash" size={15} />
 					</button>
 				{/if}
 			</li>

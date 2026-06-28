@@ -22,7 +22,7 @@
 			{#each tabs as t (t.href)}
 				<a
 					href={t.href}
-					class="-mb-px border-b-2 px-3 py-2 text-[13px] transition-colors {isActive(t.href)
+					class="-mb-px border-b-2 px-3 py-2 text-[14px] transition-colors {isActive(t.href)
 						? 'border-accent text-text'
 						: 'border-transparent text-text-3 hover:text-text'}"
 				>

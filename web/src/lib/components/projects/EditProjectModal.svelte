@@ -114,10 +114,10 @@
 	>
 		<div class="flex items-center border-b border-border px-5 pt-4 pb-3">
 			<div>
-				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">
+				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
 					{m.projects_settings_eyebrow()}
 				</div>
-				<div class="text-[14px] font-semibold">{m.projects_edit_title()}</div>
+				<div class="text-[15px] font-semibold">{m.projects_edit_title()}</div>
 			</div>
 			<button
 				type="button"
@@ -125,7 +125,7 @@
 				aria-label={m.common_close()}
 				class="ml-auto grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
 			>
-				<Icon name="x" size={14} />
+				<Icon name="x" size={15} />
 			</button>
 		</div>
 
@@ -147,15 +147,15 @@
 						bind:value={name}
 						required
 						placeholder={m.projects_name_placeholder()}
-						class="block w-full border-0 bg-transparent text-[20px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
+						class="block w-full border-0 bg-transparent text-[22px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
 					/>
 					<div class="mt-1 flex items-center gap-1.5">
-						<span class="text-[11px] tracking-[0.08em] text-text-4 uppercase"
+						<span class="text-[12px] tracking-[0.08em] text-text-4 uppercase"
 							>{m.projects_key_label()}</span
 						>
-						<span class="font-mono text-[11px] text-text-2">{project.key}</span>
-						<span class="text-[11px] text-text-4">·</span>
-						<span class="text-[11px] text-text-3">{m.projects_key_cannot_change()}</span>
+						<span class="font-mono text-[12px] text-text-2">{project.key}</span>
+						<span class="text-[12px] text-text-4">·</span>
+						<span class="text-[12px] text-text-3">{m.projects_key_cannot_change()}</span>
 					</div>
 				</div>
 			</div>
@@ -165,11 +165,11 @@
 				bind:value={description}
 				placeholder={m.projects_description_placeholder()}
 				rows="2"
-				class="mb-4 w-full resize-none border-0 bg-transparent text-[13px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
+				class="mb-4 w-full resize-none border-0 bg-transparent text-[14px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
 			></textarea>
 
 			<div class="mb-4">
-				<div class="mb-2 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+				<div class="mb-2 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 					{m.projects_color_label()}
 				</div>
 				<div class="flex flex-wrap gap-1.5">
@@ -208,17 +208,17 @@
 				<button
 					type="button"
 					onclick={() => (pop = !pop)}
-					class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] transition-colors hover:border-border-strong"
+					class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
 				>
 					<span class="h-2 w-2 rounded-full" style:background={statusMeta.color}></span>
 					<span>{projectStatusLabel(status)}</span>
-					<Icon name="chevron" size={11} class="text-text-3" />
+					<Icon name="chevron" size={12} class="text-text-3" />
 				</button>
 				{#if pop}
 					<div
 						use:clickOutside={() => (pop = false)}
 						in:fly={POPOVER_IN}
-						class="absolute top-full z-50 mt-1.5 min-w-[180px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+						class="absolute top-full z-50 mt-1.5 min-w-[198px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 					>
 						{#each STATUSES as s (s)}
 							{@const meta = PROJECT_STATUS[s]}
@@ -231,9 +231,9 @@
 								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
 							>
 								<span class="h-2 w-2 rounded-full" style:background={meta.color}></span>
-								<span class="text-[13px]">{projectStatusLabel(s)}</span>
+								<span class="text-[14px]">{projectStatusLabel(s)}</span>
 								<span class="ml-auto text-accent {status === s ? 'opacity-100' : 'opacity-0'}">
-									<Icon name="check" size={13} />
+									<Icon name="check" size={14} />
 								</span>
 							</button>
 						{/each}
@@ -246,7 +246,7 @@
 		</div>
 
 		<div class="flex items-center gap-2 rounded-b-2xl border-t border-border bg-bg/40 px-5 py-3">
-			<span class="text-[11px] text-text-3">
+			<span class="text-[12px] text-text-3">
 				<Kbd>⌘↵</Kbd>
 				{m.projects_kbd_to_save()}
 			</span>
@@ -255,7 +255,7 @@
 				<button
 					type="submit"
 					disabled={submitting || !name.trim()}
-					class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[11px] py-[7px] text-[13px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
+					class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[12px] py-[8px] text-[14px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
 				>
 					{submitting ? m.common_saving() : m.common_save_changes()}
 				</button>

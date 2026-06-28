@@ -202,13 +202,13 @@
 
 {#snippet refChip(meta: Record<string, unknown> | null)}
 	<span
-		class="inline-flex items-center rounded-[5px] border border-border bg-surface px-1.5 py-px align-middle font-mono text-[11px] text-text-3"
+		class="inline-flex items-center rounded-[5px] border border-border bg-surface px-1.5 py-px align-middle font-mono text-[12px] text-text-3"
 		>{taskRef(meta)}</span
 	>
 {/snippet}
 
 {#snippet line(e: ActivityItem)}
-	<div class="min-w-0 flex-1 text-[13px] leading-relaxed text-text-2">
+	<div class="min-w-0 flex-1 text-[14px] leading-relaxed text-text-2">
 		<span class="font-medium text-text">{e.actor?.name ?? m.projects_history_someone()}</span>
 		{#if e.type === 'comment'}
 			{m.projects_history_commented()}{#if e.taskId}
@@ -275,8 +275,8 @@
 
 <Drawer {open} {onclose} width={460}>
 	<div class="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
-		<div class="flex items-center gap-2 text-[13px] font-medium text-text">
-			<Icon name="logs" size={15} />
+		<div class="flex items-center gap-2 text-[14px] font-medium text-text">
+			<Icon name="logs" size={16} />
 			{m.projects_history_title()}
 		</div>
 		<button
@@ -285,16 +285,16 @@
 			onclick={onclose}
 			class="grid h-7 w-7 place-items-center rounded-md text-text-3 hover:bg-surface-2 hover:text-text"
 		>
-			<Icon name="x" size={14} />
+			<Icon name="x" size={15} />
 		</button>
 	</div>
 
 	<div class="flex-1 overflow-y-auto px-4 py-4">
 		{#if items.length === 0}
-			<div class="py-10 text-center text-[13px] text-text-3">{m.projects_no_activity()}</div>
+			<div class="py-10 text-center text-[14px] text-text-3">{m.projects_no_activity()}</div>
 		{:else}
 			{#each grouped as g (g.day)}
-				<div class="mt-4 mb-3 text-[11px] tracking-[0.08em] text-text-4 uppercase first:mt-0">
+				<div class="mt-4 mb-3 text-[12px] tracking-[0.08em] text-text-4 uppercase first:mt-0">
 					{g.day}
 				</div>
 				<div class="divide-y divide-border/50">
@@ -303,22 +303,22 @@
 						{@const ts = typeStyle(e.type)}
 						<div class="flex gap-3 py-3 first:pt-1">
 							<!-- node: actor avatar + type badge -->
-							<div class="relative mt-0.5 h-[27px] w-[27px] shrink-0">
+							<div class="relative mt-0.5 h-[30px] w-[30px] shrink-0">
 								{#if e.actor}
-									<Avatar user={e.actor} size={27} ring />
+									<Avatar user={e.actor} size={30} ring />
 								{:else}
 									<span
-										class="grid h-[27px] w-[27px] place-items-center rounded-full border border-border bg-surface-2 text-text-4"
+										class="grid h-[30px] w-[30px] place-items-center rounded-full border border-border bg-surface-2 text-text-4"
 									>
-										<Icon name="user" size={13} />
+										<Icon name="user" size={14} />
 									</span>
 								{/if}
 								{#if e.type !== 'comment'}
 									<span
-										class="absolute -right-1 -bottom-1 grid h-[15px] w-[15px] place-items-center rounded-full border-2 border-bg-elev text-white"
+										class="absolute -right-1 -bottom-1 grid h-[16px] w-[16px] place-items-center rounded-full border-2 border-bg-elev text-white"
 										style:background={ts.color}
 									>
-										<Icon name={ts.icon} size={8} stroke={2.4} />
+										<Icon name={ts.icon} size={9} stroke={2.4} />
 									</span>
 								{/if}
 							</div>
@@ -332,14 +332,14 @@
 										class="flex w-full cursor-pointer items-start gap-3 rounded-lg py-0.5 text-left transition-colors hover:bg-surface-2"
 									>
 										{@render line(e)}
-										<time class="shrink-0 pt-[3px] font-mono text-[11px] text-text-4 tabular-nums">
+										<time class="shrink-0 pt-[4px] font-mono text-[12px] text-text-4 tabular-nums">
 											{timeLabel(e.createdAt)}
 										</time>
 									</button>
 								{:else}
 									<div class="flex items-start gap-3 py-0.5">
 										{@render line(e)}
-										<time class="shrink-0 pt-[3px] font-mono text-[11px] text-text-4 tabular-nums">
+										<time class="shrink-0 pt-[4px] font-mono text-[12px] text-text-4 tabular-nums">
 											{timeLabel(e.createdAt)}
 										</time>
 									</div>
@@ -347,12 +347,12 @@
 
 								{#if e.type === 'comment'}
 									<div
-										class="mt-1.5 rounded-xl rounded-tl-sm border border-border bg-surface p-3 text-[13px] leading-relaxed whitespace-pre-wrap text-text"
+										class="mt-1.5 rounded-xl rounded-tl-sm border border-border bg-surface p-3 text-[14px] leading-relaxed whitespace-pre-wrap text-text"
 									>
 										<MentionText text={e.body} />
 									</div>
 								{:else if e.type === 'task.assignee'}
-									<div class="mt-1 flex flex-wrap gap-1.5 text-[11px]">
+									<div class="mt-1 flex flex-wrap gap-1.5 text-[12px]">
 										{#if Array.isArray(e.meta?.added) && e.meta.added.length}
 											<span
 												class="inline-flex items-center rounded border border-border bg-surface px-1.5 py-px text-text-2"
@@ -367,7 +367,7 @@
 										{/if}
 									</div>
 								{:else if e.type === 'time.logged' && e.meta?.note}
-									<div class="mt-1 text-[13px] text-text-3 italic">{e.meta.note}</div>
+									<div class="mt-1 text-[14px] text-text-3 italic">{e.meta.note}</div>
 								{/if}
 							</div>
 						</div>
@@ -380,7 +380,7 @@
 					type="button"
 					onclick={loadMore}
 					disabled={loadingMore}
-					class="mt-5 w-full rounded-lg border border-border py-2 text-[13px] text-text-2 hover:bg-surface-2 disabled:opacity-50"
+					class="mt-5 w-full rounded-lg border border-border py-2 text-[14px] text-text-2 hover:bg-surface-2 disabled:opacity-50"
 				>
 					{loadingMore ? m.common_loading() : m.projects_load_more()}
 				</button>

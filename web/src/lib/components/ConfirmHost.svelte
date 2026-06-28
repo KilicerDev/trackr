@@ -60,7 +60,7 @@
 			aria-modal="true"
 			aria-labelledby="confirm-title"
 			transition:fly={{ y: 10, duration: 200, easing: cubicOut }}
-			class="pointer-events-auto w-full max-w-[420px] overflow-hidden rounded-2xl border border-border bg-bg-elev"
+			class="pointer-events-auto w-full max-w-[462px] overflow-hidden rounded-2xl border border-border bg-bg-elev"
 			style:box-shadow="var(--shadow-lg), 0 0 0 1px rgba(255,255,255,0.02) inset"
 		>
 			<div class="flex gap-3.5 px-5 pt-5 pb-4">
@@ -121,11 +121,11 @@
 					{/if}
 				</span>
 				<div class="min-w-0 flex-1 pt-0.5">
-					<div id="confirm-title" class="text-[14px] font-semibold tracking-[-0.01em] text-text">
+					<div id="confirm-title" class="text-[15px] font-semibold tracking-[-0.01em] text-text">
 						{top.title}
 					</div>
 					{#if top.message}
-						<div class="mt-1.5 text-[13px] leading-relaxed whitespace-pre-line text-text-3">
+						<div class="mt-1.5 text-[14px] leading-relaxed whitespace-pre-line text-text-3">
 							{top.message}
 						</div>
 					{/if}
@@ -139,7 +139,7 @@
 					<button
 						type="button"
 						onclick={onConfirm}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent px-[11px] py-[7px] text-[13px] font-medium text-white transition-[background,border-color,transform] duration-150 hover:brightness-110 active:translate-y-[1px] bg-prio-urgent"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent px-[12px] py-[8px] text-[14px] font-medium text-white transition-[background,border-color,transform] duration-150 hover:brightness-110 active:translate-y-[1px] bg-prio-urgent"
 						style:box-shadow="var(--shadow-edge), 0 4px 12px rgba(239,79,94,0.28)"
 					>
 						{top.confirmLabel}
@@ -148,7 +148,7 @@
 					<button
 						type="button"
 						onclick={onConfirm}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent px-[11px] py-[7px] text-[13px] font-medium text-white transition-[background,border-color,transform] duration-150 hover:brightness-110 active:translate-y-[1px] bg-prio-medium"
+						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent px-[12px] py-[8px] text-[14px] font-medium text-white transition-[background,border-color,transform] duration-150 hover:brightness-110 active:translate-y-[1px] bg-prio-medium"
 						style:box-shadow="var(--shadow-edge), 0 4px 12px rgba(240,168,92,0.28)"
 					>
 						{top.confirmLabel}

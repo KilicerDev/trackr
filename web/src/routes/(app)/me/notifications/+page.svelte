@@ -83,10 +83,10 @@
 
 <header class="mb-6 flex items-end justify-between gap-4">
 	<div>
-		<h1 class="text-[24px] font-semibold tracking-[-0.014em]">{m.notif_title()}</h1>
-		<p class="mt-1 text-[13px] text-text-3">{m.notif_subtitle()}</p>
+		<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.notif_title()}</h1>
+		<p class="mt-1 text-[14px] text-text-3">{m.notif_subtitle()}</p>
 	</div>
-	<div class="flex items-center gap-1.5 text-[11px] text-text-3">
+	<div class="flex items-center gap-1.5 text-[12px] text-text-3">
 		<button type="button" class="hover:text-text" onclick={() => toggleAll('email', true)}
 			>{m.notif_all_email_on()}</button
 		>
@@ -129,9 +129,9 @@
 	{#each groups as group (group.title)}
 		<section class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
 			<div class="flex items-center justify-between px-5 pt-4 pb-2">
-				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">{group.title}</div>
+				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">{group.title}</div>
 				<div
-					class="grid grid-cols-2 gap-x-8 pr-1 text-[11px] tracking-[0.08em] text-text-4 uppercase"
+					class="grid grid-cols-2 gap-x-8 pr-1 text-[12px] tracking-[0.08em] text-text-4 uppercase"
 				>
 					<span class="w-12 text-center">{m.notif_col_email()}</span>
 					<span class="w-12 text-center">{m.notif_col_inapp()}</span>
@@ -142,8 +142,8 @@
 					{@const v = local[item.key] ?? { email: false, inApp: false }}
 					<div class="flex items-center gap-4 px-5 py-3">
 						<div class="min-w-0 flex-1">
-							<div class="text-[13px] font-medium">{item.label}</div>
-							<div class="mt-0.5 text-[11px] text-text-3">{item.desc}</div>
+							<div class="text-[14px] font-medium">{item.label}</div>
+							<div class="mt-0.5 text-[12px] text-text-3">{item.desc}</div>
 						</div>
 						<div class="grid grid-cols-2 gap-x-8 pr-1">
 							{#each [{ ch: 'email' as const, on: v.email }, { ch: 'inApp' as const, on: v.inApp }] as t (t.ch)}

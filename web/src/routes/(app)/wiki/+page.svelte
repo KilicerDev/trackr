@@ -25,13 +25,13 @@
 </script>
 
 <div class="flex h-full justify-center px-6">
-	<div class="w-full max-w-[640px] pt-[14vh]">
-		<h1 class="mb-6 text-[32px] font-semibold tracking-[-0.02em] text-text">
+	<div class="w-full max-w-[704px] pt-[14vh]">
+		<h1 class="mb-6 text-[35px] font-semibold tracking-[-0.02em] text-text">
 			{m.wiki_welcome_back({ name: firstName })}
 		</h1>
 
 		{#if data.recent.length > 0}
-			<div class="mb-3 px-0.5 font-mono text-[11px] tracking-[0.14em] text-text-4 uppercase">
+			<div class="mb-3 px-0.5 font-mono text-[12px] tracking-[0.14em] text-text-4 uppercase">
 				{m.wiki_recent()}
 			</div>
 			<div class="grid gap-2">
@@ -44,20 +44,20 @@
 						<span
 							class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface text-text-3 transition-colors group-hover:text-accent"
 						>
-							<Icon name="file" size={15} stroke={1.75} />
+							<Icon name="file" size={16} stroke={1.75} />
 						</span>
 						<span class="min-w-0 flex-1">
-							<span class="block truncate text-[13px] text-text-2 group-hover:text-text">
+							<span class="block truncate text-[14px] text-text-2 group-hover:text-text">
 								{p.title}
 							</span>
 							{#if path}
-								<span class="mt-0.5 block truncate text-[12px] text-text-4">{path}</span>
+								<span class="mt-0.5 block truncate text-[13px] text-text-4">{path}</span>
 							{/if}
 						</span>
 						<span
 							class="shrink-0 -translate-x-1 text-text-4 opacity-0 transition-all group-hover:translate-x-0 group-hover:opacity-100"
 						>
-							<Icon name="chevron" size={14} />
+							<Icon name="chevron" size={15} />
 						</span>
 					</a>
 				{/each}

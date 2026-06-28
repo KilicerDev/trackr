@@ -30,15 +30,15 @@
 />
 
 <div class="min-h-0 flex-1 overflow-y-auto">
-	<div class="max-w-[820px] px-6 py-6">
-		<h1 class="mb-1 text-[24px] font-semibold tracking-[-0.014em]">{m.admin_settings_title()}</h1>
-		<p class="mb-6 text-[13px] text-text-3">{m.admin_settings_subtitle()}</p>
+	<div class="max-w-[902px] px-6 py-6">
+		<h1 class="mb-1 text-[26px] font-semibold tracking-[-0.014em]">{m.admin_settings_title()}</h1>
+		<p class="mb-6 text-[14px] text-text-3">{m.admin_settings_subtitle()}</p>
 
 		<section class="mb-5 rounded-2xl border border-border bg-bg-elev p-5">
-			<div class="mb-3 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+			<div class="mb-3 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 				{m.admin_workspace()}
 			</div>
-			<div class="grid grid-cols-[160px_1fr] items-center gap-x-4 gap-y-3 text-[13px]">
+			<div class="grid grid-cols-[160px_1fr] items-center gap-x-4 gap-y-3 text-[14px]">
 				<label for="ws-name" class="text-text-3">{m.admin_name()}</label>
 				<input
 					id="ws-name"
@@ -60,7 +60,7 @@
 		</section>
 
 		<section class="mb-5 rounded-2xl border border-border bg-bg-elev p-5">
-			<div class="mb-3 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+			<div class="mb-3 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 				{m.admin_settings_integrations()}
 			</div>
 			<div class="space-y-2">
@@ -70,11 +70,11 @@
 					>
 						<span
 							class="grid h-8 w-8 place-items-center rounded-md border border-border bg-bg-elev text-text-3"
-							><Icon name="link" size={14} /></span
+							><Icon name="link" size={15} /></span
 						>
 						<div class="min-w-0 flex-1">
-							<div class="text-[13px] font-medium">{name}</div>
-							<div class="text-[11px] text-text-3">{desc}</div>
+							<div class="text-[14px] font-medium">{name}</div>
+							<div class="text-[12px] text-text-3">{desc}</div>
 						</div>
 						<Button size="sm" variant="default">{m.admin_settings_connect()}</Button>
 					</div>
@@ -83,14 +83,14 @@
 		</section>
 
 		<section class="rounded-2xl border border-border bg-bg-elev p-5">
-			<div class="mb-3 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+			<div class="mb-3 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 				{m.admin_settings_danger_zone()}
 			</div>
 			<div class="flex items-center gap-3 rounded-lg border border-[#ef7a6d]/30 bg-[#ef7a6d]/5 p-3">
-				<Icon name="shield" size={16} class="text-[#ef7a6d]" />
+				<Icon name="shield" size={17} class="text-[#ef7a6d]" />
 				<div class="min-w-0 flex-1">
-					<div class="text-[13px] font-medium">{m.admin_settings_delete_workspace()}</div>
-					<div class="text-[11px] text-text-3">{m.admin_settings_delete_workspace_desc()}</div>
+					<div class="text-[14px] font-medium">{m.admin_settings_delete_workspace()}</div>
+					<div class="text-[12px] text-text-3">{m.admin_settings_delete_workspace_desc()}</div>
 				</div>
 				<Button size="sm">{m.common_delete()}</Button>
 			</div>

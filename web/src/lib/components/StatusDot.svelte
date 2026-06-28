@@ -6,7 +6,7 @@
 		status: StatusId;
 		size?: number;
 	}
-	let { status, size = 14 }: Props = $props();
+	let { status, size = 15 }: Props = $props();
 	let meta = $derived(TRACKR_STATUSES.find((s) => s.id === status)!);
 </script>
 

@@ -3,7 +3,7 @@ import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { project, task, ticketFavorite } from '$lib/server/db/app.schema';
 import { user as userTable } from '$lib/server/db/auth.schema';
-import { assertCan, can, isPortalUser, isTrackrTeam } from '$lib/server/permissions';
+import { assertCan, can, canViewTicket, isPortalUser, isTrackrTeam } from '$lib/server/permissions';
 import { addTicketMessage, getTicket, loadTicketMessages, updateTicket } from '$lib/server/tickets';
 import { createTask } from '$lib/server/tasks';
 import { recordAudit } from '$lib/server/audit';
@@ -46,17 +46,12 @@ export const load: ServerLoad = async ({ params, locals }) => {
 	if (!ticket) throw error(404, m.tickets_not_found_404());
 
 	const isAgent = await can(locals, 'org.tickets.edit.any', { orgId: ticket.orgId });
-	const canReadAny =
-		isTrackrTeam(locals) ||
-		isAgent ||
-		(await can(locals, 'org.tickets.read.any', { orgId: ticket.orgId }));
+	if (!(await canViewTicket(locals, ticket))) throw error(403, m.tickets_no_access());
 
-	if (!canReadAny) {
-		const ownAllowed =
-			(await can(locals, 'org.tickets.read.own', { orgId: ticket.orgId })) &&
-			(ticket.customerId === locals.user.id || ticket.assignedAgentId === locals.user.id);
-		if (!ownAllowed) throw error(403, m.tickets_no_access());
-	}
+	// Checklist is the shared, participant-editable surface: agents plus anyone
+	// who can comment (the org.client admin and the owning org.member).
+	const canEditChecklist =
+		isAgent || (await can(locals, 'org.tickets.comment', { orgId: ticket.orgId }));
 
 	const messages = await loadTicketMessages(id, { includeInternal: isAgent });
 
@@ -139,6 +134,7 @@ export const load: ServerLoad = async ({ params, locals }) => {
 		isPortalUser: isPortalUser(locals),
 		participants,
 		canCreateTask,
+		canEditChecklist,
 		linkedTasks
 	};
 };

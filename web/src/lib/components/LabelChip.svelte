@@ -8,7 +8,7 @@
 </script>
 
 <span
-	class="inline-flex items-center gap-1 rounded-[5px] px-[6px] py-[2px] font-mono text-[11px] font-medium"
+	class="inline-flex items-center gap-1 rounded-[5px] px-[7px] py-[2px] font-mono text-[12px] font-medium"
 	style:color={meta.color}
 	style:background={meta.color + '24'}
 >

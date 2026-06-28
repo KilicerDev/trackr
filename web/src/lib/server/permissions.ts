@@ -196,6 +196,28 @@ export function isPortalUser(locals: Locals): boolean {
 	return locals.memberships.orgs.length > 0 && locals.memberships.projects.length === 0;
 }
 
+// True iff the user may VIEW a given ticket — the shared visibility rule used by
+// the detail load and the checklist write action. Agents (edit.any) and the
+// org.client tier (read.any) see every org ticket; an org.member (read.own) only
+// sees tickets where they're the customer or the assignee.
+export async function canViewTicket(
+	locals: Locals,
+	ticket: { orgId: string; customerId: string | null; assignedAgentId: string | null }
+): Promise<boolean> {
+	if (isTrackrTeam(locals)) return true;
+	if (await can(locals, 'org.tickets.edit.any', { orgId: ticket.orgId })) return true;
+	if (await can(locals, 'org.tickets.read.any', { orgId: ticket.orgId })) return true;
+	const uid = locals.user?.id;
+	if (
+		uid &&
+		(ticket.customerId === uid || ticket.assignedAgentId === uid) &&
+		(await can(locals, 'org.tickets.read.own', { orgId: ticket.orgId }))
+	) {
+		return true;
+	}
+	return false;
+}
+
 // Throws 403 if the user lacks the permission. Use in load functions and
 // form actions to enforce gates inline. Returns void on success.
 export async function assertCan(

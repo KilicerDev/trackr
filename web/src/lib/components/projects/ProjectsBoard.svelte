@@ -33,11 +33,11 @@
 <div class="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
 	<div class="flex h-full">
 		{#each columns as col (col.key)}
-			<div class="flex w-[320px] shrink-0 flex-col border-r border-border last:border-r-0">
+			<div class="flex w-[352px] shrink-0 flex-col border-r border-border last:border-r-0">
 				<div class="flex items-center gap-2 border-b border-border px-4 py-3">
 					<span class="h-2.5 w-2.5 rounded-full" style:background={col.color}></span>
-					<span class="text-[13px] font-semibold text-text">{col.label}</span>
-					<span class="font-mono text-[11px] text-text-3">{col.projects.length}</span>
+					<span class="text-[14px] font-semibold text-text">{col.label}</span>
+					<span class="font-mono text-[12px] text-text-3">{col.projects.length}</span>
 				</div>
 				<div class="flex-1 space-y-2.5 overflow-y-auto px-3.5 py-3">
 					{#each col.projects as p (p.id)}
@@ -49,15 +49,15 @@
 						>
 							<div class="mb-2.5 flex items-start gap-2.5">
 								<span
-									class="inline-grid shrink-0 place-items-center font-semibold text-white size-[30px]"
+									class="inline-grid shrink-0 place-items-center font-semibold text-white size-[33px]"
 									style:border-radius="9px"
 									style:font-size="15px"
 									style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%,
 									#000) 85%)">{p.icon}</span
 								>
 								<div class="min-w-0 flex-1">
-									<div class="truncate text-[13px] font-semibold text-text">{p.name}</div>
-									<div class="flex items-center gap-1.5 font-mono text-[11px] text-text-3">
+									<div class="truncate text-[14px] font-semibold text-text">{p.name}</div>
+									<div class="flex items-center gap-1.5 font-mono text-[12px] text-text-3">
 										<span>{p.key}</span>
 										{#if p.org}
 											<span class="text-text-4">·</span>
@@ -67,27 +67,27 @@
 								</div>
 							</div>
 							{#if p.description}
-								<p class="mb-2.5 line-clamp-2 text-[11px] leading-snug text-text-3">
+								<p class="mb-2.5 line-clamp-2 text-[12px] leading-snug text-text-3">
 									{p.description}
 								</p>
 							{/if}
 							<div class="flex items-center gap-2">
-								<AvatarStack users={p.members} size={18} max={4} />
+								<AvatarStack users={p.members} size={20} max={4} />
 								<span
-									class="ml-auto inline-flex items-center gap-1 text-[11px]"
+									class="ml-auto inline-flex items-center gap-1 text-[12px]"
 									style:color={st.color}
 								>
 									<span class="h-1.5 w-1.5 rounded-full" style:background={st.color}></span>
 									{projectStatusLabel(p.status)}
 								</span>
 							</div>
-							<div class="mt-1.5 text-[10px] text-text-4">
+							<div class="mt-1.5 text-[11px] text-text-4">
 								{m.projects_updated_relative({ time: relative(p.updatedAt) })}
 							</div>
 						</a>
 					{/each}
 					{#if col.projects.length === 0}
-						<div class="py-6 text-center text-[11px] text-text-4">{m.projects_no_projects()}</div>
+						<div class="py-6 text-center text-[12px] text-text-4">{m.projects_no_projects()}</div>
 					{/if}
 				</div>
 			</div>

@@ -1,5 +1,5 @@
 <div
-	class="mb-7 flex items-center justify-center gap-2.5 text-[14px] font-semibold tracking-[-0.01em]"
+	class="mb-7 flex items-center justify-center gap-2.5 text-[15px] font-semibold tracking-[-0.01em]"
 >
 	<span class="grid place-items-center" aria-hidden="true">
 		<svg width="22" height="22" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

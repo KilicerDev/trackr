@@ -90,15 +90,15 @@
 }
 
 :root[data-density='compact'] {
-	--row-h: 36px;
-	--row-px: 16px;
+	--row-h: 40px;
+	--row-px: 18px;
 }
 :root[data-density='comfortable'] {
-	--row-h: 44px;
-	--row-px: 20px;
+	--row-h: 48px;
+	--row-px: 22px;
 }
 :root {
-	--sidebar-w: 260px;
+	--sidebar-w: 286px;
 }
 
 /* ===== Base =====
@@ -125,7 +125,7 @@
 		-moz-osx-font-smoothing: grayscale;
 		text-rendering: optimizeLegibility;
 		font-feature-settings: 'ss01', 'cv11';
-		font-size: 14px;
+		font-size: 15px;
 		line-height: 1.45;
 		letter-spacing: -0.005em;
 	}

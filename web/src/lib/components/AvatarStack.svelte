@@ -7,7 +7,7 @@
 		size?: number;
 		overlap?: number;
 	}
-	let { users, max = 4, size = 22, overlap = 6 }: Props = $props();
+	let { users, max = 4, size = 24, overlap = 7 }: Props = $props();
 	let shown = $derived(users.filter(Boolean).slice(0, max) as StackUser[]);
 	let extra = $derived(Math.max(0, users.filter(Boolean).length - max));
 </script>
@@ -20,7 +20,7 @@
 	{/each}
 	{#if extra > 0}
 		<span
-			class="inline-grid place-items-center rounded-full bg-surface-2 font-mono text-[10px] font-medium text-text-3 select-none ring-2 ring-bg-elev"
+			class="inline-grid place-items-center rounded-full bg-surface-2 font-mono text-[11px] font-medium text-text-3 select-none ring-2 ring-bg-elev"
 			style:width="{size}px"
 			style:height="{size}px"
 			style:margin-left="-{overlap}px">+{extra}</span

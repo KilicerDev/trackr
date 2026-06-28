@@ -162,15 +162,15 @@
 				<div
 					class="grid h-12 w-12 place-items-center rounded-xl border border-border bg-surface text-text-3"
 				>
-					<Icon name="folder" size={20} />
+					<Icon name="folder" size={22} />
 				</div>
-				<div class="text-[14px] font-semibold text-text">{m.projects_empty_title()}</div>
-				<div class="max-w-[320px] text-center text-[13px] text-text-3">
+				<div class="text-[15px] font-semibold text-text">{m.projects_empty_title()}</div>
+				<div class="max-w-[352px] text-center text-[14px] text-text-3">
 					{m.projects_empty_hint()}
 				</div>
 				{#if canCreate}
 					<Button variant="primary" size="sm" onclick={() => (createOpen = true)}>
-						<Icon name="plus" size={13} />
+						<Icon name="plus" size={14} />
 						{m.projects_create_project()}
 					</Button>
 				{/if}
@@ -180,10 +180,10 @@
 				class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border py-16 text-text-3"
 			>
 				<div class="grid h-10 w-10 place-items-center rounded-xl border border-border bg-surface">
-					<Icon name="folder" size={16} />
+					<Icon name="folder" size={17} />
 				</div>
-				<div class="text-[13px] font-medium text-text">{m.projects_no_matching_title()}</div>
-				<div class="text-[11px] text-text-4">{m.projects_no_matching_hint()}</div>
+				<div class="text-[14px] font-medium text-text">{m.projects_no_matching_title()}</div>
+				<div class="text-[12px] text-text-4">{m.projects_no_matching_hint()}</div>
 			</div>
 		{/if}
 	</div>
@@ -205,10 +205,10 @@
 						<div
 							class="grid h-10 w-10 place-items-center rounded-xl border border-border bg-surface"
 						>
-							<Icon name="plus" size={16} />
+							<Icon name="plus" size={17} />
 						</div>
-						<div class="text-[13px] font-medium">{m.projects_new_project()}</div>
-						<div class="text-[11px] text-text-4">{m.projects_new_project_card_hint()}</div>
+						<div class="text-[14px] font-medium">{m.projects_new_project()}</div>
+						<div class="text-[12px] text-text-4">{m.projects_new_project_card_hint()}</div>
 					</button>
 				{/if}
 			</div>
@@ -223,11 +223,11 @@
 							class="group/hdr mb-3 flex w-full items-center gap-2 text-left"
 						>
 							<span class="text-text-4 transition-transform {isCollapsed ? '-rotate-90' : ''}">
-								<Icon name="chevron" size={12} />
+								<Icon name="chevron" size={13} />
 							</span>
 							<span class="h-2 w-2 rounded-full" style:background={col.color}></span>
-							<h2 class="text-[13px] font-semibold text-text">{col.label}</h2>
-							<span class="font-mono text-[11px] text-text-3">{col.projects.length}</span>
+							<h2 class="text-[14px] font-semibold text-text">{col.label}</h2>
+							<span class="font-mono text-[12px] text-text-3">{col.projects.length}</span>
 						</button>
 						{#if !isCollapsed}
 							<div
@@ -249,7 +249,7 @@
 	<div class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
 		<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
 			<div
-				class="grid items-center gap-3 border-b border-border px-5 py-2.5 text-[11px] tracking-[0.08em] text-text-4 uppercase"
+				class="grid items-center gap-3 border-b border-border px-5 py-2.5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
 				style:grid-template-columns="1.5fr 1fr 1fr 0.6fr 1fr"
 			>
 				<span>{m.projects_col_project()}</span>
@@ -267,11 +267,11 @@
 						class="flex w-full items-center gap-2 border-b border-border bg-surface/30 px-5 py-2 text-left transition-colors hover:bg-surface/50"
 					>
 						<span class="text-text-4 transition-transform {isCollapsed ? '-rotate-90' : ''}">
-							<Icon name="chevron" size={11} />
+							<Icon name="chevron" size={12} />
 						</span>
 						<span class="h-2 w-2 rounded-full" style:background={col.color}></span>
-						<span class="text-[12px] font-semibold text-text">{col.label}</span>
-						<span class="font-mono text-[11px] text-text-3">{col.projects.length}</span>
+						<span class="text-[13px] font-semibold text-text">{col.label}</span>
+						<span class="font-mono text-[12px] text-text-3">{col.projects.length}</span>
 					</button>
 				{/if}
 				{#if !isCollapsed}
@@ -281,12 +281,12 @@
 								PROJECT_STATUS[p.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.active}
 							<a
 								href="/projects/{p.id}"
-								class="grid items-center gap-3 px-5 py-3 text-[13px] transition-colors hover:bg-[var(--row-hover)]"
+								class="grid items-center gap-3 px-5 py-3 text-[14px] transition-colors hover:bg-[var(--row-hover)]"
 								style:grid-template-columns="1.5fr 1fr 1fr 0.6fr 1fr"
 							>
 								<span class="flex min-w-0 items-center gap-2.5">
 									<span
-										class="grid h-7 w-7 shrink-0 place-items-center rounded-md text-[12px] font-semibold text-white"
+										class="grid h-7 w-7 shrink-0 place-items-center rounded-md text-[13px] font-semibold text-white"
 										style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color}
 										70%, #000) 85%)">{p.icon}</span
 									>

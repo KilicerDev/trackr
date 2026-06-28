@@ -134,9 +134,9 @@
 			: ''} {i === activeIndex ? 'bg-surface-2 text-text' : ''}"
 	>
 		<span class="h-2 w-2 shrink-0 rounded-full" style:background={p.color}></span>
-		<span class="text-[13px]">{p.name}</span>
+		<span class="text-[14px]">{p.name}</span>
 		<span class="ml-auto text-accent {value === p.key ? 'opacity-100' : 'opacity-0'}">
-			<Icon name="check" size={13} />
+			<Icon name="check" size={14} />
 		</span>
 	</button>
 {/snippet}
@@ -145,27 +145,27 @@
 	use:clickOutside={onclose}
 	use:autoPlace
 	in:fly={POPOVER_IN}
-	class="absolute top-full z-50 mt-1.5 min-w-[240px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+	class="absolute top-full z-50 mt-1.5 min-w-[264px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 >
 	<div class="mb-1.5 flex items-center gap-2 border-b border-border px-2 pt-1 pb-2">
-		<span class="text-text-3"><Icon name="search" size={13} /></span>
+		<span class="text-text-3"><Icon name="search" size={14} /></span>
 		<input
 			type="text"
 			bind:this={inputEl}
 			bind:value={q}
 			{onkeydown}
 			placeholder={m.tasks_search_projects_placeholder()}
-			class="flex-1 border-0 bg-transparent text-[13px] outline-none placeholder:text-text-3"
+			class="flex-1 border-0 bg-transparent text-[14px] outline-none placeholder:text-text-3"
 		/>
 	</div>
 
-	<div bind:this={listEl} class="max-h-[300px] overflow-y-auto">
+	<div bind:this={listEl} class="max-h-[330px] overflow-y-auto">
 		{#if searching}
 			{#each searchResults as p, i (p.key)}
 				{@render row(p, i)}
 			{/each}
 			{#if searchResults.length === 0}
-				<div class="px-2 py-3 text-center text-[13px] text-text-3">
+				<div class="px-2 py-3 text-center text-[14px] text-text-3">
 					{m.tasks_no_projects_match({ q })}
 				</div>
 			{/if}
@@ -184,9 +184,9 @@
 					<button
 						type="button"
 						onclick={() => (showInactive = true)}
-						class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[12px] text-text-3 hover:bg-surface-2 hover:text-text-2"
+						class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] text-text-3 hover:bg-surface-2 hover:text-text-2"
 					>
-						<Icon name="chevron" size={11} />
+						<Icon name="chevron" size={12} />
 						{m.tasks_show_n_inactive({ n: dormant.length })}
 					</button>
 				{/if}
@@ -197,9 +197,9 @@
 					<button
 						type="button"
 						onclick={() => (showAll = !showAll)}
-						class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[12px] text-text-3 hover:bg-surface-2 hover:text-text-2"
+						class="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] text-text-3 hover:bg-surface-2 hover:text-text-2"
 					>
-						<Icon name="chevron" size={11} />
+						<Icon name="chevron" size={12} />
 						{expandedAll ? m.tasks_show_only_my_projects() : m.tasks_show_all_projects()}
 					</button>
 				</div>

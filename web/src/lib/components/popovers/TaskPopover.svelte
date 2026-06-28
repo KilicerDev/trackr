@@ -82,21 +82,21 @@
 	use:clickOutside={onclose}
 	use:autoPlace
 	in:fly={POPOVER_IN}
-	class="absolute top-full z-50 mt-1.5 w-[var(--task-pop-w,300px)] min-w-[300px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+	class="absolute top-full z-50 mt-1.5 w-[var(--task-pop-w,300px)] min-w-[330px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 >
 	<div class="mb-1.5 flex items-center gap-2 border-b border-border px-2 pt-1 pb-2">
-		<span class="text-text-3"><Icon name="search" size={13} /></span>
+		<span class="text-text-3"><Icon name="search" size={14} /></span>
 		<input
 			type="text"
 			bind:this={inputEl}
 			bind:value={q}
 			{onkeydown}
 			placeholder={m.notes_search_tasks_placeholder()}
-			class="flex-1 border-0 bg-transparent text-[13px] outline-none placeholder:text-text-3"
+			class="flex-1 border-0 bg-transparent text-[14px] outline-none placeholder:text-text-3"
 		/>
 	</div>
 
-	<div bind:this={listEl} class="max-h-[300px] overflow-y-auto">
+	<div bind:this={listEl} class="max-h-[330px] overflow-y-auto">
 		{#each rows as r, i (r.id || 'none')}
 			<button
 				type="button"
@@ -109,16 +109,16 @@
 					: ''}"
 			>
 				{#if r.ref}
-					<span class="shrink-0 font-mono text-[11px] text-text-3">{r.ref}</span>
+					<span class="shrink-0 font-mono text-[12px] text-text-3">{r.ref}</span>
 				{/if}
-				<span class="truncate text-[13px]">{r.title}</span>
+				<span class="truncate text-[14px]">{r.title}</span>
 				<span class="ml-auto shrink-0 text-accent {r.id === value ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={13} />
+					<Icon name="check" size={14} />
 				</span>
 			</button>
 		{/each}
 		{#if searching && filtered.length === 0}
-			<div class="px-2 py-3 text-center text-[13px] text-text-3">
+			<div class="px-2 py-3 text-center text-[14px] text-text-3">
 				{m.notes_no_tasks_match({ q })}
 			</div>
 		{/if}

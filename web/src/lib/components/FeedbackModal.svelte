@@ -88,10 +88,10 @@
 	<form bind:this={formEl} onsubmit={submit}>
 		<div class="flex items-center border-b border-border px-5 pt-4 pb-3">
 			<div>
-				<div class="text-[11px] tracking-[0.08em] text-text-4 uppercase">
+				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
 					{m.shell_feedback_eyebrow()}
 				</div>
-				<div class="text-[14px] font-semibold">{m.shell_send_feedback()}</div>
+				<div class="text-[15px] font-semibold">{m.shell_send_feedback()}</div>
 			</div>
 			<button
 				type="button"
@@ -99,12 +99,12 @@
 				aria-label={m.common_close()}
 				class="ml-auto grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
 			>
-				<Icon name="x" size={14} />
+				<Icon name="x" size={15} />
 			</button>
 		</div>
 
 		<div class="px-5 pt-5 pb-3">
-			<div class="mb-2 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+			<div class="mb-2 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 				{m.shell_feedback_type()}
 			</div>
 			<div class="mb-4 grid grid-cols-3 gap-1.5">
@@ -117,16 +117,16 @@
 							? 'border-accent bg-accent/5 text-text'
 							: 'border-border bg-surface text-text-2 hover:border-border-strong'}"
 					>
-						<span class="flex items-center gap-1.5 text-[13px] font-medium">
-							<Icon name={k.icon} size={13} class={active ? 'text-accent' : 'text-text-3'} />
+						<span class="flex items-center gap-1.5 text-[14px] font-medium">
+							<Icon name={k.icon} size={14} class={active ? 'text-accent' : 'text-text-3'} />
 							{k.label}
 						</span>
-						<span class="text-[11px] leading-snug text-text-3">{k.hint}</span>
+						<span class="text-[12px] leading-snug text-text-3">{k.hint}</span>
 					</button>
 				{/each}
 			</div>
 
-			<div class="mb-2 text-[11px] tracking-[0.08em] text-text-4 uppercase">
+			<div class="mb-2 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 				{m.shell_feedback_message()}
 			</div>
 			<textarea
@@ -139,17 +139,17 @@
 						: m.shell_feedback_placeholder_general()}
 				rows="6"
 				maxlength="4000"
-				class="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2.5 text-[13px] leading-relaxed text-text outline-none placeholder:text-text-3 focus:border-border-strong"
+				class="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2.5 text-[14px] leading-relaxed text-text outline-none placeholder:text-text-3 focus:border-border-strong"
 			></textarea>
 
-			<p class="mt-2.5 flex items-center gap-1.5 text-[11px] text-text-3">
-				<Icon name="link" size={11} class="text-text-4" />
+			<p class="mt-2.5 flex items-center gap-1.5 text-[12px] text-text-3">
+				<Icon name="link" size={12} class="text-text-4" />
 				{m.shell_feedback_url_note()}
 			</p>
 		</div>
 
 		<div class="flex items-center gap-2 rounded-b-2xl border-t border-border bg-bg/40 px-5 py-3">
-			<span class="text-[11px] text-text-3">
+			<span class="text-[12px] text-text-3">
 				<Kbd>⌘↵</Kbd>
 				{m.shell_feedback_to_send()}
 			</span>
@@ -158,9 +158,9 @@
 				<button
 					type="submit"
 					disabled={submitting || !message.trim()}
-					class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[11px] py-[7px] text-[13px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
+					class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[12px] py-[8px] text-[14px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					<Icon name="send" size={13} />
+					<Icon name="send" size={14} />
 					{submitting ? m.shell_feedback_sending() : m.shell_send_feedback()}
 				</button>
 			</div>

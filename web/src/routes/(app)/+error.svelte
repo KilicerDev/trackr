@@ -73,29 +73,29 @@
 				style:background="radial-gradient({accent} 0%, transparent 70%)"
 			></span>
 			<span style:color={accent} class="relative">
-				<Icon name={meta.icon} size={22} />
+				<Icon name={meta.icon} size={24} />
 			</span>
 		</div>
 
-		<div class="mb-1 font-mono text-[11px] tracking-[0.12em] text-text-4 uppercase">
+		<div class="mb-1 font-mono text-[12px] tracking-[0.12em] text-text-4 uppercase">
 			{m.shell_error_label({ status })}
 		</div>
-		<h1 class="mb-2 text-[20px] font-semibold tracking-[-0.012em] text-text">{meta.title}</h1>
-		<p class="mb-6 text-[13px] leading-relaxed text-text-3">{meta.hint}</p>
+		<h1 class="mb-2 text-[22px] font-semibold tracking-[-0.012em] text-text">{meta.title}</h1>
+		<p class="mb-6 text-[14px] leading-relaxed text-text-3">{meta.hint}</p>
 
 		<div class="flex items-center gap-2">
 			<Button variant="default" onclick={back}>
-				<Icon name="chevron" size={12} class="rotate-90" />
+				<Icon name="chevron" size={13} class="rotate-90" />
 				<span>{m.common_back()}</span>
 			</Button>
 			{#if status === 401}
 				<Button variant="primary" onclick={() => goto('/login')}>
-					<Icon name="logout" size={12} class="rotate-180" />
+					<Icon name="logout" size={13} class="rotate-180" />
 					<span>{m.shell_sign_in()}</span>
 				</Button>
 			{:else}
 				<Button variant="primary" onclick={() => goto('/tasks')}>
-					<Icon name="home" size={12} />
+					<Icon name="home" size={13} />
 					<span>{m.shell_back_to_workspace()}</span>
 				</Button>
 			{/if}
@@ -105,9 +105,9 @@
 			<button
 				type="button"
 				onclick={() => location.reload()}
-				class="mt-4 inline-flex items-center gap-1.5 text-[12px] text-text-3 hover:text-text"
+				class="mt-4 inline-flex items-center gap-1.5 text-[13px] text-text-3 hover:text-text"
 			>
-				<Icon name="refresh" size={11} />
+				<Icon name="refresh" size={12} />
 				<span>{m.shell_error_reload()}</span>
 			</button>
 		{/if}

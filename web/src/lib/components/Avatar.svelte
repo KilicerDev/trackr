@@ -6,12 +6,12 @@
 		ring?: boolean;
 		class?: string;
 	}
-	let { user, size = 22, ring = false, class: cls = '' }: Props = $props();
+	let { user, size = 24, ring = false, class: cls = '' }: Props = $props();
 </script>
 
 {#if user}
 	<span
-		class="inline-grid shrink-0 place-items-center rounded-full text-[10px] font-semibold text-white select-none {cls}"
+		class="inline-grid shrink-0 place-items-center rounded-full text-[11px] font-semibold text-white select-none {cls}"
 		style:width="{size}px"
 		style:height="{size}px"
 		style:background={user.color}
@@ -23,7 +23,7 @@
 	</span>
 {:else}
 	<span
-		class="inline-grid place-items-center rounded-full bg-surface-2 text-[10px] text-text-3 {cls}"
+		class="inline-grid place-items-center rounded-full bg-surface-2 text-[11px] text-text-3 {cls}"
 		style:width="{size}px"
 		style:height="{size}px">?</span
 	>
