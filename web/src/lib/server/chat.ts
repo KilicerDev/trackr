@@ -41,6 +41,10 @@ export type ChatMessage = {
 	authorId: string | null;
 	body: string;
 	kind: string;
+	// Structured payload for system messages (kind='system'). For a ticket
+	// created from this thread: { event: 'ticket_created', ticketId, displayId,
+	// subject }. Null for ordinary human comments.
+	meta: Record<string, unknown> | null;
 	createdAt: string;
 	editedAt: string | null;
 	files: AttachmentPublic[];
@@ -198,6 +202,7 @@ export async function loadOrgFeed(
 			authorId: r.authorId,
 			body: r.body,
 			kind: r.kind,
+			meta: r.meta,
 			createdAt: r.createdAt.toISOString(),
 			editedAt: r.editedAt ? r.editedAt.toISOString() : null,
 			files: fileMap.get(r.id) ?? []
@@ -233,6 +238,7 @@ export async function loadMessages(threadId: string): Promise<ChatMessage[]> {
 		authorId: r.authorId,
 		body: r.body,
 		kind: r.kind,
+		meta: r.meta,
 		createdAt: r.createdAt.toISOString(),
 		editedAt: r.editedAt ? r.editedAt.toISOString() : null,
 		files: fileMap.get(r.id) ?? []
@@ -286,6 +292,31 @@ export async function addMessage(input: {
 			threadId: input.threadId,
 			authorId: input.authorId,
 			body: input.body
+		});
+		await tx.update(thread).set({ updatedAt: new Date() }).where(eq(thread.id, input.threadId));
+	});
+	return { id };
+}
+
+// Insert a folded-in activity event into a thread (kind='system'). Used to drop
+// a "ticket created" marker into the chat stream at the point of creation. The
+// `meta` payload carries the structured event (see ChatMessage.meta) so the feed
+// can render it distinctly and expand the linked ticket inline.
+export async function insertSystemMessage(input: {
+	threadId: string;
+	authorId: string;
+	body: string;
+	meta: Record<string, unknown>;
+}): Promise<{ id: string }> {
+	const id = crypto.randomUUID();
+	await db.transaction(async (tx) => {
+		await tx.insert(message).values({
+			id,
+			threadId: input.threadId,
+			authorId: input.authorId,
+			body: input.body,
+			kind: 'system',
+			meta: input.meta
 		});
 		await tx.update(thread).set({ updatedAt: new Date() }).where(eq(thread.id, input.threadId));
 	});

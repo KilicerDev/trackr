@@ -1,7 +1,13 @@
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { project, task, ticketFavorite } from '$lib/server/db/app.schema';
+import {
+	project,
+	task,
+	ticketFavorite,
+	ticket as ticketTable,
+	thread
+} from '$lib/server/db/app.schema';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import { assertCan, can, canViewTicket, isPortalUser, isTrackrTeam } from '$lib/server/permissions';
 import {
@@ -134,6 +140,24 @@ export const load: ServerLoad = async ({ params, locals }) => {
 		status: r.status
 	}));
 
+	// Source chat thread this ticket was created from (create-ticket-from-thread
+	// flow). Surfaced as a "Created from chat" back-link. Only shown when the
+	// thread still exists (soft-delete aware). subjectId of an org thread is the
+	// orgId, which the /chat switcher expects.
+	const [src] = await db
+		.select({
+			threadId: thread.id,
+			title: thread.title,
+			orgId: thread.subjectId,
+			deletedAt: thread.deletedAt
+		})
+		.from(ticketTable)
+		.innerJoin(thread, eq(thread.id, ticketTable.sourceThreadId))
+		.where(eq(ticketTable.id, id))
+		.limit(1);
+	const sourceChat =
+		src && !src.deletedAt ? { threadId: src.threadId, orgId: src.orgId, title: src.title } : null;
+
 	// Opening the ticket clears any unread bell items pointing at it.
 	// Fire and forget — a failed update should never break the load.
 	void markEntityRead(locals.user.id, 'ticket', id).catch(() => {});
@@ -152,7 +176,8 @@ export const load: ServerLoad = async ({ params, locals }) => {
 		participants,
 		canCreateTask,
 		canEditChecklist,
-		linkedTasks
+		linkedTasks,
+		sourceChat
 	};
 };
 

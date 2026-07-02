@@ -10,6 +10,7 @@
 	import AttachmentDropzone from '$lib/components/attachments/AttachmentDropzone.svelte';
 	import StagedFileList from '$lib/components/attachments/StagedFileList.svelte';
 	import TagSelect from '$lib/components/chat/TagSelect.svelte';
+	import CreateTicketFromThreadModal from '$lib/components/chat/CreateTicketFromThreadModal.svelte';
 	import { createOrgTag } from '$lib/components/chat/tags';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
@@ -34,7 +35,13 @@
 	const tagMap = $derived(new Map(data.tags.map((t) => [t.id, t])));
 	const activeOrg = $derived(data.orgs.find((o) => o.id === data.activeOrgId) ?? data.orgs[0]);
 
-	const who = (id: string | null | undefined) => (id ? resolveUser(id) : undefined);
+	// Resolve message authors from the chat audience first — it includes internal
+	// Trackr staff, whom the layout's org-scoped `users` directory omits (so a
+	// portal client would otherwise see an agent's reply as "Unknown"). Falls back
+	// to the global directory for anyone not in the current mention set.
+	const authorMap = $derived(new Map(data.mentionUsers.map((u) => [u.id, u])));
+	const who = (id: string | null | undefined) =>
+		id ? (authorMap.get(id) ?? resolveUser(id)) : undefined;
 	const tagColor = (t: ChatTag | undefined) => t?.color ?? '#7c7c84';
 	function relTime(iso: string): string {
 		const diff = Date.now() - new Date(iso).getTime();
@@ -161,6 +168,79 @@
 	let tagEditId = $state<string | null>(null);
 	async function persistThreadTags(threadId: string, ids: string[]) {
 		await post('setTags', { threadId, tags: ids.join(',') }, m.chat_err_tag_failed());
+	}
+
+	// ── Create ticket from a thread ────────────────────────────────────────────────
+	let ticketModal = $state<{ threadId: string; title: string } | null>(null);
+	function openTicketModal(threadId: string, title: string | null) {
+		ticketModal = { threadId, title: title ?? '' };
+	}
+
+	// ── Inline ticket-created markers (expand to read the ticket's conversation) ────
+	type TicketMsg = {
+		id: string;
+		authorId: string | null;
+		body: string;
+		isInternalNote: boolean;
+		createdAt: string;
+	};
+	type TicketPreview = {
+		open: boolean;
+		loading: boolean;
+		loaded: boolean;
+		error: string | null;
+		status: string;
+		messages: TicketMsg[];
+	};
+	// Keyed by the marker message id, so each marker expands independently and the
+	// fetched conversation is cached across toggles.
+	let previews = $state<Record<string, TicketPreview>>({});
+
+	function markerMeta(meta: Record<string, unknown> | null) {
+		if (!meta || meta.event !== 'ticket_created') return null;
+		return meta as { event: string; ticketId: string; displayId: string; subject: string };
+	}
+
+	async function toggleTicket(markerId: string, ticketId: string) {
+		const cur = previews[markerId];
+		if (cur?.open) {
+			previews[markerId] = { ...cur, open: false };
+			return;
+		}
+		if (cur?.loaded) {
+			previews[markerId] = { ...cur, open: true };
+			return;
+		}
+		previews[markerId] = {
+			open: true,
+			loading: true,
+			loaded: false,
+			error: null,
+			status: '',
+			messages: []
+		};
+		try {
+			const res = await fetch(`/api/tickets/${ticketId}/messages`);
+			if (!res.ok) throw new Error();
+			const json = (await res.json()) as { ticket: { status: string }; messages: TicketMsg[] };
+			previews[markerId] = {
+				open: true,
+				loading: false,
+				loaded: true,
+				error: null,
+				status: json.ticket.status,
+				messages: json.messages
+			};
+		} catch {
+			previews[markerId] = {
+				open: true,
+				loading: false,
+				loaded: false,
+				error: m.chat_ticket_load_failed(),
+				status: '',
+				messages: []
+			};
+		}
 	}
 
 	// Staging helper for a file picker / drop target.
@@ -330,30 +410,41 @@
 								>{author?.name ?? m.chat_unknown_user()}</span
 							>
 							<span class="font-mono text-[11px] text-text-4">{relTime(t.createdAt)}</span>
-							<div class="relative ml-auto">
+							<div class="ml-auto flex items-center gap-1">
 								<button
 									type="button"
-									aria-label={m.chat_edit_tags()}
-									onclick={() => (tagEditId = tagEditId === t.id ? null : t.id)}
+									aria-label={m.chat_create_ticket()}
+									title={m.chat_create_ticket()}
+									onclick={() => openTicketModal(t.id, t.title)}
 									class="grid h-7 w-7 place-items-center rounded-lg text-text-4 hover:bg-bg-elev hover:text-text"
 								>
-									<Icon name="bookmark" size={14} />
+									<Icon name="ticket" size={14} />
 								</button>
-								<Popover
-									open={tagEditId === t.id}
-									onclose={() => (tagEditId = null)}
-									align="right"
-									minWidth={260}
-								>
-									<div class="p-1">
-										<TagSelect
-											available={data.tags}
-											selected={t.tagIds}
-											orgId={data.activeOrgId}
-											onchange={(ids) => persistThreadTags(t.id, ids)}
-										/>
-									</div>
-								</Popover>
+								<div class="relative">
+									<button
+										type="button"
+										aria-label={m.chat_edit_tags()}
+										onclick={() => (tagEditId = tagEditId === t.id ? null : t.id)}
+										class="grid h-7 w-7 place-items-center rounded-lg text-text-4 hover:bg-bg-elev hover:text-text"
+									>
+										<Icon name="bookmark" size={14} />
+									</button>
+									<Popover
+										open={tagEditId === t.id}
+										onclose={() => (tagEditId = null)}
+										align="right"
+										minWidth={260}
+									>
+										<div class="p-1">
+											<TagSelect
+												available={data.tags}
+												selected={t.tagIds}
+												orgId={data.activeOrgId}
+												onchange={(ids) => persistThreadTags(t.id, ids)}
+											/>
+										</div>
+									</Popover>
+								</div>
 							</div>
 						</div>
 						<h2 class="mt-2 text-[16px] leading-snug font-semibold text-text">{t.title}</h2>
@@ -387,24 +478,117 @@
 					{#if replies.length}
 						<div class="mt-2 space-y-3 border-t border-border px-4 py-3">
 							{#each replies as r (r.id)}
-								{@const ru = who(r.authorId)}
-								<div class="flex gap-2.5">
-									<Avatar user={ru} size={24} />
-									<div class="min-w-0 flex-1">
-										<div class="flex items-baseline gap-2">
-											<span class="text-[13px] font-medium text-text"
-												>{ru?.name ?? m.chat_unknown_user()}</span
+								{@const meta = markerMeta(r.meta)}
+								{#if meta}
+									<!-- Inline "ticket created" marker: sits mid-thread at the point of
+									     creation; expands to reveal the ticket's live conversation. -->
+									{@const pv = previews[r.id]}
+									<div class="rounded-lg border border-accent/25 bg-accent/[0.04]">
+										<div class="flex items-center gap-2.5 px-3 py-2">
+											<span
+												class="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-accent/12 text-accent"
 											>
-											<span class="font-mono text-[11px] text-text-4">{relTime(r.createdAt)}</span>
+												<Icon name="ticket" size={14} />
+											</span>
+											<div class="min-w-0 flex-1">
+												<div class="truncate text-[13px] text-text">
+													<span class="font-semibold">{meta.displayId}</span>
+													<span class="text-text-3"> · </span>{meta.subject}
+												</div>
+												<div class="text-[11px] text-text-4">
+													{m.chat_ticket_created_marker()} · {relTime(r.createdAt)}
+												</div>
+											</div>
+											<a
+												href="/tickets/{meta.ticketId}"
+												title={m.chat_ticket_view()}
+												aria-label={m.chat_ticket_view()}
+												class="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-text-4 hover:bg-bg-elev hover:text-text"
+											>
+												<Icon name="link" size={14} />
+											</a>
+											<button
+												type="button"
+												onclick={() => toggleTicket(r.id, meta.ticketId)}
+												class="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-[12px] text-text-3 hover:bg-bg-elev hover:text-text"
+											>
+												<span>{pv?.open ? m.chat_ticket_collapse() : m.chat_ticket_expand()}</span>
+												<span class="transition-transform {pv?.open ? 'rotate-180' : ''}">
+													<Icon name="chevron" size={13} />
+												</span>
+											</button>
 										</div>
-										<div class="text-[14px] leading-relaxed whitespace-pre-wrap text-text-2">
-											<MentionText text={r.body} />
-										</div>
-										{#if r.files?.length}
-											<div class="mt-1.5"><AttachmentList attachments={r.files} /></div>
+
+										{#if pv?.open}
+											<div class="border-t border-accent/15 px-3 py-2.5">
+												{#if pv.loading}
+													<div class="flex items-center gap-2 py-1 text-[13px] text-text-4">
+														<span
+															class="h-3 w-3 animate-spin rounded-full border border-text-4 border-t-transparent"
+														></span>
+														{m.common_loading()}
+													</div>
+												{:else if pv.error}
+													<div class="text-danger py-1 text-[13px]">{pv.error}</div>
+												{:else if pv.messages.length === 0}
+													<div class="py-1 text-[13px] text-text-4">
+														{m.chat_ticket_no_messages()}
+													</div>
+												{:else}
+													<div class="space-y-3">
+														{#each pv.messages as tm (tm.id)}
+															{@const tu = who(tm.authorId)}
+															<div class="flex gap-2.5">
+																<Avatar user={tu} size={22} />
+																<div class="min-w-0 flex-1">
+																	<div class="flex items-baseline gap-2">
+																		<span class="text-[13px] font-medium text-text"
+																			>{tu?.name ?? m.chat_unknown_user()}</span
+																		>
+																		<span class="font-mono text-[11px] text-text-4"
+																			>{relTime(tm.createdAt)}</span
+																		>
+																		{#if tm.isInternalNote}
+																			<span
+																				class="rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-500"
+																				>{m.tickets_internal_note()}</span
+																			>
+																		{/if}
+																	</div>
+																	<div
+																		class="text-[14px] leading-relaxed whitespace-pre-wrap text-text-2"
+																	>
+																		<MentionText text={tm.body} />
+																	</div>
+																</div>
+															</div>
+														{/each}
+													</div>
+												{/if}
+											</div>
 										{/if}
 									</div>
-								</div>
+								{:else}
+									{@const ru = who(r.authorId)}
+									<div class="flex gap-2.5">
+										<Avatar user={ru} size={24} />
+										<div class="min-w-0 flex-1">
+											<div class="flex items-baseline gap-2">
+												<span class="text-[13px] font-medium text-text"
+													>{ru?.name ?? m.chat_unknown_user()}</span
+												>
+												<span class="font-mono text-[11px] text-text-4">{relTime(r.createdAt)}</span
+												>
+											</div>
+											<div class="text-[14px] leading-relaxed whitespace-pre-wrap text-text-2">
+												<MentionText text={r.body} />
+											</div>
+											{#if r.files?.length}
+												<div class="mt-1.5"><AttachmentList attachments={r.files} /></div>
+											{/if}
+										</div>
+									</div>
+								{/if}
 							{/each}
 						</div>
 					{/if}
@@ -540,3 +724,12 @@
 		</div>
 	</div>
 </div>
+
+{#if ticketModal}
+	<CreateTicketFromThreadModal
+		open={true}
+		threadId={ticketModal.threadId}
+		threadTitle={ticketModal.title}
+		onclose={() => (ticketModal = null)}
+	/>
+{/if}

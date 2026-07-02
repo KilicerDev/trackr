@@ -855,6 +855,13 @@ export const ticket = pgTable(
 		customerId: text('customer_id').references(() => user.id, { onDelete: 'set null' }),
 		assignedAgentId: text('assigned_agent_id').references(() => user.id, { onDelete: 'set null' }),
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		// Set when this ticket was created from a chat thread (the "create ticket
+		// from thread" flow). Nullable; back-links the ticket to its origin
+		// conversation. `set null` keeps the FK clean if the thread is ever
+		// hard-deleted (thread delete is soft, so the link otherwise survives).
+		sourceThreadId: text('source_thread_id').references((): AnyPgColumn => thread.id, {
+			onDelete: 'set null'
+		}),
 		firstResponseAt: timestamp('first_response_at'),
 		resolvedAt: timestamp('resolved_at'),
 		closedAt: timestamp('closed_at'),
@@ -880,7 +887,8 @@ export const ticket = pgTable(
 		uniqueIndex('ticket_org_number_idx').on(t.orgId, t.number),
 		index('ticket_org_status_idx').on(t.orgId, t.status),
 		index('ticket_assignee_idx').on(t.assignedAgentId),
-		index('ticket_customer_idx').on(t.customerId)
+		index('ticket_customer_idx').on(t.customerId),
+		index('ticket_source_thread_idx').on(t.sourceThreadId)
 	]
 );
 

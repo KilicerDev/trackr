@@ -56,6 +56,7 @@
 		canCreateTask: boolean;
 		canEditChecklist: boolean;
 		linkedTasks: { id: string; displayId: string; title: string; status: string }[];
+		sourceChat: { threadId: string; orgId: string; title: string | null } | null;
 	};
 	let { data }: { data: PageData } = $props();
 
@@ -803,6 +804,25 @@
 				{:else}
 					<p class="text-[14px] text-text-3">{m.tickets_linked_tasks_empty()}</p>
 				{/if}
+			</div>
+		{/if}
+
+		<!-- Created from a chat thread -->
+		{#if data.sourceChat}
+			<div>
+				<div class="mb-2 text-[12px] tracking-[0.08em] text-text-4 uppercase">
+					{m.tickets_source_chat()}
+				</div>
+				<a
+					href="/chat?org={data.sourceChat.orgId}&thread={data.sourceChat.threadId}"
+					class="group flex items-center gap-2.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 transition-colors hover:border-border-strong"
+				>
+					<Icon name="msg" size={14} class="shrink-0 text-text-4" />
+					<span class="truncate text-[14px] text-text-2 group-hover:text-text">
+						{data.sourceChat.title ?? m.chat_untitled()}
+					</span>
+					<Icon name="link" size={13} class="ml-auto shrink-0 text-text-4" />
+				</a>
 			</div>
 		{/if}
 	</div>

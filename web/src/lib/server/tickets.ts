@@ -246,6 +246,9 @@ type CreateTicketInput = {
 	assignedAgentId: string | null;
 	tags: string[];
 	createdBy: string;
+	// Set when the ticket originates from a chat thread (create-ticket-from-thread
+	// flow). Back-links the ticket to its source conversation.
+	sourceThreadId?: string | null;
 };
 
 export async function createTicket(input: CreateTicketInput): Promise<{
@@ -284,7 +287,8 @@ export async function createTicket(input: CreateTicketInput): Promise<{
 			customerId: input.customerId,
 			assignedAgentId: input.assignedAgentId,
 			createdBy: input.createdBy,
-			tags: input.tags
+			tags: input.tags,
+			sourceThreadId: input.sourceThreadId ?? null
 		});
 	});
 

@@ -11,6 +11,7 @@ import {
 	createTag,
 	createThread,
 	getThreadContext,
+	insertSystemMessage,
 	listOrgTags,
 	listTagSubscriptions,
 	loadOrgChatMentionUsers,
@@ -19,13 +20,22 @@ import {
 	setTagSubscription,
 	setThreadTags
 } from '$lib/server/chat';
+import {
+	createTicket,
+	TICKET_CATEGORY_SET,
+	TICKET_PRIORITY_SET,
+	type TicketCategory,
+	type TicketPriority
+} from '$lib/server/tickets';
 import { attachFormFiles } from '$lib/server/attachments';
 import { notify } from '$lib/server/notify';
+import { recordAudit } from '$lib/server/audit';
 import {
 	orgChatRecipients,
 	orgMentionRecipients,
 	tagFollowers,
-	tagMuters
+	tagMuters,
+	ticketRecipients
 } from '$lib/server/notify/recipients';
 import { parseMentionIds } from '$lib/utils/mentions';
 
@@ -240,6 +250,100 @@ export const actions: Actions = {
 			origin: url.origin
 		});
 		return { success: true };
+	},
+
+	// Spin a ticket out of a chat thread. Prefilled subject/description come from
+	// the modal; the thread's org scopes the ticket. Drops a `system` marker back
+	// into the chat stream so the conversation records the decision, and links the
+	// ticket back to its source thread (ticket.sourceThreadId). No chat messages
+	// are copied — the thread stays the source of truth.
+	createTicket: async ({ request, locals, url }) => {
+		if (!locals.user) throw error(401, m.chat_not_authenticated());
+		const me = locals.user;
+		const form = await request.formData();
+		const threadId = String(form.get('threadId') ?? '').trim();
+		const subject = String(form.get('subject') ?? '').trim();
+		const description = String(form.get('description') ?? '').trim() || null;
+		const priority = String(form.get('priority') ?? 'medium');
+		const category = String(form.get('category') ?? 'general');
+
+		if (!threadId) return fail(400, { message: m.chat_err_thread_required() });
+		if (!subject) return fail(400, { message: m.tickets_subject_required() });
+		if (!TICKET_PRIORITY_SET.has(priority))
+			return fail(400, { message: m.tickets_invalid_priority() });
+		if (!TICKET_CATEGORY_SET.has(category))
+			return fail(400, { message: m.tickets_invalid_category() });
+
+		const ctx = await getThreadContext(threadId);
+		if (!ctx) return fail(404, { message: m.chat_err_thread_not_found() });
+		const orgId = ctx.orgId;
+		await assertCan(locals, 'org.tickets.create', { orgId });
+
+		// Agents may leave the ticket unassigned; clients always become the
+		// customer. Mirrors the /tickets create action.
+		const isAgent = await can(locals, 'org.tickets.edit.any', { orgId });
+		const customerId = isAgent ? null : me.id;
+
+		try {
+			const { id, displayId } = await createTicket({
+				orgId,
+				subject,
+				description,
+				priority: priority as TicketPriority,
+				category: category as TicketCategory,
+				channel: 'chat',
+				customerId,
+				assignedAgentId: null,
+				tags: [],
+				createdBy: me.id,
+				sourceThreadId: threadId
+			});
+
+			// Drop the in-stream marker. Best-effort: the ticket already exists, so a
+			// failure here is logged, not surfaced as a failed creation.
+			try {
+				await insertSystemMessage({
+					threadId,
+					authorId: me.id,
+					body: m.chat_ticket_created_note({ ref: displayId }),
+					meta: { event: 'ticket_created', ticketId: id, displayId, subject }
+				});
+			} catch (err) {
+				console.error('chat ticket marker failed', err);
+			}
+
+			// Notify everyone allowed to see the new ticket (scoped by
+			// ticketRecipients — clients of other orgs can't appear).
+			const recipients = await ticketRecipients({ orgId, customerId, assignedAgentId: null });
+			void notify({
+				kind: 'ticketCreated',
+				recipients,
+				actorId: me.id,
+				orgId,
+				render: (locale) => ({
+					title: m.notify_ticket_created({ ref: displayId, subject }, { locale }),
+					body: description
+				}),
+				url: `/tickets/${id}`,
+				entity: { type: 'ticket', id },
+				baseUrl: url.origin
+			}).catch((err) => console.error('chat→ticket notify failed', err));
+
+			void recordAudit({
+				type: 'ticket.create',
+				actorId: me.id,
+				targetType: 'ticket',
+				targetId: id,
+				targetLabel: `${displayId} · ${subject}`,
+				orgId,
+				meta: { priority, category, channel: 'chat', sourceThreadId: threadId }
+			});
+
+			return { success: true, ticketId: id, displayId };
+		} catch (err) {
+			console.error('chat→ticket create failed', err);
+			return fail(500, { message: m.chat_err_create_ticket_failed() });
+		}
 	},
 
 	createTag: async ({ request, locals }) => {
