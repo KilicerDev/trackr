@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import Icon from '../Icon.svelte';
-	import Kbd from '../Kbd.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getSidebar } from '$lib/stores/sidebar.svelte';
 
@@ -11,7 +10,6 @@
 	type LayoutShape = {
 		taskCount?: number;
 		projects?: { id: string; key: string; name: string; color: string }[];
-		favoriteProjectIds?: string[];
 		isAdmin?: boolean;
 		isSuperadmin?: boolean;
 		isTrackrTeam?: boolean;
@@ -20,8 +18,6 @@
 
 	const taskCount = $derived((page.data as LayoutShape).taskCount ?? 0);
 	const projectList = $derived((page.data as LayoutShape).projects ?? []);
-	const favoriteIds = $derived(new Set((page.data as LayoutShape).favoriteProjectIds ?? []));
-	const favorites = $derived(projectList.filter((p) => favoriteIds.has(p.id)));
 	const isAdmin = $derived(!!(page.data as LayoutShape).isAdmin);
 	const isSuperadmin = $derived(!!(page.data as LayoutShape).isSuperadmin);
 	const isTrackrTeam = $derived(!!(page.data as LayoutShape).isTrackrTeam);
@@ -107,16 +103,30 @@
 		return page.url.pathname.startsWith(href);
 	}
 
-	// Labels stay in the DOM and only fade out — keeping every row/box at its
-	// full height so nothing resizes or shifts when the rail collapses.
+	// Labels stay in the DOM and only fade — never pulled from flow — so nothing
+	// they sit next to reflows when the rail collapses.
 	const fade = $derived(
-		`whitespace-nowrap transition-opacity duration-150 ${collapsed ? 'opacity-0' : 'opacity-100'}`
+		`whitespace-nowrap transition-opacity duration-150 ${
+			collapsed ? 'pointer-events-none opacity-0' : 'opacity-100'
+		}`
+	);
+
+	// Seamless collapse: the icon must never move. Its left offset is
+	// container-padding + row-margin + row-padding, which we keep at a constant
+	// 24px in both states — left-aligned in the 260px rail, dead-centre in the
+	// 64px one. Container pad stays 8px, so only the row's own margin/padding
+	// interpolate (deltas cancel: −4 +4 = 0) and the icon holds still while the
+	// highlight grows, leaving an 8px inset on each side of the collapsed rail.
+	const row = $derived(
+		`relative my-[1px] flex items-center gap-2.5 rounded-[7px] py-[8px] text-[15px] text-text-2 transition-[margin,padding,background-color,color] duration-150 hover:bg-[var(--row-hover)] hover:text-text ${
+			collapsed ? 'mx-0 px-4' : 'mx-1 px-3'
+		}`
 	);
 </script>
 
 <aside class="flex min-h-0 w-full flex-col overflow-hidden border-r border-border bg-bg-elev">
 	<div
-		class="flex items-center gap-2.5 px-[20px] pt-[20px] pb-[15px] text-[15px] font-semibold tracking-[-0.01em]"
+		class="relative flex items-center gap-2.5 px-[20px] pt-[20px] pb-[15px] text-[15px] font-semibold tracking-[-0.01em]"
 	>
 		<span class="grid h-6 w-6 shrink-0 place-items-center" aria-hidden="true">
 			<svg
@@ -135,31 +145,23 @@
 		<span class="ml-auto font-mono text-[12px] font-normal text-text-3 {fade}">v2</span>
 	</div>
 
-	<button
-		type="button"
-		onclick={() => window.dispatchEvent(new CustomEvent('trackr:open-palette'))}
-		title={collapsed ? m.shell_search_placeholder() : undefined}
-		class="mx-3 mt-1 mb-3.5 flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-2 text-[15px] text-text-3 transition-colors hover:text-text-2"
-	>
-		<Icon name="search" size={15} class="shrink-0" />
-		<span class={fade}>{m.shell_search_placeholder()}</span>
-		<span class="ml-auto {fade}"><Kbd>⌘K</Kbd></span>
-	</button>
-
-	<div class="flex-1 overflow-x-hidden overflow-y-auto px-2 pb-2">
+	<div class="mt-1.5 flex-1 overflow-x-hidden overflow-y-auto px-2 pb-2">
 		<div class="py-1.5">
-			<div
-				class="px-3 pt-2.5 pb-1.5 text-[12px] font-medium tracking-[0.08em] text-text-4 uppercase {fade}"
-			>
-				{m.shell_section_workspace()}
-			</div>
+			{#if collapsed}
+				<div class="h-1.5"></div>
+			{:else}
+				<div
+					class="px-3 pt-2.5 pb-1.5 text-[12px] font-medium tracking-[0.08em] text-text-4 uppercase"
+				>
+					{m.shell_section_workspace()}
+				</div>
+			{/if}
 			{#each workspaceItems as item (item.key)}
 				{@const active = isActive(item.href)}
 				<a
 					href={item.href}
 					title={collapsed ? item.label : undefined}
-					class="mx-1 my-[1px] flex items-center gap-2.5 rounded-[7px] px-3 py-[8px] text-[15px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text
-						{active ? 'bg-[var(--row-active)] !text-text' : ''}"
+					class="{row} {active ? 'bg-[var(--row-active)] !text-text' : ''}"
 				>
 					<span
 						class="grid h-4 w-4 shrink-0 place-items-center {active
@@ -176,43 +178,23 @@
 			{/each}
 		</div>
 
-		<div class="py-1.5">
-			<div
-				class="px-3 pt-2.5 pb-1.5 text-[12px] font-medium tracking-[0.08em] text-text-4 uppercase {fade}"
-			>
-				{m.shell_section_favorites()}
-			</div>
-			{#each favorites as p (p.id)}
-				<a
-					href="/projects/{p.id}"
-					title={collapsed ? p.name : undefined}
-					class="mx-1 my-[1px] flex items-center gap-2.5 rounded-[7px] px-3 py-[8px] text-[15px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text"
-				>
-					<span class="h-2 w-2 shrink-0 rounded-[2.5px]" style:background={p.color}></span>
-					<span class="truncate {fade}">{p.name}</span>
-				</a>
-			{/each}
-			{#if favorites.length === 0}
-				<div class="px-3 py-1.5 text-[13px] leading-snug text-text-4 {fade}">
-					{m.shell_favorites_empty()}
-				</div>
-			{/if}
-		</div>
-
 		{#if isAdmin}
 			<div class="py-1.5">
-				<div
-					class="px-3 pt-2.5 pb-1.5 text-[12px] font-medium tracking-[0.08em] text-text-4 uppercase {fade}"
-				>
-					{m.shell_section_admin()}
-				</div>
+				{#if collapsed}
+					<div class="mx-3 mb-2 border-t border-border"></div>
+				{:else}
+					<div
+						class="px-3 pt-2.5 pb-1.5 text-[12px] font-medium tracking-[0.08em] text-text-4 uppercase"
+					>
+						{m.shell_section_admin()}
+					</div>
+				{/if}
 				{#each adminItems as item (item.key)}
 					{@const active = isActive(item.href)}
 					<a
 						href={item.href}
 						title={collapsed ? item.label : undefined}
-						class="mx-1 my-[1px] flex items-center gap-2.5 rounded-[7px] px-3 py-[8px] text-[15px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text
-						{active ? 'bg-[var(--row-active)] !text-text' : ''}"
+						class="{row} {active ? 'bg-[var(--row-active)] !text-text' : ''}"
 					>
 						<span
 							class="grid h-4 w-4 shrink-0 place-items-center {active
