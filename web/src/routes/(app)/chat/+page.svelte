@@ -404,13 +404,11 @@
 				<article class="rounded-xl border border-border bg-surface">
 					<!-- Post head -->
 					<div class="px-4 pt-3.5 pb-1">
-						<div class="flex items-center gap-2.5">
-							<Avatar user={author} size={31} />
-							<span class="text-[14px] font-medium text-text"
-								>{author?.name ?? m.chat_unknown_user()}</span
-							>
-							<span class="font-mono text-[11px] text-text-4">{relTime(t.createdAt)}</span>
-							<div class="ml-auto flex items-center gap-1">
+						<div class="flex items-start gap-2.5">
+							<h2 class="min-w-0 flex-1 text-[17px] leading-snug font-semibold text-text">
+								{t.title}
+							</h2>
+							<div class="flex shrink-0 items-center gap-1">
 								<button
 									type="button"
 									aria-label={m.chat_create_ticket()}
@@ -447,9 +445,15 @@
 								</div>
 							</div>
 						</div>
-						<h2 class="mt-2 text-[16px] leading-snug font-semibold text-text">{t.title}</h2>
+						<div class="mt-1.5 flex items-center gap-2">
+							<Avatar user={author} size={18} />
+							<span class="text-[12px] font-medium text-text-3"
+								>{author?.name ?? m.chat_unknown_user()}</span
+							>
+							<span class="font-mono text-[11px] text-text-4">{relTime(t.createdAt)}</span>
+						</div>
 						{#if root}
-							<div class="mt-1 text-[14px] leading-relaxed whitespace-pre-wrap text-text-2">
+							<div class="mt-2.5 text-[14px] leading-relaxed whitespace-pre-wrap text-text-2">
 								<MentionText text={root.body} />
 							</div>
 							{#if root.files?.length}
