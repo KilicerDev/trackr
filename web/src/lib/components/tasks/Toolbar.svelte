@@ -16,7 +16,14 @@
 	import { m } from '$lib/paraglide/messages';
 
 	type LayoutData = {
-		users?: { id: string; name: string; initials: string; color: string; status: string }[];
+		users?: {
+			id: string;
+			name: string;
+			initials: string;
+			color: string;
+			status: string;
+			internal?: boolean;
+		}[];
 		projects?: { key: string; name: string; color: string }[];
 		tasks?: { labels?: string[] }[];
 	};
@@ -210,8 +217,10 @@
 			</button>
 		{/each}
 	{:else if field === 'assignee'}
+		<!-- Tasks are internal work, so only platform (internal team) users can be
+		     assignees — mirror the tickets toolbar and hide client/portal users. -->
 		{@const dbUsers = ((page.data as LayoutData).users ?? []).filter(
-			(u) => u.status !== 'disabled'
+			(u) => u.internal && u.status !== 'disabled'
 		)}
 		{#each dbUsers as u (u.id)}
 			<button
