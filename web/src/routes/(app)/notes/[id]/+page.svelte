@@ -99,6 +99,132 @@
 	let bulkOpen = $state(false);
 	let bulkTodos = $state<SourceTodo[]>([]);
 
+	// ─── Outline / table of contents (meeting notes) ────────────────────────
+	// A sticky right-gutter panel listing the document's headings so the reader
+	// can jump between sections. Meeting-note only, and only when the viewport is
+	// wide enough to fit the gutter (a container query hides it otherwise).
+	type TocItem = { index: number; level: number; text: string };
+	let tocItems = $state<TocItem[]>([]);
+	let activeIndex = $state(-1);
+	let tocCollapsed = $state(false);
+	const showToc = $derived(note.kind === 'meeting' && tocItems.length > 0);
+
+	function headingEls(): HTMLElement[] {
+		const root = editorWrap?.querySelector('.ProseMirror');
+		if (!root) return [];
+		return Array.from(root.querySelectorAll('h1, h2, h3')) as HTMLElement[];
+	}
+
+	// Build the outline from the rendered heading DOM, keyed by each heading's
+	// position in the list. We deliberately do NOT inject ids: ProseMirror
+	// re-renders heading nodes on every edit and strips any attribute it doesn't
+	// own, so a persisted id would silently disappear. Instead we re-query the
+	// live DOM by index whenever we need to scroll or find the active section.
+	function buildToc() {
+		const items: TocItem[] = [];
+		headingEls().forEach((el, index) => {
+			const text = (el.textContent ?? '').trim();
+			if (text) items.push({ index, level: Number(el.tagName[1]), text });
+		});
+		tocItems = items;
+		computeActive();
+	}
+
+	// The active section is the last heading whose top has scrolled above the
+	// sticky header band (57px + a little), so it highlights what you're reading.
+	function computeActive() {
+		const els = headingEls();
+		if (!tocItems.length) {
+			activeIndex = -1;
+			return;
+		}
+		// At the very bottom the last heading can't reach the top band, so pin it
+		// active — otherwise the final section could never highlight.
+		const scroller = els[0] ? scrollParentOf(els[0]) : null;
+		if (scroller && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4) {
+			activeIndex = tocItems[tocItems.length - 1].index;
+			return;
+		}
+		let active = tocItems[0].index;
+		for (const item of tocItems) {
+			const el = els[item.index];
+			if (!el) continue;
+			if (el.getBoundingClientRect().top <= 96) active = item.index;
+			else break;
+		}
+		activeIndex = active;
+	}
+
+	// Nearest scrollable ancestor of an element (the notes page scroll column).
+	function scrollParentOf(el: HTMLElement): HTMLElement | null {
+		let p = el.parentElement;
+		while (p) {
+			const oy = getComputedStyle(p).overflowY;
+			if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight) return p;
+			p = p.parentElement;
+		}
+		return null;
+	}
+
+	// Animate the scroll ourselves: native scroll-behavior:smooth is unreliable
+	// inside this nested scroll container, so we drive scrollTop with rAF.
+	function smoothScrollTo(scroller: HTMLElement, target: number) {
+		const start = scroller.scrollTop;
+		const dest = Math.max(0, Math.min(target, scroller.scrollHeight - scroller.clientHeight));
+		const dist = dest - start;
+		if (Math.abs(dist) < 2) {
+			scroller.scrollTop = dest;
+			return;
+		}
+		const duration = 320;
+		let startTs: number | null = null;
+		const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
+		const step = (ts: number) => {
+			startTs ??= ts;
+			const t = Math.min(1, (ts - startTs) / duration);
+			scroller.scrollTop = start + dist * ease(t);
+			if (t < 1) requestAnimationFrame(step);
+			else computeActive();
+		};
+		requestAnimationFrame(step);
+	}
+
+	function scrollToHeading(index: number) {
+		const el = headingEls()[index];
+		if (!el) return;
+		const scroller = scrollParentOf(el);
+		if (!scroller) {
+			el.scrollIntoView({ block: 'start' });
+			return;
+		}
+		// Land the heading just below the sticky header band (matches its
+		// scroll-margin-top in wiki-editor.css).
+		const offset = el.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+		smoothScrollTo(scroller, scroller.scrollTop + offset - 76);
+	}
+
+	function onEditorReady(ed: Editor) {
+		editor = ed;
+		buildToc();
+		// Collaborative content streams in after mount; rebuild once it has settled.
+		setTimeout(buildToc, 400);
+	}
+
+	// Keep the active-section highlight current as the document scrolls. The
+	// observer is a cheap trigger; the actual pick is done by computeActive.
+	$effect(() => {
+		void tocItems; // re-observe whenever the outline changes
+		if (!showToc) return;
+		const els = headingEls();
+		if (!els.length) return;
+		const io = new IntersectionObserver(computeActive, {
+			rootMargin: '-96px 0px 0px 0px',
+			threshold: [0, 1]
+		});
+		els.forEach((el) => io.observe(el));
+		return () => io.disconnect();
+	});
+
 	function onEditorPointerMove(e: PointerEvent) {
 		if (!canEdit || !editorWrap) return;
 		const target = e.target as HTMLElement | null;
@@ -268,6 +394,9 @@
 		titleDraft = note.title;
 		collabStatus = undefined;
 		presence = [];
+		tocItems = [];
+		activeIndex = -1;
+		tocCollapsed = false;
 	});
 
 	async function saveTitle() {
@@ -497,7 +626,8 @@
 						editable={canEdit}
 						user={collabUser}
 						placeholder={m.notes_editor_placeholder()}
-						onReady={(ed) => (editor = ed)}
+						onReady={onEditorReady}
+						onUpdate={buildToc}
 						onStatus={(s) => (collabStatus = s)}
 						onPresence={(u) => (presence = u)}
 					/>
@@ -518,6 +648,64 @@
 			</div>
 		{/if}
 	</div>
+
+	{#if showToc}
+		<!-- Outline floats over the top-right of the note and sticks while you
+		     scroll, so it's available at any width (rather than only when a wide
+		     side gutter fits). Collapses to a compact chip. -->
+		<aside class="pointer-events-none absolute inset-y-0 right-0 z-10 hidden sm:block">
+			<div class="pointer-events-auto sticky top-[73px] mr-3 flex w-[216px] flex-col">
+				{#if tocCollapsed}
+					<button
+						type="button"
+						onclick={() => (tocCollapsed = false)}
+						aria-label={m.notes_toc_title()}
+						class="ml-auto flex h-8 items-center gap-1.5 rounded-lg border border-border bg-bg-elev/90 px-2.5 text-[12px] text-text-3 shadow-sm backdrop-blur transition-colors hover:border-border-strong hover:text-text"
+					>
+						<Icon name="list" size={14} />
+						<span class="tabular-nums">{tocItems.length}</span>
+					</button>
+				{:else}
+					<nav
+						aria-label={m.notes_toc_title()}
+						class="flex max-h-[calc(100vh-89px)] flex-col overflow-hidden rounded-xl border border-border bg-bg-elev/90 shadow-lg backdrop-blur"
+					>
+						<div class="flex items-center justify-between gap-2 py-2 pr-1.5 pl-3">
+							<span class="text-[11px] font-semibold tracking-wide text-text-4 uppercase">
+								{m.notes_toc_title()}
+							</span>
+							<button
+								type="button"
+								onclick={() => (tocCollapsed = true)}
+								aria-label={m.notes_toc_title()}
+								class="grid h-5 w-5 place-items-center rounded text-text-4 transition-colors hover:bg-surface-2 hover:text-text-2"
+							>
+								<Icon name="x" size={13} />
+							</button>
+						</div>
+						<ul class="overflow-y-auto px-1.5 pb-2">
+							{#each tocItems as item (item.index)}
+								<li>
+									<button
+										type="button"
+										onclick={() => scrollToHeading(item.index)}
+										title={item.text}
+										style:padding-left="{(item.level - 1) * 12 + 8}px"
+										class="block w-full truncate rounded-md py-1 pr-2 text-left text-[13px] leading-snug transition-colors {activeIndex ===
+										item.index
+											? 'bg-surface-2 text-text'
+											: 'text-text-3 hover:bg-surface-2/60 hover:text-text-2'}"
+									>
+										{item.text}
+									</button>
+								</li>
+							{/each}
+						</ul>
+					</nav>
+				{/if}
+			</div>
+		</aside>
+	{/if}
 </div>
 
 {#if isOwner}
