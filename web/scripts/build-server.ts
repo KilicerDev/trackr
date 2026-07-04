@@ -46,6 +46,23 @@ const skVirtuals: BunPlugin = {
 		build.onResolve({ filter: /^\$lib(\/|$)/ }, (args) => ({
 			path: resolveLib(args.path.slice('$lib'.length))
 		}));
+		// Externalize every bare npm specifier (anything not $lib / $env / relative).
+		// Only our own $lib code is bundled; all deps resolve from node_modules at
+		// runtime. Curating this from package.json's direct deps alone is a trap:
+		// a *transitively*-required package (e.g. @tiptap/pm → prosemirror-model,
+		// imported directly by the collab seed) would otherwise get bundled into a
+		// SECOND copy, separate from the one the external @tiptap/* and
+		// @hocuspocus/transformer load at runtime. That dual-package split makes
+		// ProseMirror schema/node identity checks fail, so the HTML<->Yjs conversion
+		// throws in prod and template-seeded notes come up empty (works in dev,
+		// where Vite serves a single un-bundled copy).
+		build.onResolve({ filter: /^[^./$]/ }, (args) =>
+			// The entry point (no importer) and any local `src/...` module must still
+			// be bundled; only genuine bare package specifiers go external.
+			!args.importer || args.path.startsWith('src/')
+				? undefined
+				: { path: args.path, external: true }
+		);
 	}
 };
 
