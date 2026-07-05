@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Icon from '../Icon.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
-	import Avatar from '../Avatar.svelte';
+	import AvatarStack from '../AvatarStack.svelte';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
@@ -58,8 +58,14 @@
 			})).filter((g) => g.tickets.length > 0);
 		}
 		if (group === 'assignee') {
-			const ids = Array.from(new Set(tickets.map((t) => t.assignedAgentId ?? '__none')));
-			return ids
+			// Fan-out: a ticket with N assignees appears under each of their groups;
+			// unassigned tickets fall under the '__none' bucket.
+			const ids = new Set<string>();
+			for (const t of tickets) {
+				if (t.assignees.length === 0) ids.add('__none');
+				else for (const a of t.assignees) ids.add(a);
+			}
+			return Array.from(ids)
 				.map((uid) => {
 					const real = uid === '__none' ? null : uid;
 					const u = real ? resolveUser(real) : undefined;
@@ -67,7 +73,9 @@
 						id: uid,
 						label: u?.name ?? mm.common_unassigned(),
 						dot: u?.color ?? '#7c7c84',
-						tickets: tickets.filter((t) => (t.assignedAgentId ?? '__none') === uid)
+						tickets: tickets.filter((t) =>
+							uid === '__none' ? t.assignees.length === 0 : t.assignees.includes(uid)
+						)
 					};
 				})
 				.filter((g) => g.tickets.length > 0)
@@ -114,7 +122,7 @@
 			{#if !isCollapsed}
 				<div transition:slide={{ duration: 180, easing: cubicOut }}>
 					{#each g.tickets as t (t.id)}
-						{@const assignee = resolveUser(t.assignedAgentId)}
+						{@const assignees = t.assignees.map((id) => resolveUser(id))}
 						{@const sla = slaSignal(t)}
 						<button
 							type="button"
@@ -174,8 +182,8 @@
 							<span class="hidden w-[79px] shrink-0 text-right text-[12px] text-text-3 lg:inline">
 								{relTime(t.lastMessageAt ?? t.updatedAt)}
 							</span>
-							{#if assignee}
-								<Avatar user={assignee} size={22} />
+							{#if assignees.length}
+								<AvatarStack users={assignees} size={22} max={3} overlap={6} />
 							{:else}
 								<span class="h-5 w-5 rounded-full border border-dashed border-border-strong"></span>
 							{/if}

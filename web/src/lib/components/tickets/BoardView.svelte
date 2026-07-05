@@ -98,8 +98,13 @@
 				.sort((a, b) => a.label.localeCompare(b.label));
 		}
 		if (group === 'assignee') {
-			const ids = Array.from(new Set(tickets.map((t) => t.assignedAgentId ?? '__none')));
-			return ids
+			// Fan-out: a multi-assignee ticket appears under each assignee's column.
+			const ids = new Set<string>();
+			for (const t of tickets) {
+				if (t.assignees.length === 0) ids.add('__none');
+				else for (const a of t.assignees) ids.add(a);
+			}
+			return Array.from(ids)
 				.map((uid) => {
 					const real = uid === '__none' ? null : uid;
 					const u = real ? resolveUser(real) : undefined;
@@ -108,7 +113,9 @@
 						label: u?.name ?? m.common_unassigned(),
 						dot: u?.color ?? '#7c7c84',
 						userId: real ?? undefined,
-						tickets: tickets.filter((t) => (t.assignedAgentId ?? '__none') === uid)
+						tickets: tickets.filter((t) =>
+							uid === '__none' ? t.assignees.length === 0 : t.assignees.includes(uid)
+						)
 					};
 				})
 				.sort((a, b) => a.label.localeCompare(b.label));
@@ -167,9 +174,13 @@
 				tickets: items.filter((t) => t.category === c.id).sort(byPriority)
 			})).filter((g) => g.tickets.length > 0);
 		}
-		// assignee
-		const ids = Array.from(new Set(items.map((t) => t.assignedAgentId ?? '__none')));
-		return ids
+		// assignee (fan-out over multiple assignees)
+		const ids = new Set<string>();
+		for (const t of items) {
+			if (t.assignees.length === 0) ids.add('__none');
+			else for (const a of t.assignees) ids.add(a);
+		}
+		return Array.from(ids)
 			.map((uid) => {
 				const real = uid === '__none' ? null : uid;
 				const u = real ? resolveUser(real) : undefined;
@@ -178,7 +189,11 @@
 					label: u?.name ?? m.common_unassigned(),
 					dot: u?.color,
 					userId: real ?? undefined,
-					tickets: items.filter((t) => (t.assignedAgentId ?? '__none') === uid).sort(byPriority)
+					tickets: items
+						.filter((t) =>
+							uid === '__none' ? t.assignees.length === 0 : t.assignees.includes(uid)
+						)
+						.sort(byPriority)
 				};
 			})
 			.filter((g) => g.tickets.length > 0)
@@ -240,7 +255,10 @@
 								</button>
 							{/if}
 							{#if !isCollapsed}
-								<div class="mt-1.5 space-y-2" transition:slide={{ duration: 180, easing: cubicOut }}>
+								<div
+									class="mt-1.5 space-y-2"
+									transition:slide={{ duration: 180, easing: cubicOut }}
+								>
 									{#each g.tickets as t (t.id)}
 										<BoardCard ticket={t} onclick={() => onSelect?.(t)} />
 									{/each}

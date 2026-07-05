@@ -72,7 +72,11 @@ export const load: ServerLoad = async ({ params, locals }) => {
 	// @-mention candidates for the reply composer: the ticket's notify audience —
 	// org agents, internal platform staff, the customer, and the assignee — so an
 	// agent can mention the org user (and vice versa), not just the global list.
-	const mentionUsers = await loadTicketMentionUsers(ticket);
+	const mentionUsers = await loadTicketMentionUsers({
+		orgId: ticket.orgId,
+		customerId: ticket.customerId,
+		assigneeIds: ticket.assignees
+	});
 
 	const messages = await loadTicketMessages(id, { includeInternal: isAgent });
 
@@ -101,7 +105,7 @@ export const load: ServerLoad = async ({ params, locals }) => {
 		...new Set(
 			[
 				ticket.customerId,
-				ticket.assignedAgentId,
+				...ticket.assignees,
 				ticket.createdBy,
 				...messages.map((m) => m.authorId)
 			].filter((v): v is string => !!v)

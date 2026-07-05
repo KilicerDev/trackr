@@ -5,10 +5,12 @@
 	import Drawer from '../Drawer.svelte';
 	import Icon from '../Icon.svelte';
 	import Avatar from '../Avatar.svelte';
+	import AvatarStack from '../AvatarStack.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
 	import StatusDot from '../StatusDot.svelte';
 	import Checklist from '../Checklist.svelte';
 	import TagsPopover from '../popovers/TagsPopover.svelte';
+	import AssigneePopover from '../popovers/AssigneePopover.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
@@ -51,9 +53,7 @@
 
 	const open = $derived(ticket != null);
 	const customer = $derived(ticket?.customerId ? resolveUser(ticket.customerId) : undefined);
-	const assignee = $derived(
-		ticket?.assignedAgentId ? resolveUser(ticket.assignedAgentId) : undefined
-	);
+	const assigneeUsers = $derived((ticket?.assignees ?? []).map((id) => resolveUser(id)));
 
 	let pop = $state<'status' | 'priority' | 'category' | 'assignee' | 'tags' | null>(null);
 	let pending = $state(false);
@@ -61,10 +61,17 @@
 	// Optimistic checklist copy; reseeded whenever the selected ticket changes.
 	let checklistDraft = $state<{ id: string; text: string; done: boolean }[]>([]);
 
-	// Reset transient UI when the selected ticket changes.
+	// Reset transient UI when the selected ticket changes. Close the open popover
+	// only on an actual ticket switch — NOT on same-ticket data reloads (an
+	// assignee toggle calls invalidateAll, and closing then would prevent adding
+	// several assignees in a row).
+	let lastTicketId: string | undefined;
 	$effect(() => {
-		void ticket?.id;
-		pop = null;
+		const id = ticket?.id;
+		if (id !== lastTicketId) {
+			lastTicketId = id;
+			pop = null;
+		}
 		subjectDraft = ticket?.subject ?? '';
 		checklistDraft = ticket?.checklist ?? [];
 	});
@@ -85,14 +92,18 @@
 		}
 	}
 
-	async function patch(field: string, value: string | string[] | null) {
+	async function patch(
+		field: string,
+		value: string | string[] | null,
+		opts: { keepOpen?: boolean } = {}
+	) {
 		if (!ticket) return;
 		pending = true;
 		const fd = new FormData();
 		fd.set('id', ticket.id);
 		if (Array.isArray(value)) {
 			for (const v of value) fd.append(field, v);
-			// Ensure the field is present even when clearing all tags, so the
+			// Ensure the field is present even when clearing all values, so the
 			// server keeps the empty array rather than skipping the patch.
 			if (value.length === 0) fd.append(field, '');
 		} else {
@@ -101,7 +112,8 @@
 		try {
 			const res = await fetch('/tickets?/update', { method: 'POST', body: fd });
 			if (!res.ok) throw new Error(m.tickets_update_failed());
-			pop = null;
+			// Multi-select pickers (assignees) stay open across toggles.
+			if (!opts.keepOpen) pop = null;
 			await invalidateAll();
 		} catch (err) {
 			showToast('err', err instanceof Error ? err.message : m.tickets_update_failed());
@@ -373,63 +385,30 @@
 							type="button"
 							disabled={!canEdit}
 							onclick={() => (pop = pop === 'assignee' ? null : 'assignee')}
-							class="inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {assignee
+							class="inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {assigneeUsers.length
 								? 'border border-border bg-surface'
 								: 'border border-dashed border-border text-text-3'} {canEdit
 								? 'hover:border-border-strong hover:text-text'
 								: ''} {pop === 'assignee' ? 'ring-2 ring-accent/40' : ''}"
 						>
-							{#if assignee}
-								<Avatar user={assignee} size={20} />
-								<span>{assignee.name}</span>
+							{#if assigneeUsers.length === 1}
+								<Avatar user={assigneeUsers[0]} size={20} />
+								<span>{assigneeUsers[0]?.name ?? m.common_unassigned()}</span>
+							{:else if assigneeUsers.length > 1}
+								<AvatarStack users={assigneeUsers} size={20} max={3} overlap={6} />
+								<span>{m.tickets_n_assignees({ n: assigneeUsers.length })}</span>
 							{:else}
 								<Icon name="user" size={14} />
 								<span>{m.common_unassigned()}</span>
 							{/if}
 						</button>
 						{#if pop === 'assignee'}
-							<div
-								use:clickOutside={() => (pop = null)}
-								in:fly={POPOVER_IN}
-								class="absolute top-full left-0 z-50 mt-1.5 max-h-[352px] min-w-[264px] overflow-auto rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-							>
-								<button
-									type="button"
-									disabled={pending}
-									onclick={() => patch('assignedAgentId', null)}
-									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
-								>
-									<span
-										class="h-[20px] w-[20px] rounded-full border border-dashed border-border-strong"
-									></span>
-									<span class="text-[14px]">{m.common_unassigned()}</span>
-									<span
-										class="ml-auto text-accent {ticket.assignedAgentId == null
-											? 'opacity-100'
-											: 'opacity-0'}"
-									>
-										<Icon name="check" size={14} />
-									</span>
-								</button>
-								{#each users as u (u.id)}
-									<button
-										type="button"
-										disabled={pending}
-										onclick={() => patch('assignedAgentId', u.id)}
-										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
-									>
-										<Avatar user={u} size={20} />
-										<span class="truncate text-[14px]">{u.name}</span>
-										<span
-											class="ml-auto text-accent {ticket.assignedAgentId === u.id
-												? 'opacity-100'
-												: 'opacity-0'}"
-										>
-											<Icon name="check" size={14} />
-										</span>
-									</button>
-								{/each}
-							</div>
+							<AssigneePopover
+								value={ticket.assignees}
+								{users}
+								onchange={(v) => patch('assignees', v, { keepOpen: true })}
+								onclose={() => (pop = null)}
+							/>
 						{/if}
 					</div>
 				</div>

@@ -132,14 +132,14 @@ export async function projectMentionRecipients(
 export type TicketRecipientCtx = {
 	orgId: string;
 	customerId: string | null;
-	assignedAgentId: string | null;
+	assigneeIds: string[];
 };
 
 // Recipients allowed to know about a ticket in `orgId`:
 //   - members of `orgId` holding `org.tickets.read.any` (org agents / admins)
 //   - internal Trackr staff (via internal-org membership + matching perm)
 //   - the ticket's customer (read.own grants them sight of their own ticket)
-//   - the assigned agent
+//   - every assigned agent
 //
 // Pass `internalOnly: true` for internal-note message events — the customer
 // must never see internal notes even when they otherwise watch the ticket.
@@ -153,7 +153,7 @@ export async function ticketRecipients(
 	]);
 	const out = new Set<string>([...agents, ...internal]);
 	if (!opts.internalOnly && ctx.customerId) out.add(ctx.customerId);
-	if (ctx.assignedAgentId) out.add(ctx.assignedAgentId);
+	for (const id of ctx.assigneeIds) out.add(id);
 	return out;
 }
 

@@ -24,7 +24,7 @@
 		const tickets = data.tickets ?? [];
 		const now = Date.now();
 		const open = tickets.filter((t) => t.status === 'open').length;
-		const unassigned = tickets.filter((t) => !t.assignedAgentId && !DONE.has(t.status)).length;
+		const unassigned = tickets.filter((t) => !t.assignees.length && !DONE.has(t.status)).length;
 		const closedWeek = tickets.filter(
 			(t) => t.closedAt != null && now - Date.parse(t.closedAt) <= WEEK_MS
 		).length;

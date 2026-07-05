@@ -1,6 +1,13 @@
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from './db';
-import { organization, organizationMember, ticket, message, thread } from './db/app.schema';
+import {
+	organization,
+	organizationMember,
+	ticket,
+	ticketAssignee,
+	message,
+	thread
+} from './db/app.schema';
 import { user as userTable } from './db/auth.schema';
 import { ticketRecipients } from './notify/recipients';
 
@@ -50,6 +57,9 @@ export type TicketRow = {
 	category: TicketCategory;
 	channel: TicketChannel;
 	customerId: string | null;
+	// Full assignee set. `assignedAgentId` is the derived primary (first) assignee,
+	// kept for back-compat with read sites that still expect a single id.
+	assignees: string[];
 	assignedAgentId: string | null;
 	createdBy: string | null;
 	firstResponseAt: string | null;
@@ -116,7 +126,7 @@ export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 	if (opts.orgIds) conditions.push(inArray(ticket.orgId, opts.orgIds));
 	if (opts.ownerUserId) {
 		conditions.push(
-			sql`(${ticket.customerId} = ${opts.ownerUserId} OR ${ticket.assignedAgentId} = ${opts.ownerUserId})`
+			sql`(${ticket.customerId} = ${opts.ownerUserId} OR EXISTS (SELECT 1 FROM ticket_assignee ta WHERE ta.ticket_id = ${ticket.id} AND ta.user_id = ${opts.ownerUserId}))`
 		);
 	}
 	if (opts.pinnedByUserId) {
@@ -142,6 +152,21 @@ export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 	const rows = await q;
 
 	const ids = rows.map((r) => r.t.id);
+
+	// Batch-load the assignee sets for this page of tickets (mirror of tasks).
+	const assigneesByTicket = new Map<string, string[]>();
+	if (ids.length) {
+		const assigneeRows = await db
+			.select({ ticketId: ticketAssignee.ticketId, userId: ticketAssignee.userId })
+			.from(ticketAssignee)
+			.where(inArray(ticketAssignee.ticketId, ids));
+		for (const r of assigneeRows) {
+			const list = assigneesByTicket.get(r.ticketId) ?? [];
+			list.push(r.userId);
+			assigneesByTicket.set(r.ticketId, list);
+		}
+	}
+
 	const counts = new Map<string, { count: number; last: string | null }>();
 	if (ids.length) {
 		const msgRows = await db
@@ -168,6 +193,7 @@ export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 	return rows.map((r) => {
 		const t = r.t;
 		const mc = counts.get(t.id);
+		const assignees = assigneesByTicket.get(t.id) ?? [];
 		return {
 			id: t.id,
 			orgId: t.orgId,
@@ -183,7 +209,8 @@ export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 			category: t.category as TicketCategory,
 			channel: t.channel as TicketChannel,
 			customerId: t.customerId,
-			assignedAgentId: t.assignedAgentId,
+			assignees,
+			assignedAgentId: assignees[0] ?? null,
 			createdBy: t.createdBy,
 			firstResponseAt: t.firstResponseAt?.toISOString() ?? null,
 			resolvedAt: t.resolvedAt?.toISOString() ?? null,
@@ -243,7 +270,7 @@ type CreateTicketInput = {
 	category: TicketCategory;
 	channel: TicketChannel;
 	customerId: string | null;
-	assignedAgentId: string | null;
+	assigneeIds: string[];
 	tags: string[];
 	createdBy: string;
 	// Set when the ticket originates from a chat thread (create-ticket-from-thread
@@ -255,10 +282,12 @@ export async function createTicket(input: CreateTicketInput): Promise<{
 	id: string;
 	number: number;
 	displayId: string;
+	assignedIds: string[];
 }> {
 	const id = crypto.randomUUID();
 	let number = 0;
 	let display = '';
+	let assignedIds: string[] = [];
 
 	await db.transaction(async (tx) => {
 		const [bumped] = await tx
@@ -285,14 +314,28 @@ export async function createTicket(input: CreateTicketInput): Promise<{
 			category: input.category,
 			channel: input.channel,
 			customerId: input.customerId,
-			assignedAgentId: input.assignedAgentId,
 			createdBy: input.createdBy,
 			tags: input.tags,
 			sourceThreadId: input.sourceThreadId ?? null
 		});
+
+		// Seed assignees (validated against the user table for FK safety).
+		const wanted = [...new Set(input.assigneeIds.filter(Boolean))];
+		if (wanted.length) {
+			const valid = await tx
+				.select({ id: userTable.id })
+				.from(userTable)
+				.where(inArray(userTable.id, wanted));
+			assignedIds = valid.map((u) => u.id);
+			if (assignedIds.length) {
+				await tx
+					.insert(ticketAssignee)
+					.values(assignedIds.map((userId) => ({ ticketId: id, userId })));
+			}
+		}
 	});
 
-	return { id, number, displayId: display };
+	return { id, number, displayId: display, assignedIds };
 }
 
 type UpdateTicketInput = {
@@ -300,7 +343,8 @@ type UpdateTicketInput = {
 	status?: TicketStatus;
 	priority?: TicketPriority;
 	category?: TicketCategory;
-	assignedAgentId?: string | null;
+	// undefined = leave assignees untouched; [] = clear all; [...] = set to exactly this.
+	assigneeIds?: string[];
 	satisfactionScore?: number | null;
 	tags?: string[];
 	checklist?: { id: string; text: string; done: boolean }[];
@@ -313,7 +357,6 @@ export async function updateTicket(ticketId: string, patch: UpdateTicketInput): 
 	if (patch.subject !== undefined) fields.subject = patch.subject;
 	if (patch.priority !== undefined) fields.priority = patch.priority;
 	if (patch.category !== undefined) fields.category = patch.category;
-	if (patch.assignedAgentId !== undefined) fields.assignedAgentId = patch.assignedAgentId;
 	if (patch.satisfactionScore !== undefined) fields.satisfactionScore = patch.satisfactionScore;
 	if (patch.tags !== undefined) fields.tags = patch.tags;
 	if (patch.checklist !== undefined) fields.checklist = patch.checklist;
@@ -327,8 +370,24 @@ export async function updateTicket(ticketId: string, patch: UpdateTicketInput): 
 			fields.closedAt = null;
 		}
 	}
-	if (Object.keys(fields).length === 0) return;
-	await db.update(ticket).set(fields).where(eq(ticket.id, ticketId));
+	if (Object.keys(fields).length > 0) {
+		await db.update(ticket).set(fields).where(eq(ticket.id, ticketId));
+	}
+
+	// Assignees live in the join table — replace the whole set (delete + reinsert).
+	if (patch.assigneeIds !== undefined) {
+		await db.delete(ticketAssignee).where(eq(ticketAssignee.ticketId, ticketId));
+		const wanted = [...new Set(patch.assigneeIds.filter(Boolean))];
+		if (wanted.length) {
+			const valid = await db
+				.select({ id: userTable.id })
+				.from(userTable)
+				.where(inArray(userTable.id, wanted));
+			if (valid.length) {
+				await db.insert(ticketAssignee).values(valid.map((u) => ({ ticketId, userId: u.id })));
+			}
+		}
+	}
 }
 
 type AddMessageInput = {
@@ -439,6 +498,11 @@ export async function getTicket(ticketId: string): Promise<TicketRow | null> {
 		.limit(1);
 	if (!row) return null;
 	const t = row.t;
+	const assigneeRows = await db
+		.select({ userId: ticketAssignee.userId })
+		.from(ticketAssignee)
+		.where(eq(ticketAssignee.ticketId, ticketId));
+	const assignees = assigneeRows.map((r) => r.userId);
 	const [mc] = await db
 		.select({
 			count: sql<number>`count(*)::int`,
@@ -468,7 +532,8 @@ export async function getTicket(ticketId: string): Promise<TicketRow | null> {
 		category: t.category as TicketCategory,
 		channel: t.channel as TicketChannel,
 		customerId: t.customerId,
-		assignedAgentId: t.assignedAgentId,
+		assignees,
+		assignedAgentId: assignees[0] ?? null,
 		createdBy: t.createdBy,
 		firstResponseAt: t.firstResponseAt?.toISOString() ?? null,
 		resolvedAt: t.resolvedAt?.toISOString() ?? null,
@@ -577,12 +642,12 @@ export async function loadAssignableUsers(orgIds: string[]): Promise<AssignableU
 export async function loadTicketMentionUsers(ticket: {
 	orgId: string;
 	customerId: string | null;
-	assignedAgentId: string | null;
+	assigneeIds: string[];
 }): Promise<AssignableUser[]> {
 	const audience = await ticketRecipients({
 		orgId: ticket.orgId,
 		customerId: ticket.customerId,
-		assignedAgentId: ticket.assignedAgentId
+		assigneeIds: ticket.assigneeIds
 	});
 	const ids = [...audience];
 	if (ids.length === 0) return [];

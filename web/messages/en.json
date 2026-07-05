@@ -1107,6 +1107,7 @@
 	"tickets_copy_link": "Copy link",
 	"tickets_description": "Description",
 	"tickets_field_assignee": "Assignee",
+	"tickets_n_assignees": "{n} assignees",
 	"tickets_group_assignee": "Assignee",
 	"tickets_link_copied": "Link copied",
 	"tickets_link_copy_failed": "Couldn't copy link",

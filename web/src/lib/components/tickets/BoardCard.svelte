@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { TicketRow } from '$lib/server/tickets';
 	import PriorityBars from '../PriorityBars.svelte';
-	import Avatar from '../Avatar.svelte';
+	import AvatarStack from '../AvatarStack.svelte';
 	import Icon from '../Icon.svelte';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
 	import { TICKET_STATUSES } from '$lib/config/taxonomy';
@@ -13,7 +13,7 @@
 	}
 	let { ticket, onclick }: Props = $props();
 
-	const assignee = $derived(resolveUser(ticket.assignedAgentId));
+	const assignees = $derived(ticket.assignees.map((id) => resolveUser(id)));
 	const statusDot = $derived(TICKET_STATUSES.find((s) => s.id === ticket.status)?.dot ?? '#7c7c84');
 	const sla = $derived(slaSignal(ticket));
 </script>
@@ -66,8 +66,8 @@
 			</span>
 		{/if}
 		<span class="ml-auto">
-			{#if assignee}
-				<Avatar user={assignee} size={22} />
+			{#if assignees.length}
+				<AvatarStack users={assignees} size={22} max={3} overlap={6} />
 			{:else}
 				<span class="block h-5 w-5 rounded-full border border-dashed border-border-strong"></span>
 			{/if}

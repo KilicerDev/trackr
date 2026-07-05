@@ -293,7 +293,7 @@ export const actions: Actions = {
 				category: category as TicketCategory,
 				channel: 'chat',
 				customerId,
-				assignedAgentId: null,
+				assigneeIds: [],
 				tags: [],
 				createdBy: me.id,
 				sourceThreadId: threadId
@@ -314,7 +314,7 @@ export const actions: Actions = {
 
 			// Notify everyone allowed to see the new ticket (scoped by
 			// ticketRecipients — clients of other orgs can't appear).
-			const recipients = await ticketRecipients({ orgId, customerId, assignedAgentId: null });
+			const recipients = await ticketRecipients({ orgId, customerId, assigneeIds: [] });
 			void notify({
 				kind: 'ticketCreated',
 				recipients,

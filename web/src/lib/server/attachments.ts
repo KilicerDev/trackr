@@ -21,6 +21,7 @@ import { db } from '$lib/server/db';
 import {
 	attachment,
 	ticket,
+	ticketAssignee,
 	ticketMessage,
 	task,
 	projectActivity,
@@ -366,6 +367,14 @@ interface EntityContext {
  * Resolve a parent entity's permission scope, proving it exists. Returns null
  * if the parent (or its grandparent) is missing — the route turns that into 404.
  */
+async function ticketAssigneeIds(ticketId: string): Promise<string[]> {
+	const rows = await db
+		.select({ userId: ticketAssignee.userId })
+		.from(ticketAssignee)
+		.where(eq(ticketAssignee.ticketId, ticketId));
+	return rows.map((r) => r.userId);
+}
+
 export async function resolveEntityContext(
 	entityType: AttachmentEntityType,
 	entityId: string
@@ -376,40 +385,37 @@ export async function resolveEntityContext(
 				.select({
 					orgId: ticket.orgId,
 					customerId: ticket.customerId,
-					createdBy: ticket.createdBy,
-					assignedAgentId: ticket.assignedAgentId
+					createdBy: ticket.createdBy
 				})
 				.from(ticket)
 				.where(and(eq(ticket.id, entityId), isNull(ticket.deletedAt)))
 				.limit(1);
 			if (!row) return null;
+			const assignees = await ticketAssigneeIds(entityId);
 			return {
 				orgId: row.orgId,
 				projectId: null,
-				ticketOwners: [row.customerId, row.createdBy, row.assignedAgentId].filter(
-					(v): v is string => !!v
-				)
+				ticketOwners: [row.customerId, row.createdBy, ...assignees].filter((v): v is string => !!v)
 			};
 		}
 		case 'ticket_message': {
 			const [row] = await db
 				.select({
+					ticketId: ticket.id,
 					orgId: ticket.orgId,
 					customerId: ticket.customerId,
-					createdBy: ticket.createdBy,
-					assignedAgentId: ticket.assignedAgentId
+					createdBy: ticket.createdBy
 				})
 				.from(ticketMessage)
 				.innerJoin(ticket, eq(ticket.id, ticketMessage.ticketId))
 				.where(and(eq(ticketMessage.id, entityId), isNull(ticket.deletedAt)))
 				.limit(1);
 			if (!row) return null;
+			const assignees = await ticketAssigneeIds(row.ticketId);
 			return {
 				orgId: row.orgId,
 				projectId: null,
-				ticketOwners: [row.customerId, row.createdBy, row.assignedAgentId].filter(
-					(v): v is string => !!v
-				)
+				ticketOwners: [row.customerId, row.createdBy, ...assignees].filter((v): v is string => !!v)
 			};
 		}
 		case 'task': {
@@ -461,19 +467,17 @@ export async function resolveEntityContext(
 					.select({
 						orgId: ticket.orgId,
 						customerId: ticket.customerId,
-						createdBy: ticket.createdBy,
-						assignedAgentId: ticket.assignedAgentId
+						createdBy: ticket.createdBy
 					})
 					.from(ticket)
 					.where(and(eq(ticket.id, row.subjectId), isNull(ticket.deletedAt)))
 					.limit(1);
 				if (!t) return null;
+				const assignees = await ticketAssigneeIds(row.subjectId);
 				return {
 					orgId: t.orgId,
 					projectId: null,
-					ticketOwners: [t.customerId, t.createdBy, t.assignedAgentId].filter(
-						(v): v is string => !!v
-					),
+					ticketOwners: [t.customerId, t.createdBy, ...assignees].filter((v): v is string => !!v),
 					messageSubject: 'ticket'
 				};
 			}

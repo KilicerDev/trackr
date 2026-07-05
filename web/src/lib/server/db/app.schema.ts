@@ -853,7 +853,8 @@ export const ticket = pgTable(
 		category: text('category').notNull().default('general'),
 		channel: text('channel').notNull().default('web_form'),
 		customerId: text('customer_id').references(() => user.id, { onDelete: 'set null' }),
-		assignedAgentId: text('assigned_agent_id').references(() => user.id, { onDelete: 'set null' }),
+		// Assignees live in the `ticket_assignee` join table (multi-assignee), same
+		// as tasks — there is no scalar assignee column on the ticket row.
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
 		// Set when this ticket was created from a chat thread (the "create ticket
 		// from thread" flow). Nullable; back-links the ticket to its origin
@@ -886,13 +887,34 @@ export const ticket = pgTable(
 	(t) => [
 		uniqueIndex('ticket_org_number_idx').on(t.orgId, t.number),
 		index('ticket_org_status_idx').on(t.orgId, t.status),
-		index('ticket_assignee_idx').on(t.assignedAgentId),
 		index('ticket_customer_idx').on(t.customerId),
 		index('ticket_source_thread_idx').on(t.sourceThreadId)
 	]
 );
 
 export type Ticket = typeof ticket.$inferSelect;
+
+// Multi-assignee join table (mirrors `taskAssignee`). Tickets are assigned to
+// internal agents; the composite PK dedupes and the userId index powers the
+// "tickets assigned to me" reverse lookup.
+export const ticketAssignee = pgTable(
+	'ticket_assignee',
+	{
+		ticketId: text('ticket_id')
+			.notNull()
+			.references(() => ticket.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		addedAt: timestamp('added_at').defaultNow().notNull()
+	},
+	(t) => [
+		primaryKey({ columns: [t.ticketId, t.userId] }),
+		index('ticket_assignee_user_idx').on(t.userId)
+	]
+);
+
+export type TicketAssignee = typeof ticketAssignee.$inferSelect;
 
 export const ticketMessage = pgTable(
 	'ticket_message',
@@ -926,17 +948,24 @@ export const ticketRelations = relations(ticket, ({ one, many }) => ({
 		references: [user.id],
 		relationName: 'ticket_customer'
 	}),
-	assignedAgent: one(user, {
-		fields: [ticket.assignedAgentId],
-		references: [user.id],
-		relationName: 'ticket_assignee'
-	}),
 	creator: one(user, {
 		fields: [ticket.createdBy],
 		references: [user.id],
 		relationName: 'ticket_creator'
 	}),
+	assignees: many(ticketAssignee),
 	messages: many(ticketMessage)
+}));
+
+export const ticketAssigneeRelations = relations(ticketAssignee, ({ one }) => ({
+	ticket: one(ticket, {
+		fields: [ticketAssignee.ticketId],
+		references: [ticket.id]
+	}),
+	user: one(user, {
+		fields: [ticketAssignee.userId],
+		references: [user.id]
+	})
 }));
 
 export const ticketMessageRelations = relations(ticketMessage, ({ one }) => ({

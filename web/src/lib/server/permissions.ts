@@ -202,7 +202,7 @@ export function isPortalUser(locals: Locals): boolean {
 // sees tickets where they're the customer or the assignee.
 export async function canViewTicket(
 	locals: Locals,
-	ticket: { orgId: string; customerId: string | null; assignedAgentId: string | null }
+	ticket: { orgId: string; customerId: string | null; assignees: string[] }
 ): Promise<boolean> {
 	if (isTrackrTeam(locals)) return true;
 	if (await can(locals, 'org.tickets.edit.any', { orgId: ticket.orgId })) return true;
@@ -210,7 +210,7 @@ export async function canViewTicket(
 	const uid = locals.user?.id;
 	if (
 		uid &&
-		(ticket.customerId === uid || ticket.assignedAgentId === uid) &&
+		(ticket.customerId === uid || ticket.assignees.includes(uid)) &&
 		(await can(locals, 'org.tickets.read.own', { orgId: ticket.orgId }))
 	) {
 		return true;

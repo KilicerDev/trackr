@@ -6,6 +6,8 @@
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import AvatarStack from '$lib/components/AvatarStack.svelte';
+	import AssigneePopover from '$lib/components/popovers/AssigneePopover.svelte';
 	import Composer from '$lib/components/Composer.svelte';
 	import MentionText from '$lib/components/MentionText.svelte';
 	import Checklist from '$lib/components/Checklist.svelte';
@@ -96,24 +98,32 @@
 	const statusMeta = $derived(TICKET_STATUSES.find((s) => s.id === t.status));
 	const priorityMeta = $derived(TICKET_PRIORITIES.find((p) => p.id === t.priority));
 	const categoryMeta = $derived(TICKET_CATEGORIES.find((c) => c.id === t.category));
-	const assignee = $derived(who(t.assignedAgentId));
+	const assigneeUsers = $derived((t.assignees ?? []).map((id) => who(id)));
 	const customer = $derived(who(t.customerId));
 
 	let pop = $state<'status' | 'priority' | 'category' | 'assignee' | null>(null);
 	let pending = $state(false);
 
 	async function patch(
-		field: 'status' | 'priority' | 'category' | 'assignedAgentId',
-		value: string | null
+		field: 'status' | 'priority' | 'category' | 'assignees',
+		value: string | string[] | null,
+		opts: { keepOpen?: boolean } = {}
 	) {
 		pending = true;
 		const fd = new FormData();
 		fd.set('id', t.id);
-		fd.set(field, value ?? '');
+		if (Array.isArray(value)) {
+			for (const v of value) fd.append(field, v);
+			// Keep the field present when clearing, so the server writes the empty set.
+			if (value.length === 0) fd.append(field, '');
+		} else {
+			fd.set(field, value ?? '');
+		}
 		try {
 			const res = await fetch('/tickets?/update', { method: 'POST', body: fd });
 			if (!res.ok) throw new Error(m.tickets_update_failed());
-			pop = null;
+			// Multi-select pickers (assignees) stay open across toggles.
+			if (!opts.keepOpen) pop = null;
 			await invalidateAll();
 		} catch (err) {
 			showToast('err', err instanceof Error ? err.message : m.tickets_update_failed());
@@ -493,65 +503,32 @@
 							type="button"
 							disabled={!isAgent}
 							onclick={() => (pop = pop === 'assignee' ? null : 'assignee')}
-							class="inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {assignee
+							class="inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {assigneeUsers.length
 								? 'border border-border bg-surface'
 								: 'border border-dashed border-border text-text-3'} {isAgent
-								? assignee
+								? assigneeUsers.length
 									? 'hover:border-border-strong'
 									: 'hover:border-border-strong hover:text-text'
 								: ''} {pop === 'assignee' ? 'ring-2 ring-accent/40' : ''}"
 						>
-							{#if assignee}
-								<Avatar user={assignee} size={20} />
-								<span>{assignee.name}</span>
+							{#if assigneeUsers.length === 1}
+								<Avatar user={assigneeUsers[0]} size={20} />
+								<span>{assigneeUsers[0]?.name ?? m.common_unassigned()}</span>
+							{:else if assigneeUsers.length > 1}
+								<AvatarStack users={assigneeUsers} size={20} max={3} overlap={6} />
+								<span>{m.tickets_n_assignees({ n: assigneeUsers.length })}</span>
 							{:else}
 								<Icon name="user" size={14} />
 								<span>{m.common_unassigned()}</span>
 							{/if}
 						</button>
 						{#if pop === 'assignee'}
-							<div
-								use:clickOutside={() => (pop = null)}
-								in:fly={POPOVER_IN}
-								class="absolute top-full left-0 z-50 mt-1.5 max-h-[352px] min-w-[264px] overflow-auto rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-							>
-								<button
-									type="button"
-									disabled={pending}
-									onclick={() => patch('assignedAgentId', null)}
-									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
-								>
-									<span
-										class="h-[20px] w-[20px] rounded-full border border-dashed border-border-strong"
-									></span>
-									<span class="text-[14px]">{m.common_unassigned()}</span>
-									<span
-										class="ml-auto text-accent {t.assignedAgentId == null
-											? 'opacity-100'
-											: 'opacity-0'}"
-									>
-										<Icon name="check" size={14} />
-									</span>
-								</button>
-								{#each users as u (u.id)}
-									<button
-										type="button"
-										disabled={pending}
-										onclick={() => patch('assignedAgentId', u.id)}
-										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
-									>
-										<Avatar user={u} size={20} />
-										<span class="truncate text-[14px]">{u.name}</span>
-										<span
-											class="ml-auto text-accent {t.assignedAgentId === u.id
-												? 'opacity-100'
-												: 'opacity-0'}"
-										>
-											<Icon name="check" size={14} />
-										</span>
-									</button>
-								{/each}
-							</div>
+							<AssigneePopover
+								value={t.assignees}
+								{users}
+								onchange={(v) => patch('assignees', v, { keepOpen: true })}
+								onclose={() => (pop = null)}
+							/>
 						{/if}
 					</div>
 				</div>

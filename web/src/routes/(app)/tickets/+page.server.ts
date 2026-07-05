@@ -156,7 +156,10 @@ export const actions: Actions = {
 		const category = String(form.get('category') ?? 'general');
 		const channel = String(form.get('channel') ?? 'web_form');
 		const customerIdRaw = String(form.get('customerId') ?? '').trim();
-		const assignedAgentRaw = String(form.get('assignedAgentId') ?? '').trim();
+		const assigneeIdsRaw = form
+			.getAll('assignees')
+			.map((v) => String(v))
+			.filter(Boolean);
 		const tags = form
 			.getAll('tags')
 			.map((v) => String(v))
@@ -186,10 +189,10 @@ export const actions: Actions = {
 		// and no assignee.
 		const isAgent = await can(locals, 'org.tickets.edit.any', { orgId });
 		const customerId = isAgent ? customerIdRaw || me.id : me.id;
-		const assignedAgentId = isAgent && assignedAgentRaw ? assignedAgentRaw : null;
+		const assigneeIds = isAgent ? assigneeIdsRaw : [];
 
 		try {
-			const { id, displayId } = await createTicket({
+			const { id, displayId, assignedIds } = await createTicket({
 				orgId,
 				subject,
 				description,
@@ -197,19 +200,19 @@ export const actions: Actions = {
 				category: category as TicketCategory,
 				channel: channel as TicketChannel,
 				customerId,
-				assignedAgentId,
+				assigneeIds,
 				tags,
 				createdBy: me.id
 			});
 
 			// Fan out: a `ticketCreated` notification to everyone allowed to see
-			// the new ticket, and a separate `ticketAssigned` to the assignee if
-			// one was set on create. Recipients scoped by ticketRecipients() —
-			// clients of other orgs cannot appear in the set.
+			// the new ticket, and a separate `ticketAssigned` to each assignee set
+			// on create. Recipients scoped by ticketRecipients() — clients of other
+			// orgs cannot appear in the set.
 			const recipients = await ticketRecipients({
 				orgId,
 				customerId,
-				assignedAgentId
+				assigneeIds: assignedIds
 			});
 			await notify({
 				kind: 'ticketCreated',
@@ -224,10 +227,11 @@ export const actions: Actions = {
 				entity: { type: 'ticket', id },
 				baseUrl: url.origin
 			});
-			if (assignedAgentId && assignedAgentId !== me.id) {
+			const assignedToNotify = assignedIds.filter((aid) => aid !== me.id);
+			if (assignedToNotify.length) {
 				await notify({
 					kind: 'ticketAssigned',
-					recipients: [assignedAgentId],
+					recipients: assignedToNotify,
 					actorId: me.id,
 					orgId,
 					render: (locale) => ({
@@ -296,19 +300,25 @@ export const actions: Actions = {
 		if (typeof category === 'string' && TICKET_CATEGORY_SET.has(category)) {
 			patch.category = category as TicketCategory;
 		}
-		if (form.has('assignedAgentId')) {
-			const v = String(form.get('assignedAgentId') ?? '').trim();
-			// Validate the target: only org members (clients/agents/members of this
+		if (form.has('assignees')) {
+			const raw = form
+				.getAll('assignees')
+				.map((v) => String(v).trim())
+				.filter(Boolean);
+			// Empty selection posts the `__clear__` sentinel (mirrors tasks).
+			const wanted = raw.length === 1 && raw[0] === '__clear__' ? [] : [...new Set(raw)];
+			// Validate every target: only org members (clients/agents/members of this
 			// ticket's org) or internal platform agents may be assigned. The picker
-			// already scopes candidates, but the action is the real boundary —
-			// never trust the posted id. `null` clears the assignment.
-			if (v) {
+			// already scopes candidates, but the action is the real boundary — never
+			// trust the posted ids. An empty set clears all assignments.
+			if (wanted.length) {
 				const allowed = await loadAssignableUsers([orgId]);
-				if (!allowed.some((u) => u.id === v)) {
+				const allowedSet = new Set(allowed.map((u) => u.id));
+				if (!wanted.every((wid) => allowedSet.has(wid))) {
 					return fail(400, { message: m.tickets_invalid_assignee() });
 				}
 			}
-			patch.assignedAgentId = v || null;
+			patch.assigneeIds = wanted;
 		}
 		const tags = form.getAll('tags');
 		if (tags.length > 0) {
@@ -334,30 +344,29 @@ export const actions: Actions = {
 				});
 			}
 
-			// Notify the *new* assignee if assignment changed to a real user
-			// (not the actor themselves, not a no-op). The assignee is
+			// Notify the *newly-added* assignees (excluding the actor). Assignees are
 			// trivially allowed to read the ticket, so no separate access check.
-			if (
-				before &&
-				patch.assignedAgentId &&
-				patch.assignedAgentId !== before.assignedAgentId &&
-				patch.assignedAgentId !== locals.user!.id
-			) {
-				await notify({
-					kind: 'ticketAssigned',
-					recipients: [patch.assignedAgentId],
-					actorId: locals.user!.id,
-					orgId: before.orgId,
-					render: (locale) => ({
-						title: m.notify_ticket_assigned(
-							{ ref: before.displayId, subject: before.subject },
-							{ locale }
-						)
-					}),
-					url: `/tickets/${id}`,
-					entity: { type: 'ticket', id },
-					baseUrl: url.origin
-				});
+			// Removed assignees are not notified (mirrors tasks).
+			if (before && patch.assigneeIds) {
+				const prior = new Set(before.assignees);
+				const added = patch.assigneeIds.filter((aid) => !prior.has(aid) && aid !== locals.user!.id);
+				if (added.length) {
+					await notify({
+						kind: 'ticketAssigned',
+						recipients: added,
+						actorId: locals.user!.id,
+						orgId: before.orgId,
+						render: (locale) => ({
+							title: m.notify_ticket_assigned(
+								{ ref: before.displayId, subject: before.subject },
+								{ locale }
+							)
+						}),
+						url: `/tickets/${id}`,
+						entity: { type: 'ticket', id },
+						baseUrl: url.origin
+					});
+				}
 			}
 			return { ok: true };
 		} catch (err) {
@@ -458,7 +467,7 @@ export const actions: Actions = {
 					{
 						orgId: t.orgId,
 						customerId: t.customerId,
-						assignedAgentId: t.assignedAgentId
+						assigneeIds: t.assignees
 					},
 					{ internalOnly: internal }
 				);

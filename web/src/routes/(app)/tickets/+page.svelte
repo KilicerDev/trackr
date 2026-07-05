@@ -224,12 +224,12 @@
 				if (field === 'status' && !values.includes(t.status)) return false;
 				if (field === 'priority' && !values.includes(t.priority)) return false;
 				if (field === 'category' && !values.includes(t.category)) return false;
-				// Unassigned is matched via the `__unassigned__` sentinel (used by the
-				// admin dashboard / sidebar deep-links), so a null assignee filters
-				// correctly instead of collapsing to an empty string.
+				// Any-match over the assignee set: a ticket passes if it's assigned to
+				// any selected person. Unassigned is matched via the `__unassigned__`
+				// sentinel (used by the admin dashboard / sidebar deep-links).
 				if (field === 'assignee') {
-					const a = t.assignedAgentId ?? '__unassigned__';
-					if (!values.includes(a)) return false;
+					const tags = t.assignees.length ? t.assignees : ['__unassigned__'];
+					if (!tags.some((a) => values.includes(a))) return false;
 				}
 				if (field === 'org' && !values.includes(t.orgId)) return false;
 			}

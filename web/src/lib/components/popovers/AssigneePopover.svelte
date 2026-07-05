@@ -11,10 +11,10 @@
 	type AssignableUser = {
 		id: string;
 		name: string;
-		email: string;
+		email?: string;
 		initials: string;
 		color: string;
-		status: 'active' | 'invited' | 'disabled';
+		status?: string;
 	};
 
 	interface Props {
@@ -34,7 +34,8 @@
 		if (!q) return list;
 		const needle = q.toLowerCase();
 		return list.filter(
-			(u) => u.name.toLowerCase().includes(needle) || u.email.toLowerCase().includes(needle)
+			(u) =>
+				u.name.toLowerCase().includes(needle) || (u.email?.toLowerCase().includes(needle) ?? false)
 		);
 	});
 
