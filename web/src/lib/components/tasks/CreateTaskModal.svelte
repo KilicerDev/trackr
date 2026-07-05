@@ -109,6 +109,16 @@
 	);
 	const meId = $derived(currentUserId ?? '');
 
+	// TagsPopover prepends the predefined labels itself; feed it every tag already
+	// in use across loaded tasks so custom tags reappear as suggestions (mirrors
+	// the Inspector). Without this the modal only ever offers the defaults.
+	const tagSuggestions = $derived.by(() => {
+		const tasks = (page.data as { tasks?: { labels?: string[] }[] }).tasks ?? [];
+		const set = new Set<string>();
+		for (const t of tasks) for (const l of t.labels ?? []) set.add(l);
+		return [...set];
+	});
+
 	let title = $state('');
 	let description = $state('');
 	let project = $state<ProjectId | ''>('');
@@ -418,7 +428,12 @@
 							{/if}
 						</button>
 						{#if pop === 'tags'}
-							<TagsPopover value={tags} onchange={(v) => (tags = v)} onclose={() => (pop = null)} />
+							<TagsPopover
+				value={tags}
+				suggestions={tagSuggestions}
+				onchange={(v) => (tags = v)}
+				onclose={() => (pop = null)}
+			/>
 						{/if}
 					</div>
 				</div>
