@@ -3,7 +3,7 @@
 	import { deserialize } from '$app/forms';
 	import type { ActionResult } from '@sveltejs/kit';
 	import Icon from '$lib/components/Icon.svelte';
-	import { confirm } from '$lib/components/confirm.svelte';
+	import { confirm, prompt } from '$lib/components/confirm.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { PageData } from './$types';
@@ -20,7 +20,13 @@
 	}
 
 	async function rename(id: string, current: string) {
-		const name = window.prompt(m.notes_template_rename_prompt(), current);
+		const name = await prompt({
+			title: m.notes_template_rename_title(),
+			placeholder: m.notes_template_name_placeholder(),
+			defaultValue: current,
+			confirmLabel: m.common_save(),
+			cancelLabel: m.common_cancel()
+		});
 		if (!name?.trim() || name.trim() === current) return;
 		const fd = new FormData();
 		fd.set('id', id);

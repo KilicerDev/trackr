@@ -6,11 +6,33 @@
 
 	const top = $derived(dialogs.list[dialogs.list.length - 1]);
 
+	// Prompt-kind dialogs carry a text input; keep its value local and seed it
+	// (plus focus + select) whenever a new prompt reaches the top of the stack.
+	let inputEl = $state<HTMLInputElement>();
+	let promptValue = $state('');
+	$effect(() => {
+		const cur = top;
+		if (cur?.kind !== 'prompt') return;
+		promptValue = cur.defaultValue ?? '';
+		queueMicrotask(() => {
+			inputEl?.focus();
+			inputEl?.select();
+		});
+	});
+
 	function onConfirm() {
-		if (top) _dismiss(top.id, true);
+		if (!top) return;
+		if (top.kind === 'prompt') {
+			const v = promptValue.trim();
+			if (!v) return; // don't accept an empty name
+			_dismiss(top.id, v);
+		} else {
+			_dismiss(top.id, true);
+		}
 	}
 	function onCancel() {
-		if (top) _dismiss(top.id, false);
+		if (!top) return;
+		_dismiss(top.id, top.kind === 'prompt' ? null : false);
 	}
 
 	function onKey(e: KeyboardEvent) {
@@ -69,7 +91,22 @@
 					style:background={t.ring}
 					style:color={t.accent}
 				>
-					{#if t.glyph === 'danger'}
+					{#if top.kind === 'prompt'}
+						<svg
+							width="18"
+							height="18"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.8"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path d="M12 20h9" />
+							<path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+						</svg>
+					{:else if t.glyph === 'danger'}
 						<svg
 							width="18"
 							height="18"
@@ -129,10 +166,19 @@
 							{top.message}
 						</div>
 					{/if}
+					{#if top.kind === 'prompt'}
+						<input
+							bind:this={inputEl}
+							bind:value={promptValue}
+							placeholder={top.placeholder ?? ''}
+							maxlength="120"
+							class="mt-3 w-full rounded-lg border border-border bg-surface px-3 py-2 text-[14px] text-text outline-none focus:border-accent"
+						/>
+					{/if}
 				</div>
 			</div>
 			<div class="flex items-center justify-end gap-2 border-t border-border/80 bg-bg/40 px-5 py-3">
-				{#if top.kind === 'confirm'}
+				{#if top.kind !== 'alert'}
 					<Button variant="default" onclick={onCancel}>{top.cancelLabel ?? 'Cancel'}</Button>
 				{/if}
 				{#if top.tone === 'danger'}
@@ -154,7 +200,13 @@
 						{top.confirmLabel}
 					</button>
 				{:else}
-					<Button variant="primary" onclick={onConfirm}>{top.confirmLabel}</Button>
+					<Button
+						variant="primary"
+						onclick={onConfirm}
+						disabled={top.kind === 'prompt' && !promptValue.trim()}
+					>
+						{top.confirmLabel}
+					</Button>
 				{/if}
 			</div>
 		</div>

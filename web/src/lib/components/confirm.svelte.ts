@@ -17,16 +17,28 @@ export interface AlertOptions {
 	icon?: string;
 }
 
-interface DialogEntry {
-	id: number;
-	kind: 'confirm' | 'alert';
+export interface PromptOptions {
 	title: string;
 	message?: string;
+	placeholder?: string;
+	defaultValue?: string;
+	confirmLabel?: string;
+	cancelLabel?: string;
+	icon?: string;
+}
+
+interface DialogEntry {
+	id: number;
+	kind: 'confirm' | 'alert' | 'prompt';
+	title: string;
+	message?: string;
+	placeholder?: string;
+	defaultValue?: string;
 	confirmLabel: string;
 	cancelLabel?: string;
 	tone: Tone;
 	icon?: string;
-	resolve: (v: boolean) => void;
+	resolve: (v: boolean | string | null) => void;
 }
 
 let nextId = 1;
@@ -38,7 +50,7 @@ function push(entry: Omit<DialogEntry, 'id'>): number {
 	return id;
 }
 
-function resolveById(id: number, value: boolean) {
+function resolveById(id: number, value: boolean | string | null) {
 	const found = dialogs.list.find((d) => d.id === id);
 	dialogs.list = dialogs.list.filter((d) => d.id !== id);
 	if (found) found.resolve(value);
@@ -54,7 +66,7 @@ export function confirm(opts: ConfirmOptions): Promise<boolean> {
 			cancelLabel: opts.cancelLabel ?? 'Cancel',
 			tone: opts.tone ?? 'default',
 			icon: opts.icon,
-			resolve: (v) => resolve(v)
+			resolve: (v) => resolve(v as boolean)
 		});
 		// Hook id so the host can dismiss programmatically if needed.
 		void id;
@@ -75,6 +87,24 @@ export function alert(opts: AlertOptions): Promise<void> {
 	});
 }
 
-export function _dismiss(id: number, value: boolean) {
+/** Ask for a line of text. Resolves the entered value, or null if cancelled. */
+export function prompt(opts: PromptOptions): Promise<string | null> {
+	return new Promise((resolve) => {
+		push({
+			kind: 'prompt',
+			title: opts.title,
+			message: opts.message,
+			placeholder: opts.placeholder,
+			defaultValue: opts.defaultValue,
+			confirmLabel: opts.confirmLabel ?? 'Save',
+			cancelLabel: opts.cancelLabel ?? 'Cancel',
+			tone: 'default',
+			icon: opts.icon,
+			resolve: (v) => resolve(typeof v === 'string' ? v : null)
+		});
+	});
+}
+
+export function _dismiss(id: number, value: boolean | string | null) {
 	resolveById(id, value);
 }

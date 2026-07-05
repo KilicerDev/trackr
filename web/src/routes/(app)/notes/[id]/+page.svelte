@@ -7,7 +7,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import IconButton from '$lib/components/IconButton.svelte';
 	import Popover from '$lib/components/Popover.svelte';
-	import { confirm } from '$lib/components/confirm.svelte';
+	import { confirm, prompt } from '$lib/components/confirm.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import CollaborativeWikiEditor, {
 		type PresenceUser
@@ -460,7 +460,12 @@
 
 	async function onSaveAsTemplate() {
 		menuOpen = false;
-		const name = window.prompt(m.notes_template_name_prompt());
+		const name = await prompt({
+			title: m.notes_template_name_title(),
+			placeholder: m.notes_template_name_placeholder(),
+			confirmLabel: m.common_save(),
+			cancelLabel: m.common_cancel()
+		});
 		if (!name?.trim()) return;
 		const fd = new FormData();
 		fd.set('name', name.trim());
