@@ -543,7 +543,7 @@
 				<div class="flex items-center -space-x-1.5">
 					{#each others.slice(0, 4) as u (u.clientId)}
 						<span
-							class="grid place-items-center rounded-full text-[11px] font-semibold text-white select-none size-[24px]"
+							class="grid size-[24px] place-items-center rounded-full text-[11px] font-semibold text-white select-none"
 							style:background={u.color}
 							style:box-shadow="0 0 0 2px var(--bg), 0 0 0 3.5px {u.color}55"
 							title={u.name}

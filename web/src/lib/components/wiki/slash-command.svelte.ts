@@ -167,6 +167,11 @@ export const SlashCommand = Extension.create({
 				render: () => {
 					let target: HTMLDivElement | null = null;
 					let component: ReturnType<typeof mount> | null = null;
+					// The Suggestion `props` — crucially `props.command`, which is bound to
+					// the query range at the time it was created. It is refreshed on every
+					// keystroke; `onSelect` must run the LATEST one, otherwise it deletes
+					// only the range captured at onStart (just the "/") and leaves the query.
+					let latestProps: Props | null = null;
 					let state = $state<{
 						items: typeof ITEMS;
 						activeIndex: number;
@@ -197,18 +202,20 @@ export const SlashCommand = Extension.create({
 
 					return {
 						onStart: (props: Props) => {
+							latestProps = props;
 							target = document.createElement('div');
 							document.body.appendChild(target);
 							state.items = props.items;
 							state.activeIndex = 0;
 							state.onSelect = (i) => {
 								const it = state.items[i];
-								if (it) props.command(it);
+								if (it) latestProps?.command(it);
 							};
 							setRect(props);
 							component = mount(SlashMenu, { target, props: { state } });
 						},
 						onUpdate: (props: Props) => {
+							latestProps = props;
 							state.items = props.items;
 							state.activeIndex = 0;
 							setRect(props);

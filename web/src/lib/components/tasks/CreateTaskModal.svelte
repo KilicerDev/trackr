@@ -429,11 +429,11 @@
 						</button>
 						{#if pop === 'tags'}
 							<TagsPopover
-				value={tags}
-				suggestions={tagSuggestions}
-				onchange={(v) => (tags = v)}
-				onclose={() => (pop = null)}
-			/>
+								value={tags}
+								suggestions={tagSuggestions}
+								onchange={(v) => (tags = v)}
+								onclose={() => (pop = null)}
+							/>
 						{/if}
 					</div>
 				</div>
