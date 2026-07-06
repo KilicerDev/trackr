@@ -17,6 +17,7 @@ import {
 	createTicket,
 	getTicket,
 	loadAssignableUsers,
+	loadTicketDisplayUsers,
 	loadTickets,
 	softDeleteTicket,
 	updateTicket,
@@ -118,7 +119,19 @@ export const load: ServerLoad = async ({ locals }) => {
 	// their editable orgs), plus internal platform agents. The picker scopes this
 	// to the selected ticket's org via each row's `orgIds` / `internal` flags.
 	const assignOrgIds = trackrTeam ? [...new Set(tickets.map((t) => t.orgId))] : editableOrgIds;
-	const assignableUsers = isAgent ? await loadAssignableUsers(assignOrgIds) : [];
+	const pickerUsers = isAgent ? await loadAssignableUsers(assignOrgIds) : [];
+	// Resolution directory for the assignee/customer names actually referenced by
+	// this page of tickets. Non-agent clients get no `assignableUsers` picker set
+	// and their app-wide `users` directory omits internally-assigned platform
+	// agents, so without this the Inspector/cards render a real assignee as
+	// "Unassigned". Merged behind the picker set (which carries full metadata) so
+	// picker candidates win; display-only rows only fill resolution gaps —
+	// including cross-org / former-member assignees an agent's picker set misses.
+	const displayUsers = await loadTicketDisplayUsers(
+		tickets.flatMap((t) => [...t.assignees, t.customerId])
+	);
+	const pickerIds = new Set(pickerUsers.map((u) => u.id));
+	const assignableUsers = [...pickerUsers, ...displayUsers.filter((u) => !pickerIds.has(u.id))];
 
 	return {
 		tickets,

@@ -686,3 +686,35 @@ export async function loadTicketMentionUsers(ticket: {
 			};
 		});
 }
+
+// Display-only directory (id → name/initials/color, NO email) for the users
+// referenced by a page of tickets — their assignees and customers. Resolves
+// assignee names on the tickets LIST for viewers who aren't agents: their
+// app-wide `users` directory is scoped to their own org and omits
+// internally-assigned platform agents, and the Inspector (unlike the detail
+// page) has no server-built `participants` fallback. Emails are stripped so a
+// client never learns a platform agent's address; `internal`/`orgIds` are left
+// empty so these rows can never leak into the (edit-gated) assignee picker.
+export async function loadTicketDisplayUsers(
+	userIds: (string | null | undefined)[]
+): Promise<AssignableUser[]> {
+	const ids = [...new Set(userIds.filter((v): v is string => !!v))];
+	if (ids.length === 0) return [];
+	const rows = await db
+		.select({ id: userTable.id, name: userTable.name, email: userTable.email })
+		.from(userTable)
+		.where(inArray(userTable.id, ids));
+	return rows.map((u) => {
+		const name = u.name ?? u.email;
+		return {
+			id: u.id,
+			name,
+			email: '',
+			initials: assigneeInitials(name),
+			color: assigneeColor(u.id),
+			status: 'active' as const,
+			internal: false,
+			orgIds: []
+		};
+	});
+}
