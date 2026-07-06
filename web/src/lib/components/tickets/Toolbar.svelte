@@ -9,12 +9,7 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
 	import { page } from '$app/state';
-	import {
-		TICKET_CATEGORIES,
-		TICKET_PRIORITIES,
-		TICKET_STATUSES,
-		TRACKR_LABELS
-	} from '$lib/config/taxonomy';
+	import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from '$lib/config/taxonomy';
 	import { labelMeta } from '$lib/utils/label-meta';
 	import { m } from '$lib/paraglide/messages';
 	import { ticketStatusLabel, ticketCategoryLabel, priorityLabel } from '$lib/utils/labels';
@@ -78,20 +73,20 @@
 		((page.data as LayoutData).users ?? []).filter((u) => u.internal && u.status !== 'disabled')
 	);
 
-	// Predefined labels + every tag actually in use across the loaded (org-wide)
-	// tickets, so custom free-form tags are filterable too. Predefined first.
+	// Every tag actually in use across the loaded (org-wide) tickets — the
+	// org-defined tag vocabulary. Deduped.
 	const allTags = $derived.by(() => {
-		const seen = new Set<string>(Object.keys(TRACKR_LABELS));
-		const extra: string[] = [];
+		const seen = new Set<string>();
+		const out: string[] = [];
 		for (const t of (page.data as LayoutData).tickets ?? []) {
 			for (const l of t.tags ?? []) {
 				if (!seen.has(l)) {
 					seen.add(l);
-					extra.push(l);
+					out.push(l);
 				}
 			}
 		}
-		return [...Object.keys(TRACKR_LABELS), ...extra];
+		return out;
 	});
 
 	// Assignee is an agent-facing dimension — dropped in portal (client) mode.

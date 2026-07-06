@@ -9,7 +9,7 @@
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
-	import { TRACKR_PRIORITIES, TRACKR_STATUSES, TRACKR_LABELS } from '$lib/config/taxonomy';
+	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/config/taxonomy';
 	import { labelMeta } from '$lib/utils/label-meta';
 	import { page } from '$app/state';
 	import { statusLabel, priorityLabel } from '$lib/utils/labels';
@@ -28,20 +28,20 @@
 		tasks?: { labels?: string[] }[];
 	};
 
-	// Predefined labels + every tag actually in use across the loaded tasks,
-	// so custom (free-form) tags are filterable too. Predefined come first.
+	// Every tag actually in use across the loaded tasks — the org-defined tag
+	// vocabulary. Deduped.
 	const allTags = $derived.by(() => {
-		const seen = new Set<string>(Object.keys(TRACKR_LABELS));
-		const extra: string[] = [];
+		const seen = new Set<string>();
+		const out: string[] = [];
 		for (const t of (page.data as LayoutData).tasks ?? []) {
 			for (const l of t.labels ?? []) {
 				if (!seen.has(l)) {
 					seen.add(l);
-					extra.push(l);
+					out.push(l);
 				}
 			}
 		}
-		return [...Object.keys(TRACKR_LABELS), ...extra];
+		return out;
 	});
 
 	type GroupBy = 'status' | 'priority' | 'assignee' | 'project' | 'none';

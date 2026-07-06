@@ -4,7 +4,6 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
 	import Icon from '../Icon.svelte';
-	import { TRACKR_LABELS } from '$lib/config/taxonomy';
 	import { labelMeta, normalizeTag } from '$lib/utils/label-meta';
 	import { m } from '$lib/paraglide/messages';
 
@@ -20,12 +19,11 @@
 
 	let entry = $state('');
 
-	// Predefined labels + any tag already selected + tags seen elsewhere.
-	// Deduped, predefined first.
+	// Tags already selected + tags seen elsewhere (org-defined). Deduped.
 	const allOptions = $derived.by(() => {
 		const seen = new Set<string>();
 		const out: string[] = [];
-		for (const id of [...Object.keys(TRACKR_LABELS), ...value, ...suggestions]) {
+		for (const id of [...value, ...suggestions]) {
 			if (!seen.has(id)) {
 				seen.add(id);
 				out.push(id);

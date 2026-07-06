@@ -30,15 +30,6 @@ export const TRACKR_PRIORITIES = [
 	{ id: 'urgent', label: 'Urgent', bars: 4, color: '#ef4f5e' }
 ] as const;
 
-export const TRACKR_LABELS: Record<string, { label: string; color: string }> = {
-	web: { label: 'web', color: '#7fc8a9' },
-	admin: { label: 'admin', color: '#7a9cf0' },
-	bug: { label: 'bug', color: '#ef7a6d' },
-	i18n: { label: 'i18n', color: '#c08bd6' },
-	ux: { label: 'ux', color: '#e9c46a' },
-	copy: { label: 'copy', color: '#8fb6c4' }
-};
-
 export const TRACKR_TYPES = [
 	{ id: 'task', label: 'Task', color: '#7a9cf0', icon: 'square' },
 	{ id: 'bug', label: 'Bug', color: '#ef7a6d', icon: 'bug' },
