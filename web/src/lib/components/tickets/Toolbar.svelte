@@ -9,7 +9,13 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
 	import { page } from '$app/state';
-	import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from '$lib/config/taxonomy';
+	import {
+		TICKET_CATEGORIES,
+		TICKET_PRIORITIES,
+		TICKET_STATUSES,
+		TRACKR_LABELS
+	} from '$lib/config/taxonomy';
+	import { labelMeta } from '$lib/utils/label-meta';
 	import { m } from '$lib/paraglide/messages';
 	import { ticketStatusLabel, ticketCategoryLabel, priorityLabel } from '$lib/utils/labels';
 
@@ -25,6 +31,7 @@
 			status: string;
 			internal?: boolean;
 		}[];
+		tickets?: { tags?: string[] }[];
 	};
 
 	interface Props {
@@ -71,6 +78,22 @@
 		((page.data as LayoutData).users ?? []).filter((u) => u.internal && u.status !== 'disabled')
 	);
 
+	// Predefined labels + every tag actually in use across the loaded (org-wide)
+	// tickets, so custom free-form tags are filterable too. Predefined first.
+	const allTags = $derived.by(() => {
+		const seen = new Set<string>(Object.keys(TRACKR_LABELS));
+		const extra: string[] = [];
+		for (const t of (page.data as LayoutData).tickets ?? []) {
+			for (const l of t.tags ?? []) {
+				if (!seen.has(l)) {
+					seen.add(l);
+					extra.push(l);
+				}
+			}
+		}
+		return [...Object.keys(TRACKR_LABELS), ...extra];
+	});
+
 	// Assignee is an agent-facing dimension — dropped in portal (client) mode.
 	const GROUP_OPTIONS = $derived<{ id: GroupBy; label: () => string }[]>([
 		{ id: 'status', label: m.tickets_group_status },
@@ -92,6 +115,7 @@
 		{ id: 'status', label: m.tickets_field_status(), icon: 'check' },
 		{ id: 'priority', label: m.tickets_field_priority(), icon: 'filter' },
 		{ id: 'category', label: m.tickets_field_category(), icon: 'bookmark' },
+		{ id: 'tags', label: m.tasks_tags(), icon: 'star' },
 		...(portal
 			? []
 			: [{ id: 'assignee', label: m.tickets_field_assignee(), icon: 'users' } as FilterField]),
@@ -159,6 +183,7 @@
 			return v === '__unassigned__'
 				? m.common_unassigned()
 				: (agents.find((u) => u.id === v)?.name ?? v);
+		if (field === 'tags') return labelMeta(v).label;
 		if (field === 'org') return orgs.find((o) => o.id === v)?.name ?? v;
 		return v;
 	}
@@ -225,6 +250,21 @@
 		{#if agents.length === 0}
 			<div class="px-2 py-2 text-[12px] text-text-3">{m.tickets_no_agents()}</div>
 		{/if}
+	{:else if field === 'tags'}
+		{#each allTags as id (id)}
+			{@const l = labelMeta(id)}
+			<button
+				type="button"
+				onclick={() => toggleValue('tags', id)}
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
+			>
+				<span class="h-2 w-2 rounded-full" style:background={l.color}></span>
+				<span class="truncate text-[14px]">{l.label}</span>
+				<span class="ml-auto text-accent {values.includes(id) ? 'opacity-100' : 'opacity-0'}">
+					<Icon name="check" size={14} />
+				</span>
+			</button>
+		{/each}
 	{:else if field === 'org'}
 		{#each orgs as o (o.id)}
 			<button

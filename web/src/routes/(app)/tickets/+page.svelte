@@ -73,7 +73,7 @@
 	// Returns null when the URL carries no filter params so the saved snapshot
 	// keeps precedence.
 	function parseFiltersFromUrl(sp: URLSearchParams): Record<string, string[]> | null {
-		const fields = ['status', 'priority', 'category', 'assignee', 'org'];
+		const fields = ['status', 'priority', 'category', 'tags', 'assignee', 'org'];
 		const out: Record<string, string[]> = {};
 		for (const f of fields) {
 			const raw = sp.get(f);
@@ -224,6 +224,8 @@
 				if (field === 'status' && !values.includes(t.status)) return false;
 				if (field === 'priority' && !values.includes(t.priority)) return false;
 				if (field === 'category' && !values.includes(t.category)) return false;
+				// Any-match over the tag set: a ticket passes if it carries any selected tag.
+				if (field === 'tags' && !t.tags.some((tg) => values.includes(tg))) return false;
 				// Any-match over the assignee set: a ticket passes if it's assigned to
 				// any selected person. Unassigned is matched via the `__unassigned__`
 				// sentinel (used by the admin dashboard / sidebar deep-links).
