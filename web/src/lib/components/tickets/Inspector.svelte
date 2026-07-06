@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
 	import Drawer from '../Drawer.svelte';
@@ -54,6 +55,17 @@
 	const open = $derived(ticket != null);
 	const customer = $derived(ticket?.customerId ? resolveUser(ticket.customerId) : undefined);
 	const assigneeUsers = $derived((ticket?.assignees ?? []).map((id) => resolveUser(id)));
+
+	// TagsPopover prepends the predefined labels itself; feed it every tag already
+	// in use across the loaded (org-wide) tickets so custom tags reappear as
+	// suggestions. Without this the picker only ever offers the defaults (mirrors
+	// the tasks fix).
+	const tagSuggestions = $derived.by(() => {
+		const tickets = (page.data as { tickets?: { tags?: string[] }[] }).tickets ?? [];
+		const set = new Set<string>();
+		for (const t of tickets) for (const l of t.tags ?? []) set.add(l);
+		return [...set];
+	});
 
 	let pop = $state<'status' | 'priority' | 'category' | 'assignee' | 'tags' | null>(null);
 	let pending = $state(false);
@@ -438,6 +450,7 @@
 							{#if pop === 'tags'}
 								<TagsPopover
 									value={ticket.tags}
+									suggestions={tagSuggestions}
 									onchange={(v) => patch('tags', v)}
 									onclose={() => (pop = null)}
 								/>
