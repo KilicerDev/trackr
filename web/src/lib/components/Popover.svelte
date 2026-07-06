@@ -8,11 +8,20 @@
 		onclose: () => void;
 		align?: 'left' | 'right';
 		minWidth?: number;
+		maxWidth?: number;
 		// Open upward (for triggers near the bottom of the viewport).
 		dropUp?: boolean;
 		children: Snippet;
 	}
-	let { open, onclose, align = 'left', minWidth = 200, dropUp = false, children }: Props = $props();
+	let {
+		open,
+		onclose,
+		align = 'left',
+		minWidth = 200,
+		maxWidth,
+		dropUp = false,
+		children
+	}: Props = $props();
 </script>
 
 {#if open}
@@ -23,6 +32,7 @@
 		{dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}
 		{align === 'right' ? 'right-0' : 'left-0'}"
 		style:min-width="{minWidth}px"
+		style:max-width={maxWidth ? `${maxWidth}px` : undefined}
 	>
 		{@render children()}
 	</div>

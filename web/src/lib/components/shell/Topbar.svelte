@@ -114,7 +114,13 @@
 			>
 				<Icon name="bell" size={16} />
 			</IconButton>
-			<Popover open={bellOpen} onclose={() => (bellOpen = false)} align="right" minWidth={340}>
+			<Popover
+				open={bellOpen}
+				onclose={() => (bellOpen = false)}
+				align="right"
+				minWidth={340}
+				maxWidth={420}
+			>
 				<div class="flex items-center justify-between px-2 pt-1 pb-2">
 					<span class="text-[13px] font-medium">{m.shell_notifications()}</span>
 					{#if notifications.unreadCount > 0}
