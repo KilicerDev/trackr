@@ -53,37 +53,40 @@
 	<ul class="flex flex-col gap-1.5">
 		{#each attachments as att (att.id)}
 			<li
-				class="group flex items-center gap-2.5 rounded-lg border border-border bg-surface px-2 py-1.5"
+				class="group relative flex items-center gap-2.5 rounded-lg border border-border bg-surface px-2 py-1.5 transition-colors hover:border-border-strong hover:bg-surface-2"
 			>
 				{#if att.hasThumbnail}
-					<a
-						href={`/api/attachments/${att.id}`}
-						target="_blank"
-						rel="noopener"
-						class="shrink-0"
-						aria-label={m.attach_open({ filename: att.filename })}
-					>
-						<img
-							src={`/api/attachments/${att.id}?thumb`}
-							alt={att.filename}
-							loading="lazy"
-							class="h-9 w-9 rounded-md border border-border object-cover"
-						/>
-					</a>
+					<img
+						src={`/api/attachments/${att.id}?thumb`}
+						alt=""
+						loading="lazy"
+						class="h-9 w-9 shrink-0 rounded-md border border-border object-cover"
+					/>
 				{:else}
 					<span
-						class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-surface-2 text-text-3"
+						class="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-surface-2 text-text-3 group-hover:bg-surface"
 					>
 						<Icon name="file" size={17} />
 					</span>
 				{/if}
 				<div class="min-w-0 flex-1">
-					<div class="truncate text-[14px] text-text">{att.filename}</div>
+					<!-- Stretched link: the ::after overlay makes the whole row open the
+					     file, while keeping a single link in the accessibility tree. The
+					     action buttons below sit above it via `relative`. -->
+					<a
+						href={`/api/attachments/${att.id}`}
+						target="_blank"
+						rel="noopener"
+						title={m.attach_open({ filename: att.filename })}
+						class="block truncate text-[14px] text-text group-hover:underline after:absolute after:inset-0 after:rounded-lg"
+					>
+						{att.filename}
+					</a>
 					<div class="text-[12px] text-text-3">{formatBytes(att.sizeBytes)}</div>
 				</div>
 				<a
 					href={`/api/attachments/${att.id}/download`}
-					class="grid h-7 w-7 place-items-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text"
+					class="relative grid h-7 w-7 place-items-center rounded-md text-text-3 transition-colors hover:bg-border hover:text-text"
 					aria-label={m.attach_download({ filename: att.filename })}
 				>
 					<Icon name="download" size={15} />
@@ -94,7 +97,7 @@
 						disabled={deleting === att.id}
 						onclick={() => remove(att)}
 						aria-label={m.attach_delete_file({ filename: att.filename })}
-						class="grid h-7 w-7 place-items-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-red-500 disabled:opacity-50"
+						class="relative grid h-7 w-7 place-items-center rounded-md text-text-3 transition-colors hover:bg-border hover:text-red-500 disabled:opacity-50"
 					>
 						<Icon name="trash" size={15} />
 					</button>
