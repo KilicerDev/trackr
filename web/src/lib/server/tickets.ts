@@ -6,7 +6,8 @@ import {
 	ticket,
 	ticketAssignee,
 	message,
-	thread
+	thread,
+	type MessageKind
 } from './db/app.schema';
 import { user as userTable } from './db/auth.schema';
 import { ticketRecipients } from './notify/recipients';
@@ -79,6 +80,10 @@ export type TicketMessageRow = {
 	ticketId: string;
 	authorId: string | null;
 	body: string;
+	// 'comment' = human reply; 'system' = a folded-in field-change event, whose
+	// payload lives in `meta` (see TicketEventMeta) and is rendered per-locale.
+	kind: MessageKind;
+	meta: Record<string, unknown> | null;
 	isInternalNote: boolean;
 	createdAt: string;
 	updatedAt: string;
@@ -181,7 +186,10 @@ export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 				and(
 					eq(thread.subjectType, 'ticket'),
 					inArray(thread.subjectId, ids),
-					isNull(message.deletedAt)
+					isNull(message.deletedAt),
+					// System events are timeline entries, not replies — they must not
+					// inflate the reply count or the "last message" timestamp.
+					eq(message.kind, 'comment')
 				)
 			)
 			.groupBy(thread.subjectId);
@@ -226,9 +234,12 @@ export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 	});
 }
 
+// `includeSystem` (default true) keeps the folded-in field-change events. Pass
+// false for surfaces that want only the human conversation (e.g. the chat feed's
+// inline ticket preview), which would otherwise render events as message bubbles.
 export async function loadTicketMessages(
 	ticketId: string,
-	opts: { includeInternal: boolean }
+	opts: { includeInternal: boolean; includeSystem?: boolean }
 ): Promise<TicketMessageRow[]> {
 	const conditions = [
 		eq(thread.subjectType, 'ticket'),
@@ -238,11 +249,16 @@ export async function loadTicketMessages(
 	if (!opts.includeInternal) {
 		conditions.push(eq(message.internal, false));
 	}
+	if (opts.includeSystem === false) {
+		conditions.push(eq(message.kind, 'comment'));
+	}
 	const rows = await db
 		.select({
 			id: message.id,
 			authorId: message.authorId,
 			body: message.body,
+			kind: message.kind,
+			meta: message.meta,
 			internal: message.internal,
 			createdAt: message.createdAt,
 			updatedAt: message.updatedAt
@@ -256,6 +272,8 @@ export async function loadTicketMessages(
 		ticketId,
 		authorId: m.authorId,
 		body: m.body,
+		kind: m.kind,
+		meta: m.meta,
 		isInternalNote: m.internal,
 		createdAt: m.createdAt.toISOString(),
 		updatedAt: m.updatedAt.toISOString()
@@ -405,6 +423,83 @@ type AddMessageInput = {
 	authorIsAgent: boolean;
 };
 
+// Get-or-create the ticket's thread (the backfill made one per existing ticket;
+// new tickets create theirs lazily on the first message or system event).
+async function getOrCreateTicketThreadId(
+	tx: Pick<typeof db, 'select' | 'insert'>,
+	ticketId: string
+): Promise<string> {
+	const [th] = await tx
+		.select({ id: thread.id })
+		.from(thread)
+		.where(and(eq(thread.subjectType, 'ticket'), eq(thread.subjectId, ticketId)))
+		.limit(1);
+	if (th) return th.id;
+	const tid = crypto.randomUUID();
+	await tx.insert(thread).values({ id: tid, subjectType: 'ticket', subjectId: ticketId });
+	return tid;
+}
+
+// ─── Ticket system events ──────────────────────────────────────────────────
+// Field changes folded into the ticket's activity timeline as `kind='system'`
+// messages (the same mechanism chat uses for its "ticket created" marker).
+// Rendered from `meta` so each viewer sees them in their own locale; `body` is
+// a non-localized fallback kept for search/export.
+//
+// `internal: true` hides an event from the customer. Status, assignment,
+// priority and category changes are all customer-visible; only subject/tag
+// edits are agent-only bookkeeping.
+
+export type TicketEventMeta =
+	| { event: 'status_changed'; from: string; to: string }
+	| { event: 'priority_changed'; from: string; to: string }
+	| { event: 'category_changed'; from: string; to: string }
+	| { event: 'assigned'; added: string[]; removed: string[] }
+	| {
+			event: 'edited';
+			subject?: { from: string; to: string };
+			tags?: { from: string[]; to: string[] };
+	  };
+
+function systemEventBody(meta: TicketEventMeta): string {
+	switch (meta.event) {
+		case 'status_changed':
+			return `Status: ${meta.from} → ${meta.to}`;
+		case 'priority_changed':
+			return `Priority: ${meta.from} → ${meta.to}`;
+		case 'category_changed':
+			return `Category: ${meta.from} → ${meta.to}`;
+		case 'assigned':
+			return `Assignees changed (+${meta.added.length}/-${meta.removed.length})`;
+		case 'edited':
+			return 'Ticket edited';
+	}
+}
+
+// Appends system events to a ticket's timeline in one transaction. Never bumps
+// `first_response_at` or `updatedAt` — the caller owns that bookkeeping.
+export async function addTicketSystemEvents(
+	ticketId: string,
+	actorId: string,
+	events: { meta: TicketEventMeta; internal: boolean }[]
+): Promise<void> {
+	if (events.length === 0) return;
+	await db.transaction(async (tx) => {
+		const threadId = await getOrCreateTicketThreadId(tx, ticketId);
+		await tx.insert(message).values(
+			events.map((e) => ({
+				id: crypto.randomUUID(),
+				threadId,
+				authorId: actorId,
+				kind: 'system' as const,
+				body: systemEventBody(e.meta),
+				internal: e.internal,
+				meta: e.meta as unknown as Record<string, unknown>
+			}))
+		);
+	});
+}
+
 // Adds a message. Public replies bump `updatedAt` (so the portal "Recents"
 // list reflects conversation activity) and stamp `first_response_at` on the
 // first agent reply for response-time metrics. Replies do NOT auto-transition
@@ -412,21 +507,10 @@ type AddMessageInput = {
 export async function addTicketMessage(input: AddMessageInput): Promise<{ id: string }> {
 	const id = crypto.randomUUID();
 	await db.transaction(async (tx) => {
-		// Get-or-create the ticket's thread (the backfill made one per existing
-		// ticket; new tickets create theirs lazily on first message).
-		let [th] = await tx
-			.select({ id: thread.id })
-			.from(thread)
-			.where(and(eq(thread.subjectType, 'ticket'), eq(thread.subjectId, input.ticketId)))
-			.limit(1);
-		if (!th) {
-			const tid = crypto.randomUUID();
-			await tx.insert(thread).values({ id: tid, subjectType: 'ticket', subjectId: input.ticketId });
-			th = { id: tid };
-		}
+		const threadId = await getOrCreateTicketThreadId(tx, input.ticketId);
 		await tx.insert(message).values({
 			id,
-			threadId: th.id,
+			threadId,
 			authorId: input.authorId,
 			body: input.body,
 			internal: input.isInternalNote
@@ -519,7 +603,9 @@ export async function getTicket(ticketId: string): Promise<TicketRow | null> {
 			and(
 				eq(thread.subjectType, 'ticket'),
 				eq(thread.subjectId, ticketId),
-				isNull(message.deletedAt)
+				isNull(message.deletedAt),
+				// Exclude system events — they're timeline entries, not replies.
+				eq(message.kind, 'comment')
 			)
 		);
 	return {

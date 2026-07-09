@@ -207,24 +207,88 @@
 				userId: string | null;
 				body: string;
 				internal: boolean;
+		  }
+		| {
+				id: string;
+				kind: 'system';
+				at: string;
+				userId: string | null;
+				internal: boolean;
+				meta: Record<string, unknown>;
 		  };
 
 	const events = $derived.by<TimelineEvent[]>(() => {
 		const out: TimelineEvent[] = [
 			{ id: '__created', kind: 'created', at: t.createdAt, userId: t.customerId }
 		];
-		for (const m of data.messages) {
-			out.push({
-				id: m.id,
-				kind: 'message',
-				at: m.createdAt,
-				userId: m.authorId,
-				body: m.body,
-				internal: m.isInternalNote
-			});
+		for (const msg of data.messages) {
+			if (msg.kind === 'system') {
+				out.push({
+					id: msg.id,
+					kind: 'system',
+					at: msg.createdAt,
+					userId: msg.authorId,
+					internal: msg.isInternalNote,
+					meta: msg.meta ?? {}
+				});
+			} else {
+				out.push({
+					id: msg.id,
+					kind: 'message',
+					at: msg.createdAt,
+					userId: msg.authorId,
+					body: msg.body,
+					internal: msg.isInternalNote
+				});
+			}
 		}
 		return out.sort((a, b) => a.at.localeCompare(b.at));
 	});
+
+	// Renders a `kind='system'` event's `meta` payload into a localized sentence.
+	// Written per-viewer (not stored) so each user reads it in their own language.
+	function names(ids: unknown): string {
+		if (!Array.isArray(ids)) return '';
+		return ids.map((id) => who(String(id))?.name ?? m.tickets_unknown_user()).join(', ');
+	}
+
+	function systemText(meta: Record<string, unknown>): string {
+		const from = String(meta.from ?? '');
+		const to = String(meta.to ?? '');
+		switch (meta.event) {
+			case 'status_changed':
+				return m.tickets_event_status_changed({
+					from: ticketStatusLabel(from),
+					to: ticketStatusLabel(to)
+				});
+			case 'priority_changed':
+				return m.tickets_event_priority_changed({
+					from: priorityLabel(from),
+					to: priorityLabel(to)
+				});
+			case 'category_changed':
+				return m.tickets_event_category_changed({
+					from: ticketCategoryLabel(from),
+					to: ticketCategoryLabel(to)
+				});
+			case 'assigned': {
+				const parts: string[] = [];
+				const added = meta.added as unknown[] | undefined;
+				const removed = meta.removed as unknown[] | undefined;
+				if (added?.length) parts.push(m.tickets_event_assigned({ names: names(added) }));
+				if (removed?.length) parts.push(m.tickets_event_unassigned({ names: names(removed) }));
+				return parts.join(', ');
+			}
+			case 'edited': {
+				const parts: string[] = [];
+				if (meta.subject) parts.push(m.tickets_event_renamed());
+				if (meta.tags) parts.push(m.tickets_event_tags_updated());
+				return parts.join(', ');
+			}
+			default:
+				return '';
+		}
+	}
 
 	function relTime(iso: string): string {
 		const ts = new Date(iso).getTime();
@@ -569,6 +633,14 @@
 									<span class="font-medium text-text">{u?.name ?? m.tickets_unknown_user()}</span>
 									{#if e.kind === 'created'}
 										{m.tickets_opened_this()}
+									{:else if e.kind === 'system'}
+										{systemText(e.meta)}
+										{#if e.internal}
+											<span
+												class="ml-1 rounded border border-[#e9c46a]/30 bg-[#e9c46a]/8 px-1 text-[11px] text-[#e9c46a]"
+												>{m.tickets_internal_note()}</span
+											>
+										{/if}
 									{:else if e.internal}
 										{m.tickets_added_internal_note_pre()}
 										<span class="text-[#e9c46a]">{m.tickets_internal_note()}</span>

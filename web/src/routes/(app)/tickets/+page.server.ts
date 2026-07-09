@@ -14,6 +14,7 @@ import { assertCan, can, canViewTicket, isTrackrTeam } from '$lib/server/permiss
 import { attachFormFiles, deleteAttachmentsFor } from '$lib/server/attachments';
 import {
 	addTicketMessage,
+	addTicketSystemEvents,
 	createTicket,
 	getTicket,
 	loadAssignableUsers,
@@ -21,6 +22,7 @@ import {
 	loadTickets,
 	softDeleteTicket,
 	updateTicket,
+	type TicketEventMeta,
 	TICKET_CATEGORY_SET,
 	TICKET_CHANNEL_SET,
 	TICKET_PRIORITY_SET,
@@ -37,32 +39,7 @@ import { ticketRecipients } from '$lib/server/notify/recipients';
 import { parseMentionIds } from '$lib/utils/mentions';
 import { getPreferences } from '$lib/server/preferences';
 import { m } from '$lib/paraglide/messages';
-import type { Locale } from '$lib/paraglide/runtime';
-
-// Localized labels for status/priority so change notifications read naturally
-// in each recipient's saved locale.
-function statusLabel(s: TicketStatus, locale: Locale): string {
-	const map: Record<TicketStatus, (i: undefined, o: { locale: Locale }) => string> = {
-		open: m.ticket_status_open,
-		in_progress: m.ticket_status_in_progress,
-		waiting_on_customer: m.ticket_status_waiting_on_customer,
-		waiting_on_agent: m.ticket_status_waiting_on_agent,
-		paused: m.ticket_status_paused,
-		resolved: m.ticket_status_resolved,
-		closed: m.ticket_status_closed
-	};
-	return map[s](undefined, { locale });
-}
-
-function priorityLabel(p: TicketPriority, locale: Locale): string {
-	const map: Record<TicketPriority, (i: undefined, o: { locale: Locale }) => string> = {
-		low: m.priority_low,
-		medium: m.priority_medium,
-		high: m.priority_high,
-		urgent: m.priority_urgent
-	};
-	return map[p](undefined, { locale });
-}
+import { priorityLabel, ticketStatusLabel } from '$lib/utils/labels';
 
 // Order-insensitive equality for id lists (assignees, tags).
 function sameIdSet(a: string[], b: string[]): boolean {
@@ -469,6 +446,47 @@ export const actions: Actions = {
 				});
 			}
 
+			// ── Activity timeline: fold the same changes into the ticket thread as
+			// `kind='system'` messages so they render inline with the conversation.
+			// Status, assignment, priority and category changes are customer-visible.
+			// Only subject/tag edits stay agent-only (`internal: true`) — they're
+			// bookkeeping the customer has no stake in.
+			if (before) {
+				const events: { meta: TicketEventMeta; internal: boolean }[] = [];
+				if (statusChanged) {
+					events.push({
+						meta: { event: 'status_changed', from: before.status, to: patch.status! },
+						internal: false
+					});
+				}
+				if (priorityChanged) {
+					events.push({
+						meta: { event: 'priority_changed', from: before.priority, to: patch.priority! },
+						internal: false
+					});
+				}
+				if (categoryChanged) {
+					events.push({
+						meta: { event: 'category_changed', from: before.category, to: patch.category! },
+						internal: false
+					});
+				}
+				if (assigneesChanged) {
+					events.push({ meta: { event: 'assigned', added, removed }, internal: false });
+				}
+				if (subjectChanged || tagsChanged) {
+					events.push({
+						meta: {
+							event: 'edited',
+							...(subjectChanged ? { subject: { from: before.subject, to: patch.subject! } } : {}),
+							...(tagsChanged ? { tags: { from: before.tags, to: patch.tags! } } : {})
+						},
+						internal: true
+					});
+				}
+				await addTicketSystemEvents(id, actorId, events);
+			}
+
 			// ── Notifications
 			// Notify the *newly-added* assignees (excluding the actor). Assignees are
 			// trivially allowed to read the ticket, so no separate access check.
@@ -513,7 +531,7 @@ export const actions: Actions = {
 							{
 								ref: before.displayId,
 								subject: before.subject,
-								status: statusLabel(patch.status as TicketStatus, locale)
+								status: ticketStatusLabel(patch.status as TicketStatus, locale)
 							},
 							{ locale }
 						)

@@ -25,17 +25,15 @@ export function statusLabel(id: string, locale?: Locale): string {
 	return map[id]?.(undefined, locale ? { locale } : undefined) ?? id;
 }
 
-export function priorityLabel(id: string): string {
-	return pick(
-		{
-			none: m.priority_none,
-			low: m.priority_low,
-			medium: m.priority_medium,
-			high: m.priority_high,
-			urgent: m.priority_urgent
-		},
-		id
-	);
+export function priorityLabel(id: string, locale?: Locale): string {
+	const map: Record<string, (i?: undefined, o?: { locale?: Locale }) => string> = {
+		none: m.priority_none,
+		low: m.priority_low,
+		medium: m.priority_medium,
+		high: m.priority_high,
+		urgent: m.priority_urgent
+	};
+	return map[id]?.(undefined, locale ? { locale } : undefined) ?? id;
 }
 
 export function typeLabel(id: string): string {
@@ -97,31 +95,27 @@ export function rolePerm(id: string): string {
 	);
 }
 
-export function ticketStatusLabel(id: string): string {
-	return pick(
-		{
-			open: m.ticket_status_open,
-			in_progress: m.ticket_status_in_progress,
-			waiting_on_customer: m.ticket_status_waiting_on_customer,
-			waiting_on_agent: m.ticket_status_waiting_on_agent,
-			paused: m.ticket_status_paused,
-			resolved: m.ticket_status_resolved,
-			closed: m.ticket_status_closed
-		},
-		id
-	);
+export function ticketStatusLabel(id: string, locale?: Locale): string {
+	const map: Record<string, (i?: undefined, o?: { locale?: Locale }) => string> = {
+		open: m.ticket_status_open,
+		in_progress: m.ticket_status_in_progress,
+		waiting_on_customer: m.ticket_status_waiting_on_customer,
+		waiting_on_agent: m.ticket_status_waiting_on_agent,
+		paused: m.ticket_status_paused,
+		resolved: m.ticket_status_resolved,
+		closed: m.ticket_status_closed
+	};
+	return map[id]?.(undefined, locale ? { locale } : undefined) ?? id;
 }
 
-export function ticketCategoryLabel(id: string): string {
-	return pick(
-		{
-			general: m.ticket_category_general,
-			billing: m.ticket_category_billing,
-			technical_issue: m.ticket_category_technical_issue,
-			feature_request: m.ticket_category_feature_request
-		},
-		id
-	);
+export function ticketCategoryLabel(id: string, locale?: Locale): string {
+	const map: Record<string, (i?: undefined, o?: { locale?: Locale }) => string> = {
+		general: m.ticket_category_general,
+		billing: m.ticket_category_billing,
+		technical_issue: m.ticket_category_technical_issue,
+		feature_request: m.ticket_category_feature_request
+	};
+	return map[id]?.(undefined, locale ? { locale } : undefined) ?? id;
 }
 
 export function ticketChannelLabel(id: string): string {

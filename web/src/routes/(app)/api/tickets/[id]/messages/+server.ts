@@ -23,7 +23,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	}
 
 	const includeInternal = isTrackrTeam(locals);
-	const messages = await loadTicketMessages(ticketId, { includeInternal });
+	// Conversation only — the inline preview renders each row as a message
+	// bubble, so the ticket's system activity events are excluded here.
+	const messages = await loadTicketMessages(ticketId, { includeInternal, includeSystem: false });
 
 	return json({
 		ticket: {
