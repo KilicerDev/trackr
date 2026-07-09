@@ -580,6 +580,8 @@ export type NotificationPrefs = Partial<{
 	taskDueSoon: NotificationChannelPrefs;
 	ticketCreated: NotificationChannelPrefs;
 	ticketAssigned: NotificationChannelPrefs;
+	// Ticket status or priority change.
+	ticketStatusChanged: NotificationChannelPrefs;
 	ticketMessage: NotificationChannelPrefs;
 	chatMessage: NotificationChannelPrefs;
 	wikiUpdated: NotificationChannelPrefs;
@@ -1273,6 +1275,7 @@ export const NOTIFICATION_KINDS = [
 	'taskDueSoon',
 	'ticketCreated',
 	'ticketAssigned',
+	'ticketStatusChanged',
 	'ticketMessage',
 	'chatMessage',
 	'wikiUpdated'

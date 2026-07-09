@@ -248,6 +248,25 @@ export const LOG_EVENT_TYPES: Record<
 		color: '#7a9cf0',
 		kind: 'ticket'
 	},
+	'ticket.priority': {
+		label: 'Ticket priority changed',
+		icon: 'ticket',
+		color: '#7a9cf0',
+		kind: 'ticket'
+	},
+	'ticket.category': {
+		label: 'Ticket category changed',
+		icon: 'ticket',
+		color: '#7a9cf0',
+		kind: 'ticket'
+	},
+	'ticket.assign': {
+		label: 'Ticket assignment changed',
+		icon: 'user',
+		color: '#7a9cf0',
+		kind: 'ticket'
+	},
+	'ticket.edit': { label: 'Ticket edited', icon: 'ticket', color: '#9aa4b2', kind: 'ticket' },
 	'ticket.message': { label: 'Ticket reply', icon: 'msg', color: '#7fc8a9', kind: 'ticket' },
 	'ticket.delete': { label: 'Ticket deleted', icon: 'trash', color: '#ef7a6d', kind: 'ticket' },
 	'ticket.convert': {

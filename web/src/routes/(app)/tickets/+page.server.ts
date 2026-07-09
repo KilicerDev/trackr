@@ -37,6 +37,39 @@ import { ticketRecipients } from '$lib/server/notify/recipients';
 import { parseMentionIds } from '$lib/utils/mentions';
 import { getPreferences } from '$lib/server/preferences';
 import { m } from '$lib/paraglide/messages';
+import type { Locale } from '$lib/paraglide/runtime';
+
+// Localized labels for status/priority so change notifications read naturally
+// in each recipient's saved locale.
+function statusLabel(s: TicketStatus, locale: Locale): string {
+	const map: Record<TicketStatus, (i: undefined, o: { locale: Locale }) => string> = {
+		open: m.ticket_status_open,
+		in_progress: m.ticket_status_in_progress,
+		waiting_on_customer: m.ticket_status_waiting_on_customer,
+		waiting_on_agent: m.ticket_status_waiting_on_agent,
+		paused: m.ticket_status_paused,
+		resolved: m.ticket_status_resolved,
+		closed: m.ticket_status_closed
+	};
+	return map[s](undefined, { locale });
+}
+
+function priorityLabel(p: TicketPriority, locale: Locale): string {
+	const map: Record<TicketPriority, (i: undefined, o: { locale: Locale }) => string> = {
+		low: m.priority_low,
+		medium: m.priority_medium,
+		high: m.priority_high,
+		urgent: m.priority_urgent
+	};
+	return map[p](undefined, { locale });
+}
+
+// Order-insensitive equality for id lists (assignees, tags).
+function sameIdSet(a: string[], b: string[]): boolean {
+	if (a.length !== b.length) return false;
+	const bs = new Set(b);
+	return a.every((x) => bs.has(x));
+}
 
 export const load: ServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
@@ -339,35 +372,114 @@ export const actions: Actions = {
 		}
 
 		const before = await getTicket(id);
+		const actorId = locals.user.id;
+		const targetLabel = before ? `${before.displayId} · ${before.subject}` : id;
+
+		// What actually changed vs. `before` — drives first-response stamping,
+		// notifications and the audit trail below. Assignees/tags compared as sets.
+		const priorAssignees = before ? new Set(before.assignees) : new Set<string>();
+		const nextAssignees = patch.assigneeIds ? new Set(patch.assigneeIds) : priorAssignees;
+		const statusChanged = !!before && patch.status !== undefined && patch.status !== before.status;
+		const priorityChanged =
+			!!before && patch.priority !== undefined && patch.priority !== before.priority;
+		const categoryChanged =
+			!!before && patch.category !== undefined && patch.category !== before.category;
+		const subjectChanged =
+			!!before && patch.subject !== undefined && patch.subject !== before.subject;
+		const assigneesChanged =
+			!!before &&
+			patch.assigneeIds !== undefined &&
+			!sameIdSet(patch.assigneeIds, before.assignees);
+		const tagsChanged = !!before && patch.tags !== undefined && !sameIdSet(patch.tags, before.tags);
+		const added = before ? [...nextAssignees].filter((aid) => !priorAssignees.has(aid)) : [];
+		const removed = before ? before.assignees.filter((aid) => !nextAssignees.has(aid)) : [];
+
+		// First agent response: the actor here always holds edit.any (asserted
+		// above), so any of these substantive changes is the first agent touch.
+		// Stamp once, only if not already set (mirrors addTicketMessage).
+		if (
+			before &&
+			!before.firstResponseAt &&
+			(statusChanged || priorityChanged || categoryChanged || assigneesChanged)
+		) {
+			patch.firstResponseAt = new Date();
+		}
 
 		try {
 			await updateTicket(id, patch);
 
-			// Audit: status transitions only (assignment/priority stay in the
-			// ticket thread). Logged when the status actually changes.
-			if (before && typeof patch.status === 'string' && patch.status !== before.status) {
+			// ── Audit trail: log every substantive change so ticket activity is
+			// fully traceable in the system logs. Fire-and-forget (never blocks).
+			if (before && statusChanged) {
 				void recordAudit({
 					type: 'ticket.update',
-					actorId: locals.user!.id,
+					actorId,
 					targetType: 'ticket',
 					targetId: id,
-					targetLabel: `${before.displayId} · ${before.subject}`,
+					targetLabel,
 					orgId,
 					meta: { from: before.status, to: patch.status }
 				});
 			}
+			if (before && priorityChanged) {
+				void recordAudit({
+					type: 'ticket.priority',
+					actorId,
+					targetType: 'ticket',
+					targetId: id,
+					targetLabel,
+					orgId,
+					meta: { from: before.priority, to: patch.priority }
+				});
+			}
+			if (before && categoryChanged) {
+				void recordAudit({
+					type: 'ticket.category',
+					actorId,
+					targetType: 'ticket',
+					targetId: id,
+					targetLabel,
+					orgId,
+					meta: { from: before.category, to: patch.category }
+				});
+			}
+			if (before && assigneesChanged) {
+				void recordAudit({
+					type: 'ticket.assign',
+					actorId,
+					targetType: 'ticket',
+					targetId: id,
+					targetLabel,
+					orgId,
+					meta: { added, removed }
+				});
+			}
+			if (before && (subjectChanged || tagsChanged)) {
+				void recordAudit({
+					type: 'ticket.edit',
+					actorId,
+					targetType: 'ticket',
+					targetId: id,
+					targetLabel,
+					orgId,
+					meta: {
+						...(subjectChanged ? { subject: { from: before.subject, to: patch.subject } } : {}),
+						...(tagsChanged ? { tags: { from: before.tags, to: patch.tags } } : {})
+					}
+				});
+			}
 
+			// ── Notifications
 			// Notify the *newly-added* assignees (excluding the actor). Assignees are
 			// trivially allowed to read the ticket, so no separate access check.
 			// Removed assignees are not notified (mirrors tasks).
-			if (before && patch.assigneeIds) {
-				const prior = new Set(before.assignees);
-				const added = patch.assigneeIds.filter((aid) => !prior.has(aid) && aid !== locals.user!.id);
-				if (added.length) {
+			if (before) {
+				const addedToNotify = added.filter((aid) => aid !== actorId);
+				if (addedToNotify.length) {
 					await notify({
 						kind: 'ticketAssigned',
-						recipients: added,
-						actorId: locals.user!.id,
+						recipients: addedToNotify,
+						actorId,
 						orgId: before.orgId,
 						render: (locale) => ({
 							title: m.notify_ticket_assigned(
@@ -380,6 +492,69 @@ export const actions: Actions = {
 						baseUrl: url.origin
 					});
 				}
+			}
+
+			// Status change → full audience (customer included: they want to know
+			// when their ticket moves, e.g. Resolved). Creator included via ctx.
+			if (before && statusChanged) {
+				const recipients = await ticketRecipients({
+					orgId: before.orgId,
+					customerId: before.customerId,
+					creatorId: before.createdBy,
+					assigneeIds: patch.assigneeIds ?? before.assignees
+				});
+				await notify({
+					kind: 'ticketStatusChanged',
+					recipients,
+					actorId,
+					orgId: before.orgId,
+					render: (locale) => ({
+						title: m.notify_ticket_status_changed(
+							{
+								ref: before.displayId,
+								subject: before.subject,
+								status: statusLabel(patch.status as TicketStatus, locale)
+							},
+							{ locale }
+						)
+					}),
+					url: `/tickets/${id}`,
+					entity: { type: 'ticket', id },
+					baseUrl: url.origin
+				});
+			}
+
+			// Priority change → internal only (agents/staff/assignees). Priority is
+			// an internal triage concern, so the customer is not notified.
+			if (before && priorityChanged) {
+				const recipients = await ticketRecipients(
+					{
+						orgId: before.orgId,
+						customerId: before.customerId,
+						creatorId: before.createdBy,
+						assigneeIds: patch.assigneeIds ?? before.assignees
+					},
+					{ internalOnly: true }
+				);
+				await notify({
+					kind: 'ticketStatusChanged',
+					recipients,
+					actorId,
+					orgId: before.orgId,
+					render: (locale) => ({
+						title: m.notify_ticket_priority_changed(
+							{
+								ref: before.displayId,
+								subject: before.subject,
+								priority: priorityLabel(patch.priority as TicketPriority, locale)
+							},
+							{ locale }
+						)
+					}),
+					url: `/tickets/${id}`,
+					entity: { type: 'ticket', id },
+					baseUrl: url.origin
+				});
 			}
 			return { ok: true };
 		} catch (err) {
@@ -480,6 +655,7 @@ export const actions: Actions = {
 					{
 						orgId: t.orgId,
 						customerId: t.customerId,
+						creatorId: t.createdBy,
 						assigneeIds: t.assignees
 					},
 					{ internalOnly: internal }

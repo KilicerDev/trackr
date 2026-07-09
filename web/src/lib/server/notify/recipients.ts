@@ -133,16 +133,24 @@ export type TicketRecipientCtx = {
 	orgId: string;
 	customerId: string | null;
 	assigneeIds: string[];
+	// The user who created the ticket (`ticket.createdBy`). Notified about
+	// activity on their ticket even when not assigned — closing the gap where an
+	// own-tickets-only creator (org.member) heard nothing about a ticket they
+	// raised. Optional so older call sites that don't load it still compile.
+	creatorId?: string | null;
 };
 
 // Recipients allowed to know about a ticket in `orgId`:
 //   - members of `orgId` holding `org.tickets.read.any` (org agents / admins)
 //   - internal Trackr staff (via internal-org membership + matching perm)
 //   - the ticket's customer (read.own grants them sight of their own ticket)
+//   - the ticket's creator (same visibility tier as the customer)
 //   - every assigned agent
 //
 // Pass `internalOnly: true` for internal-note message events — the customer
-// must never see internal notes even when they otherwise watch the ticket.
+// must never see internal notes even when they otherwise watch the ticket. The
+// creator is gated the same way: a non-agent creator is dropped from internal
+// notes, while an agent creator still receives them via the `agents` bucket.
 export async function ticketRecipients(
 	ctx: TicketRecipientCtx,
 	opts: { internalOnly?: boolean } = {}
@@ -153,6 +161,7 @@ export async function ticketRecipients(
 	]);
 	const out = new Set<string>([...agents, ...internal]);
 	if (!opts.internalOnly && ctx.customerId) out.add(ctx.customerId);
+	if (!opts.internalOnly && ctx.creatorId) out.add(ctx.creatorId);
 	for (const id of ctx.assigneeIds) out.add(id);
 	return out;
 }

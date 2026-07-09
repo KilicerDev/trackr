@@ -19,6 +19,7 @@ export const NOTIFICATION_DEFAULTS: Required<NotificationPrefs> = {
 	taskDueSoon: { email: true, inApp: true },
 	ticketCreated: { email: true, inApp: true },
 	ticketAssigned: { email: true, inApp: true },
+	ticketStatusChanged: { email: false, inApp: true },
 	ticketMessage: { email: true, inApp: true },
 	chatMessage: { email: false, inApp: true },
 	wikiUpdated: { email: false, inApp: false }

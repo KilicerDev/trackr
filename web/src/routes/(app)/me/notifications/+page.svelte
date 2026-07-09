@@ -53,6 +53,11 @@
 					desc: m.notif_ticket_assigned_desc()
 				},
 				{
+					key: 'ticketStatusChanged',
+					label: m.notif_ticket_status_changed(),
+					desc: m.notif_ticket_status_changed_desc()
+				},
+				{
 					key: 'ticketMessage',
 					label: m.notif_ticket_message(),
 					desc: m.notif_ticket_message_desc()

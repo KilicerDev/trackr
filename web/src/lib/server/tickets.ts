@@ -348,6 +348,10 @@ type UpdateTicketInput = {
 	satisfactionScore?: number | null;
 	tags?: string[];
 	checklist?: { id: string; text: string; done: boolean }[];
+	// First agent response timestamp. Set by the update action on the first
+	// agent-driven change (status/priority/assignee/category), mirroring the
+	// stamp `addTicketMessage` writes on the first public agent reply.
+	firstResponseAt?: Date;
 };
 
 // Centralizes the resolved/closed timestamp bookkeeping that the auto-
@@ -360,6 +364,7 @@ export async function updateTicket(ticketId: string, patch: UpdateTicketInput): 
 	if (patch.satisfactionScore !== undefined) fields.satisfactionScore = patch.satisfactionScore;
 	if (patch.tags !== undefined) fields.tags = patch.tags;
 	if (patch.checklist !== undefined) fields.checklist = patch.checklist;
+	if (patch.firstResponseAt !== undefined) fields.firstResponseAt = patch.firstResponseAt;
 	if (patch.status !== undefined) {
 		fields.status = patch.status;
 		if (patch.status === 'resolved') fields.resolvedAt = new Date();
