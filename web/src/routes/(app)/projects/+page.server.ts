@@ -86,7 +86,7 @@ export const load: ServerLoad = async ({ locals }) => {
 		})
 		.from(project)
 		.where(accessFilter)
-		.orderBy(desc(project.updatedAt));
+		.orderBy(desc(project.createdAt));
 
 	const projectIds = rows.map((r) => r.id);
 	const leadIds = rows.map((r) => r.leadId).filter((x): x is string => !!x);

@@ -59,7 +59,7 @@ export async function listQuickNotes(ownerId: string): Promise<NoteListItem[]> {
 		.select(listColumns)
 		.from(note)
 		.where(and(eq(note.kind, 'quick'), eq(note.ownerId, ownerId)))
-		.orderBy(desc(note.pinned), desc(note.updatedAt));
+		.orderBy(desc(note.pinned), desc(note.createdAt));
 }
 
 // Quick notes shared with this user via a (non-revoked) redeemed link, excluding
@@ -70,7 +70,7 @@ export async function listSharedWithMe(userId: string): Promise<NoteListItem[]> 
 		.from(note)
 		.innerJoin(noteAccess, eq(noteAccess.noteId, note.id))
 		.where(and(eq(noteAccess.userId, userId), eq(note.kind, 'quick')))
-		.orderBy(desc(note.updatedAt));
+		.orderBy(desc(note.createdAt));
 }
 
 // All meeting notes, newest meeting first. Team members see every meeting note.
@@ -79,7 +79,7 @@ export async function listMeetingNotes(): Promise<NoteListItem[]> {
 		.select(listColumns)
 		.from(note)
 		.where(eq(note.kind, 'meeting'))
-		.orderBy(desc(note.meetingDate), desc(note.updatedAt));
+		.orderBy(desc(note.meetingDate), desc(note.createdAt));
 }
 
 /**

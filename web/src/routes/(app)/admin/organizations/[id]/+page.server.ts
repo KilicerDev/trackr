@@ -78,7 +78,7 @@ export const load: PageServerLoad = async ({ params }) => {
 		})
 		.from(project)
 		.where(eq(project.orgId, id))
-		.orderBy(desc(project.updatedAt));
+		.orderBy(desc(project.createdAt));
 
 	const memberRows = await db
 		.select({

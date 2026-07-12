@@ -76,7 +76,9 @@ export async function loadTasks(opts?: {
 		.innerJoin(project, eq(project.id, task.projectId))
 		.where(and(...conditions));
 
-	const taskRows = await baseQuery.orderBy(desc(task.updatedAt));
+	// Stable order: newest first, and never re-order on edit (status change,
+	// comment, etc. bump updatedAt but must not make a row jump in the list).
+	const taskRows = await baseQuery.orderBy(desc(task.createdAt));
 	const taskIds = taskRows.map((t) => t.id);
 
 	const attachmentsByTask = await listAttachmentsForMany('task', taskIds);

@@ -151,7 +151,7 @@ export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 		.from(ticket)
 		.innerJoin(organization, eq(organization.id, ticket.orgId))
 		.where(conditions.length ? and(...conditions) : undefined)
-		.orderBy(desc(ticket.updatedAt))
+		.orderBy(desc(ticket.createdAt))
 		.$dynamic();
 	if (opts.limit && opts.limit > 0) q = q.limit(opts.limit);
 	const rows = await q;
