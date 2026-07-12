@@ -27,5 +27,6 @@ func Register(d Deps) map[string]jobworker.Handler {
 		"prune.jobs":          pruneJobs(d.DB),
 		"prune.invitations":   pruneInvitations(d.DB),
 		"prune.notifications": pruneNotifications(d.DB),
+		"notify.digest":       notifyDigest(d.DB),
 	}
 }

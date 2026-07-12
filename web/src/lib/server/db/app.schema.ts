@@ -568,12 +568,39 @@ export const roleRelations = relations(role, ({ many }) => ({
 // for shapes that grow (notification categories, per-view saved state) so
 // adding a category doesn't require a migration.
 
-export type NotificationChannelPrefs = { email: boolean; inApp: boolean };
+// Email delivery per event: 'off' (never), 'instant' (send immediately), or
+// 'digest' (batch into the periodic rollup email — see `DigestConfig`). Stored
+// values may still be legacy booleans (true→instant, false→off); getPreferences
+// normalizes them so the rest of the app only ever sees a DeliveryMode.
+export type DeliveryMode = 'off' | 'instant' | 'digest';
+export type NotificationChannelPrefs = { email: DeliveryMode; inApp: boolean };
+
+// Suppress instant email during these local-time windows; suppressed mail is
+// deferred into the digest queue instead of dropped. `start`/`end` are 'HH:MM'
+// in DIGEST_TZ; a window that wraps midnight (start > end) is supported.
+export type QuietHours = { enabled: boolean; start: string; end: string; weekends: boolean };
+
+// When to flush a user's batched (digest) email. `hour` is 0–23 in DIGEST_TZ,
+// used only for the 'daily' cadence.
+export type DigestConfig = { frequency: 'hourly' | 'daily'; hour: number };
+
+// How wide an audience event a see-all user (org.client / org.agent / internal
+// staff) wants to hear about, per surface:
+//   all           — every ticket/thread they can see (current behaviour)
+//   participating — only ones they're assigned to / involved in / follow
+//   mentions      — nothing but @-mentions (delivered via the *Mentioned kinds)
+// Own-tickets-only members (org.member) are unaffected: they only ever receive
+// their own items regardless of this setting.
+export type ScopeMode = 'all' | 'participating' | 'mentions';
+export type NotificationScope = { tickets: ScopeMode; chat: ScopeMode };
 export type NotificationPrefs = Partial<{
-	// Generic @-mention across tasks, tickets and projects. Distinct from the
-	// legacy `taskMentioned` key (kept for back-compat; unused by the mention feature).
+	// Legacy generic @-mention key. Mentions are now emitted per surface
+	// (`taskMentioned` / `ticketMentioned` / `chatMentioned` / `projectMentioned`)
+	// so each can be controlled independently. Kept only so old inbox rows and
+	// stored prefs still resolve; no longer emitted.
 	mentioned: NotificationChannelPrefs;
 	taskAssigned: NotificationChannelPrefs;
+	// @-mention in a task.
 	taskMentioned: NotificationChannelPrefs;
 	taskCommented: NotificationChannelPrefs;
 	taskStatusChanged: NotificationChannelPrefs;
@@ -583,7 +610,13 @@ export type NotificationPrefs = Partial<{
 	// Ticket status or priority change.
 	ticketStatusChanged: NotificationChannelPrefs;
 	ticketMessage: NotificationChannelPrefs;
+	// @-mention in a ticket message.
+	ticketMentioned: NotificationChannelPrefs;
 	chatMessage: NotificationChannelPrefs;
+	// @-mention in a chat thread.
+	chatMentioned: NotificationChannelPrefs;
+	// @-mention in a project discussion.
+	projectMentioned: NotificationChannelPrefs;
 	wikiUpdated: NotificationChannelPrefs;
 }>;
 
@@ -597,6 +630,19 @@ export const userPreferences = pgTable('user_preferences', {
 	weekStartsOn: integer('week_starts_on').notNull().default(1),
 	locale: text('locale').notNull().default('en'),
 	notifications: jsonb('notifications').$type<NotificationPrefs>().notNull().default({}),
+	// Quiet hours + digest cadence. Defaults are inert: quiet hours off, and the
+	// daily digest only ever runs for events a user has explicitly set to 'digest'.
+	quietHours: jsonb('quiet_hours')
+		.$type<QuietHours>()
+		.notNull()
+		.default({ enabled: false, start: '20:00', end: '08:00', weekends: true }),
+	digest: jsonb('digest').$type<DigestConfig>().notNull().default({ frequency: 'daily', hour: 9 }),
+	// Per-surface audience scope for see-all users. Default 'all' preserves
+	// existing behaviour; only see-all roles ever surface these controls.
+	notificationScope: jsonb('notification_scope')
+		.$type<NotificationScope>()
+		.notNull()
+		.default({ tickets: 'all', chat: 'all' }),
 	viewState: jsonb('view_state').$type<Record<string, unknown>>().notNull().default({}),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	updatedAt: timestamp('updated_at')
@@ -1277,7 +1323,10 @@ export const NOTIFICATION_KINDS = [
 	'ticketAssigned',
 	'ticketStatusChanged',
 	'ticketMessage',
+	'ticketMentioned',
 	'chatMessage',
+	'chatMentioned',
+	'projectMentioned',
 	'wikiUpdated'
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
@@ -1325,6 +1374,37 @@ export const notificationRelations = relations(notification, ({ one }) => ({
 		references: [organization.id]
 	})
 }));
+
+// ─── Notification digest queue ───────────────────────────────────────────────
+// One row per notification whose recipient chose 'digest' email for that event
+// (or whose 'instant' email was deferred by quiet hours). The Go worker's
+// `notify.digest` scheduled job drains each due user's unsent rows into a single
+// rollup email and stamps `sentAt`. Timestamps are timestamptz — the worker
+// compares them against now() in DIGEST_TZ.
+export const notificationDigestItem = pgTable(
+	'notification_digest_item',
+	{
+		id: text('id').primaryKey(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		orgId: text('org_id').references(() => organization.id, { onDelete: 'cascade' }),
+		kind: text('kind').$type<NotificationKind>().notNull(),
+		title: text('title').notNull(),
+		body: text('body'),
+		url: text('url').notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+		sentAt: timestamp('sent_at', { withTimezone: true })
+	},
+	(t) => [
+		// The flush query scans a user's still-pending items, oldest first.
+		index('notif_digest_pending_idx')
+			.on(t.userId, t.createdAt)
+			.where(sql`sent_at is null`)
+	]
+);
+
+export type NotificationDigestItem = typeof notificationDigestItem.$inferSelect;
 
 // ─── Feedback ──────────────────────────────────────────────────────────────
 // User-submitted feedback from the "Send feedback" modal in the account

@@ -288,6 +288,20 @@
       "when": 1783248922083,
       "tag": "0040_faithful_thaddeus_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1783895699344,
+      "tag": "0041_powerful_jamie_braddock",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1783896269944,
+      "tag": "0042_brave_dakota_north",
+      "breakpoints": true
     }
   ]
 }

@@ -4,15 +4,24 @@ import {
 	ALLOWED_LANDINGS,
 	ALLOWED_LOCALES,
 	ALLOWED_THEMES,
-	upsertPreferences
+	upsertPreferences,
+	type PreferencePatch
 } from '$lib/server/preferences';
 import { cookieName } from '$lib/paraglide/runtime';
-import type { NotificationPrefs } from '$lib/server/db/app.schema';
+import type {
+	DeliveryMode,
+	DigestConfig,
+	NotificationPrefs,
+	QuietHours,
+	ScopeMode
+} from '$lib/server/db/app.schema';
 import { m } from '$lib/paraglide/messages';
 import type { Actions } from './$types';
 
+// Must match the checkbox rows rendered in +page.svelte's `notifGroups`. Any
+// key omitted here keeps its stored value untouched (upsert merges), so the
+// legacy `mentioned` key is intentionally left out rather than being zeroed.
 const NOTIFICATION_EVENTS = [
-	'mentioned',
 	'taskAssigned',
 	'taskMentioned',
 	'taskCommented',
@@ -20,7 +29,12 @@ const NOTIFICATION_EVENTS = [
 	'taskDueSoon',
 	'ticketCreated',
 	'ticketAssigned',
+	'ticketStatusChanged',
 	'ticketMessage',
+	'ticketMentioned',
+	'chatMessage',
+	'chatMentioned',
+	'projectMentioned',
 	'wikiUpdated'
 ] as const satisfies readonly (keyof NotificationPrefs)[];
 
@@ -72,14 +86,55 @@ export const actions: Actions = {
 	updateNotifications: async ({ request, locals }) => {
 		if (!locals.user) return fail(401, { message: m.settings_err_not_authenticated() });
 		const form = await request.formData();
+
+		const parseMode = (v: FormDataEntryValue | null): DeliveryMode => {
+			const s = String(v ?? '');
+			return s === 'instant' || s === 'digest' ? s : 'off';
+		};
 		const next: NotificationPrefs = {};
 		for (const k of NOTIFICATION_EVENTS) {
 			next[k] = {
-				email: form.get(`${k}.email`) === 'on',
+				email: parseMode(form.get(`${k}.email`)),
 				inApp: form.get(`${k}.inApp`) === 'on'
 			};
 		}
-		await upsertPreferences(locals.user.id, { notifications: next });
+
+		// Quiet hours + digest cadence. Invalid/missing values fall back to the
+		// safe defaults rather than failing the whole save.
+		const timeRe = /^([01]\d|2[0-3]):[0-5]\d$/;
+		const parseTime = (v: FormDataEntryValue | null, fallback: string): string => {
+			const s = String(v ?? '');
+			return timeRe.test(s) ? s : fallback;
+		};
+		const quietHours: QuietHours = {
+			enabled: form.get('quietHours.enabled') === 'on',
+			start: parseTime(form.get('quietHours.start'), '20:00'),
+			end: parseTime(form.get('quietHours.end'), '08:00'),
+			weekends: form.get('quietHours.weekends') === 'on'
+		};
+
+		const freq = String(form.get('digest.frequency') ?? '');
+		const hour = Number(form.get('digest.hour') ?? '');
+		const digest: DigestConfig = {
+			frequency: freq === 'hourly' ? 'hourly' : 'daily',
+			hour: Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : 9
+		};
+
+		const patch: PreferencePatch = { notifications: next, quietHours, digest };
+
+		// Scope is only submitted by see-all users (both fields together). Absent
+		// fields leave the stored scope untouched via the upsert merge.
+		const parseScope = (v: FormDataEntryValue | null): ScopeMode | null => {
+			const s = String(v ?? '');
+			return s === 'all' || s === 'participating' || s === 'mentions' ? s : null;
+		};
+		const scopeTickets = parseScope(form.get('scope.tickets'));
+		const scopeChat = parseScope(form.get('scope.chat'));
+		if (scopeTickets && scopeChat) {
+			patch.notificationScope = { tickets: scopeTickets, chat: scopeChat };
+		}
+
+		await upsertPreferences(locals.user.id, patch);
 		return { success: true };
 	}
 };

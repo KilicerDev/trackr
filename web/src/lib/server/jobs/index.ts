@@ -10,9 +10,11 @@ export * from './core';
 export * from './services/mail';
 export * from './services/prune';
 export * from './services/cleanup';
+export * from './services/digest';
 
 import type { MailPayload } from './services/mail';
 import type { PrunePayload } from './services/prune';
+import type { NotifyDigestPayload } from './services/digest';
 
 /**
  * The job type → payload contract — the single source of truth the Go worker
@@ -25,6 +27,7 @@ export type JobPayloads = {
 	'prune.jobs': PrunePayload;
 	'prune.invitations': PrunePayload;
 	'prune.notifications': PrunePayload;
+	'notify.digest': NotifyDigestPayload;
 };
 
 export type JobType = keyof JobPayloads;

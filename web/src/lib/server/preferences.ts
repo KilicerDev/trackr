@@ -1,6 +1,15 @@
 import { eq, sql } from 'drizzle-orm';
 import { db } from './db';
-import { userPreferences, type NotificationPrefs, type UserPreferences } from './db/app.schema';
+import {
+	userPreferences,
+	type DeliveryMode,
+	type DigestConfig,
+	type NotificationChannelPrefs,
+	type NotificationPrefs,
+	type NotificationScope,
+	type QuietHours,
+	type UserPreferences
+} from './db/app.schema';
 
 export const PREF_DEFAULTS = {
 	theme: 'dark' as const,
@@ -10,20 +19,54 @@ export const PREF_DEFAULTS = {
 	locale: 'en'
 };
 
-export const NOTIFICATION_DEFAULTS: Required<NotificationPrefs> = {
-	mentioned: { email: true, inApp: true },
-	taskAssigned: { email: true, inApp: true },
-	taskMentioned: { email: true, inApp: true },
-	taskCommented: { email: false, inApp: true },
-	taskStatusChanged: { email: false, inApp: true },
-	taskDueSoon: { email: true, inApp: true },
-	ticketCreated: { email: true, inApp: true },
-	ticketAssigned: { email: true, inApp: true },
-	ticketStatusChanged: { email: false, inApp: true },
-	ticketMessage: { email: true, inApp: true },
-	chatMessage: { email: false, inApp: true },
-	wikiUpdated: { email: false, inApp: false }
+// Inert defaults: quiet hours disabled, and a daily digest window that only
+// takes effect for events a user has explicitly switched to 'digest' email.
+export const QUIET_HOURS_DEFAULT: QuietHours = {
+	enabled: false,
+	start: '20:00',
+	end: '08:00',
+	weekends: true
 };
+export const DIGEST_DEFAULT: DigestConfig = { frequency: 'daily', hour: 9 };
+export const NOTIFICATION_SCOPE_DEFAULT: NotificationScope = { tickets: 'all', chat: 'all' };
+
+export const NOTIFICATION_DEFAULTS: Required<NotificationPrefs> = {
+	mentioned: { email: 'instant', inApp: true },
+	taskAssigned: { email: 'instant', inApp: true },
+	taskMentioned: { email: 'instant', inApp: true },
+	taskCommented: { email: 'off', inApp: true },
+	taskStatusChanged: { email: 'off', inApp: true },
+	taskDueSoon: { email: 'instant', inApp: true },
+	ticketCreated: { email: 'instant', inApp: true },
+	ticketAssigned: { email: 'instant', inApp: true },
+	ticketStatusChanged: { email: 'off', inApp: true },
+	ticketMessage: { email: 'instant', inApp: true },
+	ticketMentioned: { email: 'instant', inApp: true },
+	chatMessage: { email: 'off', inApp: true },
+	chatMentioned: { email: 'instant', inApp: true },
+	projectMentioned: { email: 'instant', inApp: true },
+	wikiUpdated: { email: 'off', inApp: false }
+};
+
+// Stored prefs predate delivery modes and may carry `email: true|false`.
+// Normalize every read so callers only ever see a DeliveryMode.
+function normalizeEmail(v: unknown): DeliveryMode {
+	if (v === true) return 'instant';
+	if (v === false) return 'off';
+	if (v === 'instant' || v === 'digest' || v === 'off') return v;
+	return 'off';
+}
+
+function normalizeNotifications(
+	merged: Record<string, { email?: unknown; inApp?: unknown }>
+): Required<NotificationPrefs> {
+	const out = {} as Record<string, NotificationChannelPrefs>;
+	for (const key of Object.keys(NOTIFICATION_DEFAULTS)) {
+		const raw = merged[key] ?? {};
+		out[key] = { email: normalizeEmail(raw.email), inApp: raw.inApp === true };
+	}
+	return out as Required<NotificationPrefs>;
+}
 
 export type ResolvedPreferences = Omit<
 	UserPreferences,
@@ -44,6 +87,9 @@ export async function getPreferences(userId: string): Promise<ResolvedPreference
 			userId,
 			...PREF_DEFAULTS,
 			notifications: NOTIFICATION_DEFAULTS,
+			quietHours: QUIET_HOURS_DEFAULT,
+			digest: DIGEST_DEFAULT,
+			notificationScope: NOTIFICATION_SCOPE_DEFAULT,
 			viewState: {}
 		};
 	}
@@ -55,7 +101,13 @@ export async function getPreferences(userId: string): Promise<ResolvedPreference
 		defaultLanding: row.defaultLanding,
 		weekStartsOn: row.weekStartsOn,
 		locale: row.locale,
-		notifications: { ...NOTIFICATION_DEFAULTS, ...(row.notifications ?? {}) },
+		notifications: normalizeNotifications({
+			...NOTIFICATION_DEFAULTS,
+			...(row.notifications ?? {})
+		}),
+		quietHours: { ...QUIET_HOURS_DEFAULT, ...(row.quietHours ?? {}) },
+		digest: { ...DIGEST_DEFAULT, ...(row.digest ?? {}) },
+		notificationScope: { ...NOTIFICATION_SCOPE_DEFAULT, ...(row.notificationScope ?? {}) },
 		viewState: row.viewState ?? {}
 	};
 }
@@ -67,6 +119,9 @@ export type PreferencePatch = Partial<{
 	weekStartsOn: number;
 	locale: string;
 	notifications: NotificationPrefs;
+	quietHours: QuietHours;
+	digest: DigestConfig;
+	notificationScope: NotificationScope;
 	viewState: Record<string, unknown>;
 }>;
 
@@ -80,6 +135,9 @@ export async function upsertPreferences(userId: string, patch: PreferencePatch) 
 		weekStartsOn: patch.weekStartsOn ?? existing.weekStartsOn,
 		locale: patch.locale ?? existing.locale,
 		notifications: { ...existing.notifications, ...(patch.notifications ?? {}) },
+		quietHours: { ...existing.quietHours, ...(patch.quietHours ?? {}) },
+		digest: { ...existing.digest, ...(patch.digest ?? {}) },
+		notificationScope: { ...existing.notificationScope, ...(patch.notificationScope ?? {}) },
 		viewState: { ...existing.viewState, ...(patch.viewState ?? {}) }
 	};
 
@@ -95,6 +153,9 @@ export async function upsertPreferences(userId: string, patch: PreferencePatch) 
 				weekStartsOn: merged.weekStartsOn,
 				locale: merged.locale,
 				notifications: merged.notifications,
+				quietHours: merged.quietHours,
+				digest: merged.digest,
+				notificationScope: merged.notificationScope,
 				viewState: merged.viewState,
 				updatedAt: sql`now()`
 			}

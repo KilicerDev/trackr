@@ -14,6 +14,7 @@ import { getPreferences } from '../preferences';
 import { sendEmailFireAndForget, notificationEmail, EMAIL_PRIORITY } from '$lib/server/jobs';
 import { baseLocale, isLocale, type Locale } from '$lib/paraglide/runtime';
 import { plainifyMentions } from '$lib/utils/mentions';
+import { enqueueDigestItems, isWithinQuietHours } from './digest';
 
 export type NotifyContent = { title: string; body?: string | null };
 
@@ -32,6 +33,10 @@ export type NotifyInput = {
 	body?: string | null;
 	url: string;
 	entity?: { type: string; id: string } | null;
+	// For the broad audience kinds (see BROAD_SCOPED_KINDS), the ids of users
+	// directly involved (assignees, customer, creator, thread followers). Lets a
+	// see-all recipient's 'participating' scope keep only the ones they're on.
+	participants?: Iterable<string>;
 	// Origin to prefix `url` with when building the email link, e.g.
 	// `https://trackr.example.com`. Callers in request scope should pass
 	// `event.url.origin` so links match whichever host the actor used —
@@ -40,6 +45,16 @@ export type NotifyInput = {
 	// a relative path if neither is available.
 	baseUrl?: string | null;
 };
+
+// Kinds that fan out to a wide "everyone who can see it" audience — the ones a
+// see-all user's per-surface scope can narrow. Assignment and @-mention kinds
+// are intentionally excluded: they're always personally relevant.
+const BROAD_SCOPED_KINDS = new Set<NotificationKind>([
+	'ticketCreated',
+	'ticketMessage',
+	'ticketStatusChanged',
+	'chatMessage'
+]);
 
 function buildUrl(path: string, baseUrl?: string | null): string {
 	if (path.startsWith('http')) return path;
@@ -59,13 +74,36 @@ export async function notify(input: NotifyInput): Promise<void> {
 	const prefsList = await Promise.all(recipientIds.map((id) => getPreferences(id)));
 	const localeOf = new Map<string, Locale>();
 	const wantsInApp: string[] = [];
-	const wantsEmail: string[] = [];
+	const wantsEmail: string[] = []; // instant email, sent now
+	const wantsDigest: string[] = []; // batched into the periodic rollup email
+	const now = new Date();
+	const isBroadKind = BROAD_SCOPED_KINDS.has(input.kind);
+	const surface: 'tickets' | 'chat' = input.kind.startsWith('chat') ? 'chat' : 'tickets';
+	const participants = new Set(input.participants ?? []);
 	for (let i = 0; i < recipientIds.length; i++) {
 		const prefs = prefsList[i];
 		localeOf.set(recipientIds[i], isLocale(prefs.locale) ? prefs.locale : baseLocale);
+
+		// Per-surface scope for see-all users: 'mentions' drops these broad kinds
+		// entirely (they still get the *Mentioned kinds), 'participating' keeps
+		// only events they're actually involved in. 'all' is a no-op.
+		if (isBroadKind) {
+			const scope = prefs.notificationScope[surface];
+			if (scope === 'mentions') continue;
+			if (scope === 'participating' && !participants.has(recipientIds[i])) continue;
+		}
+
 		const pref = prefs.notifications[input.kind];
 		if (pref?.inApp) wantsInApp.push(recipientIds[i]);
-		if (pref?.email) wantsEmail.push(recipientIds[i]);
+		// Email routing by delivery mode. Instant mail is deferred into the digest
+		// queue when the recipient is inside their quiet hours, so it's held rather
+		// than dropped.
+		const mode = pref?.email ?? 'off';
+		if (mode === 'digest') wantsDigest.push(recipientIds[i]);
+		else if (mode === 'instant') {
+			if (isWithinQuietHours(prefs.quietHours, now)) wantsDigest.push(recipientIds[i]);
+			else wantsEmail.push(recipientIds[i]);
+		}
 	}
 
 	// Render once per distinct locale; recipients sharing a language reuse it.
@@ -125,6 +163,24 @@ export async function notify(input: NotifyInput): Promise<void> {
 				{ priority: EMAIL_PRIORITY.low }
 			);
 		}
+	}
+
+	// Digest recipients: park the rendered notification in the queue. The Go
+	// worker's `notify.digest` job drains and emails these on the user's cadence.
+	if (wantsDigest.length > 0) {
+		await enqueueDigestItems(
+			wantsDigest.map((id) => {
+				const content = contentFor(id);
+				return {
+					userId: id,
+					orgId: input.orgId ?? null,
+					kind: input.kind,
+					title: content.title,
+					body: content.body ?? null,
+					url: fullUrl
+				};
+			})
+		);
 	}
 }
 

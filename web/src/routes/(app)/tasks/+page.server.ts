@@ -317,9 +317,7 @@ export const actions: Actions = {
 							.from(user)
 							.innerJoin(organizationMember, eq(organizationMember.userId, user.id))
 							.innerJoin(organization, eq(organization.id, organizationMember.orgId))
-							.where(
-								and(inArray(user.id, assigneesUpdate), eq(organization.isInternal, true))
-							);
+							.where(and(inArray(user.id, assigneesUpdate), eq(organization.isInternal, true)));
 						if (valid.length > 0) {
 							await tx
 								.insert(taskAssignee)
@@ -550,7 +548,7 @@ export const actions: Actions = {
 		const mentioned = await projectMentionRecipients(target.projectId, parseMentionIds(body));
 		if (mentioned.size > 0) {
 			void notify({
-				kind: 'mentioned',
+				kind: 'taskMentioned',
 				recipients: mentioned,
 				actorId: me.id,
 				orgId: target.projectOrgId,

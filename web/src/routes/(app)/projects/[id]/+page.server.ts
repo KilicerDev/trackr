@@ -505,7 +505,7 @@ export const actions: Actions = {
 				.where(eq(project.id, params.id))
 				.limit(1);
 			void notify({
-				kind: 'mentioned',
+				kind: 'projectMentioned',
 				recipients: mentioned,
 				actorId: locals.user.id,
 				orgId: proj?.orgId ?? null,

@@ -1,0 +1,1 @@
+ALTER TABLE "user_preferences" ADD COLUMN "notification_scope" jsonb DEFAULT '{"tickets":"all","chat":"all"}'::jsonb NOT NULL;

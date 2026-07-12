@@ -242,6 +242,7 @@ export const actions: Actions = {
 				recipients,
 				actorId: me.id,
 				orgId,
+				participants: [...assignedIds, customerId].filter((x): x is string => !!x),
 				render: (locale) => ({
 					title: m.notify_ticket_created({ ref: displayId, subject }, { locale }),
 					body: description
@@ -526,6 +527,11 @@ export const actions: Actions = {
 					recipients,
 					actorId,
 					orgId: before.orgId,
+					participants: [
+						...(patch.assigneeIds ?? before.assignees),
+						before.customerId,
+						before.createdBy
+					].filter((x): x is string => !!x),
 					render: (locale) => ({
 						title: m.notify_ticket_status_changed(
 							{
@@ -559,6 +565,11 @@ export const actions: Actions = {
 					recipients,
 					actorId,
 					orgId: before.orgId,
+					participants: [
+						...(patch.assigneeIds ?? before.assignees),
+						before.customerId,
+						before.createdBy
+					].filter((x): x is string => !!x),
 					render: (locale) => ({
 						title: m.notify_ticket_priority_changed(
 							{
@@ -683,6 +694,7 @@ export const actions: Actions = {
 					recipients,
 					actorId: me.id,
 					orgId: t.orgId,
+					participants: [...t.assignees, t.customerId, t.createdBy].filter((x): x is string => !!x),
 					render: (locale) => ({
 						title: internal
 							? m.notify_ticket_internal_note({ ref: t.displayId }, { locale })
@@ -700,7 +712,7 @@ export const actions: Actions = {
 				const mentionIds = parseMentionIds(body).filter((mid) => recipients.has(mid));
 				if (mentionIds.length > 0) {
 					await notify({
-						kind: 'mentioned',
+						kind: 'ticketMentioned',
 						recipients: mentionIds,
 						actorId: me.id,
 						orgId: t.orgId,

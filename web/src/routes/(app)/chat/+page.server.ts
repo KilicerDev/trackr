@@ -133,6 +133,8 @@ async function notifyChatMessage(opts: {
 		recipients,
 		actorId,
 		orgId,
+		// "Participating" in a thread = explicitly following its tags.
+		participants: [...followers],
 		render: (locale) => ({
 			title: m.notify_chat_message({ thread: threadTitle ?? m.chat_untitled() }, { locale }),
 			body: body.slice(0, 280)
@@ -145,7 +147,7 @@ async function notifyChatMessage(opts: {
 	const mentioned = await orgMentionRecipients(orgId, parseMentionIds(body));
 	if (mentioned.size > 0) {
 		void notify({
-			kind: 'mentioned',
+			kind: 'chatMentioned',
 			recipients: mentioned,
 			actorId,
 			orgId,
