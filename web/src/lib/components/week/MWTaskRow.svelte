@@ -39,7 +39,7 @@
 	{/if}
 	{#if timeMinutes}
 		<span
-			class="w-10 text-right font-mono text-[12px] {logged > 0 ? 'text-text-2' : 'text-text-3'}"
+			class="w-[54px] shrink-0 whitespace-nowrap text-right font-mono text-[12px] {logged > 0 ? 'text-text-2' : 'text-text-3'}"
 			title={logged > 0 ? m.week_time_logged() : m.week_time_estimated()}
 			>{formatEstimate(timeMinutes)}</span
 		>

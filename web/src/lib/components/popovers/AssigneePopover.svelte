@@ -15,6 +15,7 @@
 		initials: string;
 		color: string;
 		status?: string;
+		internal?: boolean;
 	};
 
 	interface Props {
@@ -22,15 +23,20 @@
 		onchange: (v: string[]) => void;
 		onclose: () => void;
 		users?: AssignableUser[];
+		// Tasks are internal work, so only platform (internal team) users are
+		// assignable. Tickets leave this off to keep client/portal users selectable.
+		internalOnly?: boolean;
 	}
-	let { value, onchange, onclose, users: providedUsers }: Props = $props();
+	let { value, onchange, onclose, users: providedUsers, internalOnly = false }: Props = $props();
 
 	let q = $state('');
 
 	let users = $derived.by(() => {
 		const source: AssignableUser[] =
 			providedUsers ?? (page.data as { users?: AssignableUser[] }).users ?? [];
-		const list = source.filter((u) => u.status !== 'disabled');
+		const list = source.filter(
+			(u) => u.status !== 'disabled' && (!internalOnly || u.internal)
+		);
 		if (!q) return list;
 		const needle = q.toLowerCase();
 		return list.filter(

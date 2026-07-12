@@ -8,7 +8,9 @@ import {
 	task,
 	taskAssignee,
 	taskPlanning,
-	taskTimeLog
+	taskTimeLog,
+	organization,
+	organizationMember
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
 import { createTask, loadTasks } from '$lib/server/tasks';
@@ -307,10 +309,17 @@ export const actions: Actions = {
 				if (assigneesUpdate !== null) {
 					await tx.delete(taskAssignee).where(eq(taskAssignee.taskId, target.id));
 					if (assigneesUpdate.length > 0) {
+						// Tasks are internal work: only platform (internal-org) users may
+						// be assigned. Mirror the client-side `internalOnly` guard so a
+						// crafted request can't persist an external/portal assignee.
 						const valid = await tx
-							.select({ id: user.id })
+							.selectDistinct({ id: user.id })
 							.from(user)
-							.where(inArray(user.id, assigneesUpdate));
+							.innerJoin(organizationMember, eq(organizationMember.userId, user.id))
+							.innerJoin(organization, eq(organization.id, organizationMember.orgId))
+							.where(
+								and(inArray(user.id, assigneesUpdate), eq(organization.isInternal, true))
+							);
 						if (valid.length > 0) {
 							await tx
 								.insert(taskAssignee)

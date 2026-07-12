@@ -586,6 +586,7 @@
 					</button>
 					{#if openPop === 'assignees'}
 						<AssigneePopover
+							internalOnly
 							value={assigneeIds}
 							onchange={(v) => {
 								if (draft) {

@@ -311,6 +311,7 @@
 			</button>
 			{#if pop === 'assignee'}
 				<AssigneePopover
+					internalOnly
 					value={[assignee]}
 					onchange={(v) => (assigneeOverride = v[0] ?? null)}
 					onclose={() => (pop = null)}

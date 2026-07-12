@@ -9,7 +9,8 @@ import {
 	taskPlanning,
 	taskTimeLog,
 	ticket,
-	organization
+	organization,
+	organizationMember
 } from './db/app.schema';
 import { user } from './db/auth.schema';
 import { logActivity } from './activity';
@@ -312,11 +313,16 @@ export async function createTask(
 			sourceTicketId: input.sourceTicketId ?? null
 		});
 
+		// Tasks are internal work: only platform (internal-org) users may be
+		// assigned. Filter out any external/portal users before persisting, then
+		// fall back to the creator so a task always has at least one assignee.
 		const validAssignees: string[] = [];
 		const usersFound = await tx
-			.select({ id: user.id })
+			.selectDistinct({ id: user.id })
 			.from(user)
-			.where(inArray(user.id, requested));
+			.innerJoin(organizationMember, eq(organizationMember.userId, user.id))
+			.innerJoin(organization, eq(organization.id, organizationMember.orgId))
+			.where(and(inArray(user.id, requested), eq(organization.isInternal, true)));
 		for (const u of usersFound) validAssignees.push(u.id);
 		if (validAssignees.length === 0) validAssignees.push(input.createdBy);
 

@@ -364,6 +364,7 @@
 						</button>
 						{#if pop === 'assignees'}
 							<AssigneePopover
+								internalOnly
 								value={assignees}
 								onchange={(v) => (assignees = v)}
 								onclose={() => (pop = null)}
