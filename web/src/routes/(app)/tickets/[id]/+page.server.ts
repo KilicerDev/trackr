@@ -19,7 +19,7 @@ import {
 } from '$lib/server/tickets';
 import { createTask } from '$lib/server/tasks';
 import { recordAudit } from '$lib/server/audit';
-import { markEntityRead, notify } from '$lib/server/notify';
+import { notify } from '$lib/server/notify';
 import { listAttachments, listAttachmentsForMany } from '$lib/server/attachments';
 import { m } from '$lib/paraglide/messages';
 
@@ -162,9 +162,10 @@ export const load: ServerLoad = async ({ params, locals }) => {
 	const sourceChat =
 		src && !src.deletedAt ? { threadId: src.threadId, orgId: src.orgId, title: src.title } : null;
 
-	// Opening the ticket clears any unread bell items pointing at it.
-	// Fire and forget — a failed update should never break the load.
-	void markEntityRead(locals.user.id, 'ticket', id).catch(() => {});
+	// NOTE: marking notifications read is intentionally NOT done here. A `load`
+	// runs during hover-preloading (data-sveltekit-preload-data="hover"), so
+	// clearing read-state here would fire just by hovering a ticket link. The
+	// client marks the ticket read on mount instead (see +page.svelte).
 
 	return {
 		ticket,

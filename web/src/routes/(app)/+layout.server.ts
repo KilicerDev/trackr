@@ -50,11 +50,16 @@ function userColor(id: string): string {
 	return `hsl(${h % 360} 55% 60%)`;
 }
 
-export const load: LayoutServerLoad = async ({ locals, url }) => {
+export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 	if (!locals.user) {
 		const next = url.pathname + url.search;
 		redirect(302, `/login?next=${encodeURIComponent(next)}`);
 	}
+
+	// Shared invalidation key for notification read-state. Both the bell (this
+	// load) and the inbox page depend on it, so a single
+	// `invalidate('app:notifications')` after a mark-read refreshes both in sync.
+	depends('app:notifications');
 
 	// Confine portal users (external org ticket-only users) to the ticket routes.
 	const portal = isPortalUser(locals);

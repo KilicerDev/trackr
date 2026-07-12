@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto, invalidateAll } from '$app/navigation';
+	import { goto, invalidate, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
@@ -100,6 +100,22 @@
 	const categoryMeta = $derived(TICKET_CATEGORIES.find((c) => c.id === t.category));
 	const assigneeUsers = $derived((t.assignees ?? []).map((id) => who(id)));
 	const customer = $derived(who(t.customerId));
+
+	// Opening a ticket clears any unread bell items pointing at it. Done here
+	// (client-side, re-firing when the ticket id changes) rather than in the
+	// server load: the load also runs during hover-preloading, so doing it there
+	// would mark the ticket read just by hovering its link. After the write we
+	// invalidate the shared notifications key so the bell + inbox refresh in sync.
+	$effect(() => {
+		const ticketId = t.id;
+		void fetch('/api/notifications/read', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ entityType: 'ticket', entityId: ticketId })
+		})
+			.then(() => invalidate('app:notifications'))
+			.catch(() => {});
+	});
 
 	let pop = $state<'status' | 'priority' | 'category' | 'assignee' | null>(null);
 	let pending = $state(false);

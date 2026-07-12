@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import { page } from '$app/state';
 	import { showToast } from '$lib/stores/toast.svelte';
@@ -256,14 +256,16 @@
 		// Reset the compose box when the task changes.
 		commentBody = '';
 		// Best-effort mark-read so the bell dot clears when the user opens
-		// a task they were notified about. Failures are silent — bell state
-		// resolves itself on next page load.
+		// a task they were notified about. After the write we invalidate the
+		// shared notifications key so the bell + inbox refresh in sync.
 		if (task) {
 			void fetch('/api/notifications/read', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ entityType: 'task', displayId: task.id })
-			}).catch(() => {});
+			})
+				.then(() => invalidate('app:notifications'))
+				.catch(() => {});
 		}
 	});
 

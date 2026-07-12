@@ -148,6 +148,21 @@ export async function markEntityRead(
 		);
 }
 
+// Mark a single notification read. Scoped to the recipient so a user can only
+// ever clear their own rows, even if they pass someone else's notification id.
+export async function markRead(recipientId: string, notificationId: string): Promise<void> {
+	await db
+		.update(notification)
+		.set({ readAt: new Date() })
+		.where(
+			and(
+				eq(notification.id, notificationId),
+				eq(notification.recipientId, recipientId),
+				isNull(notification.readAt)
+			)
+		);
+}
+
 export async function markAllRead(recipientId: string): Promise<void> {
 	await db
 		.update(notification)

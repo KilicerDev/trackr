@@ -6,6 +6,7 @@
 	import Kbd from '../Kbd.svelte';
 	import FeedbackModal from '../FeedbackModal.svelte';
 	import { page } from '$app/state';
+	import { goto, invalidate } from '$app/navigation';
 	import { setActiveOrg, type PortalOrg } from '$lib/api/portal';
 	import { getSidebar } from '$lib/stores/sidebar.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -80,6 +81,45 @@
 		const d = Math.floor(h / 24);
 		return `${d}d`;
 	}
+
+	let markingAll = $state(false);
+
+	// Mark a notification read, then navigate. We await the write so the layout
+	// load on the destination recomputes the badge from committed state (a
+	// fire-and-forget write races that count query and leaves the dot stale).
+	async function openNotification(e: MouseEvent, n: NotifItem) {
+		bellOpen = false;
+		if (n.readAt) return; // already read — let the plain <a> navigation run
+		e.preventDefault();
+		try {
+			await fetch('/api/notifications/read', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ id: n.id })
+			});
+			await invalidate('app:notifications');
+		} catch {
+			// Non-fatal: navigate anyway, entity-based mark-read may still clear it.
+		}
+		await goto(n.url);
+	}
+
+	async function markAllRead() {
+		if (markingAll || notifications.unreadCount === 0) return;
+		markingAll = true;
+		try {
+			await fetch('/api/notifications/read', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ all: true })
+			});
+			await invalidate('app:notifications');
+		} catch {
+			// swallow — the count simply won't update this attempt
+		} finally {
+			markingAll = false;
+		}
+	}
 </script>
 
 <header class="flex shrink-0 items-center gap-3.5 border-b border-border bg-bg px-[24px] py-3">
@@ -124,9 +164,19 @@
 				<div class="flex items-center justify-between px-2 pt-1 pb-2">
 					<span class="text-[13px] font-medium">{m.shell_notifications()}</span>
 					{#if notifications.unreadCount > 0}
-						<span class="text-[12px] tracking-[0.08em] text-text-3 uppercase">
-							{m.shell_notifications_unread({ n: notifications.unreadCount })}
-						</span>
+						<div class="flex items-center gap-2">
+							<span class="text-[12px] tracking-[0.08em] text-text-3 uppercase">
+								{m.shell_notifications_unread({ n: notifications.unreadCount })}
+							</span>
+							<button
+								type="button"
+								onclick={markAllRead}
+								disabled={markingAll}
+								class="text-[12px] text-text-3 hover:text-text disabled:opacity-50"
+							>
+								{m.shell_notifications_mark_all_read()}
+							</button>
+						</div>
 					{/if}
 				</div>
 				<div class="-mx-0.5 mb-1 h-px bg-border"></div>
@@ -139,7 +189,7 @@
 						{#each notifications.items as n (n.id)}
 							<a
 								href={n.url}
-								onclick={() => (bellOpen = false)}
+								onclick={(e) => openNotification(e, n)}
 								class="flex items-start gap-2 rounded-md px-2 py-2 hover:bg-surface-2 {n.readAt
 									? 'text-text-2'
 									: 'text-text'}"
@@ -155,8 +205,7 @@
 										<div class="mt-0.5 line-clamp-2 text-[12px] text-text-3">{n.body}</div>
 									{/if}
 								</div>
-								<span class="mt-0.5 shrink-0 text-[12px] text-text-4">{timeAgo(n.createdAt)}</span
-								>
+								<span class="mt-0.5 shrink-0 text-[12px] text-text-4">{timeAgo(n.createdAt)}</span>
 							</a>
 						{/each}
 					</div>
@@ -287,7 +336,7 @@
 				<form method="post" action="/logout" class="contents">
 					<button
 						type="submit"
-						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none hover:bg-[#ef4f5e]/10 text-prio-urgent"
+						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-prio-urgent hover:bg-[#ef4f5e]/10"
 					>
 						<span class="grid h-4 w-4 shrink-0 place-items-center"
 							><Icon name="logout" size={15} /></span
