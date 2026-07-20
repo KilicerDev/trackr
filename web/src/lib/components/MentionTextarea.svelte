@@ -68,6 +68,7 @@
 	}: Props = $props();
 
 	let root = $state<HTMLDivElement | null>(null);
+	let menu = $state<HTMLDivElement | null>(null);
 	let open = $state(false);
 	let query = $state('');
 	let activeIndex = $state(0);
@@ -101,13 +102,18 @@
 				u.status !== 'disabled' &&
 				(!projectId || u.internal || (u.projectIds ?? []).includes(projectId))
 		);
-		if (!query) return all.slice(0, 6);
 		const needle = query.toLowerCase();
-		return all
-			.filter(
-				(u) => u.name.toLowerCase().includes(needle) || u.email.toLowerCase().includes(needle)
-			)
-			.slice(0, 6);
+		const matches = needle
+			? all.filter(
+					(u) => u.name.toLowerCase().includes(needle) || u.email.toLowerCase().includes(needle)
+				)
+			: all;
+		return matches.sort(
+			(a, b) =>
+				a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }) ||
+				a.email.localeCompare(b.email, undefined, { sensitivity: 'base' }) ||
+				a.id.localeCompare(b.id)
+		);
 	});
 
 	// Total selectable rows currently shown (drives keyboard nav).
@@ -261,15 +267,23 @@
 		onTagAdd?.(id, label);
 	}
 
+	async function moveActive(delta: number) {
+		activeIndex = (activeIndex + delta + optionCount) % optionCount;
+		await tick();
+		menu
+			?.querySelector<HTMLElement>(`[data-option-index="${activeIndex}"]`)
+			?.scrollIntoView({ block: 'nearest' });
+	}
+
 	function handleKeydown(e: KeyboardEvent) {
 		if (open && optionCount && !e.metaKey && !e.ctrlKey) {
 			if (e.key === 'ArrowDown') {
-				activeIndex = (activeIndex + 1) % optionCount;
+				void moveActive(1);
 				e.preventDefault();
 				return;
 			}
 			if (e.key === 'ArrowUp') {
-				activeIndex = (activeIndex - 1 + optionCount) % optionCount;
+				void moveActive(-1);
 				e.preventDefault();
 				return;
 			}
@@ -321,13 +335,15 @@
 
 	{#if open && optionCount}
 		<div
+			bind:this={menu}
 			use:autoPlace
-			class="absolute top-full left-0 z-50 mt-1 max-w-[308px] min-w-[242px] rounded-[10px] border border-border bg-bg-elev p-1 shadow-lg"
+			class="absolute top-full left-0 z-50 mt-1 max-h-64 max-w-[308px] min-w-[242px] overflow-y-auto overscroll-contain rounded-[10px] border border-border bg-bg-elev p-1 shadow-lg"
 		>
 			{#if mode === '@'}
 				{#each candidates as u, i (u.id)}
 					<button
 						type="button"
+						data-option-index={i}
 						onmousedown={(e) => {
 							e.preventDefault();
 							void choose(u);
@@ -346,6 +362,7 @@
 				{#each tagMatches as t, i (t.id)}
 					<button
 						type="button"
+						data-option-index={i}
 						onmousedown={(e) => {
 							e.preventDefault();
 							void chooseTag(t.id, t.label);
@@ -363,6 +380,7 @@
 				{#if showCreateTag}
 					<button
 						type="button"
+						data-option-index={tagMatches.length}
 						onmousedown={(e) => {
 							e.preventDefault();
 							void chooseTag(null, query.trim());
