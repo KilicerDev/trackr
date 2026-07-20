@@ -16,9 +16,17 @@
 		/** Called with each uploaded attachment; if omitted, falls back to invalidateAll. */
 		onuploaded?: (attachment: AttachmentDTO) => void;
 		label?: string;
+		/** Disable the button-sized drop target when a parent owns a larger one. */
+		dropzone?: boolean;
 	}
 
-	let { entityType, entityId, onuploaded, label = m.attach_attach_files() }: Props = $props();
+	let {
+		entityType,
+		entityId,
+		onuploaded,
+		label = m.attach_attach_files(),
+		dropzone = true
+	}: Props = $props();
 
 	let uploading = $state(false);
 	let input = $state<HTMLInputElement>();
@@ -39,7 +47,8 @@
 		return true;
 	}
 
-	async function upload(incoming: File[]) {
+	export async function upload(incoming: File[]) {
+		if (uploading) return;
 		const { accepted, errors } = selectStageable(incoming, 0);
 		for (const err of errors) showToast('err', err);
 		if (!accepted.length) return;
@@ -63,7 +72,7 @@
 	}
 </script>
 
-<AttachmentDropzone onfiles={upload} disabled={uploading}>
+{#snippet control()}
 	<button
 		type="button"
 		disabled={uploading}
@@ -78,4 +87,12 @@
 		<span>{uploading ? m.attach_uploading() : label}</span>
 	</button>
 	<input bind:this={input} type="file" multiple hidden onchange={onPick} />
-</AttachmentDropzone>
+{/snippet}
+
+{#if dropzone}
+	<AttachmentDropzone onfiles={upload} disabled={uploading}>
+		{@render control()}
+	</AttachmentDropzone>
+{:else}
+	{@render control()}
+{/if}

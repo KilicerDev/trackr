@@ -64,6 +64,7 @@
 		linkedTasks: { id: string; displayId: string; title: string; status: string }[];
 		sourceChat: { threadId: string; orgId: string; title: string | null } | null;
 	};
+	type AttachmentUploaderHandle = { upload: (files: File[]) => Promise<void> };
 	let { data }: { data: PageData } = $props();
 
 	// Names of everyone on this ticket, resolved server-side. Prefer this over the
@@ -123,6 +124,7 @@
 
 	let pop = $state<'status' | 'priority' | 'category' | 'assignee' | null>(null);
 	let tagsPop = $state<'mobile' | 'desktop' | null>(null);
+	let ticketAttachmentUploader = $state<AttachmentUploaderHandle>();
 	let pending = $state(false);
 
 	async function patch(
@@ -797,11 +799,16 @@
 	</div>
 
 	<!-- Right: details rail (checklist, attachments, linked tasks) -->
-	<aside class="hidden w-[374px] shrink-0 overflow-y-auto border-l border-border lg:block">
-		<div class="space-y-6 px-5 py-6">
-			{@render detailsRail('desktop')}
-		</div>
-	</aside>
+	<AttachmentDropzone
+		onfiles={(files) => void ticketAttachmentUploader?.upload(files)}
+		class="hidden w-[374px] shrink-0 lg:block"
+	>
+		<aside class="h-full overflow-y-auto border-l border-border">
+			<div class="space-y-6 px-5 py-6">
+				{@render detailsRail('desktop')}
+			</div>
+		</aside>
+	</AttachmentDropzone>
 </div>
 
 {#if data.canCreateTask}
@@ -878,7 +885,16 @@
 							>{data.attachments.length}</span
 						>{/if}
 				</div>
-				<AttachmentUploader entityType="ticket" entityId={t.id} />
+				{#if placement === 'desktop'}
+					<AttachmentUploader
+						bind:this={ticketAttachmentUploader}
+						entityType="ticket"
+						entityId={t.id}
+						dropzone={false}
+					/>
+				{:else}
+					<AttachmentUploader entityType="ticket" entityId={t.id} />
+				{/if}
 			</div>
 			{#if data.attachments.length}
 				<!-- Deletion is agent-only; clients/members can attach but not remove. -->

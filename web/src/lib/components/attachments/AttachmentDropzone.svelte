@@ -9,9 +9,16 @@
 		children: Snippet;
 		disabled?: boolean;
 		label?: string;
+		class?: string;
 	}
 
-	let { onfiles, children, disabled = false, label = m.attach_drop_files() }: Props = $props();
+	let {
+		onfiles,
+		children,
+		disabled = false,
+		label = m.attach_drop_files(),
+		class: cls = ''
+	}: Props = $props();
 
 	// dragenter/dragleave fire for every descendant the pointer crosses, so a
 	// naive boolean flickers. Counting enters minus leaves tracks "is the pointer
@@ -26,6 +33,7 @@
 	function onDragEnter(e: DragEvent) {
 		if (disabled || !hasFiles(e)) return;
 		e.preventDefault();
+		e.stopPropagation();
 		dragDepth++;
 	}
 
@@ -33,11 +41,13 @@
 		if (disabled || !hasFiles(e)) return;
 		// Required for the drop event to fire.
 		e.preventDefault();
+		e.stopPropagation();
 		if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
 	}
 
 	function onDragLeave(e: DragEvent) {
 		if (disabled || !hasFiles(e)) return;
+		e.stopPropagation();
 		dragDepth = Math.max(0, dragDepth - 1);
 	}
 
@@ -45,13 +55,14 @@
 		dragDepth = 0;
 		if (disabled || !e.dataTransfer) return;
 		e.preventDefault();
+		e.stopPropagation();
 		const files = Array.from(e.dataTransfer.files);
 		if (files.length) onfiles(files);
 	}
 </script>
 
 <div
-	class="relative"
+	class="relative {cls}"
 	role="presentation"
 	ondragenter={onDragEnter}
 	ondragover={onDragOver}

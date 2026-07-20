@@ -47,6 +47,7 @@
 		color: string;
 		status: 'active' | 'invited' | 'disabled';
 	};
+	type AttachmentUploaderHandle = { upload: (files: File[]) => Promise<void> };
 
 	interface Props {
 		task: Task | null;
@@ -136,6 +137,7 @@
 	});
 
 	let savingField = $state<string | null>(null);
+	let taskAttachmentUploader = $state<AttachmentUploaderHandle>();
 
 	async function postAction(
 		action: 'update' | 'commentAdd' | 'timeLogAdd' | 'planSet' | 'delete',
@@ -417,7 +419,13 @@
 	}
 </script>
 
-<Drawer open={!!task} {onclose}>
+<Drawer
+	open={!!task}
+	{onclose}
+	onfiles={(files) => void taskAttachmentUploader?.upload(files)}
+	dropDisabled={!draft?.uuid}
+	dropLabel={m.tasks_drop_files_to_attach()}
+>
 	{#if draft && status && prio && project}
 		<div class="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3">
 			<TypeBadge type={draft.type ?? 'task'} idText={draft.id} showLabel={false} />
@@ -792,7 +800,12 @@
 									>{draft.files.length}</span
 								>{/if}
 						</div>
-						<AttachmentUploader entityType="task" entityId={draft.uuid} />
+						<AttachmentUploader
+							bind:this={taskAttachmentUploader}
+							entityType="task"
+							entityId={draft.uuid}
+							dropzone={false}
+						/>
 					</div>
 					{#if draft.files?.length}
 						<AttachmentList
@@ -914,7 +927,8 @@
 						<span class="text-text-2">{resolveUser(draft.createdBy)?.name ?? '—'}</span></span
 					>{/if}
 				{#if draft.createdAt}<span
-						>{m.tasks_created()} <span class="font-mono text-text-3">{draft.createdAt}</span></span
+						>{m.tasks_created()}
+						<span class="font-mono text-text-3">{draft.createdAt}</span></span
 					>{/if}
 				<span>{m.tasks_updated()} <span class="font-mono text-text-3">{draft.updated}</span></span>
 			</div>

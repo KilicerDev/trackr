@@ -2,13 +2,58 @@
 	import type { Snippet } from 'svelte';
 	import { fly, fade } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
+	import Icon from './Icon.svelte';
+	import { m } from '$lib/paraglide/messages';
 	interface Props {
 		open: boolean;
 		onclose: () => void;
 		width?: number;
 		children: Snippet;
+		onfiles?: (files: File[]) => void;
+		dropDisabled?: boolean;
+		dropLabel?: string;
 	}
-	let { open, onclose, width = 460, children }: Props = $props();
+	let {
+		open,
+		onclose,
+		width = 460,
+		children,
+		onfiles,
+		dropDisabled = false,
+		dropLabel = m.attach_drop_files()
+	}: Props = $props();
+
+	let dragDepth = $state(0);
+	const dragging = $derived(dragDepth > 0);
+
+	function hasFiles(e: DragEvent): boolean {
+		return !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files');
+	}
+
+	function onDragEnter(e: DragEvent) {
+		if (!onfiles || dropDisabled || !hasFiles(e)) return;
+		e.preventDefault();
+		dragDepth++;
+	}
+
+	function onDragOver(e: DragEvent) {
+		if (!onfiles || dropDisabled || !hasFiles(e)) return;
+		e.preventDefault();
+		if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+	}
+
+	function onDragLeave(e: DragEvent) {
+		if (!onfiles || dropDisabled || !hasFiles(e)) return;
+		dragDepth = Math.max(0, dragDepth - 1);
+	}
+
+	function onDrop(e: DragEvent) {
+		dragDepth = 0;
+		if (!onfiles || dropDisabled || !e.dataTransfer) return;
+		e.preventDefault();
+		const files = Array.from(e.dataTransfer.files);
+		if (files.length) onfiles(files);
+	}
 
 	function onKeydown(e: KeyboardEvent) {
 		if (!open || e.key !== 'Escape') return;
@@ -35,7 +80,24 @@
 		transition:fly={{ x: width + 20, duration: 280, easing: cubicOut, opacity: 1 }}
 		class="fixed top-0 right-0 bottom-0 z-50 flex flex-col overflow-hidden border-l border-border bg-bg-elev shadow-lg"
 		style:width="{width}px"
+		ondragenter={onDragEnter}
+		ondragover={onDragOver}
+		ondragleave={onDragLeave}
+		ondrop={onDrop}
 	>
 		{@render children()}
+		{#if dragging}
+			<div
+				class="pointer-events-none absolute inset-0 z-50 grid place-items-center bg-accent/8 backdrop-blur-[1px]"
+				style:box-shadow="inset 0 0 0 2px var(--color-accent, #ef7a6d)"
+			>
+				<div
+					class="flex flex-col items-center gap-2 rounded-xl border border-accent/40 bg-bg-elev px-4 py-3 text-accent shadow-lg"
+				>
+					<Icon name="paperclip" size={22} />
+					<span class="text-[14px] font-medium">{dropLabel}</span>
+				</div>
+			</div>
+		{/if}
 	</aside>
 {/if}
