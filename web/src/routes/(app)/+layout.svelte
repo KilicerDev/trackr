@@ -85,7 +85,9 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<div class="flex h-screen flex-col overflow-hidden">
+<!-- Keep the application shell viewport-anchored. Long routes own their scroll
+	inside the shell; the document itself must never pull the global sidebar away. -->
+<div class="fixed inset-0 flex flex-col overflow-hidden">
 	{#if data.impersonator}
 		<ImpersonationBanner
 			targetName={data.user?.name ?? null}
