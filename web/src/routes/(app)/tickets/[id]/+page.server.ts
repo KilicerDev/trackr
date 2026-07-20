@@ -78,6 +78,15 @@ export const load: ServerLoad = async ({ params, locals }) => {
 		customerId: ticket.customerId,
 		assigneeIds: ticket.assignees
 	});
+	const tagRows = isAgent
+		? await db
+				.select({ tags: ticketTable.tags })
+				.from(ticketTable)
+				.where(and(eq(ticketTable.orgId, ticket.orgId), isNull(ticketTable.deletedAt)))
+		: [];
+	const tagSuggestions = [...new Set(tagRows.flatMap((row) => row.tags))].sort((a, b) =>
+		a.localeCompare(b, undefined, { sensitivity: 'base' })
+	);
 
 	const messages = await loadTicketMessages(id, { includeInternal: canUseInternalNotes });
 
@@ -175,6 +184,7 @@ export const load: ServerLoad = async ({ params, locals }) => {
 		canUseInternalNotes,
 		assignableUsers,
 		mentionUsers,
+		tagSuggestions,
 		attachments,
 		messageAttachments,
 		currentUserId: locals.user.id,

@@ -8,8 +8,10 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import AvatarStack from '$lib/components/AvatarStack.svelte';
 	import AssigneePopover from '$lib/components/popovers/AssigneePopover.svelte';
+	import TagsPopover from '$lib/components/popovers/TagsPopover.svelte';
 	import Composer from '$lib/components/Composer.svelte';
 	import MentionText from '$lib/components/MentionText.svelte';
+	import LabelChip from '$lib/components/LabelChip.svelte';
 	import Checklist from '$lib/components/Checklist.svelte';
 	import PriorityBars from '$lib/components/PriorityBars.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
@@ -56,6 +58,7 @@
 			status: 'active' | 'invited' | 'disabled';
 			internal: boolean;
 		}[];
+		tagSuggestions: string[];
 		canCreateTask: boolean;
 		canEditChecklist: boolean;
 		linkedTasks: { id: string; displayId: string; title: string; status: string }[];
@@ -119,10 +122,11 @@
 	});
 
 	let pop = $state<'status' | 'priority' | 'category' | 'assignee' | null>(null);
+	let tagsPop = $state<'mobile' | 'desktop' | null>(null);
 	let pending = $state(false);
 
 	async function patch(
-		field: 'status' | 'priority' | 'category' | 'assignees',
+		field: 'status' | 'priority' | 'category' | 'assignees' | 'tags',
 		value: string | string[] | null,
 		opts: { keepOpen?: boolean } = {}
 	) {
@@ -626,7 +630,7 @@
 				<!-- Details (checklist, attachments, linked tasks) live in the right rail
 		     on desktop; on mobile they stack inline here. -->
 				<div class="mb-6 lg:hidden">
-					{@render detailsRail()}
+					{@render detailsRail('mobile')}
 				</div>
 
 				<!-- Activity timeline -->
@@ -795,7 +799,7 @@
 	<!-- Right: details rail (checklist, attachments, linked tasks) -->
 	<aside class="hidden w-[374px] shrink-0 overflow-y-auto border-l border-border lg:block">
 		<div class="space-y-6 px-5 py-6">
-			{@render detailsRail()}
+			{@render detailsRail('desktop')}
 		</div>
 	</aside>
 </div>
@@ -817,8 +821,46 @@
 {/if}
 
 <!-- Shared by the desktop right rail and the mobile inline block. -->
-{#snippet detailsRail()}
+{#snippet detailsRail(placement: 'mobile' | 'desktop')}
 	<div class="space-y-6">
+		<!-- Ticket tags -->
+		<div>
+			<div class="mb-2 text-[12px] tracking-[0.08em] text-text-4 uppercase">
+				{m.tasks_tags()}
+			</div>
+			<div class="relative flex flex-wrap items-center gap-1.5">
+				{#each t.tags as tag (tag)}
+					<LabelChip id={tag} />
+				{/each}
+				{#if isAgent}
+					<button
+						type="button"
+						disabled={pending}
+						title={m.tasks_add_tag()}
+						aria-label={m.tasks_add_tag()}
+						onclick={() => (tagsPop = tagsPop === placement ? null : placement)}
+						class="inline-flex items-center justify-center gap-1 rounded-md border border-dashed border-border text-text-3 transition-colors hover:border-border-strong hover:text-text disabled:opacity-50 {t
+							.tags.length
+							? 'h-5 w-5'
+							: 'h-6 px-2 text-[13px]'}"
+					>
+						<Icon name="plus" size={12} />
+						{#if t.tags.length === 0}<span>{m.tasks_add_tags()}</span>{/if}
+					</button>
+					{#if tagsPop === placement}
+						<TagsPopover
+							value={t.tags}
+							suggestions={data.tagSuggestions}
+							onchange={(v) => patch('tags', v, { keepOpen: true })}
+							onclose={() => (tagsPop = null)}
+						/>
+					{/if}
+				{:else if t.tags.length === 0}
+					<p class="text-[14px] text-text-3">{m.tasks_no_tags()}</p>
+				{/if}
+			</div>
+		</div>
+
 		<!-- Checklist (shared across all ticket participants) -->
 		<Checklist
 			items={checklist}
