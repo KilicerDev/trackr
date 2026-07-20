@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
+	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Popover from '$lib/components/Popover.svelte';
@@ -280,7 +281,13 @@
 	});
 </script>
 
-<div class="flex h-full flex-col bg-bg">
+<svelte:head><title>Trackr · {m.chat_title()}</title></svelte:head>
+
+<Topbar
+	crumbs={[{ label: m.shell_workspace_crumb(), href: '/tasks' }, { label: m.chat_title() }]}
+/>
+
+<div class="flex min-h-0 flex-1 flex-col bg-bg">
 	<!-- ── Header ─────────────────────────────────────────────────────────────── -->
 	<header class="flex items-center gap-3 border-b border-border px-6 py-2.5">
 		{#if !data.isPortal && data.orgs.length > 1}
