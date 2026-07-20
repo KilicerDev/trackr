@@ -58,6 +58,7 @@ export const load: ServerLoad = async ({ params, locals }) => {
 	if (!ticket) throw error(404, m.tickets_not_found_404());
 
 	const isAgent = await can(locals, 'org.tickets.edit.any', { orgId: ticket.orgId });
+	const canUseInternalNotes = isTrackrTeam(locals);
 	if (!(await canViewTicket(locals, ticket))) throw error(403, m.tickets_no_access());
 
 	// Checklist is the shared, participant-editable surface: agents plus anyone
@@ -78,7 +79,7 @@ export const load: ServerLoad = async ({ params, locals }) => {
 		assigneeIds: ticket.assignees
 	});
 
-	const messages = await loadTicketMessages(id, { includeInternal: isAgent });
+	const messages = await loadTicketMessages(id, { includeInternal: canUseInternalNotes });
 
 	// Attachments: ticket-level, plus those on each message (keyed by message id).
 	const [attachments, messageAttachmentMap] = await Promise.all([
@@ -171,6 +172,7 @@ export const load: ServerLoad = async ({ params, locals }) => {
 		ticket,
 		messages,
 		isAgent,
+		canUseInternalNotes,
 		assignableUsers,
 		mentionUsers,
 		attachments,

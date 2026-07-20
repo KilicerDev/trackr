@@ -361,6 +361,8 @@ interface EntityContext {
 	/** For a `message` attachment: which permission model applies (the thread's
 	 * subject). Lets one polymorphic type carry chat / ticket / task semantics. */
 	messageSubject?: 'org' | 'ticket' | 'task';
+	/** Ticket-message attachments inherit the note's internal-team-only access. */
+	isInternalMessage?: boolean;
 }
 
 /**
@@ -404,7 +406,8 @@ export async function resolveEntityContext(
 					ticketId: ticket.id,
 					orgId: ticket.orgId,
 					customerId: ticket.customerId,
-					createdBy: ticket.createdBy
+					createdBy: ticket.createdBy,
+					internal: ticketMessage.isInternalNote
 				})
 				.from(ticketMessage)
 				.innerJoin(ticket, eq(ticket.id, ticketMessage.ticketId))
@@ -415,7 +418,8 @@ export async function resolveEntityContext(
 			return {
 				orgId: row.orgId,
 				projectId: null,
-				ticketOwners: [row.customerId, row.createdBy, ...assignees].filter((v): v is string => !!v)
+				ticketOwners: [row.customerId, row.createdBy, ...assignees].filter((v): v is string => !!v),
+				isInternalMessage: row.internal
 			};
 		}
 		case 'task': {
@@ -453,7 +457,11 @@ export async function resolveEntityContext(
 			// A message's scope comes from its thread's subject: org chat, a ticket,
 			// or a task. Resolve it so the right permission model applies below.
 			const [row] = await db
-				.select({ subjectType: thread.subjectType, subjectId: thread.subjectId })
+				.select({
+					subjectType: thread.subjectType,
+					subjectId: thread.subjectId,
+					internal: message.internal
+				})
 				.from(message)
 				.innerJoin(thread, eq(thread.id, message.threadId))
 				.where(and(eq(message.id, entityId), isNull(message.deletedAt), isNull(thread.deletedAt)))
@@ -478,7 +486,8 @@ export async function resolveEntityContext(
 					orgId: t.orgId,
 					projectId: null,
 					ticketOwners: [t.customerId, t.createdBy, ...assignees].filter((v): v is string => !!v),
-					messageSubject: 'ticket'
+					messageSubject: 'ticket',
+					isInternalMessage: row.internal
 				};
 			}
 			if (row.subjectType === 'task') {
@@ -514,6 +523,7 @@ export async function authorizeAttachmentAccess(
 		case 'ticket_message': {
 			const orgId = ctx.orgId;
 			if (!orgId) return false;
+			if (ctx.isInternalMessage && !isTrackrTeam(locals)) return false;
 			if (mode === 'write') {
 				return (
 					(await can(locals, 'org.tickets.edit.any', { orgId })) ||
@@ -548,6 +558,7 @@ export async function authorizeAttachmentAccess(
 			if (ctx.messageSubject === 'ticket') {
 				const orgId = ctx.orgId;
 				if (!orgId) return false;
+				if (ctx.isInternalMessage && !isTrackrTeam(locals)) return false;
 				if (mode === 'write') {
 					return (
 						(await can(locals, 'org.tickets.edit.any', { orgId })) ||
@@ -594,6 +605,7 @@ export async function authorizeAttachmentDelete(
 	switch (row.entityType) {
 		case 'ticket':
 		case 'ticket_message':
+			if (ctx.isInternalMessage && !isTrackrTeam(locals)) return false;
 			return ctx.orgId ? can(locals, 'org.tickets.edit.any', { orgId: ctx.orgId }) : false;
 		case 'task':
 		case 'project_activity': {
@@ -607,6 +619,7 @@ export async function authorizeAttachmentDelete(
 			return isTrackrTeam(locals);
 		case 'message': {
 			if (ctx.messageSubject === 'ticket') {
+				if (ctx.isInternalMessage && !isTrackrTeam(locals)) return false;
 				return ctx.orgId ? can(locals, 'org.tickets.edit.any', { orgId: ctx.orgId }) : false;
 			}
 			// Task and org-chat: the uploader may remove their own file; otherwise

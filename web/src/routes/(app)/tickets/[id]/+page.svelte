@@ -38,6 +38,7 @@
 		ticket: TicketRow;
 		messages: TicketMessageRow[];
 		isAgent: boolean;
+		canUseInternalNotes: boolean;
 		attachments: AttachmentDTO[];
 		messageAttachments: Record<string, AttachmentDTO[]>;
 		currentUserId: string;
@@ -742,7 +743,9 @@
 							? m.tickets_composer_internal_placeholder()
 							: m.tickets_composer_reply_placeholder()}
 						accent={internal ? 'warning' : 'default'}
-						mentionUsers={data.mentionUsers}
+						mentionUsers={internal
+							? data.mentionUsers?.filter((u) => u.internal)
+							: data.mentionUsers}
 						{sending}
 						onsend={send}
 					>
@@ -756,7 +759,7 @@
 							>
 								<Icon name="paperclip" size={15} />
 							</button>
-							{#if isAgent}
+							{#if data.canUseInternalNotes}
 								<button
 									type="button"
 									aria-label={internal

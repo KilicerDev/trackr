@@ -61,7 +61,7 @@ export const load: ServerLoad = async ({ locals }) => {
 
 	let tickets: TicketRow[];
 	if (trackrTeam) {
-		tickets = await loadTickets({});
+		tickets = await loadTickets({ includeInternalMessages: true });
 	} else if (myOrgIds.length === 0) {
 		tickets = [];
 	} else {
@@ -651,8 +651,9 @@ export const actions: Actions = {
 		if (!orgId) return fail(404, { message: m.tickets_not_found() });
 
 		if (internal) {
-			// Internal notes are agents-only.
-			await assertCan(locals, 'org.tickets.edit.any', { orgId });
+			// Internal notes are restricted to the internal Trackr team. External
+			// org agents may manage tickets, but must use public replies.
+			if (!isTrackrTeam(locals)) throw error(403, m.tickets_no_access());
 		} else {
 			await assertCan(locals, 'org.tickets.comment', { orgId });
 		}
@@ -687,7 +688,7 @@ export const actions: Actions = {
 						creatorId: t.createdBy,
 						assigneeIds: t.assignees
 					},
-					{ internalOnly: internal }
+					{ teamOnly: internal }
 				);
 				await notify({
 					kind: 'ticketMessage',

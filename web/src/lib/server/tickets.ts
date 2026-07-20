@@ -122,6 +122,9 @@ type AccessOpts = {
 	// When set, cap the number of rows (newest-first). Used for the portal
 	// "Recents" list.
 	limit?: number;
+	// Internal Trackr staff see internal notes reflected in reply counts. External
+	// org users must only see public-message counts and timestamps.
+	includeInternalMessages?: boolean;
 };
 
 export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
@@ -174,6 +177,16 @@ export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 
 	const counts = new Map<string, { count: number; last: string | null }>();
 	if (ids.length) {
+		const messageConditions = [
+			eq(thread.subjectType, 'ticket'),
+			inArray(thread.subjectId, ids),
+			isNull(message.deletedAt),
+			// System events are timeline entries, not replies — they must not
+			// inflate the reply count or the "last message" timestamp.
+			eq(message.kind, 'comment')
+		];
+		if (!opts.includeInternalMessages) messageConditions.push(eq(message.internal, false));
+
 		const msgRows = await db
 			.select({
 				ticketId: thread.subjectId,
@@ -182,16 +195,7 @@ export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 			})
 			.from(message)
 			.innerJoin(thread, eq(thread.id, message.threadId))
-			.where(
-				and(
-					eq(thread.subjectType, 'ticket'),
-					inArray(thread.subjectId, ids),
-					isNull(message.deletedAt),
-					// System events are timeline entries, not replies — they must not
-					// inflate the reply count or the "last message" timestamp.
-					eq(message.kind, 'comment')
-				)
-			)
+			.where(and(...messageConditions))
 			.groupBy(thread.subjectId);
 		for (const m of msgRows) {
 			counts.set(m.ticketId, { count: Number(m.count), last: toIso(m.last) });

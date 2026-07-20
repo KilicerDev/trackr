@@ -147,18 +147,19 @@ export type TicketRecipientCtx = {
 //   - the ticket's creator (same visibility tier as the customer)
 //   - every assigned agent
 //
-// Pass `internalOnly: true` for internal-note message events — the customer
-// must never see internal notes even when they otherwise watch the ticket. The
-// creator is gated the same way: a non-agent creator is dropped from internal
-// notes, while an agent creator still receives them via the `agents` bucket.
+// `internalOnly` excludes the customer/creator for agent-side events such as
+// priority changes. `teamOnly` is stricter and is used for internal notes:
+// only internal Trackr staff may receive those notifications.
 export async function ticketRecipients(
 	ctx: TicketRecipientCtx,
-	opts: { internalOnly?: boolean } = {}
+	opts: { internalOnly?: boolean; teamOnly?: boolean } = {}
 ): Promise<Set<string>> {
 	const [agents, internal] = await Promise.all([
 		orgMembersWithAnyPerm(ctx.orgId, ['org.tickets.read.any' as Permission]),
 		internalStaffWithAnyPerm(['org.tickets.read.any' as Permission])
 	]);
+	if (opts.teamOnly) return internal;
+
 	const out = new Set<string>([...agents, ...internal]);
 	if (!opts.internalOnly && ctx.customerId) out.add(ctx.customerId);
 	if (!opts.internalOnly && ctx.creatorId) out.add(ctx.creatorId);
