@@ -394,7 +394,7 @@
 <div class="flex min-h-0 flex-1">
 	<!-- Left column: conversation + composer -->
 	<div class="flex min-w-0 flex-1 flex-col">
-		<div class="min-h-0 flex-1 overflow-auto">
+		<div class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
 			<div class="mx-auto w-full max-w-[836px] px-6 py-6">
 				{#if fromPanel}
 					<a
@@ -615,7 +615,9 @@
 
 				<!-- Description (if any) shown as opening message -->
 				{#if t.description}
-					<div class="mb-6 text-[14px] leading-relaxed whitespace-pre-wrap text-text">
+					<div
+						class="mb-6 text-[14px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-text"
+					>
 						<MentionText text={t.description} />
 					</div>
 				{/if}
@@ -635,7 +637,7 @@
 						<span class="absolute top-2 bottom-2 left-[10px] w-px bg-border"></span>
 						{#each events as e (e.id)}
 							{@const u = who(e.userId)}
-							<div class="relative">
+							<div class="relative min-w-0">
 								<span
 									class="absolute top-0.5 -left-7 grid h-5 w-5 place-items-center rounded-full border border-border bg-bg-elev"
 								>
@@ -668,7 +670,7 @@
 								</div>
 								{#if e.kind === 'message'}
 									<div
-										class="mt-2 rounded-lg p-3 text-[14px] leading-relaxed whitespace-pre-wrap {e.internal
+										class="mt-2 min-w-0 rounded-lg p-3 text-[14px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap {e.internal
 											? 'border border-[#e9c46a]/30 bg-[#e9c46a]/8 text-text'
 											: 'border border-border bg-surface text-text'}"
 									>
