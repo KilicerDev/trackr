@@ -9,7 +9,7 @@
 //               gets write. The link is the organizing key + forward-compat.
 
 import { randomBytes, randomUUID } from 'node:crypto';
-import { and, desc, eq, or } from 'drizzle-orm';
+import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { db } from './db';
 import { document, note, noteAccess, noteShareLink, noteTemplate } from './db/app.schema';
 import { deleteAttachmentsFor } from './attachments';
@@ -80,6 +80,23 @@ export async function listMeetingNotes(): Promise<NoteListItem[]> {
 		.from(note)
 		.where(eq(note.kind, 'meeting'))
 		.orderBy(desc(note.meetingDate), desc(note.createdAt));
+}
+
+// Meeting notes connected to a project — linked directly OR via one of its
+// tasks. Newest meeting first, undated meetings last.
+export async function listProjectMeetings(
+	projectId: string,
+	taskIds: string[]
+): Promise<NoteListItem[]> {
+	const link =
+		taskIds.length > 0
+			? or(eq(note.projectId, projectId), inArray(note.taskId, taskIds))
+			: eq(note.projectId, projectId);
+	return db
+		.select(listColumns)
+		.from(note)
+		.where(and(eq(note.kind, 'meeting'), link))
+		.orderBy(sql`${note.meetingDate} desc nulls last`, desc(note.createdAt));
 }
 
 /**

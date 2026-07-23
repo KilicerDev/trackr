@@ -72,11 +72,17 @@
 		if (!titleDirty) title = meetingDate;
 	});
 
-	// In locked mode (launched from a task), seed the fixed project/task on open.
+	// Seed presets on open. In locked mode (launched from a task) the project
+	// AND task are fixed; an unlocked preset (launched from a project page) only
+	// pre-selects the project and stays editable — the `!projectId` guard keeps
+	// a manual switch intact while the dialog is open.
 	$effect(() => {
-		if (open && locked) {
+		if (!open) return;
+		if (locked) {
 			projectId = presetProjectId;
 			taskId = presetTaskId;
+		} else if (presetProjectId && !projectId) {
+			projectId = presetProjectId;
 		}
 	});
 

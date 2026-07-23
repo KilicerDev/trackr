@@ -16,7 +16,8 @@ import { recordAudit } from '$lib/server/audit';
 import { notify } from '$lib/server/notify';
 import { projectMentionRecipients } from '$lib/server/notify/recipients';
 import { parseMentionIds } from '$lib/utils/mentions';
-import { assertCan } from '$lib/server/permissions';
+import { assertCan, isTrackrTeam } from '$lib/server/permissions';
+import { listProjectMeetings, listTemplates } from '$lib/server/notes';
 import { m } from '$lib/paraglide/messages';
 
 // "KEY · Name" for the audit log's target column. Best-effort; returns the id
@@ -112,6 +113,15 @@ export const load: ServerLoad = async ({ params, locals }) => {
 	// Tasks for this project — same shape as /tasks page.
 	const tasks = await loadTasks({ projectId: id, plannerUserId: locals.user.id });
 
+	// Connected meetings (notes with kind='meeting', linked directly or via a
+	// task) + templates for the New-meeting dialog. Notes are internal-team only
+	// — non-team viewers get empty arrays and the section stays hidden.
+	const internal = isTrackrTeam(locals);
+	const taskUuids = tasks.map((t) => t.uuid).filter((x): x is string => !!x);
+	const [meetings, meetingTemplates] = internal
+		? await Promise.all([listProjectMeetings(id, taskUuids), listTemplates(locals.user.id)])
+		: [[], []];
+
 	// Initial page of the activity feed for the history sidebar. The sidebar
 	// fetches further pages on demand via the `?/activity` endpoint.
 	const activity = await loadProjectActivity(id, { limit: 50 });
@@ -133,7 +143,9 @@ export const load: ServerLoad = async ({ params, locals }) => {
 		members,
 		org,
 		tasks,
-		activity
+		activity,
+		meetings,
+		meetingTemplates: meetingTemplates.map((t) => ({ id: t.id, name: t.name, icon: t.icon }))
 	};
 };
 

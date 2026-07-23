@@ -5,13 +5,16 @@
 	import IconButton from '$lib/components/IconButton.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Inspector from '$lib/components/tasks/Inspector.svelte';
-	import TaskRow from '$lib/components/tasks/TaskRow.svelte';
+	import ListView from '$lib/components/tasks/ListView.svelte';
 	import CreateTaskModal from '$lib/components/tasks/CreateTaskModal.svelte';
 	import EditProjectModal from '$lib/components/projects/EditProjectModal.svelte';
+	import ProjectTasksToolbar from '$lib/components/projects/ProjectTasksToolbar.svelte';
 	import ProjectHistory from '$lib/components/projects/ProjectHistory.svelte';
+	import NewMeetingDialog from '$lib/components/notes/NewMeetingDialog.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
-	import { PROJECT_STATUS, TRACKR_STATUSES } from '$lib/config/taxonomy';
-	import { projectStatusLabel, statusLabel } from '$lib/utils/labels';
+	import { PROJECT_STATUS } from '$lib/config/taxonomy';
+	import { projectStatusLabel } from '$lib/utils/labels';
+	import { dueCountdown, formatEstimate, formatDateLong } from '$lib/utils/format';
 	import { m } from '$lib/paraglide/messages';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
@@ -48,12 +51,85 @@
 	);
 	const pct = $derived(total === 0 ? 0 : Math.round((done / total) * 100));
 
-	const groups = $derived(
-		TRACKR_STATUSES.map((s) => ({
-			...s,
-			tasks: tasks.filter((t) => t.status === s.id)
-		})).filter((g) => g.tasks.length > 0)
+	// Overdue — mirrors TaskRow: the countdown is suppressed only for 'done'.
+	const overdue = $derived(
+		tasks.filter((t) => t.status !== 'done' && dueCountdown(t.due)?.tone === 'overdue').length
 	);
+
+	// Time spent: per task, logged minutes win; else the estimate; else assume 1h.
+	// Per-member split counts LOGGED time only — estimates have no owner.
+	const time = $derived.by(() => {
+		let logged = 0;
+		let estimated = 0;
+		let assumed = 0;
+		const byUser = new Map<string, number>();
+		for (const t of tasks) {
+			const logs = t.timeLogs ?? [];
+			if (logs.length > 0) {
+				for (const l of logs) {
+					logged += l.minutes;
+					byUser.set(l.user, (byUser.get(l.user) ?? 0) + l.minutes);
+				}
+			} else if (t.estimate) {
+				estimated += t.estimate;
+			} else {
+				assumed += 1;
+			}
+		}
+		return {
+			totalMinutes: logged + estimated + assumed * 60,
+			loggedMinutes: logged,
+			estimatedMinutes: estimated,
+			assumedCount: assumed,
+			perMember: [...byUser.entries()]
+				.map(([userId, minutes]) => ({ userId, minutes }))
+				.sort((a, b) => b.minutes - a.minutes)
+		};
+	});
+	// Composition-honesty subline — only the non-zero parts.
+	const timeParts = $derived.by(() => {
+		const parts: string[] = [];
+		if (time.loggedMinutes > 0)
+			parts.push(m.projects_time_logged_part({ time: formatEstimate(time.loggedMinutes) }));
+		if (time.estimatedMinutes > 0)
+			parts.push(m.projects_time_estimated_part({ time: formatEstimate(time.estimatedMinutes) }));
+		if (time.assumedCount > 0)
+			parts.push(
+				time.assumedCount === 1
+					? m.projects_time_assumed_one({ n: time.assumedCount })
+					: m.projects_time_assumed_other({ n: time.assumedCount })
+			);
+		return parts;
+	});
+	let timeSplitOpen = $state(false);
+
+	// ── Task section: filters / search / grouping (ephemeral per visit) ────────
+	type TaskGroupBy = 'status' | 'priority' | 'assignee' | 'none';
+	let taskFilters = $state<Record<string, string[]>>({});
+	let taskSearch = $state('');
+	let taskGroup = $state<TaskGroupBy>('status');
+
+	function taskMatches(t: Task): boolean {
+		for (const [field, values] of Object.entries(taskFilters)) {
+			if (values.length === 0) continue;
+			if (field === 'status' && !values.includes(t.status)) return false;
+			if (field === 'priority' && !values.includes(t.priority)) return false;
+			if (field === 'assignee') {
+				const assignees = t.assignees ?? [t.assignee];
+				if (!assignees.some((a) => values.includes(a))) return false;
+			}
+			if (field === 'tags' && !t.labels.some((l) => values.includes(l))) return false;
+		}
+		if (taskSearch) {
+			const q = taskSearch.toLowerCase();
+			if (!t.title.toLowerCase().includes(q) && !t.id.toLowerCase().includes(q)) return false;
+		}
+		return true;
+	}
+	const filteredTasks = $derived(tasks.filter(taskMatches));
+
+	// ── Connected meetings ─────────────────────────────────────────────────────
+	let newMeetingOpen = $state(false);
 
 	function relativeTime(d: Date): string {
 		const ms = Date.now() - d.getTime();
@@ -375,7 +451,7 @@
 								type="button"
 								onclick={deleteProject}
 								disabled={projectBusy !== null}
-								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] hover:bg-surface-2 disabled:opacity-50 text-accent"
+								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-accent hover:bg-surface-2 disabled:opacity-50"
 							>
 								<Icon name="x" size={13} />
 								{projectBusy === 'delete' ? m.common_deleting() : m.projects_delete_project()}
@@ -390,8 +466,7 @@
 			</div>
 		</div>
 
-		<!-- summary + members -->
-		<div class="mb-6 grid gap-5" style:grid-template-columns="1fr 1fr">
+		{#snippet aboutCard()}
 			<div class="rounded-2xl border border-border bg-bg-elev p-4">
 				<div class="mb-1.5 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 					{m.projects_about()}
@@ -400,6 +475,9 @@
 					{p.description ?? m.projects_no_description()}
 				</p>
 			</div>
+		{/snippet}
+
+		{#snippet membersCard()}
 			<div class="relative rounded-2xl border border-border bg-bg-elev p-4">
 				<div class="mb-2.5 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 					{m.projects_members_label()} · {data.members.length}
@@ -416,7 +494,7 @@
 								<span class="text-text">{mem.name.split(' ')[0]}</span>
 								{#if mem.id === p.leadId}
 									<span
-										class="rounded px-1.5 py-0.5 text-[11px] tracking-[0.06em] text-accent uppercase bg-accent-soft"
+										class="rounded bg-accent-soft px-1.5 py-0.5 text-[11px] tracking-[0.06em] text-accent uppercase"
 									>
 										{m.projects_lead_badge()}
 									</span>
@@ -540,10 +618,52 @@
 					</div>
 				</div>
 			</div>
-		</div>
+		{/snippet}
+
+		{#snippet meetingsCard()}
+			<div class="rounded-2xl border border-border bg-bg-elev p-4">
+				<div class="mb-2.5 flex items-center justify-between">
+					<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
+						{m.notes_section_meetings()}{#if data.meetings.length}<span class="ml-1.5 text-text-3"
+								>{data.meetings.length}</span
+							>{/if}
+					</div>
+					<button
+						type="button"
+						onclick={() => (newMeetingOpen = true)}
+						class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
+					>
+						<Icon name="plus" size={13} />
+						{m.notes_new_meeting()}
+					</button>
+				</div>
+				{#if data.meetings.length}
+					<div class="grid gap-1.5">
+						{#each data.meetings as n (n.id)}
+							<a
+								href="/notes/{n.id}"
+								class="group flex items-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-2 transition-colors hover:border-border-strong"
+							>
+								<Icon name="users" size={15} class="shrink-0 text-text-3" />
+								<span class="flex-1 truncate text-[14px] text-text-2 group-hover:text-text"
+									>{n.title || m.notes_untitled()}</span
+								>
+								{#if n.meetingDate}
+									<span class="shrink-0 text-[12px] text-text-4"
+										>{formatDateLong(n.meetingDate.toISOString())}</span
+									>
+								{/if}
+							</a>
+						{/each}
+					</div>
+				{:else}
+					<p class="text-[14px] text-text-3">{m.projects_no_meetings()}</p>
+				{/if}
+			</div>
+		{/snippet}
 
 		<!-- stats -->
-		<div class="mb-7 grid grid-cols-4 gap-3">
+		<div class="mb-6 grid grid-cols-5 gap-3">
 			<div class="rounded-2xl border border-border bg-bg-elev p-4">
 				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
 					{m.projects_total_tasks()}
@@ -558,9 +678,65 @@
 			</div>
 			<div class="rounded-2xl border border-border bg-bg-elev p-4">
 				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
-					{m.projects_completed()}
+					{m.projects_overdue()}
 				</div>
-				<div class="mt-1.5 font-mono text-[26px] font-semibold text-[#7fc8a9]">{done}</div>
+				<div
+					class="mt-1.5 font-mono text-[26px] font-semibold {overdue > 0 ? 'text-[#ef4f5e]' : ''}"
+				>
+					{overdue}
+				</div>
+			</div>
+			<div class="rounded-2xl border border-border bg-bg-elev p-4">
+				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
+					{m.projects_time_spent()}
+				</div>
+				<div class="mt-1.5 font-mono text-[26px] font-semibold">
+					{total === 0 ? '—' : formatEstimate(time.totalMinutes)}
+				</div>
+				{#if timeParts.length}
+					<div class="mt-1 text-[12px] text-text-4">{timeParts.join(' · ')}</div>
+				{/if}
+				{#if time.perMember.length > 0}
+					<div class="relative mt-2">
+						<button
+							type="button"
+							onclick={() => (timeSplitOpen = !timeSplitOpen)}
+							aria-label={m.projects_time_by_member()}
+							class="flex items-center -space-x-1.5"
+						>
+							{#each time.perMember.slice(0, 5) as pm (pm.userId)}
+								<Avatar user={layoutUsers.find((u) => u.id === pm.userId)} size={20} />
+							{/each}
+							{#if time.perMember.length > 5}
+								<span class="pl-2 text-[12px] text-text-3">+{time.perMember.length - 5}</span>
+							{/if}
+						</button>
+						{#if timeSplitOpen}
+							<div
+								use:clickOutside={() => (timeSplitOpen = false)}
+								use:autoPlace
+								in:fly={POPOVER_IN}
+								class="absolute top-full z-40 mt-1.5 min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+							>
+								<div class="px-2 pt-1 pb-1 text-[12px] tracking-[0.08em] text-text-4 uppercase">
+									{m.projects_time_by_member()}
+								</div>
+								{#each time.perMember as pm (pm.userId)}
+									{@const u = layoutUsers.find((x) => x.id === pm.userId)}
+									<div class="flex items-center gap-2.5 rounded-md px-2 py-1.5">
+										<Avatar user={u} size={22} />
+										<span class="min-w-0 flex-1 truncate text-[14px] text-text-2"
+											>{u?.name ?? pm.userId}</span
+										>
+										<span class="font-mono text-[13px] text-text-3"
+											>{formatEstimate(pm.minutes)}</span
+										>
+									</div>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				{/if}
 			</div>
 			<div class="rounded-2xl border border-border bg-bg-elev p-4">
 				<div class="mb-1.5 text-[12px] tracking-[0.08em] text-text-4 uppercase">
@@ -575,11 +751,40 @@
 			</div>
 		</div>
 
+		<!-- summary / members / meetings -->
+		<div class="mb-6 grid gap-5" style:grid-template-columns="1fr 1fr">
+			{#if data.isTrackrTeam}
+				<div class="grid content-start gap-5">
+					{@render aboutCard()}
+					{@render membersCard()}
+				</div>
+				{@render meetingsCard()}
+			{:else}
+				{@render aboutCard()}
+				{@render membersCard()}
+			{/if}
+		</div>
+
 		<!-- tasks -->
 		<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
 			<div class="flex items-center gap-2.5 border-b border-border px-4 py-3">
 				<span class="text-[15px] font-semibold">{m.projects_tasks()}</span>
-				<span class="font-mono text-[12px] text-text-3">{tasks.length}</span>
+				<span class="font-mono text-[12px] text-text-3">
+					{filteredTasks.length}{#if filteredTasks.length !== tasks.length}<span class="text-text-4"
+							>/{tasks.length}</span
+						>{/if}
+				</span>
+			</div>
+			<div class="border-b border-border px-4 py-2">
+				<ProjectTasksToolbar
+					{tasks}
+					filters={taskFilters}
+					setFilters={(f) => (taskFilters = f)}
+					search={taskSearch}
+					setSearch={(s) => (taskSearch = s)}
+					group={taskGroup}
+					setGroup={(g) => (taskGroup = g)}
+				/>
 			</div>
 			{#if tasks.length === 0}
 				<EmptyState
@@ -587,17 +792,17 @@
 					title={m.projects_no_tasks_title()}
 					hint={m.projects_no_tasks_hint()}
 				/>
+			{:else if filteredTasks.length === 0}
+				<div class="px-4 py-8 text-center text-[14px] text-text-3">
+					{m.projects_no_matching_tasks()}
+				</div>
 			{:else}
-				{#each groups as g (g.id)}
-					<div class="flex items-center gap-2 border-b border-border bg-surface/30 px-4 py-2">
-						<span class="h-2 w-2 rounded-full" style:background={g.dot}></span>
-						<span class="text-[13px] font-semibold text-text">{statusLabel(g.id)}</span>
-						<span class="font-mono text-[12px] text-text-3">{g.tasks.length}</span>
-					</div>
-					{#each g.tasks as t (t.id)}
-						<TaskRow task={t} selected={selectedId === t.id} onclick={() => (selectedId = t.id)} />
-					{/each}
-				{/each}
+				<ListView
+					tasks={filteredTasks}
+					group={taskGroup}
+					onSelect={(t) => (selectedId = t.id)}
+					selectedId={selectedId ?? undefined}
+				/>
 			{/if}
 		</div>
 	</div>
@@ -639,3 +844,20 @@
 	memberProjectIds={Object.keys(data.memberRoles.projects)}
 	allAccess={data.isTrackrTeam}
 />
+
+{#if data.isTrackrTeam}
+	<NewMeetingDialog
+		bind:open={newMeetingOpen}
+		projects={data.projects}
+		templates={data.meetingTemplates}
+		tasks={tasks
+			.filter((t) => t.uuid)
+			.map((t) => ({
+				id: t.uuid!,
+				number: Number(t.id.split('-').pop()) || 0,
+				title: t.title,
+				projectId: p.id
+			}))}
+		presetProjectId={p.id}
+	/>
+{/if}
