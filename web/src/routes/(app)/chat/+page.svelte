@@ -11,6 +11,7 @@
 	import AttachmentDropzone from '$lib/components/attachments/AttachmentDropzone.svelte';
 	import StagedFileList from '$lib/components/attachments/StagedFileList.svelte';
 	import TagSelect from '$lib/components/chat/TagSelect.svelte';
+	import CollapsibleText from '$lib/components/chat/CollapsibleText.svelte';
 	import CreateTicketFromThreadModal from '$lib/components/chat/CreateTicketFromThreadModal.svelte';
 	import { createOrgTag } from '$lib/components/chat/tags';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
@@ -164,6 +165,10 @@
 		if (files?.length) apply(Array.from(files));
 		if (input) input.value = '';
 	}
+
+	// ── Long-thread truncation (show only the latest replies by default) ─────────
+	const VISIBLE_REPLIES = 3;
+	let repliesExpanded = $state<Record<string, boolean>>({});
 
 	// ── Per-thread tag editing ────────────────────────────────────────────────────
 	let tagEditId = $state<string | null>(null);
@@ -460,8 +465,12 @@
 							<span class="font-mono text-[11px] text-text-4">{relTime(t.createdAt)}</span>
 						</div>
 						{#if root}
-							<div class="mt-2.5 text-[14px] leading-relaxed whitespace-pre-wrap text-text-2">
-								<MentionText text={root.body} />
+							<div class="mt-2.5">
+								<CollapsibleText maxHeight={260}>
+									<div class="text-[14px] leading-relaxed whitespace-pre-wrap text-text-2">
+										<MentionText text={root.body} />
+									</div>
+								</CollapsibleText>
 							</div>
 							{#if root.files?.length}
 								<div class="mt-2"><AttachmentList attachments={root.files} /></div>
@@ -487,8 +496,28 @@
 
 					<!-- Replies -->
 					{#if replies.length}
+						{@const hiddenCount = repliesExpanded[t.id] ? 0 : replies.length - VISIBLE_REPLIES}
+						{@const shownReplies = hiddenCount > 0 ? replies.slice(hiddenCount) : replies}
 						<div class="mt-2 space-y-3 border-t border-border px-4 py-3">
-							{#each replies as r (r.id)}
+							{#if replies.length > VISIBLE_REPLIES}
+								<button
+									type="button"
+									onclick={() => (repliesExpanded[t.id] = !repliesExpanded[t.id])}
+									class="flex items-center gap-2 text-[12px] font-medium text-accent hover:text-accent-strong"
+								>
+									<span class="transition-transform {hiddenCount > 0 ? '' : 'rotate-180'}">
+										<Icon name="chevron" size={12} />
+									</span>
+									<span>
+										{hiddenCount === 1
+											? m.chat_show_earlier_reply()
+											: hiddenCount > 1
+												? m.chat_show_earlier_replies({ count: hiddenCount })
+												: m.chat_hide_earlier_replies()}
+									</span>
+								</button>
+							{/if}
+							{#each shownReplies as r (r.id)}
 								{@const meta = markerMeta(r.meta)}
 								{#if meta}
 									<!-- Inline "ticket created" marker: sits mid-thread at the point of
@@ -566,11 +595,13 @@
 																			>
 																		{/if}
 																	</div>
-																	<div
-																		class="text-[14px] leading-relaxed whitespace-pre-wrap text-text-2"
-																	>
-																		<MentionText text={tm.body} />
-																	</div>
+																	<CollapsibleText maxHeight={180}>
+																		<div
+																			class="text-[14px] leading-relaxed whitespace-pre-wrap text-text-2"
+																		>
+																			<MentionText text={tm.body} />
+																		</div>
+																	</CollapsibleText>
 																</div>
 															</div>
 														{/each}
@@ -591,9 +622,11 @@
 												<span class="font-mono text-[11px] text-text-4">{relTime(r.createdAt)}</span
 												>
 											</div>
-											<div class="text-[14px] leading-relaxed whitespace-pre-wrap text-text-2">
-												<MentionText text={r.body} />
-											</div>
+											<CollapsibleText maxHeight={180}>
+												<div class="text-[14px] leading-relaxed whitespace-pre-wrap text-text-2">
+													<MentionText text={r.body} />
+												</div>
+											</CollapsibleText>
 											{#if r.files?.length}
 												<div class="mt-1.5"><AttachmentList attachments={r.files} /></div>
 											{/if}
