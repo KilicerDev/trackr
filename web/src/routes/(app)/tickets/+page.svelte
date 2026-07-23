@@ -8,7 +8,8 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { readView, saveView } from '$lib/stores/view';
+	import { readView, saveView, flushViewSaves } from '$lib/stores/view';
+	import type { SavedViewEntry } from '$lib/components/ViewsMenu.svelte';
 	import type { TicketRow } from '$lib/server/tickets';
 	import { m } from '$lib/paraglide/messages';
 	import { isPortalSeeAllRole } from '$lib/roles';
@@ -59,6 +60,14 @@
 		boardGroup?: GroupBy;
 		sub?: SubGroup;
 		filters?: Record<string, string[]>;
+		savedViews?: SavedViewEntry<TicketsViewConfig>[];
+	};
+	type TicketsViewConfig = {
+		view: 'list' | 'board';
+		listGroup: GroupBy;
+		boardGroup: GroupBy;
+		sub: SubGroup;
+		filters: Record<string, string[]>;
 	};
 	// localStorage cache wins over the server snapshot — see /tasks for rationale.
 	const saved: SavedView = {
@@ -150,6 +159,36 @@
 	function setFilters(f: Record<string, string[]>) {
 		filters = f;
 		saveView('tickets', { filters: f });
+	}
+
+	// ── Saved custom views (named filter+layout presets) ─────────────────────
+	const GROUP_IDS: GroupBy[] = ['status', 'priority', 'category', 'org', 'assignee', 'none'];
+	const SUB_IDS: SubGroup[] = ['none', 'status', 'priority', 'category', 'assignee'];
+	const isGroupBy = (v: unknown): v is GroupBy => GROUP_IDS.includes(v as GroupBy);
+	const isSubGroup = (v: unknown): v is SubGroup => SUB_IDS.includes(v as SubGroup);
+	let savedViews = $state<SavedViewEntry<TicketsViewConfig>[]>(
+		Array.isArray(saved.savedViews)
+			? saved.savedViews.filter((v) => typeof v?.id === 'string' && typeof v?.name === 'string')
+			: []
+	);
+	const currentConfig = $derived<TicketsViewConfig>({ view, listGroup, boardGroup, sub, filters });
+	// Configs come from storage, so guard every field against page defaults —
+	// a stale enum value must degrade gracefully, never break the page.
+	function applySavedView(cfg: TicketsViewConfig) {
+		view = cfg.view === 'board' ? 'board' : 'list';
+		listGroup = isGroupBy(cfg.listGroup) ? cfg.listGroup : 'status';
+		boardGroup = isGroupBy(cfg.boardGroup) ? cfg.boardGroup : 'status';
+		sub = isSubGroup(cfg.sub) ? cfg.sub : 'none';
+		filters = cfg.filters && typeof cfg.filters === 'object' ? cfg.filters : {};
+		// The applied view becomes the live state, so it survives a reload.
+		saveView('tickets', { view, listGroup, boardGroup, sub, filters });
+	}
+	function changeSavedViews(next: SavedViewEntry<TicketsViewConfig>[]) {
+		savedViews = next;
+		saveView('tickets', { savedViews: next });
+		// CRUD is rare and explicit — flush immediately rather than risk losing
+		// the debounced write to a quick navigation.
+		flushViewSaves();
 	}
 
 	const orgs = $derived(data.orgs ?? []);
@@ -267,6 +306,14 @@
 	{orgs}
 	portal={isPortal}
 	minimal={memberOnly}
+	viewsMenu={memberOnly
+		? undefined
+		: {
+				views: savedViews,
+				current: currentConfig,
+				onApply: applySavedView,
+				onChange: changeSavedViews
+			}}
 />
 
 {#if data.tickets.length === 0}

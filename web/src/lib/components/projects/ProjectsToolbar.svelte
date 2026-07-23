@@ -4,6 +4,8 @@
 	import Avatar from '../Avatar.svelte';
 	import FilterBar from '../FilterBar.svelte';
 	import type { FilterField } from '../FilterBar.svelte';
+	import ViewsMenu from '../ViewsMenu.svelte';
+	import type { SavedViewEntry } from '../ViewsMenu.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
@@ -18,6 +20,14 @@
 	export type ProjectGroup = 'status' | 'org' | 'none';
 	export type OrgOption = { id: string; name: string; slug: string; color: string };
 
+	type ProjectsViewConfig = {
+		view: ProjectView;
+		gridGroup: ProjectGroup;
+		listGroup: ProjectGroup;
+		boardGroup: ProjectGroup;
+		filters: Record<string, string[]>;
+	};
+
 	interface Props {
 		view: ProjectView;
 		setView: (v: ProjectView) => void;
@@ -30,6 +40,12 @@
 		orgs: OrgOption[];
 		canCreate: boolean;
 		onNew: () => void;
+		viewsMenu?: {
+			views: SavedViewEntry<ProjectsViewConfig>[];
+			current: ProjectsViewConfig;
+			onApply: (config: ProjectsViewConfig) => void;
+			onChange: (views: SavedViewEntry<ProjectsViewConfig>[]) => void;
+		};
 	}
 	let {
 		view,
@@ -42,7 +58,8 @@
 		setSearch,
 		orgs,
 		canCreate,
-		onNew
+		onNew,
+		viewsMenu
 	}: Props = $props();
 
 	// Sentinel value for projects with no organization (internal work).
@@ -152,6 +169,15 @@
 {/snippet}
 
 <div class="flex shrink-0 items-center gap-2 border-b border-border bg-bg px-5 py-2.5">
+	{#if viewsMenu}
+		<ViewsMenu
+			views={viewsMenu.views}
+			current={viewsMenu.current}
+			onApply={viewsMenu.onApply}
+			onChange={viewsMenu.onChange}
+		/>
+		<div class="h-5 w-px bg-border"></div>
+	{/if}
 	<!-- View toggle -->
 	<div
 		class="inline-flex h-7 items-center rounded-lg border border-border bg-surface p-0.5 text-[14px]"

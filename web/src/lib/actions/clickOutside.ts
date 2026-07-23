@@ -13,7 +13,14 @@
 // "close + immediately reopen" race that mousedown caused.
 export function clickOutside(node: HTMLElement, callback: () => void) {
 	function handle(e: MouseEvent) {
-		if (!node.contains(e.target as Node)) callback();
+		// A click can detach its own target before this document-level listener
+		// runs: the handler flips state, Svelte flushes at the microtask
+		// checkpoint between listeners, and the clicked element is swapped out
+		// (e.g. a "save as…" button replaced by its inline input). A detached
+		// target fails node.contains() and would falsely read as outside.
+		const target = e.target as Node;
+		if (!target.isConnected) return;
+		if (!node.contains(target)) callback();
 	}
 	let attached = false;
 	const timer = setTimeout(() => {

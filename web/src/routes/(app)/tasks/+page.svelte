@@ -9,7 +9,8 @@
 	import type { PageData } from './$types';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { readView, saveView } from '$lib/stores/view';
+	import { readView, saveView, flushViewSaves } from '$lib/stores/view';
+	import type { SavedViewEntry } from '$lib/components/ViewsMenu.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	let { data }: { data: PageData } = $props();
@@ -23,6 +24,15 @@
 		sub?: SubGroup;
 		filters?: Record<string, string[]>;
 		time?: TimeWindow;
+		savedViews?: SavedViewEntry<TasksViewConfig>[];
+	};
+	type TasksViewConfig = {
+		view: 'list' | 'board';
+		listGroup: GroupBy;
+		boardGroup: GroupBy;
+		sub: SubGroup;
+		filters: Record<string, string[]>;
+		time: TimeWindow;
 	};
 	type TimeWindow = '7d' | '14d' | '30d' | '90d' | 'all';
 	// localStorage cache wins over the server snapshot — it's mirrored on
@@ -81,6 +91,44 @@
 	function setSub(s: SubGroup) {
 		sub = s;
 		saveView('tasks', { sub: s });
+	}
+
+	// ── Saved custom views (named filter+layout presets) ─────────────────────
+	const GROUP_IDS: GroupBy[] = ['status', 'priority', 'assignee', 'project', 'none'];
+	const SUB_IDS: SubGroup[] = ['none', 'status', 'priority', 'assignee'];
+	const isGroupBy = (v: unknown): v is GroupBy => GROUP_IDS.includes(v as GroupBy);
+	const isSubGroup = (v: unknown): v is SubGroup => SUB_IDS.includes(v as SubGroup);
+	let savedViews = $state<SavedViewEntry<TasksViewConfig>[]>(
+		Array.isArray(saved.savedViews)
+			? saved.savedViews.filter((v) => typeof v?.id === 'string' && typeof v?.name === 'string')
+			: []
+	);
+	const currentConfig = $derived<TasksViewConfig>({
+		view,
+		listGroup,
+		boardGroup,
+		sub,
+		filters,
+		time
+	});
+	// Configs come from storage, so guard every field against page defaults —
+	// a stale enum value must degrade gracefully, never break the page.
+	function applySavedView(cfg: TasksViewConfig) {
+		view = cfg.view === 'board' ? 'board' : 'list';
+		listGroup = isGroupBy(cfg.listGroup) ? cfg.listGroup : 'status';
+		boardGroup = isGroupBy(cfg.boardGroup) ? cfg.boardGroup : 'project';
+		sub = isSubGroup(cfg.sub) ? cfg.sub : 'status';
+		filters = cfg.filters && typeof cfg.filters === 'object' ? cfg.filters : {};
+		time = cfg.time in TIME_HORIZON_DAYS ? cfg.time : '30d';
+		// The applied view becomes the live state, so it survives a reload.
+		saveView('tasks', { view, listGroup, boardGroup, sub, filters, time });
+	}
+	function changeSavedViews(next: SavedViewEntry<TasksViewConfig>[]) {
+		savedViews = next;
+		saveView('tasks', { savedViews: next });
+		// CRUD is rare and explicit — flush immediately rather than risk losing
+		// the debounced write to a quick navigation.
+		flushViewSaves();
 	}
 	let manualSelectedId = $state<string | null>(null);
 	let selected = $derived.by(() => {
@@ -169,6 +217,12 @@
 	{setTime}
 	onNewTask={() => openCreate()}
 	{canCreate}
+	viewsMenu={{
+		views: savedViews,
+		current: currentConfig,
+		onApply: applySavedView,
+		onChange: changeSavedViews
+	}}
 />
 
 {#if view === 'list'}

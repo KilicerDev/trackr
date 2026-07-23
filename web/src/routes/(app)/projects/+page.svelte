@@ -14,7 +14,8 @@
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
-	import { readView, saveView } from '$lib/stores/view';
+	import { readView, saveView, flushViewSaves } from '$lib/stores/view';
+	import type { SavedViewEntry } from '$lib/components/ViewsMenu.svelte';
 	import type { ProjectListItem } from './+page.server';
 	import type { PageData } from './$types';
 
@@ -28,6 +29,14 @@
 		listGroup?: ProjectGroup;
 		boardGroup?: ProjectGroup;
 		filters?: Record<string, string[]>;
+		savedViews?: SavedViewEntry<ProjectsViewConfig>[];
+	};
+	type ProjectsViewConfig = {
+		view: ProjectView;
+		gridGroup: ProjectGroup;
+		listGroup: ProjectGroup;
+		boardGroup: ProjectGroup;
+		filters: Record<string, string[]>;
 	};
 	const saved: SavedProjectsView = {
 		...((data.savedView ?? {}) as SavedProjectsView),
@@ -63,6 +72,42 @@
 	function setFilters(f: Record<string, string[]>) {
 		filters = f;
 		saveView('projects', { filters: f });
+	}
+
+	// ── Saved custom views (named filter+layout presets) ─────────────────────
+	const VIEW_IDS: ProjectView[] = ['grid', 'list', 'board'];
+	const GROUP_IDS: ProjectGroup[] = ['status', 'org', 'none'];
+	const isProjectView = (v: unknown): v is ProjectView => VIEW_IDS.includes(v as ProjectView);
+	const isProjectGroup = (v: unknown): v is ProjectGroup => GROUP_IDS.includes(v as ProjectGroup);
+	let savedViews = $state<SavedViewEntry<ProjectsViewConfig>[]>(
+		Array.isArray(saved.savedViews)
+			? saved.savedViews.filter((v) => typeof v?.id === 'string' && typeof v?.name === 'string')
+			: []
+	);
+	const currentConfig = $derived<ProjectsViewConfig>({
+		view,
+		gridGroup,
+		listGroup,
+		boardGroup,
+		filters
+	});
+	// Configs come from storage, so guard every field against page defaults —
+	// a stale enum value must degrade gracefully, never break the page.
+	function applySavedView(cfg: ProjectsViewConfig) {
+		view = isProjectView(cfg.view) ? cfg.view : 'grid';
+		gridGroup = isProjectGroup(cfg.gridGroup) ? cfg.gridGroup : 'none';
+		listGroup = isProjectGroup(cfg.listGroup) ? cfg.listGroup : 'status';
+		boardGroup = isProjectGroup(cfg.boardGroup) ? cfg.boardGroup : 'status';
+		filters = cfg.filters && typeof cfg.filters === 'object' ? cfg.filters : {};
+		// The applied view becomes the live state, so it survives a reload.
+		saveView('projects', { view, gridGroup, listGroup, boardGroup, filters });
+	}
+	function changeSavedViews(next: SavedViewEntry<ProjectsViewConfig>[]) {
+		savedViews = next;
+		saveView('projects', { savedViews: next });
+		// CRUD is rare and explicit — flush immediately rather than risk losing
+		// the debounced write to a quick navigation.
+		flushViewSaves();
 	}
 
 	let createOpen = $state(false);
@@ -151,6 +196,12 @@
 	orgs={data.orgs}
 	{canCreate}
 	onNew={() => (createOpen = true)}
+	viewsMenu={{
+		views: savedViews,
+		current: currentConfig,
+		onApply: applySavedView,
+		onChange: changeSavedViews
+	}}
 />
 
 {#if visibleProjects.length === 0}

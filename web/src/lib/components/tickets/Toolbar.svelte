@@ -5,6 +5,8 @@
 	import PriorityBars from '../PriorityBars.svelte';
 	import FilterBar from '../FilterBar.svelte';
 	import type { FilterField } from '../FilterBar.svelte';
+	import ViewsMenu from '../ViewsMenu.svelte';
+	import type { SavedViewEntry } from '../ViewsMenu.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
@@ -16,6 +18,14 @@
 
 	type GroupBy = 'status' | 'priority' | 'category' | 'org' | 'assignee' | 'none';
 	type SubBy = 'none' | 'status' | 'priority' | 'category' | 'assignee';
+
+	type TicketsViewConfig = {
+		view: 'list' | 'board';
+		listGroup: GroupBy;
+		boardGroup: GroupBy;
+		sub: SubBy;
+		filters: Record<string, string[]>;
+	};
 
 	type LayoutData = {
 		users?: {
@@ -48,6 +58,12 @@
 		// Minimal (portal member) mode: strip board/group/sub/filter chrome and
 		// leave only search + New. The member sees a plain list of their own tickets.
 		minimal?: boolean;
+		viewsMenu?: {
+			views: SavedViewEntry<TicketsViewConfig>[];
+			current: TicketsViewConfig;
+			onApply: (config: TicketsViewConfig) => void;
+			onChange: (views: SavedViewEntry<TicketsViewConfig>[]) => void;
+		};
 	}
 	let {
 		view,
@@ -64,7 +80,8 @@
 		canCreate = true,
 		orgs = [],
 		portal = false,
-		minimal = false
+		minimal = false,
+		viewsMenu
 	}: Props = $props();
 
 	// Assignees offered for grouping/filtering: internal agents only (tickets are
@@ -282,6 +299,15 @@
 
 <div class="flex shrink-0 items-center gap-2 border-b border-border bg-bg px-5 py-2.5">
 	<div class="tb-scroll flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+		{#if viewsMenu && !minimal}
+			<ViewsMenu
+				views={viewsMenu.views}
+				current={viewsMenu.current}
+				onApply={viewsMenu.onApply}
+				onChange={viewsMenu.onChange}
+			/>
+			<div class="h-5 w-px shrink-0 bg-border"></div>
+		{/if}
 		{#if !minimal}
 			<!-- View toggle -->
 			<div

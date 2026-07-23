@@ -6,6 +6,8 @@
 	import Avatar from '../Avatar.svelte';
 	import FilterBar from '../FilterBar.svelte';
 	import type { FilterField } from '../FilterBar.svelte';
+	import ViewsMenu from '../ViewsMenu.svelte';
+	import type { SavedViewEntry } from '../ViewsMenu.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
@@ -48,6 +50,15 @@
 	type SubBy = 'none' | 'status' | 'priority' | 'assignee';
 	type TimeWindow = '7d' | '14d' | '30d' | '90d' | 'all';
 
+	type TasksViewConfig = {
+		view: 'list' | 'board';
+		listGroup: GroupBy;
+		boardGroup: GroupBy;
+		sub: SubBy;
+		filters: Record<string, string[]>;
+		time: TimeWindow;
+	};
+
 	interface Props {
 		view: 'list' | 'board';
 		setView: (v: 'list' | 'board') => void;
@@ -63,6 +74,12 @@
 		setTime?: (t: TimeWindow) => void;
 		onNewTask?: () => void;
 		canCreate?: boolean;
+		viewsMenu?: {
+			views: SavedViewEntry<TasksViewConfig>[];
+			current: TasksViewConfig;
+			onApply: (config: TasksViewConfig) => void;
+			onChange: (views: SavedViewEntry<TasksViewConfig>[]) => void;
+		};
 	}
 	let {
 		view,
@@ -78,7 +95,8 @@
 		time = '30d',
 		setTime,
 		onNewTask,
-		canCreate = true
+		canCreate = true,
+		viewsMenu
 	}: Props = $props();
 
 	const GROUP_OPTIONS: { id: GroupBy; label: () => string }[] = [
@@ -272,6 +290,15 @@
 	<!-- Controls strip: scrolls horizontally as a last resort on very narrow
 	     widths instead of wrapping or squeezing. New task stays pinned outside. -->
 	<div class="tb-scroll flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+		{#if viewsMenu}
+			<ViewsMenu
+				views={viewsMenu.views}
+				current={viewsMenu.current}
+				onApply={viewsMenu.onApply}
+				onChange={viewsMenu.onChange}
+			/>
+			<div class="h-5 w-px shrink-0 bg-border"></div>
+		{/if}
 		<div
 			class="inline-flex h-7 shrink-0 items-center rounded-lg border border-border bg-surface p-0.5 text-[14px]"
 		>
