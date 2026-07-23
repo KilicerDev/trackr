@@ -86,7 +86,47 @@
 		{ id: 'board', label: m.projects_view_board(), icon: 'board' }
 	]);
 
+	// The Group menu is anchored with `position: fixed` (not absolute) so it can
+	// sit inside the horizontally-scrollable controls strip without getting
+	// clipped by its overflow — same pattern as the tasks/tickets toolbars.
 	let pop = $state<'group' | null>(null);
+	let popAnchor: HTMLElement | null = null;
+	let popPos = $state<{ left: number; top: number } | null>(null);
+
+	function openPop(name: 'group', el: HTMLElement) {
+		if (pop === name) {
+			pop = null;
+			popAnchor = null;
+			return;
+		}
+		pop = name;
+		popAnchor = el;
+		queueMicrotask(positionPop);
+	}
+
+	function positionPop() {
+		if (!popAnchor) {
+			popPos = null;
+			return;
+		}
+		const r = popAnchor.getBoundingClientRect();
+		// Clamp so the menu never spills past the right viewport edge.
+		const W = 190;
+		const maxLeft = Math.max(8, window.innerWidth - W - 8);
+		popPos = { left: Math.min(r.left, maxLeft), top: r.bottom + 6 };
+	}
+
+	$effect(() => {
+		if (!pop) return;
+		const on = () => positionPop();
+		// Capture phase catches scrolls on the controls strip too, not just window.
+		window.addEventListener('resize', on);
+		window.addEventListener('scroll', on, true);
+		return () => {
+			window.removeEventListener('resize', on);
+			window.removeEventListener('scroll', on, true);
+		};
+	});
 
 	function toggleValue(field: string, value: string) {
 		const cur = filters[field] ?? [];
@@ -169,77 +209,90 @@
 {/snippet}
 
 <div class="flex shrink-0 items-center gap-2 border-b border-border bg-bg px-5 py-2.5">
-	{#if viewsMenu}
-		<ViewsMenu
-			views={viewsMenu.views}
-			current={viewsMenu.current}
-			onApply={viewsMenu.onApply}
-			onChange={viewsMenu.onChange}
-		/>
-		<div class="h-5 w-px bg-border"></div>
-	{/if}
-	<!-- View toggle -->
-	<div
-		class="inline-flex h-7 items-center rounded-lg border border-border bg-surface p-0.5 text-[14px]"
-	>
-		{#each VIEWS as v (v.id)}
+	<!-- Controls strip: scrolls horizontally as a last resort on very narrow
+	     widths instead of wrapping or squeezing. New project stays pinned outside. -->
+	<div class="tb-scroll flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+		{#if viewsMenu}
+			<ViewsMenu
+				views={viewsMenu.views}
+				current={viewsMenu.current}
+				onApply={viewsMenu.onApply}
+				onChange={viewsMenu.onChange}
+			/>
+			<div class="h-5 w-px shrink-0 bg-border"></div>
+		{/if}
+		<!-- View toggle -->
+		<div
+			class="inline-flex h-7 shrink-0 items-center rounded-lg border border-border bg-surface p-0.5 text-[14px]"
+		>
+			{#each VIEWS as v (v.id)}
+				<button
+					type="button"
+					onclick={() => setView(v.id)}
+					class="inline-flex h-full items-center gap-1.5 rounded-md px-2 transition-colors {view ===
+					v.id
+						? 'bg-bg-elev text-text'
+						: 'text-text-3 hover:text-text'}"
+				>
+					<Icon name={v.icon} size={14} />
+					{v.label}
+				</button>
+			{/each}
+		</div>
+
+		<div class="h-5 w-px shrink-0 bg-border"></div>
+
+		<!-- Group (all views) -->
+		<div class="shrink-0">
 			<button
 				type="button"
-				onclick={() => setView(v.id)}
-				class="inline-flex h-full items-center gap-1.5 rounded-md px-2 transition-colors {view ===
-				v.id
-					? 'bg-bg-elev text-text'
-					: 'text-text-3 hover:text-text'}"
+				onclick={(e) => openPop('group', e.currentTarget)}
+				class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[14px] whitespace-nowrap transition-colors hover:bg-surface-2"
 			>
-				<Icon name={v.icon} size={14} />
-				{v.label}
+				<span class="text-text-3">{m.projects_group_label()}</span>
+				<span class="font-medium text-text">{groupLabel(group)}</span>
+				<Icon name="chevron" size={11} class="text-text-3" />
 			</button>
-		{/each}
-	</div>
+			{#if pop === 'group' && popPos}
+				<div
+					use:clickOutside={() => (pop = null)}
+					in:fly={POPOVER_IN}
+					class="fixed z-50 min-w-[187px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+					style:left="{popPos.left}px"
+					style:top="{popPos.top}px"
+				>
+					{#each GROUP_OPTIONS as o (o.id)}
+						<button
+							type="button"
+							onclick={() => {
+								setGroup(o.id);
+								pop = null;
+							}}
+							class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
+						>
+							<span>{o.label}</span>
+							<span class="ml-auto text-accent {group === o.id ? 'opacity-100' : 'opacity-0'}">
+								<Icon name="check" size={13} />
+							</span>
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</div>
 
-	<!-- Group (all views) -->
-	<div class="h-5 w-px bg-border"></div>
-	<div class="relative">
-		<button
-			type="button"
-			onclick={() => (pop = pop === 'group' ? null : 'group')}
-			class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[14px] transition-colors hover:bg-surface-2"
-		>
-			<span class="text-text-3">{m.projects_group_label()}</span>
-			<span class="font-medium text-text">{groupLabel(group)}</span>
-			<Icon name="chevron" size={11} class="text-text-3" />
-		</button>
-		{#if pop === 'group'}
-			<div
-				use:clickOutside={() => (pop = null)}
-				in:fly={POPOVER_IN}
-				class="absolute top-full left-0 z-50 mt-1.5 min-w-[187px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-			>
-				{#each GROUP_OPTIONS as o (o.id)}
-					<button
-						type="button"
-						onclick={() => {
-							setGroup(o.id);
-							pop = null;
-						}}
-						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
-					>
-						<span>{o.label}</span>
-						<span class="ml-auto text-accent {group === o.id ? 'opacity-100' : 'opacity-0'}">
-							<Icon name="check" size={13} />
-						</span>
-					</button>
-				{/each}
-			</div>
-		{/if}
-	</div>
+		<div class="h-5 w-px shrink-0 bg-border"></div>
 
-	<div class="h-5 w-px bg-border"></div>
+		<!-- Filter chips expand to fit their active chips; the "+ Filter" chip stays
+		     pinned at the left edge (min width). On very narrow widths the whole strip
+		     scrolls (its popovers are fixed, so no clipping). -->
+		<div class="min-w-[92px] shrink-0">
+			<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
+		</div>
 
-	<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
-
-	<div class="ml-auto flex shrink-0 items-center gap-2">
-		<div class="relative">
+		<!-- Search stays compact and right-aligned (ml-auto eats the slack), but is
+		     allowed to shrink as the toolbar narrows so the controls never squeeze
+		     or wrap; past its min the whole strip scrolls instead. -->
+		<div class="relative ml-auto w-44 min-w-[132px] shrink">
 			<span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-3">
 				<Icon name="search" size={14} />
 			</span>
@@ -248,14 +301,27 @@
 				placeholder={m.projects_search_placeholder()}
 				value={search}
 				oninput={(e) => setSearch((e.target as HTMLInputElement).value)}
-				class="h-7 w-44 rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[14px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
+				class="h-7 w-full rounded-lg border border-border bg-surface pr-2.5 pl-7 text-[14px] text-text outline-none placeholder:text-text-3 focus:border-border-strong"
 			/>
 		</div>
-		{#if canCreate}
+	</div>
+
+	{#if canCreate}
+		<div class="shrink-0">
 			<Button variant="primary" size="sm" onclick={onNew}>
 				<Icon name="plus" size={14} />
 				{m.projects_new_project()}
 			</Button>
-		{/if}
-	</div>
+		</div>
+	{/if}
 </div>
+
+<style>
+	/* Hide the controls-strip scrollbar; it only scrolls on very narrow widths. */
+	.tb-scroll {
+		scrollbar-width: none;
+	}
+	.tb-scroll::-webkit-scrollbar {
+		display: none;
+	}
+</style>
