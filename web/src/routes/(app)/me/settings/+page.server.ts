@@ -91,8 +91,13 @@ export const actions: Actions = {
 			const s = String(v ?? '');
 			return s === 'instant' || s === 'digest' ? s : 'off';
 		};
+		// Only keys rendered for this user are submitted (the page hides surfaces
+		// the role can't reach). The `.email` hidden input marks a rendered row —
+		// absent rows are skipped entirely so their stored values survive the
+		// upsert merge instead of being zeroed.
 		const next: NotificationPrefs = {};
 		for (const k of NOTIFICATION_EVENTS) {
+			if (!form.has(`${k}.email`)) continue;
 			next[k] = {
 				email: parseMode(form.get(`${k}.email`)),
 				inApp: form.get(`${k}.inApp`) === 'on'

@@ -37,6 +37,30 @@
 		if (data.isTrackrTeam) return true;
 		return Object.values(data.memberRoles?.orgs ?? {}).some((r) => r !== 'org.member');
 	});
+
+	// Which notification surfaces this user can actually reach. A portal client
+	// can never receive a wiki or task event, so offering the toggles is noise.
+	// Mirrors the route guards: wiki is internal-team only; tasks/projects need
+	// project access (team or explicit project membership); chat needs
+	// org.chat.read somewhere. UI gating only — the server keeps hidden groups'
+	// stored values untouched on save.
+	const access = $derived.by(() => {
+		const data = page.data as {
+			isTrackrTeam?: boolean;
+			effectivePermissions?: string[];
+			memberRoles?: { orgs?: Record<string, string>; projects?: Record<string, string> };
+		};
+		const team = !!data.isTrackrTeam;
+		const perms = data.effectivePermissions ?? [];
+		const projectAccess = team || Object.keys(data.memberRoles?.projects ?? {}).length > 0;
+		return {
+			tasks: projectAccess,
+			projects: projectAccess,
+			tickets: team || perms.some((p) => p.startsWith('org.tickets.')),
+			chat: team || perms.includes('org.chat.read'),
+			wiki: team
+		};
+	});
 	const scopeOptions = $derived([
 		{ value: 'all', label: m.notif_scope_all() },
 		{ value: 'participating', label: m.notif_scope_participating() },
@@ -59,89 +83,100 @@
 	// Notification preferences — an independent form with its own save button.
 	// Mentions live inside each surface's group so they can be tuned separately
 	// (a client can keep ticket mentions on while muting everything else).
-	const notifGroups = $derived([
-		{
-			title: m.notif_group_tasks(),
-			items: [
-				{ key: 'taskAssigned', label: m.notif_task_assigned(), desc: m.notif_task_assigned_desc() },
-				{
-					key: 'taskMentioned',
-					label: m.notif_task_mentioned(),
-					desc: m.notif_task_mentioned_desc()
-				},
-				{
-					key: 'taskCommented',
-					label: m.notif_task_commented(),
-					desc: m.notif_task_commented_desc()
-				},
-				{
-					key: 'taskStatusChanged',
-					label: m.notif_task_status_changed(),
-					desc: m.notif_task_status_changed_desc()
-				},
-				{ key: 'taskDueSoon', label: m.notif_task_due_soon(), desc: m.notif_task_due_soon_desc() }
-			]
-		},
-		{
-			title: m.notif_group_tickets(),
-			scopeKey: 'tickets' as const,
-			items: [
-				{
-					key: 'ticketCreated',
-					label: m.notif_ticket_created(),
-					desc: m.notif_ticket_created_desc()
-				},
-				{
-					key: 'ticketAssigned',
-					label: m.notif_ticket_assigned(),
-					desc: m.notif_ticket_assigned_desc()
-				},
-				{
-					key: 'ticketStatusChanged',
-					label: m.notif_ticket_status_changed(),
-					desc: m.notif_ticket_status_changed_desc()
-				},
-				{
-					key: 'ticketMessage',
-					label: m.notif_ticket_message(),
-					desc: m.notif_ticket_message_desc()
-				},
-				{
-					key: 'ticketMentioned',
-					label: m.notif_ticket_mentioned(),
-					desc: m.notif_ticket_mentioned_desc()
-				}
-			]
-		},
-		{
-			title: m.notif_group_chat(),
-			scopeKey: 'chat' as const,
-			items: [
-				{ key: 'chatMessage', label: m.notif_chat_message(), desc: m.notif_chat_message_desc() },
-				{
-					key: 'chatMentioned',
-					label: m.notif_chat_mentioned(),
-					desc: m.notif_chat_mentioned_desc()
-				}
-			]
-		},
-		{
-			title: m.notif_group_projects(),
-			items: [
-				{
-					key: 'projectMentioned',
-					label: m.notif_project_mentioned(),
-					desc: m.notif_project_mentioned_desc()
-				}
-			]
-		},
-		{
-			title: m.notif_group_wiki(),
-			items: [
-				{ key: 'wikiUpdated', label: m.notif_wiki_updated(), desc: m.notif_wiki_updated_desc() }
-			]
-		}
-	]);
+	const notifGroups = $derived(
+		[
+			{
+				title: m.notif_group_tasks(),
+				show: access.tasks,
+				items: [
+					{
+						key: 'taskAssigned',
+						label: m.notif_task_assigned(),
+						desc: m.notif_task_assigned_desc()
+					},
+					{
+						key: 'taskMentioned',
+						label: m.notif_task_mentioned(),
+						desc: m.notif_task_mentioned_desc()
+					},
+					{
+						key: 'taskCommented',
+						label: m.notif_task_commented(),
+						desc: m.notif_task_commented_desc()
+					},
+					{
+						key: 'taskStatusChanged',
+						label: m.notif_task_status_changed(),
+						desc: m.notif_task_status_changed_desc()
+					},
+					{ key: 'taskDueSoon', label: m.notif_task_due_soon(), desc: m.notif_task_due_soon_desc() }
+				]
+			},
+			{
+				title: m.notif_group_tickets(),
+				show: access.tickets,
+				scopeKey: 'tickets' as const,
+				items: [
+					{
+						key: 'ticketCreated',
+						label: m.notif_ticket_created(),
+						desc: m.notif_ticket_created_desc()
+					},
+					{
+						key: 'ticketAssigned',
+						label: m.notif_ticket_assigned(),
+						desc: m.notif_ticket_assigned_desc()
+					},
+					{
+						key: 'ticketStatusChanged',
+						label: m.notif_ticket_status_changed(),
+						desc: m.notif_ticket_status_changed_desc()
+					},
+					{
+						key: 'ticketMessage',
+						label: m.notif_ticket_message(),
+						desc: m.notif_ticket_message_desc()
+					},
+					{
+						key: 'ticketMentioned',
+						label: m.notif_ticket_mentioned(),
+						desc: m.notif_ticket_mentioned_desc()
+					}
+				]
+			},
+			{
+				title: m.notif_group_chat(),
+				show: access.chat,
+				scopeKey: 'chat' as const,
+				items: [
+					{ key: 'chatMessage', label: m.notif_chat_message(), desc: m.notif_chat_message_desc() },
+					{
+						key: 'chatMentioned',
+						label: m.notif_chat_mentioned(),
+						desc: m.notif_chat_mentioned_desc()
+					}
+				]
+			},
+			{
+				title: m.notif_group_projects(),
+				show: access.projects,
+				items: [
+					{
+						key: 'projectMentioned',
+						label: m.notif_project_mentioned(),
+						desc: m.notif_project_mentioned_desc()
+					}
+				]
+			},
+			{
+				title: m.notif_group_wiki(),
+				show: access.wiki,
+				items: [
+					{ key: 'wikiUpdated', label: m.notif_wiki_updated(), desc: m.notif_wiki_updated_desc() }
+				]
+			}
+		].filter((g) => g.show)
+	);
 
 	let notif = $state<NotifPrefs>(structuredClone(prefs.notifications));
 	let quietHours = $state<QuietHours>(structuredClone(prefs.quietHours));
@@ -155,14 +190,16 @@
 			JSON.stringify(scope) !== JSON.stringify(prefs.notificationScope)
 	);
 
+	// Only touch keys the user can see — hidden surfaces keep their stored values.
+	const visibleKeys = $derived(notifGroups.flatMap((g) => g.items.map((i) => i.key)));
 	function setAllEmail(mode: DeliveryMode) {
-		const next: NotifPrefs = {};
-		for (const k of Object.keys(notif)) next[k] = { ...notif[k], email: mode };
+		const next: NotifPrefs = { ...notif };
+		for (const k of visibleKeys) next[k] = { ...notif[k], email: mode };
 		notif = next;
 	}
 	function setAllInApp(value: boolean) {
-		const next: NotifPrefs = {};
-		for (const k of Object.keys(notif)) next[k] = { ...notif[k], inApp: value };
+		const next: NotifPrefs = { ...notif };
+		for (const k of visibleKeys) next[k] = { ...notif[k], inApp: value };
 		notif = next;
 	}
 
