@@ -35,19 +35,18 @@
 <button
 	type="button"
 	{onclick}
-	class="group grid w-full items-center gap-3 border-b border-border/60 px-5 text-left transition-colors
+	class="group grid w-full grid-cols-[22px_minmax(0,1fr)_auto_28px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors md:grid-cols-[22px_88px_minmax(0,1fr)_110px_88px_88px_96px_30px]
 	{selected ? 'bg-[var(--row-active)]' : 'hover:bg-[var(--row-hover)]'}"
-	style:grid-template-columns="22px 88px 1fr 110px 88px 88px 96px 30px"
 	style:height="var(--row-h)"
 >
 	<StatusDot status={task.status} />
-	<span class="truncate font-mono text-[13px] text-text-3">{task.id}</span>
+	<span class="hidden truncate font-mono text-[13px] text-text-3 md:block">{task.id}</span>
 	<span class="flex min-w-0 items-center gap-2">
 		<span class="shrink-0"><TypeBadge type={task.type ?? 'task'} showLabel={false} /></span>
 		<span class="truncate text-[14px] text-text">{task.title}</span>
 		{#if task.plannedFor || task.inMyPlan}
 			<span
-				class="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-0.5 text-[12px] text-accent bg-accent-soft"
+				class="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-accent-soft px-2 py-0.5 text-[12px] text-accent"
 				title={task.plannedFor
 					? m.tasks_planned_for({ date: formatDateShort(task.plannedFor) })
 					: m.tasks_in_your_week_no_date()}
@@ -61,9 +60,11 @@
 				{/if}
 			</span>
 		{/if}
-		{#each task.labels as l (l)}
-			<LabelChip id={l} />
-		{/each}
+		<span class="hidden md:contents">
+			{#each task.labels as l (l)}
+				<LabelChip id={l} />
+			{/each}
+		</span>
 		{#if task.checklist && task.checklist.length > 0}
 			<span
 				class="inline-flex items-center gap-1 text-[12px] {task.checklist.every((i) => i.done)
@@ -78,7 +79,7 @@
 			</span>
 		{/if}
 	</span>
-	<span class="flex items-center gap-2 text-[14px] text-text-3">
+	<span class="hidden items-center gap-2 text-[14px] text-text-3 md:flex">
 		{#if task.priority !== 'none'}
 			<PriorityBars priority={task.priority} />
 			<span>{priorityLabel(prio.id)}</span>
@@ -95,13 +96,13 @@
 			<span class="font-mono text-text-3">{formatDateShort(task.due)}</span>
 		{/if}
 	</span>
-	<span class="font-mono text-[13px] text-text-3">
+	<span class="hidden font-mono text-[13px] text-text-3 md:block">
 		{formatDateShort(task.updated)}
 	</span>
 	<span class="flex justify-start">
 		<Avatar user={assignee} size={24} />
 	</span>
-	<span class="text-text-3 opacity-0 transition-opacity group-hover:opacity-100">
+	<span class="hidden text-text-3 opacity-0 transition-opacity group-hover:opacity-100 md:block">
 		<Icon name="chevron-r" size={15} />
 	</span>
 </button>

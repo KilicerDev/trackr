@@ -663,7 +663,7 @@
 		{/snippet}
 
 		<!-- stats -->
-		<div class="mb-6 grid grid-cols-5 gap-3">
+		<div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
 			<div class="rounded-2xl border border-border bg-bg-elev p-4">
 				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
 					{m.projects_total_tasks()}
@@ -752,7 +752,7 @@
 		</div>
 
 		<!-- summary / members / meetings -->
-		<div class="mb-6 grid gap-5" style:grid-template-columns="1fr 1fr">
+		<div class="mb-6 grid gap-5 md:grid-cols-2">
 			{#if data.isTrackrTeam}
 				<div class="grid content-start gap-5">
 					{@render aboutCard()}

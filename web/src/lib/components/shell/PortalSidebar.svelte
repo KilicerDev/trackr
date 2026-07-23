@@ -97,10 +97,7 @@
 	}
 </script>
 
-<aside
-	class="flex min-h-0 flex-col border-r border-border bg-bg-elev"
-	style:width="var(--sidebar-w)"
->
+<aside class="flex min-h-0 w-full flex-col border-r border-border bg-bg-elev">
 	<!-- Org / workspace header -->
 	<div class="px-3 pt-3.5 pb-2">
 		<div class="relative">

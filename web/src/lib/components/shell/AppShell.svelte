@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import Sidebar from './Sidebar.svelte';
+	import SidebarDrawer from './SidebarDrawer.svelte';
 	import { setSidebar } from '$lib/stores/sidebar.svelte';
 	import type { Snippet } from 'svelte';
 	let { children }: { children: Snippet } = $props();
@@ -18,12 +19,13 @@
 </script>
 
 <div
-	class="grid h-full overflow-hidden"
+	class="grid h-full grid-cols-1 overflow-hidden md:grid-cols-[var(--sidebar-w)_1fr]"
 	class:shell-animate={sidebar.animate}
-	style:grid-template-columns="{width} 1fr"
 	style:--sidebar-w={width}
 >
-	<Sidebar />
+	<SidebarDrawer>
+		<Sidebar />
+	</SidebarDrawer>
 	<main class="flex min-h-0 min-w-0 flex-col overflow-hidden bg-bg">
 		{@render children()}
 	</main>

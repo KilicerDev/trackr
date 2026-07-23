@@ -298,7 +298,8 @@
 			<span class="font-mono font-medium tracking-tight text-text">{weekLabel}</span>
 			{#if weekDelta === 0}
 				<span
-					class="rounded-full px-1.5 py-0.5 text-[11px] font-medium tracking-[0.06em] text-accent uppercase bg-accent-soft">{m.week_now()}</span
+					class="rounded-full bg-accent-soft px-1.5 py-0.5 text-[11px] font-medium tracking-[0.06em] text-accent uppercase"
+					>{m.week_now()}</span
 				>
 			{/if}
 			<span class="text-text-4">·</span>
@@ -320,7 +321,7 @@
 		</div>
 	</div>
 
-	<div class="grid gap-5 px-6 py-5" style:grid-template-columns="1fr 320px">
+	<div class="grid gap-5 px-6 py-5 lg:grid-cols-[1fr_320px]">
 		<div class="space-y-2.5">
 			{#each WEEK_DAYS as day, i (day)}
 				{@const tasks = plannedByDay[i]}
@@ -349,7 +350,8 @@
 						<span class="font-mono text-[13px] text-text-4">{dayLabels[i].dayOfMonth}</span>
 						{#if isToday}
 							<span
-								class="rounded-full px-2 py-0.5 text-[12px] font-medium tracking-[0.06em] text-accent uppercase bg-accent-soft">{m.common_today()}</span
+								class="rounded-full bg-accent-soft px-2 py-0.5 text-[12px] font-medium tracking-[0.06em] text-accent uppercase"
+								>{m.common_today()}</span
 							>
 						{/if}
 						<span class="font-mono text-[12px] text-text-3">{tasks.length}</span>

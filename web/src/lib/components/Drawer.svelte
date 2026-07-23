@@ -78,7 +78,7 @@
 	></button>
 	<aside
 		transition:fly={{ x: width + 20, duration: 280, easing: cubicOut, opacity: 1 }}
-		class="fixed top-0 right-0 bottom-0 z-50 flex flex-col overflow-hidden border-l border-border bg-bg-elev shadow-lg"
+		class="fixed top-0 right-0 bottom-0 z-50 flex max-w-[calc(100vw-2rem)] flex-col overflow-hidden border-l border-border bg-bg-elev shadow-lg"
 		style:width="{width}px"
 		ondragenter={onDragEnter}
 		ondragover={onDragOver}

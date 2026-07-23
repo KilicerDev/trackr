@@ -805,6 +805,8 @@
 	"settings_week_starts_on": "Week starts on",
 	"settings_week_sunday": "Sunday",
 	"shell_account": "Account",
+	"shell_open_menu": "Open navigation",
+	"shell_close_menu": "Close navigation",
 	"shell_account_profile": "Profile",
 	"shell_account_settings": "Settings",
 	"shell_admin_logs": "Logs",

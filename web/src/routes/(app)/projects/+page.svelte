@@ -300,14 +300,13 @@
 	<div class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
 		<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
 			<div
-				class="grid items-center gap-3 border-b border-border px-5 py-2.5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
-				style:grid-template-columns="1.5fr 1fr 1fr 0.6fr 1fr"
+				class="grid grid-cols-[1.5fr_1fr] items-center gap-3 border-b border-border px-5 py-2.5 text-[12px] tracking-[0.08em] text-text-4 uppercase md:grid-cols-[1.5fr_1fr_1fr_0.6fr_1fr]"
 			>
 				<span>{m.projects_col_project()}</span>
-				<span>{m.projects_col_lead()}</span>
+				<span class="hidden md:block">{m.projects_col_lead()}</span>
 				<span>{m.projects_col_status()}</span>
-				<span>{m.projects_col_key()}</span>
-				<span>{m.projects_col_updated()}</span>
+				<span class="hidden md:block">{m.projects_col_key()}</span>
+				<span class="hidden md:block">{m.projects_col_updated()}</span>
 			</div>
 			{#each group === 'none' ? [{ key: 'all', label: '', color: '', projects: visibleProjects }] : listColumns as col (col.key)}
 				{@const isCollapsed = collapsed.has(col.key)}
@@ -332,8 +331,7 @@
 								PROJECT_STATUS[p.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.active}
 							<a
 								href="/projects/{p.id}"
-								class="grid items-center gap-3 px-5 py-3 text-[14px] transition-colors hover:bg-[var(--row-hover)]"
-								style:grid-template-columns="1.5fr 1fr 1fr 0.6fr 1fr"
+								class="grid grid-cols-[1.5fr_1fr] items-center gap-3 px-5 py-3 text-[14px] transition-colors hover:bg-[var(--row-hover)] md:grid-cols-[1.5fr_1fr_1fr_0.6fr_1fr]"
 							>
 								<span class="flex min-w-0 items-center gap-2.5">
 									<span
@@ -343,13 +341,15 @@
 									>
 									<span class="truncate font-medium">{p.name}</span>
 								</span>
-								<span class="truncate text-text-2">{p.lead?.name ?? '—'}</span>
+								<span class="hidden truncate text-text-2 md:block">{p.lead?.name ?? '—'}</span>
 								<span class="inline-flex items-center gap-1.5 text-text-2">
 									<span class="h-1.5 w-1.5 rounded-full" style:background={st.color}></span>
 									{projectStatusLabel(p.status)}
 								</span>
-								<span class="font-mono text-text-3">{p.key}</span>
-								<span class="text-text-3">{p.updatedAt.toISOString().slice(0, 10)}</span>
+								<span class="hidden font-mono text-text-3 md:block">{p.key}</span>
+								<span class="hidden text-text-3 md:block"
+									>{p.updatedAt.toISOString().slice(0, 10)}</span
+								>
 							</a>
 						{/each}
 					</div>

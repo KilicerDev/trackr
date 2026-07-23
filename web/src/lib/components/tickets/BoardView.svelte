@@ -205,7 +205,9 @@
 	<div class="flex h-full">
 		{#each columns as col (col.key)}
 			{@const groups = subGroupsForColumn(col)}
-			<div class="flex w-[363px] shrink-0 flex-col border-r border-border last:border-r-0">
+			<div
+				class="flex w-[85vw] max-w-[363px] shrink-0 flex-col border-r border-border last:border-r-0"
+			>
 				<div class="flex items-center gap-2 border-b border-border px-4 py-3">
 					{#if col.userId}
 						{@const u = resolveUser(col.userId)}

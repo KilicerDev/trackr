@@ -124,17 +124,30 @@
 
 <header class="flex shrink-0 items-center gap-3.5 border-b border-border bg-bg px-[24px] py-3">
 	{#if sidebarUi}
+		<!-- Mobile: hamburger opens the slide-over drawer (both shells). -->
 		<button
 			type="button"
-			onclick={() => sidebarUi.toggle()}
-			title={sidebarUi.collapsed ? m.shell_expand_sidebar() : m.shell_collapse_sidebar()}
-			aria-label={sidebarUi.collapsed ? m.shell_expand_sidebar() : m.shell_collapse_sidebar()}
-			class="-ml-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
+			onclick={() => sidebarUi.openMobile()}
+			title={m.shell_open_menu()}
+			aria-label={m.shell_open_menu()}
+			class="-ml-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text md:hidden"
 		>
-			<Icon name="sidebar" size={17} />
+			<Icon name="menu" size={18} />
 		</button>
+		{#if sidebarUi.collapsible}
+			<!-- Desktop: collapse the rail (AppShell only — the portal rail is fixed). -->
+			<button
+				type="button"
+				onclick={() => sidebarUi.toggle()}
+				title={sidebarUi.collapsed ? m.shell_expand_sidebar() : m.shell_collapse_sidebar()}
+				aria-label={sidebarUi.collapsed ? m.shell_expand_sidebar() : m.shell_collapse_sidebar()}
+				class="-ml-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text max-md:hidden"
+			>
+				<Icon name="sidebar" size={17} />
+			</button>
+		{/if}
 	{/if}
-	<div class="flex items-center gap-2 text-[14px]">
+	<div class="flex min-w-0 items-center gap-2 overflow-hidden text-[14px] whitespace-nowrap">
 		{#each crumbs as c, i (c.label)}
 			{#if i > 0}<span class="text-text-4">/</span>{/if}
 			{#if c.href}
