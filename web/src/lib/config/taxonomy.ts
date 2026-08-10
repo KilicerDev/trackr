@@ -232,6 +232,7 @@ export const LOG_EVENT_TYPES: Record<
 	},
 	// tasks
 	'task.create': { label: 'Task created', icon: 'plus', color: '#7fc8a9', kind: 'task' },
+	'task.import': { label: 'Tasks imported', icon: 'download', color: '#7fc8a9', kind: 'task' },
 	'task.status': {
 		label: 'Task status changed',
 		icon: 'check-square',

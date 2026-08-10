@@ -23,6 +23,19 @@ function fmtDate(d: Date | null): string {
 	return d.toISOString().slice(0, 10);
 }
 
+// Task field allow-lists, shared by every write path (form actions, JSON
+// import) so a new value only has to be added in one place.
+export const ALLOWED_TASK_STATUS = new Set([
+	'backlog',
+	'todo',
+	'in_progress',
+	'paused',
+	'in_review',
+	'done'
+]);
+export const ALLOWED_TASK_PRIORITY = new Set(['none', 'low', 'medium', 'high', 'urgent']);
+export const ALLOWED_TASK_TYPE = new Set(['task', 'bug', 'improvement', 'feature', 'chore']);
+
 /**
  * Load tasks shaped to match the legacy `Task` interface so existing
  * components (ListView, BoardView, Inspector) consume them unchanged.
@@ -349,4 +362,101 @@ export async function createTask(
 	});
 
 	return { id, number, displayId, assignedIds };
+}
+
+export type BulkTaskInput = {
+	title: string;
+	description: string | null;
+	status: string;
+	priority: string;
+	type: string;
+	dueDate?: Date | null;
+	estimateMinutes?: number | null;
+	tags?: string[];
+	checklist?: { id: string; text: string; done: boolean }[];
+	assigneeIds?: string[];
+};
+
+/**
+ * Bulk insert path for tasks (JSON import). Unlike calling `createTask` in a
+ * loop, this allocates the whole block of per-project numbers with a single
+ * `nextTaskNumber` bump, batch-inserts the rows, and resolves assignees with
+ * one query — all inside one transaction, so a failure inserts nothing.
+ * Assignee rules match `createTask`: internal-org users only, falling back to
+ * the creator so every task has at least one assignee.
+ */
+export async function createTasks(input: {
+	projectId: string;
+	projectKey: string;
+	createdBy: string;
+	tasks: BulkTaskInput[];
+}): Promise<{ id: string; number: number; displayId: string; assignedIds: string[] }[]> {
+	if (input.tasks.length === 0) return [];
+
+	// Every user id any task requests, plus the creator (the fallback assignee).
+	const requestedIds = new Set<string>([input.createdBy]);
+	for (const t of input.tasks) for (const a of t.assigneeIds ?? []) requestedIds.add(a);
+
+	const results: { id: string; number: number; displayId: string; assignedIds: string[] }[] = [];
+
+	await db.transaction(async (tx) => {
+		const [bumped] = await tx
+			.update(project)
+			.set({ nextTaskNumber: sql`${project.nextTaskNumber} + ${input.tasks.length}` })
+			.where(eq(project.id, input.projectId))
+			.returning({ next: project.nextTaskNumber });
+		if (!bumped) throw new Error('Project not found');
+		const firstNumber = bumped.next - input.tasks.length;
+
+		const internal = await tx
+			.selectDistinct({ id: user.id })
+			.from(user)
+			.innerJoin(organizationMember, eq(organizationMember.userId, user.id))
+			.innerJoin(organization, eq(organization.id, organizationMember.orgId))
+			.where(and(inArray(user.id, [...requestedIds]), eq(organization.isInternal, true)));
+		const internalIds = new Set(internal.map((u) => u.id));
+
+		const rows = input.tasks.map((t, i) => ({
+			id: crypto.randomUUID(),
+			projectId: input.projectId,
+			number: firstNumber + i,
+			title: t.title,
+			description: t.description,
+			status: t.status,
+			priority: t.priority,
+			type: t.type,
+			dueDate: t.dueDate ?? null,
+			estimateMinutes: t.estimateMinutes ?? null,
+			tags: t.tags ?? [],
+			checklist: t.checklist ?? [],
+			createdBy: input.createdBy
+		}));
+		await tx.insert(task).values(rows);
+
+		const assigneeRows: { taskId: string; userId: string }[] = [];
+		for (let i = 0; i < rows.length; i++) {
+			const valid = (input.tasks[i].assigneeIds ?? []).filter((id) => internalIds.has(id));
+			const assignedIds = valid.length > 0 ? [...new Set(valid)] : [input.createdBy];
+			for (const userId of assignedIds) assigneeRows.push({ taskId: rows[i].id, userId });
+			results.push({
+				id: rows[i].id,
+				number: rows[i].number,
+				displayId: `${input.projectKey}-${rows[i].number}`,
+				assignedIds
+			});
+		}
+		await tx.insert(taskAssignee).values(assigneeRows);
+
+		for (let i = 0; i < results.length; i++) {
+			await logActivity(tx, {
+				projectId: input.projectId,
+				taskId: results[i].id,
+				actorId: input.createdBy,
+				type: 'task.created',
+				meta: { taskRef: results[i].displayId, taskTitle: input.tasks[i].title }
+			});
+		}
+	});
+
+	return results;
 }

@@ -13,7 +13,13 @@ import {
 	organizationMember
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
-import { createTask, loadTasks } from '$lib/server/tasks';
+import {
+	ALLOWED_TASK_PRIORITY,
+	ALLOWED_TASK_STATUS,
+	ALLOWED_TASK_TYPE,
+	createTask,
+	loadTasks
+} from '$lib/server/tasks';
 import { normalizeTag } from '$lib/utils/label-meta';
 import { logActivityFF } from '$lib/server/activity';
 import { recordAudit } from '$lib/server/audit';
@@ -71,9 +77,9 @@ async function resolveTaskByDisplayId(displayId: string) {
 	return row ?? null;
 }
 
-const ALLOWED_STATUS = new Set(['backlog', 'todo', 'in_progress', 'paused', 'in_review', 'done']);
-const ALLOWED_PRIORITY = new Set(['none', 'low', 'medium', 'high', 'urgent']);
-const ALLOWED_TYPE = new Set(['task', 'bug', 'improvement', 'feature', 'chore']);
+const ALLOWED_STATUS = ALLOWED_TASK_STATUS;
+const ALLOWED_PRIORITY = ALLOWED_TASK_PRIORITY;
+const ALLOWED_TYPE = ALLOWED_TASK_TYPE;
 
 export const actions: Actions = {
 	create: async ({ request, locals, url }) => {
@@ -106,6 +112,10 @@ export const actions: Actions = {
 		if (!title) return fail(400, { message: m.tasks_err_title_required() });
 		if (!projectKey) return fail(400, { message: m.tasks_err_project_required() });
 		if (!ALLOWED_TYPE.has(type)) return fail(400, { message: m.tasks_err_invalid_type({ type }) });
+		if (!ALLOWED_STATUS.has(status))
+			return fail(400, { message: m.tasks_err_invalid_status({ value: status }) });
+		if (!ALLOWED_PRIORITY.has(priority))
+			return fail(400, { message: m.tasks_err_invalid_priority({ value: priority }) });
 		if (plannedFor && !/^\d{4}-\d{2}-\d{2}$/.test(plannedFor)) {
 			return fail(400, { message: m.tasks_err_invalid_planned_date() });
 		}

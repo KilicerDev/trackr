@@ -8,6 +8,7 @@
 	import ListView from '$lib/components/tasks/ListView.svelte';
 	import CreateTaskModal from '$lib/components/tasks/CreateTaskModal.svelte';
 	import EditProjectModal from '$lib/components/projects/EditProjectModal.svelte';
+	import ImportTasksModal from '$lib/components/projects/ImportTasksModal.svelte';
 	import ProjectTasksToolbar from '$lib/components/projects/ProjectTasksToolbar.svelte';
 	import ProjectHistory from '$lib/components/projects/ProjectHistory.svelte';
 	import NewMeetingDialog from '$lib/components/notes/NewMeetingDialog.svelte';
@@ -160,6 +161,7 @@
 
 	let settingsOpen = $state(false);
 	let editing = $state(false);
+	let importingTasks = $state(false);
 	let historyOpen = $state(false);
 	let projectBusy = $state<
 		'archive' | 'unarchive' | 'delete' | 'favoriteAdd' | 'favoriteRemove' | null
@@ -401,6 +403,17 @@
 							>
 								<Icon name="settings" size={13} />
 								{m.projects_edit_details()}
+							</button>
+							<button
+								type="button"
+								onclick={() => {
+									settingsOpen = false;
+									importingTasks = true;
+								}}
+								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
+							>
+								<Icon name="download" size={13} />
+								{m.projects_import_tasks()}
 							</button>
 							<div class="my-1 border-t border-border/60"></div>
 							<button
@@ -819,6 +832,8 @@
 		status: p.status
 	}}
 />
+
+<ImportTasksModal open={importingTasks} onclose={() => (importingTasks = false)} projectId={p.id} />
 
 <Inspector task={selected} onclose={() => (selectedId = null)} users={data.users} />
 
