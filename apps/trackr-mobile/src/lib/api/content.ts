@@ -1,6 +1,19 @@
 import type { ApiClient } from "./client";
+import type { NoteListItem, WikiTreePage } from "./types";
 
-// Read-only detail views reachable via search (wiki / notes / projects).
+// Wiki / note lists (the staff Notes tab) and read-only detail views.
+
+export function listWiki(client: ApiClient): Promise<{ pages: WikiTreePage[] }> {
+  return client.get("/api/v1/wiki");
+}
+
+export function listNotes(client: ApiClient): Promise<{
+  quick: NoteListItem[];
+  meetings: NoteListItem[];
+  shared: NoteListItem[];
+}> {
+  return client.get("/api/v1/notes/list");
+}
 
 export function getWikiPage(
   client: ApiClient,

@@ -24,7 +24,7 @@
       </div>
     {/snippet}
     {#snippet children(data)}
-      <ScreenHeader title={data.project.name} eyebrow={data.project.key} back="/search">
+      <ScreenHeader title={data.project.name} eyebrow={data.project.key} back="/">
         {#snippet trailing()}
           <StatusBadge tone={data.project.status === "active" ? "success" : "neutral"}>
             {data.project.status}

@@ -31,7 +31,7 @@
 </script>
 
 <main class="mx-auto max-w-lg px-4">
-  <ScreenHeader title={m.chat_title()} accent />
+  <ScreenHeader title={m.chat_title()} />
 
   {#if chatOrgs.length > 1}
     <select

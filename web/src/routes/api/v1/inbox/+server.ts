@@ -3,6 +3,7 @@
 import { and, desc, eq, isNull, lt } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { notification } from '$lib/server/db/app.schema';
+import { loadTicketDisplayUsers } from '$lib/server/tickets';
 import { json, requireUser } from '$lib/server/api/guard';
 import type { RequestHandler } from './$types';
 
@@ -42,12 +43,20 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		.limit(limit + 1);
 
 	const page = rows.slice(0, limit);
+	// Display directory (name + color only, emails stripped) so the app can
+	// render actor avatars without a users endpoint — same contract as the
+	// ticket detail's `authors` map.
+	const actorUsers = await loadTicketDisplayUsers(page.map((n) => n.actorId));
+	const actors = Object.fromEntries(
+		actorUsers.map((u) => [u.id, { name: u.name, color: u.color }])
+	);
 	return json({
 		items: page.map((n) => ({
 			...n,
 			readAt: n.readAt?.toISOString() ?? null,
 			createdAt: n.createdAt.toISOString()
 		})),
+		actors,
 		nextCursor: rows.length > limit ? page[page.length - 1].createdAt.toISOString() : null
 	});
 };

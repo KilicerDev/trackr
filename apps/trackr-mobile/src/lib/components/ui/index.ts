@@ -1,5 +1,7 @@
 export { default as Async } from "./Async.svelte";
 export { default as AutocompleteSheet } from "./AutocompleteSheet.svelte";
+export { default as Avatar } from "./Avatar.svelte";
+export { default as PriorityBars } from "./PriorityBars.svelte";
 export type { AutocompleteOption } from "./AutocompleteSheet.svelte";
 export { default as BottomSheet } from "./BottomSheet.svelte";
 export { default as Brand } from "./Brand.svelte";
@@ -19,6 +21,7 @@ export { default as SectionHeading } from "./SectionHeading.svelte";
 export { default as SegmentedControl } from "./SegmentedControl.svelte";
 export { default as Skeleton } from "./Skeleton.svelte";
 export { default as StatusBadge } from "./StatusBadge.svelte";
+export { default as StatusDot } from "./StatusDot.svelte";
 export { default as Stepper } from "./Stepper.svelte";
 export { default as TextArea } from "./TextArea.svelte";
 export { default as TextField } from "./TextField.svelte";

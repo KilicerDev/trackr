@@ -22,7 +22,7 @@
       </div>
     {/snippet}
     {#snippet children(data)}
-      <ScreenHeader title={data.note.title || "—"} back="/search" />
+      <ScreenHeader title={data.note.title || "—"} back="/notes" />
       <p class="mt-1 text-xs text-(--color-text-light)">
         {data.note.meetingDate
           ? fullTime(data.note.meetingDate)

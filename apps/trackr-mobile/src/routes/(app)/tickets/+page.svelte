@@ -1,16 +1,17 @@
 <script lang="ts">
   import TicketIcon from "@lucide/svelte/icons/ticket";
-  import { Async, Card, EmptyState, ListRow, ScreenHeader, SegmentedControl, Skeleton } from "$lib/components/ui";
+  import { Async, Card, EmptyState, PriorityBars, ScreenHeader, SegmentedControl, Skeleton } from "$lib/components/ui";
   import { listTickets, type TicketSegment } from "$lib/api/tickets";
   import { remote } from "$lib/api/remote.svelte";
   import { session } from "$lib/session.svelte";
   import { relativeTime } from "$lib/utils/time";
-  import { ticketStatusDot } from "$lib/utils/tickets";
+  import { ticketPriorityMeta, ticketStatusDot } from "$lib/utils/tickets";
   import { m } from "$lib/paraglide/messages";
 
   /* Tickets — Inbox-Logik statt endloser Liste: segmented Für mich /
-     Beobachtet / Alle, default "Für mich". Row shows ONLY subject, org,
-     last activity, status dot (per the spec: no ids, no badges, no tags). */
+     Beobachtet / Alle, default "Für mich". Rows follow the web list view's
+     single-line anatomy: priority bars, mono display id, status dot,
+     subject, last activity. */
 
   let segment = $state<TicketSegment>("mine");
 
@@ -38,7 +39,7 @@
 </script>
 
 <main class="mx-auto max-w-lg px-4">
-  <ScreenHeader title={m.tickets_title()} accent />
+  <ScreenHeader title={m.tickets_title()} />
 
   {#if showSegments}
     <SegmentedControl
@@ -68,23 +69,26 @@
         {:else}
           <Card padding="none" class="divide-y divide-(--color-border-subtle)">
             {#each data.tickets as ticket (ticket.id)}
-              <ListRow
-                title={ticket.subject}
-                subtitle={ticket.orgName}
+              {@const prio = ticketPriorityMeta(ticket.priority)}
+              <a
                 href={`/tickets/${ticket.id}`}
+                class="flex h-12 items-center gap-3 px-4 text-[14px] transition-colors active:bg-(--color-bg-inset)"
               >
-                {#snippet leading()}
-                  <span
-                    class="block h-2.5 w-2.5 rounded-full"
-                    style="background: {ticketStatusDot(ticket.status)}"
-                  ></span>
-                {/snippet}
-                {#snippet trailing()}
-                  <span class="text-xs text-(--color-text-light)">
-                    {relativeTime(ticket.lastMessageAt ?? ticket.updatedAt)}
-                  </span>
-                {/snippet}
-              </ListRow>
+                <PriorityBars color={prio.color} level={prio.level} />
+                <span
+                  class="max-w-[96px] shrink-0 truncate font-mono text-[12px] text-(--color-text-light)"
+                >
+                  {ticket.displayId}
+                </span>
+                <span
+                  class="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style="background: {ticketStatusDot(ticket.status)}"
+                ></span>
+                <span class="min-w-0 flex-1 truncate text-(--color-text)">{ticket.subject}</span>
+                <span class="shrink-0 font-mono text-[12px] text-(--color-text-light)">
+                  {relativeTime(ticket.lastMessageAt ?? ticket.updatedAt)}
+                </span>
+              </a>
             {/each}
           </Card>
         {/if}

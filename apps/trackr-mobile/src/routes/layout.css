@@ -13,12 +13,14 @@
 @import "./app.css";
 
 @theme {
+  /* Same pairing as the web app: Geist for everything, Geist Mono for ids,
+     counts, and timestamps. */
   --font-sans:
-    "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     Roboto, "Helvetica Neue", sans-serif;
-  /* Hostnames and other technical literals (server row, tokens). */
   --font-mono:
-    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    "Geist Mono Variable", ui-monospace, "SF Mono", SFMono-Regular, Menlo,
+    Consolas, monospace;
 }
 
 @layer base {
@@ -29,7 +31,11 @@
   body {
     background: var(--color-bg);
     color: var(--color-text);
-    line-height: 1.5;
+    /* Web app baseline (web/src/app.css body). */
+    font-size: 15px;
+    line-height: 1.45;
+    letter-spacing: -0.005em;
+    font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }

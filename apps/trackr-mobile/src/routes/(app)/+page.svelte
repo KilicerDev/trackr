@@ -1,124 +1,167 @@
 <script lang="ts">
-  import BellOff from "@lucide/svelte/icons/bell-off";
-  import LogOut from "@lucide/svelte/icons/log-out";
-  import { goto } from "$app/navigation";
-  import { Async, Card, EmptyState, ListRow, ScreenHeader, Skeleton } from "$lib/components/ui";
-  import { listInbox, markRead } from "$lib/api/inbox";
+  import Bell from "@lucide/svelte/icons/bell";
+  import Ticket from "@lucide/svelte/icons/ticket";
+  import SquareCheck from "@lucide/svelte/icons/square-check-big";
+  import StickyNote from "@lucide/svelte/icons/sticky-note";
+  import { Brand, ScreenHeader, Skeleton } from "$lib/components/ui";
+  import InboxList from "$lib/components/InboxList.svelte";
+  import QuickCreateSheet from "$lib/components/QuickCreateSheet.svelte";
+  import { listTickets } from "$lib/api/tickets";
+  import { listMyTasks } from "$lib/api/tasks";
   import { remote } from "$lib/api/remote.svelte";
-  import type { InboxItem } from "$lib/api/types";
   import { session } from "$lib/session.svelte";
-  import { relativeTime } from "$lib/utils/time";
   import { m } from "$lib/paraglide/messages";
 
-  /* Inbox — the default tab. "Was wartet auf mich": the notification feed.
-     Tapping a row deep-routes into the entity with the reply field one tap
-     away (push → thread → answer = two taps). */
+  /* Home — staff get the dashboard (stat tiles + quick create, bell → full
+     inbox); external users keep the notification feed as their landing tab. */
 
-  const inbox = remote(
-    () => ({}),
-    (client) => listInbox(client),
+  const staff = $derived(session.capabilities?.userType === "staff");
+
+  const tickets = remote(
+    () => (staff ? "all" : null),
+    (client, seg) => (seg ? listTickets(client, seg) : Promise.resolve({ tickets: [] })),
+  );
+  const tasks = remote(
+    () => (staff && session.capabilities?.surfaces.tasks ? {} : null),
+    (client, key) => (key ? listMyTasks(client) : Promise.resolve({ tasks: [], users: {} })),
   );
 
-  // Map a notification to an in-app route. Ticket/thread/task ids arrive as
-  // entity refs; everything else falls back to search.
-  function routeFor(item: InboxItem): string | null {
-    if (item.entityType === "ticket" && item.entityId) return `/tickets/${item.entityId}`;
-    if (item.entityType === "thread" && item.entityId) return `/chat/${item.entityId}`;
-    if (item.entityType === "task" && item.entityId) return `/tasks`;
-    return null;
+  const OPEN_TICKET = new Set(["open", "in_progress", "waiting_on_customer", "waiting_on_agent", "paused"]);
+  const openTickets = $derived(
+    (tickets.data?.tickets ?? []).filter((t) => OPEN_TICKET.has(t.status)),
+  );
+  const myTickets = $derived.by(() => {
+    const me = session.user?.id;
+    if (!me) return [];
+    return openTickets.filter(
+      (t) => t.customerId === me || t.createdBy === me || t.assignees.includes(me),
+    );
+  });
+  const openTasks = $derived(
+    (tasks.data?.tasks ?? []).filter((t) => t.status !== "done"),
+  );
+
+  let quickCreateOpen = $state(false);
+  let quickKind = $state<"ticket" | "task" | "note">("ticket");
+
+  function openQuick(kind: "ticket" | "task" | "note") {
+    quickKind = kind;
+    quickCreateOpen = true;
   }
 
-  async function openItem(item: InboxItem) {
-    const client = session.client;
-    if (client) {
-      // Optimistic: clear locally, fire the mark-read, then navigate.
-      if (!item.readAt) {
-        item.readAt = new Date().toISOString();
-        session.unread = Math.max(0, session.unread - 1);
-        void markRead(client, { id: item.id }).catch(() => {});
-      }
-    }
-    const route = routeFor(item);
-    if (route) void goto(route);
-  }
-
-  async function markAll() {
-    const client = session.client;
-    if (!client) return;
-    await markRead(client, { all: true });
-    session.unread = 0;
-    void inbox.refresh();
-  }
+  const quickActions = $derived.by(() => {
+    const qc = session.capabilities?.quickCreate;
+    const list: { kind: "ticket" | "task" | "note"; label: string; icon: typeof Ticket }[] = [];
+    if (qc?.ticket) list.push({ kind: "ticket", label: m.qc_ticket(), icon: Ticket });
+    if (qc?.task) list.push({ kind: "task", label: m.qc_task(), icon: SquareCheck });
+    if (qc?.note) list.push({ kind: "note", label: m.qc_note(), icon: StickyNote });
+    return list;
+  });
 </script>
 
 <main class="mx-auto max-w-lg px-4">
-  <ScreenHeader title={m.inbox_title()} accent>
-    {#snippet trailing()}
-      <div class="flex items-center gap-1">
+  {#if staff}
+    <!-- Brand row + bell (web topbar's notification affordance). -->
+    <header
+      class="flex items-center justify-between"
+      style="padding-top: calc(env(safe-area-inset-top, 0px) + 1.25rem)"
+    >
+      <Brand />
+      <a
+        href="/inbox"
+        class="relative grid h-10 w-10 place-items-center rounded-lg text-(--color-text-muted) transition-colors active:bg-(--color-bg-inset)"
+        aria-label={m.inbox_title()}
+      >
+        <Bell size={19} strokeWidth={1.6} />
         {#if session.unread > 0}
+          <span
+            class="absolute top-[7px] right-[7px] h-2 w-2 rounded-full bg-(--color-accent) ring-2 ring-(--color-bg)"
+          ></span>
+        {/if}
+      </a>
+    </header>
+
+    <!-- Stat tiles (web dashboard tile recipe: bordered surface, 31px
+         tabular number, eyebrow label). -->
+    <div class="mt-5 grid grid-cols-2 gap-3">
+      {#if !tickets.data && !tickets.error}
+        <Skeleton class="h-[86px]" />
+        <Skeleton class="h-[86px]" />
+      {:else}
+        <a
+          href="/tickets"
+          class="rounded-xl border border-(--color-border) bg-(--color-bg-subtle) p-4 transition-colors active:bg-(--color-bg-inset)"
+        >
+          <p class="text-[31px] leading-none font-semibold text-(--color-text) tabular-nums">
+            {openTickets.length}
+          </p>
+          <p class="mt-2 text-[12px] tracking-[0.08em] text-(--color-text-light) uppercase">
+            {m.dash_tickets_open()}
+          </p>
+        </a>
+        <a
+          href="/tickets"
+          class="rounded-xl border border-(--color-border) bg-(--color-bg-subtle) p-4 transition-colors active:bg-(--color-bg-inset)"
+        >
+          <p class="text-[31px] leading-none font-semibold text-(--color-text) tabular-nums">
+            {myTickets.length}
+          </p>
+          <p class="mt-2 text-[12px] tracking-[0.08em] text-(--color-text-light) uppercase">
+            {m.dash_tickets_mine()}
+          </p>
+        </a>
+      {/if}
+      {#if !tasks.data && !tasks.error}
+        <Skeleton class="h-[86px]" />
+        <Skeleton class="h-[86px]" />
+      {:else}
+        <a
+          href="/tasks"
+          class="rounded-xl border border-(--color-border) bg-(--color-bg-subtle) p-4 transition-colors active:bg-(--color-bg-inset)"
+        >
+          <p class="text-[31px] leading-none font-semibold text-(--color-text) tabular-nums">
+            {openTasks.length}
+          </p>
+          <p class="mt-2 text-[12px] tracking-[0.08em] text-(--color-text-light) uppercase">
+            {m.dash_tasks_open()}
+          </p>
+        </a>
+        <a
+          href="/inbox"
+          class="rounded-xl border border-(--color-border) bg-(--color-bg-subtle) p-4 transition-colors active:bg-(--color-bg-inset)"
+        >
+          <p class="text-[31px] leading-none font-semibold text-(--color-text) tabular-nums">
+            {session.unread}
+          </p>
+          <p class="mt-2 text-[12px] tracking-[0.08em] text-(--color-text-light) uppercase">
+            {m.dash_unread()}
+          </p>
+        </a>
+      {/if}
+    </div>
+
+    {#if quickActions.length}
+      <p class="mt-7 mb-2 text-[12px] tracking-[0.08em] text-(--color-text-light) uppercase">
+        {m.dash_quick_title()}
+      </p>
+      <div class="flex gap-2 pb-6">
+        {#each quickActions as action (action.kind)}
           <button
             type="button"
-            class="rounded-full px-3 py-1.5 text-[13px] font-medium text-(--color-accent-strong) active:bg-(--color-bg-inset)"
-            onclick={() => void markAll()}
+            class="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-lg border border-(--color-border) bg-(--color-bg-subtle) text-[14px] font-medium text-(--color-text) transition-colors active:bg-(--color-bg-inset)"
+            onclick={() => openQuick(action.kind)}
           >
-            {m.inbox_mark_all()}
+            <action.icon size={16} strokeWidth={1.6} class="text-(--color-text-muted)" />
+            {action.label}
           </button>
-        {/if}
-        <button
-          type="button"
-          class="grid h-9 w-9 place-items-center rounded-full text-(--color-text-light) active:bg-(--color-bg-inset)"
-          aria-label={m.shell_signout()}
-          onclick={() => void session.signOut()}
-        >
-          <LogOut size={17} strokeWidth={2} />
-        </button>
+        {/each}
       </div>
-    {/snippet}
-  </ScreenHeader>
-
-  <div class="mt-4 pb-6">
-    <Async remote={inbox}>
-      {#snippet skeleton()}
-        <div class="space-y-3">
-          <Skeleton class="h-16" />
-          <Skeleton class="h-16" />
-          <Skeleton class="h-16" />
-        </div>
-      {/snippet}
-      {#snippet children(data)}
-        {#if data.items.length === 0}
-          <EmptyState
-            icon={BellOff}
-            title={m.inbox_empty_title()}
-            description={m.inbox_empty_body()}
-          />
-        {:else}
-          <Card padding="none" class="divide-y divide-(--color-border-subtle)">
-            {#each data.items as item (item.id)}
-              <ListRow
-                title={item.title}
-                subtitle={item.body ?? undefined}
-                onclick={() => void openItem(item)}
-                class={item.readAt ? "opacity-60" : ""}
-              >
-                {#snippet leading()}
-                  <span
-                    class="mt-0.5 block h-2 w-2 rounded-full"
-                    style="background: {item.readAt
-                      ? 'transparent'
-                      : 'var(--color-accent)'}"
-                  ></span>
-                {/snippet}
-                {#snippet trailing()}
-                  <span class="text-xs text-(--color-text-light)">
-                    {relativeTime(item.createdAt)}
-                  </span>
-                {/snippet}
-              </ListRow>
-            {/each}
-          </Card>
-        {/if}
-      {/snippet}
-    </Async>
-  </div>
+      <QuickCreateSheet bind:open={quickCreateOpen} bind:kind={quickKind} />
+    {/if}
+  {:else}
+    <ScreenHeader title={m.inbox_title()} />
+    <div class="mt-4 pb-6">
+      <InboxList />
+    </div>
+  {/if}
 </main>

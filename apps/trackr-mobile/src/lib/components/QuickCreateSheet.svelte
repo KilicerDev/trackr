@@ -12,9 +12,11 @@
 
   type Kind = "ticket" | "task" | "note";
 
-  let { open = $bindable(false) }: { open?: boolean } = $props();
+  let {
+    open = $bindable(false),
+    kind = $bindable("ticket"),
+  }: { open?: boolean; kind?: Kind } = $props();
 
-  let kind = $state<Kind>("ticket");
   let title = $state("");
   let orgId = $state("");
   let projectKey = $state("");

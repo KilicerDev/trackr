@@ -109,6 +109,8 @@ export interface TicketDetail {
   messages: TicketMessage[];
   /** Display directory for message authors (emails stripped server-side). */
   authors: Record<string, { name: string; color: string }>;
+  /** Assignee picker candidates — empty unless canEdit. */
+  assignableUsers: { id: string; name: string; color: string }[];
   canEdit: boolean;
   canComment: boolean;
   canInternalNote: boolean;
@@ -138,6 +140,28 @@ export interface ChatThread {
 }
 
 // ── Tasks (mirror of the web Task view model, trimmed) ──────────────────────
+export interface TaskComment {
+  id: string;
+  user: string;
+  date: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface TaskChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+export interface TaskTimeLog {
+  user: string;
+  date: string;
+  minutes: number;
+  note: string;
+  createdAt: string;
+}
+
 export interface Task {
   id: string; // display id, e.g. TRACKR-15
   uuid: string;
@@ -147,16 +171,44 @@ export interface Task {
   type: string;
   project: string;
   assignees?: string[];
+  createdBy?: string;
+  createdAt?: string;
   due: string | null;
+  estimate?: number;
+  tags?: string[];
   description?: string;
+  checklist?: TaskChecklistItem[];
+  comments?: TaskComment[];
+  timeLogs?: TaskTimeLog[];
   plannedFor?: string | null;
 }
 
-// ── Search ───────────────────────────────────────────────────────────────────
-export interface SearchResult {
-  type: "ticket" | "task" | "project" | "wiki" | "note";
+export interface TaskDetail {
+  task: Task;
+  /** Display directory for assignees/authors (emails stripped server-side). */
+  authors: Record<string, { name: string; color: string }>;
+  /** Assignee picker candidates (internal users) — empty unless canEdit. */
+  assignableUsers: { id: string; name: string; color: string }[];
+  canEdit: boolean;
+  canComment: boolean;
+}
+
+// ── Wiki / Notes lists (staff-only Notes tab) ───────────────────────────────
+export interface WikiTreePage {
   id: string;
+  parentId: string | null;
   title: string;
-  subtitle: string | null;
-  url: string;
+  icon: string;
+  isFolder: boolean;
+  sortOrder: number;
+}
+
+export interface NoteListItem {
+  id: string;
+  kind: string;
+  title: string;
+  icon: string;
+  pinned: boolean;
+  updatedAt: string;
+  meetingDate: string | null;
 }

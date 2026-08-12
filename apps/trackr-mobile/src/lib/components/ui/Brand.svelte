@@ -1,8 +1,8 @@
 <script lang="ts">
   import { cn } from "$lib/utils/cn";
 
-  /* Text wordmark on an accent tile — no image assets needed. Mirrors the
-     web app's sidebar brand treatment. */
+  /* The web app's brand mark — three coral track bars + plain wordmark
+     (web/src/lib/components/auth/BrandMark.svelte). */
 
   type Size = "md" | "lg";
 
@@ -13,20 +13,24 @@
 
   let { size = "md", class: className }: Props = $props();
 
-  const tileSizes: Record<Size, string> = { md: "h-8 w-8 text-[15px]", lg: "h-9 w-9 text-[17px]" };
+  const markSizes: Record<Size, number> = { md: 22, lg: 26 };
   const wordmarkSizes: Record<Size, string> = { md: "text-[17px]", lg: "text-[20px]" };
 </script>
 
 <span class={cn("inline-flex shrink-0 items-center gap-2.5", className)}>
-  <span
-    class={cn(
-      "grid shrink-0 place-items-center rounded-lg bg-(--color-accent) font-bold text-(--color-accent-fg)",
-      tileSizes[size],
-    )}
+  <svg
+    width={markSizes[size]}
+    height={markSizes[size]}
+    viewBox="0 0 16 16"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
   >
-    T
-  </span>
-  <span class={cn("font-semibold tracking-[-0.02em] text-(--color-text)", wordmarkSizes[size])}>
+    <rect x="1.26971" y="1.2627" width="3.65721" height="13.4566" rx="1" fill="#FF4867" />
+    <rect x="6.146" y="1.2627" width="3.65721" height="13.4566" rx="1" fill="#FF4867" />
+    <rect x="11.0223" y="1.2627" width="3.65721" height="13.4566" rx="1" fill="#FF4867" />
+  </svg>
+  <span class={cn("font-semibold tracking-[-0.01em] text-(--color-text)", wordmarkSizes[size])}>
     Trackr
   </span>
 </span>

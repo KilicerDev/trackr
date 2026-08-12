@@ -22,7 +22,7 @@
       </div>
     {/snippet}
     {#snippet children(data)}
-      <ScreenHeader title={data.page.title} back="/search" />
+      <ScreenHeader title={data.page.title} back="/notes" />
       <p class="mt-1 text-xs text-(--color-text-light)">{fullTime(data.page.updatedAt)}</p>
       <article class="prose-mobile mt-5">
         <!-- eslint-disable-next-line svelte/no-at-html-tags — server-rendered read model -->

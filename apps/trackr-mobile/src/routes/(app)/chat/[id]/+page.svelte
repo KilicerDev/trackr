@@ -1,8 +1,9 @@
 <script lang="ts">
   import Send from "@lucide/svelte/icons/send";
   import LoaderCircle from "@lucide/svelte/icons/loader-circle";
+  import { tick } from "svelte";
   import { page } from "$app/state";
-  import { Async, ScreenHeader, Skeleton } from "$lib/components/ui";
+  import { Async, Avatar, ScreenHeader, Skeleton } from "$lib/components/ui";
   import { getThread, postThreadMessage } from "$lib/api/chat";
   import { markRead } from "$lib/api/inbox";
   import { remote } from "$lib/api/remote.svelte";
@@ -31,6 +32,34 @@
   let body = $state("");
   let sending = $state(false);
 
+  /* Same messaging scroll behavior as the ticket timeline: open at the
+     newest message, window to PAGE entries, anchor on "show older". */
+  const PAGE = 40;
+  let visibleCount = $state(PAGE);
+  let scrolledFor = $state<string | null>(null);
+
+  function scrollToBottom() {
+    requestAnimationFrame(() => {
+      window.scrollTo(0, document.documentElement.scrollHeight);
+    });
+  }
+
+  $effect(() => {
+    const id = threadId;
+    if (!thread.data || scrolledFor === id) return;
+    scrolledFor = id;
+    visibleCount = PAGE;
+    void tick().then(scrollToBottom);
+  });
+
+  async function showOlder() {
+    const el = document.documentElement;
+    const prevHeight = el.scrollHeight;
+    visibleCount += PAGE;
+    await tick();
+    window.scrollBy(0, el.scrollHeight - prevHeight);
+  }
+
   async function send() {
     const client = session.client;
     const text = body.trim();
@@ -40,6 +69,8 @@
       await postThreadMessage(client, threadId, text);
       body = "";
       await thread.refresh();
+      await tick();
+      scrollToBottom();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : m.error_generic());
     } finally {
@@ -50,7 +81,7 @@
 
 <main
   class="mx-auto flex max-w-lg flex-col px-4"
-  style="min-height: calc(100dvh - env(safe-area-inset-bottom, 0px) - 3.5rem)"
+  style="min-height: 100dvh"
 >
   <Async remote={thread}>
     {#snippet skeleton()}
@@ -62,27 +93,43 @@
     {#snippet children(data)}
       <ScreenHeader title={data.thread.title ?? m.chat_title()} back="/chat" />
 
-      <div class="mt-4 flex-1 space-y-3 pb-4">
-        {#each data.messages as msg (msg.id)}
+      {@const hiddenCount = Math.max(0, data.messages.length - visibleCount)}
+      {@const shown = hiddenCount > 0 ? data.messages.slice(hiddenCount) : data.messages}
+
+      <!-- Web chat rows: avatar + name + mono time, plain body text — the
+           web app has no own/other bubble styling anywhere. -->
+      <div class="mt-4 flex-1 space-y-4 pb-4">
+        {#if hiddenCount > 0}
+          <button
+            type="button"
+            class="mx-auto mb-2 block rounded-lg border border-(--color-border) px-4 py-1.5 text-[13px] text-(--color-text-muted) transition-colors active:bg-(--color-bg-inset)"
+            onclick={() => void showOlder()}
+          >
+            {m.timeline_show_older({ count: Math.min(PAGE, hiddenCount) })}
+          </button>
+        {/if}
+        {#each shown as msg (msg.id)}
           {#if msg.kind === "system"}
             <p class="px-2 text-center text-xs text-(--color-text-light)">
               {msg.body} · {fullTime(msg.createdAt)}
             </p>
           {:else}
-            {@const mine = msg.authorId === session.user?.id}
-            <div class={mine ? "flex justify-end" : "flex justify-start"}>
-              <div
-                class="max-w-[85%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap {mine
-                  ? 'bg-(--color-accent) text-(--color-accent-fg)'
-                  : 'border border-(--color-border) bg-(--color-bg-subtle) text-(--color-text)'}"
-              >
-                {msg.body}
+            {@const who = msg.authorId ? data.authors[msg.authorId] : null}
+            <div class="flex items-start gap-2.5">
+              {#if who}
+                <Avatar name={who.name} color={who.color} size={24} />
+              {:else}
+                <span class="h-6 w-6 shrink-0 rounded-full bg-(--color-bg-inset)"></span>
+              {/if}
+              <div class="min-w-0 flex-1">
+                <p class="text-[13px] text-(--color-text-muted)">
+                  <span class="font-medium text-(--color-text)">{who?.name ?? "—"}</span>
+                  <span class="font-mono text-[12px] text-(--color-text-light)">· {fullTime(msg.createdAt)}</span>
+                </p>
                 <p
-                  class="mt-1 text-right text-[10px] {mine
-                    ? 'text-(--color-accent-fg)/70'
-                    : 'text-(--color-text-light)'}"
+                  class="mt-0.5 text-[14px] leading-relaxed break-words [overflow-wrap:anywhere] whitespace-pre-wrap text-(--color-text)"
                 >
-                  {fullTime(msg.createdAt)}
+                  {msg.body}
                 </p>
               </div>
             </div>
@@ -91,29 +138,34 @@
       </div>
 
       <div
-        class="sticky bottom-0 -mx-4 border-t border-(--color-border) bg-(--color-bg)/95 px-4 py-3 backdrop-blur"
+        class="sticky bottom-0 -mx-4 border-t border-(--color-border) bg-(--color-bg)/95 px-4 pt-3 backdrop-blur"
+          style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px))"
       >
-        <div class="flex items-end gap-2">
+        <div
+          class="rounded-xl border border-(--color-border) bg-(--color-bg-subtle) transition-colors focus-within:border-(--color-border-strong)"
+        >
           <textarea
             bind:value={body}
             placeholder={m.chat_reply_placeholder()}
             rows="1"
             enterkeyhint="send"
-            class="max-h-32 min-h-11 flex-1 resize-none rounded-xl border border-(--color-border) bg-(--color-bg-subtle) px-3.5 py-2.5 text-base text-(--color-text) placeholder:text-(--color-text-light) focus:border-(--color-accent) focus:ring-2 focus:ring-(--color-accent)/40"
+            class="max-h-32 min-h-11 w-full resize-none border-0 bg-transparent px-3.5 pt-3 pb-1 text-base leading-relaxed text-(--color-text) outline-none placeholder:text-(--color-text-light)"
           ></textarea>
-          <button
-            type="button"
-            class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-(--color-accent) text-(--color-accent-fg) disabled:opacity-50"
-            disabled={sending || !body.trim()}
-            aria-label={m.ticket_send()}
-            onclick={() => void send()}
-          >
-            {#if sending}
-              <LoaderCircle size={18} class="animate-spin" />
-            {:else}
-              <Send size={18} />
-            {/if}
-          </button>
+          <div class="flex items-center px-2 pb-2">
+            <button
+              type="button"
+              class="ml-auto grid h-8 w-8 place-items-center rounded-lg bg-(--color-accent) text-(--color-accent-fg) transition-colors disabled:opacity-50"
+              disabled={sending || !body.trim()}
+              aria-label={m.ticket_send()}
+              onclick={() => void send()}
+            >
+              {#if sending}
+                <LoaderCircle size={15} class="animate-spin" />
+              {:else}
+                <Send size={15} />
+              {/if}
+            </button>
+          </div>
         </div>
       </div>
     {/snippet}

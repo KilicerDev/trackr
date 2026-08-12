@@ -14,6 +14,8 @@ export function getThread(
 ): Promise<{
   thread: { id: string; title: string | null; orgId: string };
   messages: ChatMessage[];
+  /** Display directory for message authors (name + color, emails stripped). */
+  authors: Record<string, { name: string; color: string }>;
 }> {
   return client.get(`/api/v1/chat/threads/${id}`);
 }

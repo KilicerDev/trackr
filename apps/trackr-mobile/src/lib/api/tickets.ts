@@ -23,12 +23,17 @@ export function postTicketMessage(
   return client.post(`/api/v1/tickets/${id}/messages`, { body, internal });
 }
 
-export function setTicketStatus(
+export function updateTicket(
   client: ApiClient,
   id: string,
-  status: string,
+  patch: {
+    status?: string;
+    priority?: string;
+    category?: string;
+    assigneeIds?: string[];
+  },
 ): Promise<{ ok: boolean; ticket?: Ticket }> {
-  return client.patch(`/api/v1/tickets/${id}`, { status });
+  return client.patch(`/api/v1/tickets/${id}`, patch);
 }
 
 export function createTicket(

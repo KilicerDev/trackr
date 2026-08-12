@@ -8,6 +8,7 @@ import { db } from '$lib/server/db';
 import { project } from '$lib/server/db/app.schema';
 import { accessibleProjectIds, assertCan } from '$lib/server/permissions';
 import { createTask, loadTasks } from '$lib/server/tasks';
+import { loadTicketDisplayUsers } from '$lib/server/tickets';
 import { logActivityFF } from '$lib/server/activity';
 import { m } from '$lib/paraglide/messages';
 import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
@@ -25,7 +26,13 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 					(t) => (t.assignees ?? []).includes(user.id) || t.createdBy === user.id
 				)
 			: tasks;
-	return json({ tasks: mine });
+	// Display directory for assignee names (name + color only) so the app can
+	// render/filter by assignee without a users endpoint.
+	const displayUsers = await loadTicketDisplayUsers(mine.flatMap((t) => t.assignees ?? []));
+	const users = Object.fromEntries(
+		displayUsers.map((u) => [u.id, { name: u.name, color: u.color }])
+	);
+	return json({ tasks: mine, users });
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {

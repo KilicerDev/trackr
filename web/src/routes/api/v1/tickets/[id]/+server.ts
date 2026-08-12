@@ -1,16 +1,22 @@
 // Ticket detail for the app.
-//   GET   — ticket + full message timeline (internal notes only for staff).
-//   PATCH { status? , assigneeIds? } — the two reactive edits the app offers.
-// Everything else (priority, tags, checklist…) stays a desktop concern.
+//   GET   — ticket + full message timeline (internal notes only for staff);
+//           agents also get the assignable-users picker directory.
+//   PATCH { status?, priority?, category?, assigneeIds? } — the property-pill
+//   edits the app offers. Tags/checklist/subject stay a desktop concern.
 import { canViewTicket, can, isTrackrTeam } from '$lib/server/permissions';
 import {
 	addTicketSystemEvents,
 	getTicket,
+	loadAssignableUsers,
 	loadTicketDisplayUsers,
 	loadTicketMessages,
 	updateTicket,
+	TICKET_CATEGORY_SET,
+	TICKET_PRIORITY_SET,
 	TICKET_STATUS_SET,
+	type TicketCategory,
 	type TicketEventMeta,
+	type TicketPriority,
 	type TicketStatus
 } from '$lib/server/tickets';
 import { notify } from '$lib/server/notify';
@@ -29,7 +35,9 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 	const staff = isTrackrTeam(locals);
 	const messages = await loadTicketMessages(ticket.id, { includeInternal: staff });
-	const canEdit = staff || (await can(locals, 'org.tickets.edit.any', { orgId: ticket.orgId }));
+	// Same grant as PATCH below and the web update action — plain org.staff
+	// reads everything but must not be offered status/assignee controls.
+	const canEdit = await can(locals, 'org.tickets.edit.any', { orgId: ticket.orgId });
 	const canComment =
 		canEdit || (await can(locals, 'org.tickets.comment', { orgId: ticket.orgId }));
 	// Display directory (name + color only, emails stripped) so the app can
@@ -41,7 +49,24 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		...messages.map((msg) => msg.authorId)
 	]);
 	const authors = Object.fromEntries(users.map((u) => [u.id, { name: u.name, color: u.color }]));
-	return json({ ticket, messages, authors, canEdit, canComment, canInternalNote: staff });
+	// Agents get the assignee picker candidates (name + color only) — same
+	// scoping as the web Inspector's picker.
+	const assignableUsers = canEdit
+		? (await loadAssignableUsers([ticket.orgId])).map((u) => ({
+				id: u.id,
+				name: u.name,
+				color: u.color
+			}))
+		: [];
+	return json({
+		ticket,
+		messages,
+		authors,
+		assignableUsers,
+		canEdit,
+		canComment,
+		canInternalNote: staff
+	});
 };
 
 export const PATCH: RequestHandler = async ({ locals, params, request, url }) => {
@@ -53,9 +78,19 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 		apiError(403, m.tickets_no_access());
 	}
 
-	const body = await readJson<{ status?: string; assigneeIds?: string[] }>(request);
+	const body = await readJson<{
+		status?: string;
+		priority?: string;
+		category?: string;
+		assigneeIds?: string[];
+	}>(request);
 	const events: { meta: TicketEventMeta; internal: boolean }[] = [];
-	const patch: { status?: TicketStatus; assigneeIds?: string[] } = {};
+	const patch: {
+		status?: TicketStatus;
+		priority?: TicketPriority;
+		category?: TicketCategory;
+		assigneeIds?: string[];
+	} = {};
 
 	if (body.status !== undefined) {
 		if (!TICKET_STATUS_SET.has(body.status)) apiError(400, 'Invalid status.');
@@ -67,11 +102,36 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 			});
 		}
 	}
+	if (body.priority !== undefined) {
+		if (!TICKET_PRIORITY_SET.has(body.priority)) apiError(400, 'Invalid priority.');
+		if (body.priority !== ticket.priority) {
+			patch.priority = body.priority as TicketPriority;
+			events.push({
+				meta: { event: 'priority_changed', from: ticket.priority, to: body.priority },
+				internal: false
+			});
+		}
+	}
+	if (body.category !== undefined) {
+		if (!TICKET_CATEGORY_SET.has(body.category)) apiError(400, 'Invalid category.');
+		if (body.category !== ticket.category) {
+			patch.category = body.category as TicketCategory;
+			events.push({
+				meta: { event: 'category_changed', from: ticket.category, to: body.category },
+				internal: false
+			});
+		}
+	}
 	if (body.assigneeIds !== undefined) {
 		if (!Array.isArray(body.assigneeIds) || body.assigneeIds.some((x) => typeof x !== 'string')) {
 			apiError(400, 'assigneeIds must be a string array.');
 		}
 		const next = [...new Set(body.assigneeIds)];
+		// Never trust posted ids — same boundary as the web update action.
+		if (next.length) {
+			const allowed = new Set((await loadAssignableUsers([ticket.orgId])).map((u) => u.id));
+			if (!next.every((id) => allowed.has(id))) apiError(400, 'Invalid assignee.');
+		}
 		const prev = new Set(ticket.assignees);
 		const added = next.filter((id) => !prev.has(id));
 		const removed = ticket.assignees.filter((id) => !next.includes(id));

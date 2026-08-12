@@ -169,17 +169,88 @@
   }
 }
 
-/* Route crossfade (View Transitions API, see onNavigate in +layout.svelte) —
-   quick and subtle; the universal reduced-motion rule above can't reach these
-   pseudo-elements, so they get their own. */
+/* Route transitions (View Transitions API, see onNavigate in
+   +layout.svelte). Same-depth switches crossfade quickly; push/pop get the
+   iOS slide, keyed off <html data-nav-dir>. The tab bar and status scrim
+   carry their own view-transition-name so they stay put instead of sliding
+   with the page. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation-duration: 160ms;
 }
 
+/* Same-depth crossfade needs the scroll correction too — the default fade
+   would show the displaced old snapshot for a beat. */
+@keyframes vt-fade-out-corrected {
+  from {
+    opacity: 1;
+    transform: translateY(calc(-1 * var(--vt-scroll, 0px)));
+  }
+  to {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--vt-scroll, 0px)));
+  }
+}
+html[data-nav-dir="same"]::view-transition-old(root) {
+  animation: vt-fade-out-corrected 160ms ease both;
+}
+
+/* The old-root snapshot ships displaced by the departing page's scroll
+   offset in WebKit — every old-image keyframe carries a constant
+   translateY(-scroll) correction (--vt-scroll is set in onNavigate). */
+@keyframes vt-slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes vt-slide-out-left {
+  from {
+    transform: translate(0, calc(-1 * var(--vt-scroll, 0px)));
+  }
+  to {
+    transform: translate(-28%, calc(-1 * var(--vt-scroll, 0px)));
+    filter: brightness(0.7);
+  }
+}
+@keyframes vt-slide-in-left {
+  from {
+    transform: translateX(-28%);
+    filter: brightness(0.7);
+  }
+}
+@keyframes vt-slide-out-right {
+  from {
+    transform: translate(0, calc(-1 * var(--vt-scroll, 0px)));
+  }
+  to {
+    transform: translate(100%, calc(-1 * var(--vt-scroll, 0px)));
+  }
+}
+
+/* Clip the snapshot pair to the viewport so a document-tall old image can't
+   paint stray content outside the sliding panel. */
+::view-transition-image-pair(root) {
+  overflow: hidden;
+}
+
+html[data-nav-dir="forward"]::view-transition-old(root) {
+  animation: vt-slide-out-left 260ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+html[data-nav-dir="forward"]::view-transition-new(root) {
+  animation: vt-slide-in-right 260ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+/* Pop: the outgoing (detail) page rides on top, sliding off to the right. */
+html[data-nav-dir="back"]::view-transition-old(root) {
+  animation: vt-slide-out-right 260ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  z-index: 1;
+}
+html[data-nav-dir="back"]::view-transition-new(root) {
+  animation: vt-slide-in-left 260ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation: none;
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }

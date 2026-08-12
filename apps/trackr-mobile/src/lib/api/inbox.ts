@@ -4,7 +4,12 @@ import type { InboxItem } from "./types";
 export function listInbox(
   client: ApiClient,
   opts: { unreadOnly?: boolean; cursor?: string | null } = {},
-): Promise<{ items: InboxItem[]; nextCursor: string | null }> {
+): Promise<{
+  items: InboxItem[];
+  /** Display directory for actor avatars (name + color, emails stripped). */
+  actors: Record<string, { name: string; color: string }>;
+  nextCursor: string | null;
+}> {
   const params = new URLSearchParams();
   if (opts.unreadOnly) params.set("filter", "unread");
   if (opts.cursor) params.set("cursor", opts.cursor);
