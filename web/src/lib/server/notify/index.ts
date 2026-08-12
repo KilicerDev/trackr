@@ -11,7 +11,12 @@ import { db } from '../db';
 import { notification, type NotificationKind } from '../db/app.schema';
 import { user as userTable } from '../db/auth.schema';
 import { getPreferences } from '../preferences';
-import { sendEmailFireAndForget, notificationEmail, EMAIL_PRIORITY } from '$lib/server/jobs';
+import {
+	sendEmailFireAndForget,
+	sendPushFireAndForget,
+	notificationEmail,
+	EMAIL_PRIORITY
+} from '$lib/server/jobs';
 import { baseLocale, isLocale, type Locale } from '$lib/paraglide/runtime';
 import { plainifyMentions } from '$lib/utils/mentions';
 import { enqueueDigestItems, isWithinQuietHours } from './digest';
@@ -142,6 +147,19 @@ export async function notify(input: NotifyInput): Promise<void> {
 			};
 		});
 		await db.insert(notification).values(rows);
+
+		// Native push mirrors the in-app channel: whoever gets an inbox row gets a
+		// push to their registered devices. No-op until PUSH_ENABLED is set (the
+		// Go worker's FCM handler is a planned follow-up); content is per-locale
+		// so enqueue per recipient.
+		for (const recipientId of wantsInApp) {
+			const content = contentFor(recipientId);
+			sendPushFireAndForget([recipientId], {
+				title: content.title,
+				body: content.body,
+				url: input.url
+			});
+		}
 	}
 
 	if (wantsEmail.length > 0) {

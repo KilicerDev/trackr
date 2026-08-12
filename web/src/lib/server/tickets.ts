@@ -114,8 +114,10 @@ type AccessOpts = {
 	// When set, restrict to these org ids. Null/undefined means no org filter
 	// (use for Trackr-internal staff that see everything).
 	orgIds?: string[];
-	// When set, restrict to tickets where the user is customer or assignee.
-	// Used for OrgClient role (read.own).
+	// When set, restrict to tickets where the user is customer, creator, or
+	// assignee. Used for the read.own tier — creator included so a ticket
+	// raised *for* another customer stays visible to whoever opened it
+	// (matches canViewTicket and ticketRecipients).
 	ownerUserId?: string;
 	// When set, restrict to tickets this user has pinned (ticket_favorite).
 	pinnedByUserId?: string;
@@ -134,7 +136,7 @@ export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 	if (opts.orgIds) conditions.push(inArray(ticket.orgId, opts.orgIds));
 	if (opts.ownerUserId) {
 		conditions.push(
-			sql`(${ticket.customerId} = ${opts.ownerUserId} OR EXISTS (SELECT 1 FROM ticket_assignee ta WHERE ta.ticket_id = ${ticket.id} AND ta.user_id = ${opts.ownerUserId}))`
+			sql`(${ticket.customerId} = ${opts.ownerUserId} OR ${ticket.createdBy} = ${opts.ownerUserId} OR EXISTS (SELECT 1 FROM ticket_assignee ta WHERE ta.ticket_id = ${ticket.id} AND ta.user_id = ${opts.ownerUserId}))`
 		);
 	}
 	if (opts.pinnedByUserId) {

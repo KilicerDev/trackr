@@ -4,9 +4,9 @@
 	import BrandMark from '$lib/components/auth/BrandMark.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import type { ActionData } from './$types';
+	import type { ActionData, PageData } from './$types';
 
-	let { form }: { form: ActionData } = $props();
+	let { form, data }: { form: ActionData; data: PageData } = $props();
 	let submitting = $state(false);
 	let emailInput = $state<HTMLInputElement | null>(null);
 	let email = $state(form?.email ?? '');
@@ -66,6 +66,11 @@
 			>
 				{#if next}
 					<input type="hidden" name="next" value={next} />
+				{/if}
+				{#if data.native}
+					<!-- Native (Tauri) sign-in: the action redirects the token to the
+					     app's deep-link scheme instead of the web app. -->
+					<input type="hidden" name="client" value="native" />
 				{/if}
 
 				<label class="flex flex-col gap-1.5">

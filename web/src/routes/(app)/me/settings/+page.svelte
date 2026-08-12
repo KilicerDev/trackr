@@ -6,6 +6,7 @@
 	import Select from '$lib/components/Select.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import type { CapabilityManifest } from '$lib/permissions';
 
 	type DeliveryMode = 'off' | 'instant' | 'digest';
 	type ChannelPrefs = { email: DeliveryMode; inApp: boolean };
@@ -40,25 +41,17 @@
 
 	// Which notification surfaces this user can actually reach. A portal client
 	// can never receive a wiki or task event, so offering the toggles is noise.
-	// Mirrors the route guards: wiki is internal-team only; tasks/projects need
-	// project access (team or explicit project membership); chat needs
-	// org.chat.read somewhere. UI gating only — the server keeps hidden groups'
+	// Read from the server-computed capability manifest (mirrors the route
+	// guards by construction). UI gating only — the server keeps hidden groups'
 	// stored values untouched on save.
 	const access = $derived.by(() => {
-		const data = page.data as {
-			isTrackrTeam?: boolean;
-			effectivePermissions?: string[];
-			memberRoles?: { orgs?: Record<string, string>; projects?: Record<string, string> };
-		};
-		const team = !!data.isTrackrTeam;
-		const perms = data.effectivePermissions ?? [];
-		const projectAccess = team || Object.keys(data.memberRoles?.projects ?? {}).length > 0;
+		const surfaces = (page.data as { capabilities?: CapabilityManifest }).capabilities?.surfaces;
 		return {
-			tasks: projectAccess,
-			projects: projectAccess,
-			tickets: team || perms.some((p) => p.startsWith('org.tickets.')),
-			chat: team || perms.includes('org.chat.read'),
-			wiki: team
+			tasks: !!surfaces?.tasks,
+			projects: !!surfaces?.projects,
+			tickets: !!surfaces?.tickets,
+			chat: !!surfaces?.chat,
+			wiki: !!surfaces?.wiki
 		};
 	});
 	const scopeOptions = $derived([

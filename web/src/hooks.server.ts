@@ -1,9 +1,10 @@
-import type { Handle } from '@sveltejs/kit';
+import { error, redirect, type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { building } from '$app/environment';
 import { auth } from '$lib/server/auth';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { deriveIsAdmin, loadMemberships } from '$lib/server/permissions';
+import { isSuperadmin } from '$lib/roles';
 import { getPreferences, PREF_DEFAULTS } from '$lib/server/preferences';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { cookieName, isLocale } from '$lib/paraglide/runtime';
@@ -20,6 +21,22 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	}
 
 	return svelteKitHandler({ event, resolve, auth, building });
+};
+
+// Method-agnostic /admin gate. Layout loads don't run for form-action POSTs,
+// so guarding only in /admin/+layout.server.ts leaves every admin action open
+// to any authenticated user. This hook closes that hole class for GET and POST
+// alike; the per-action checks in the page files remain as defense in depth.
+const handleAdminGuard: Handle = async ({ event, resolve }) => {
+	const path = event.url.pathname;
+	if (path === '/admin' || path.startsWith('/admin/')) {
+		if (!event.locals.user) redirect(302, `/login?next=${encodeURIComponent(path)}`);
+		if (!event.locals.isAdmin) error(403, 'Admin access required.');
+		if ((path === '/admin/system' || path.startsWith('/admin/system/')) && !isSuperadmin(event.locals.user.role)) {
+			error(403, 'Superadmin access required.');
+		}
+	}
+	return resolve(event);
 };
 
 // For logged-in users the DB (`user_preferences.locale`) is the durable, authoritative
@@ -76,4 +93,4 @@ const handleParaglide: Handle = ({ event, resolve }) =>
 		});
 	});
 
-export const handle: Handle = sequence(handleBetterAuth, handleLocale, handleParaglide);
+export const handle: Handle = sequence(handleBetterAuth, handleAdminGuard, handleLocale, handleParaglide);

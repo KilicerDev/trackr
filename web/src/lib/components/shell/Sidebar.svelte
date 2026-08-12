@@ -3,6 +3,7 @@
 	import Icon from '../Icon.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getSidebar } from '$lib/stores/sidebar.svelte';
+	import type { CapabilityManifest } from '$lib/permissions';
 
 	const sidebar = getSidebar();
 	const collapsed = $derived(!!sidebar?.collapsed);
@@ -10,20 +11,19 @@
 	type LayoutShape = {
 		taskCount?: number;
 		projects?: { id: string; key: string; name: string; color: string }[];
-		isAdmin?: boolean;
 		isSuperadmin?: boolean;
-		isTrackrTeam?: boolean;
-		effectivePermissions?: string[];
+		capabilities?: CapabilityManifest;
 	};
 
 	const taskCount = $derived((page.data as LayoutShape).taskCount ?? 0);
 	const projectList = $derived((page.data as LayoutShape).projects ?? []);
-	const isAdmin = $derived(!!(page.data as LayoutShape).isAdmin);
+	// Surface visibility comes from the server-computed capability manifest —
+	// the single source shared with the settings page and the mobile app.
+	const surfaces = $derived((page.data as LayoutShape).capabilities?.surfaces);
+	const isAdmin = $derived(!!surfaces?.admin);
 	const isSuperadmin = $derived(!!(page.data as LayoutShape).isSuperadmin);
-	const isTrackrTeam = $derived(!!(page.data as LayoutShape).isTrackrTeam);
-	const canChat = $derived(
-		((page.data as LayoutShape).effectivePermissions ?? []).includes('org.chat.read')
-	);
+	const showWikiNotes = $derived(!!surfaces?.wiki);
+	const canChat = $derived(!!surfaces?.chat);
 
 	const workspaceItems = $derived([
 		{ key: 'week', label: m.shell_nav_week(), icon: 'calendar', href: '/week' },
@@ -51,7 +51,7 @@
 			count: taskCount
 		},
 		// Wiki + Notes are internal-only — hidden from client / external-org users.
-		...(isTrackrTeam
+		...(showWikiNotes
 			? [
 					{ key: 'wiki', label: m.shell_nav_wiki(), icon: 'book', href: '/wiki' },
 					{

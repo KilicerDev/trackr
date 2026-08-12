@@ -1,0 +1,63 @@
+// Chat notification fan-out shared by the /api/v1 chat endpoints — a compact
+// mirror of the web chat page's local notifyChatMessage helper (broad audience
+// minus muters, tag followers as participants, mentions scoped to the
+// deliverable audience). Candidate for the web action to adopt too.
+import { notify } from './index';
+import {
+	orgChatRecipients,
+	orgMentionRecipients,
+	tagFollowers,
+	tagMuters
+} from './recipients';
+import { parseMentionIds } from '$lib/utils/mentions';
+import { m } from '$lib/paraglide/messages';
+
+export async function notifyChatMessage(opts: {
+	threadId: string;
+	orgId: string;
+	threadTitle: string | null;
+	actorId: string;
+	body: string;
+	origin: string;
+}): Promise<void> {
+	const chatUrl = `/chat?org=${opts.orgId}&thread=${opts.threadId}`;
+	const [audience, followers, muters] = await Promise.all([
+		orgChatRecipients(opts.orgId),
+		tagFollowers(opts.threadId),
+		tagMuters(opts.threadId)
+	]);
+	const recipients = new Set<string>([...audience, ...followers]);
+	for (const id of muters) recipients.delete(id);
+	void notify({
+		kind: 'chatMessage',
+		recipients,
+		actorId: opts.actorId,
+		orgId: opts.orgId,
+		// "Participating" in a thread = explicitly following its tags.
+		participants: [...followers],
+		render: (locale) => ({
+			title: m.notify_chat_message({ thread: opts.threadTitle ?? m.chat_untitled() }, { locale }),
+			body: opts.body.slice(0, 280)
+		}),
+		url: chatUrl,
+		entity: { type: 'thread', id: opts.threadId },
+		baseUrl: opts.origin
+	}).catch((err) => console.error('chat message notify failed', err));
+
+	const mentioned = await orgMentionRecipients(opts.orgId, parseMentionIds(opts.body));
+	if (mentioned.size > 0) {
+		void notify({
+			kind: 'chatMentioned',
+			recipients: mentioned,
+			actorId: opts.actorId,
+			orgId: opts.orgId,
+			render: (locale) => ({
+				title: m.notify_mentioned({ label: opts.threadTitle ?? m.chat_untitled() }, { locale }),
+				body: opts.body.slice(0, 280)
+			}),
+			url: chatUrl,
+			entity: { type: 'thread', id: opts.threadId },
+			baseUrl: opts.origin
+		}).catch((err) => console.error('chat mention notify failed', err));
+	}
+}

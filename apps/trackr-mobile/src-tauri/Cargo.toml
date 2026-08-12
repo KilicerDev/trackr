@@ -1,0 +1,27 @@
+[package]
+name = "trackr-mobile"
+version = "0.1.0"
+description = "Trackr mobile companion app"
+authors = ["KilicerDev"]
+edition = "2021"
+
+[lib]
+# The `_lib` suffix keeps the lib name distinct from the bin name (Windows
+# linker quirk, see https://github.com/rust-lang/cargo/issues/8519).
+name = "trackr_mobile_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+# default-features = false drops reqwest's cookie jar: the app is bearer-only
+# (better-auth rejects cookie-carrying requests that lack an Origin header).
+tauri-plugin-http = { version = "2", default-features = false, features = ["rustls-tls", "http2", "charset"] }
+tauri-plugin-store = "2"
+# >= 2.4.9 for the iOS custom-URL-scheme fix
+tauri-plugin-deep-link = "2.4.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

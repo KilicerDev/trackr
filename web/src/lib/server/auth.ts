@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth/minimal';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { admin } from 'better-auth/plugins/admin';
+import { bearer } from 'better-auth/plugins/bearer';
 import { adminAc, defaultAc, userAc } from 'better-auth/plugins/admin/access';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { env } from '$env/dynamic/private';
@@ -9,6 +10,12 @@ import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
 import { sendEmailFireAndForget, passwordResetEmail, EMAIL_PRIORITY } from '$lib/server/jobs';
 import { recordAudit } from '$lib/server/audit';
+
+// Where the native (Tauri) app's sign-in lands after the browser round-trip.
+// Three places must agree on this scheme: this constant, the app's
+// session.svelte.ts DEEP_LINK_PREFIX, and apps/trackr-mobile/src-tauri/
+// tauri.conf.json (deep-link plugin config).
+export const NATIVE_AUTH_CALLBACK = 'dev.kilicer.trackr://auth';
 
 function ipFromHeaders(headers: Headers | undefined): string | null {
 	if (!headers) return null;
@@ -99,6 +106,13 @@ export const auth = betterAuth({
 		})
 	},
 	plugins: [
+		// Accept `Authorization: Bearer <signed session token>` as an alternative
+		// to the session cookie — the native app's only credential. The plugin
+		// also mirrors rotated session cookies into a `set-auth-token` response
+		// header, which the app adopts opportunistically. Requests from the app
+		// go through tauri-plugin-http (no Origin header, no cookies), so no
+		// CORS or trustedOrigins changes are needed for it.
+		bearer(),
 		admin({
 			defaultRole: 'user',
 			adminRoles: ['admin', 'superadmin'],

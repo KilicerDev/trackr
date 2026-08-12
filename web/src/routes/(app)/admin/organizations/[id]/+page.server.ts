@@ -26,10 +26,18 @@ async function userLabel(id: string): Promise<string> {
 	return u ? (u.name ?? u.email) : id;
 }
 
+// Layout loads don't run for action POSTs, so the /admin layout gate does not
+// protect the actions below — every action re-checks the caller (the
+// hooks.server.ts admin guard covers it too; this stays as defense in depth).
+function requireAdmin(locals: App.Locals) {
+	if (!locals.user) return fail(401, { message: m.admin_err_not_authenticated() });
+	if (!locals.isAdmin) return fail(403, { message: m.admin_err_admin_required() });
+	return null;
+}
+
 // Role IDs assignable on each org type come from the shared helper. Internal-
 // only roles (superadmin / admin / staff) belong exclusively to the Trackr
-// internal org; client orgs get the two client-side roles. The
-// /admin/+layout.server.ts guard already ensured the caller has admin.access.
+// internal org; client orgs get the two client-side roles.
 function allowedRoles(isInternal: boolean): Set<string> {
 	return new Set(allowedOrgRoles(isInternal));
 }
@@ -146,6 +154,8 @@ async function countTopRoleHolders(orgId: string, isInternal: boolean): Promise<
 
 export const actions: Actions = {
 	update: async ({ request, params, locals }) => {
+		const denied = requireAdmin(locals);
+		if (denied) return denied;
 		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
 
 		const form = await request.formData();
@@ -196,7 +206,9 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	archive: async ({ params }) => {
+	archive: async ({ params, locals }) => {
+		const denied = requireAdmin(locals);
+		if (denied) return denied;
 		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
 		await db
 			.update(organization)
@@ -205,13 +217,17 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	unarchive: async ({ params }) => {
+	unarchive: async ({ params, locals }) => {
+		const denied = requireAdmin(locals);
+		if (denied) return denied;
 		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
 		await db.update(organization).set({ archivedAt: null }).where(eq(organization.id, params.id));
 		return { success: true };
 	},
 
 	memberAdd: async ({ request, params, locals }) => {
+		const denied = requireAdmin(locals);
+		if (denied) return denied;
 		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
 
 		const org = await loadOrgOrFail(params.id);
@@ -260,6 +276,8 @@ export const actions: Actions = {
 	},
 
 	memberSetRole: async ({ request, params, locals }) => {
+		const denied = requireAdmin(locals);
+		if (denied) return denied;
 		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
 
 		const org = await loadOrgOrFail(params.id);
@@ -311,6 +329,8 @@ export const actions: Actions = {
 	},
 
 	memberRemove: async ({ request, params, locals }) => {
+		const denied = requireAdmin(locals);
+		if (denied) return denied;
 		if (!params.id) return fail(400, { message: m.admin_err_missing_org_id() });
 
 		const org = await loadOrgOrFail(params.id);

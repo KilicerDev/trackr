@@ -1,0 +1,36 @@
+/**
+ * Global skeleton — applies to every route.
+ *
+ * Keep this file minimal: only the Tailwind entry, root fonts, and the body
+ * baseline. Design tokens and mobile base rules live in `./app.css`
+ * (Trackr's dark palette under the mobile kit's token names).
+ */
+
+@import "tailwindcss";
+
+/* Design tokens. Pulled in here (not via Svelte-side imports) so Tailwind v4
+   walks the CSS @import chain and sees the @theme block. */
+@import "./app.css";
+
+@theme {
+  --font-sans:
+    "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", sans-serif;
+  /* Hostnames and other technical literals (server row, tokens). */
+  --font-mono:
+    ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}

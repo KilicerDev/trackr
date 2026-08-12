@@ -60,10 +60,13 @@ export const load: PageServerLoad = async () => {
 
 export const actions: Actions = {
 	create: async ({ request, locals }) => {
-		// /admin/+layout.server.ts already enforced admin.access. New orgs
+		// Layout loads don't run for action POSTs, so the /admin layout gate does
+		// not protect this — the caller must be re-checked here (the hooks.server.ts
+		// admin guard covers it too; this stays as defense in depth). New orgs
 		// start empty — Trackr-team users have access via their internal-org
 		// role, so we no longer auto-add the creator as a member.
 		if (!locals.user) return fail(401, { message: m.admin_err_not_authenticated() });
+		if (!locals.isAdmin) return fail(403, { message: m.admin_err_admin_required() });
 
 		const form = await request.formData();
 		const name = String(form.get('name') ?? '').trim();

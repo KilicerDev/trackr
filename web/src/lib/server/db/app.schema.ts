@@ -1406,6 +1406,35 @@ export const notificationDigestItem = pgTable(
 
 export type NotificationDigestItem = typeof notificationDigestItem.$inferSelect;
 
+// ─── Push tokens ─────────────────────────────────────────────────────────────
+// Device registrations from the native (Tauri) app. Rows are written by
+// /api/v1/push/tokens and will be consumed by the Go worker's future
+// `push.send` job (FCM/APNs). Until that ships, registrations are stored but
+// nothing is delivered (notify()'s push channel is behind PUSH_ENABLED).
+// `token` is globally unique — re-registering an existing token re-homes it to
+// the signing-in user (device handed to someone else) and bumps lastSeenAt.
+
+export const pushToken = pgTable(
+	'push_token',
+	{
+		id: text('id').primaryKey(),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		token: text('token').notNull(),
+		platform: text('platform').notNull(), // 'ios' | 'android'
+		deviceName: text('device_name'),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		lastSeenAt: timestamp('last_seen_at').defaultNow().notNull()
+	},
+	(t) => [
+		uniqueIndex('push_token_token_idx').on(t.token),
+		index('push_token_user_idx').on(t.userId)
+	]
+);
+
+export type PushToken = typeof pushToken.$inferSelect;
+
 // ─── Feedback ──────────────────────────────────────────────────────────────
 // User-submitted feedback from the "Send feedback" modal in the account
 // dropdown. `url` and `userAgent` capture the page and browser context at

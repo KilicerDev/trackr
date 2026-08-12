@@ -19,6 +19,7 @@ import {
 	isTrackrTeam
 } from '$lib/server/permissions';
 import { getPreferences } from '$lib/server/preferences';
+import { buildCapabilities } from '$lib/server/capabilities';
 import { loadTickets, type TicketRow } from '$lib/server/tickets';
 import { isSuperadmin } from '$lib/roles';
 import type { LayoutServerLoad } from './$types';
@@ -365,6 +366,9 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 		recentTickets,
 		memberRoles,
 		effectivePermissions: await effectivePermissions(locals),
+		// The consolidated capability manifest — new consumers should read this
+		// instead of the individual flags above (kept for unmigrated components).
+		capabilities: await buildCapabilities(locals),
 		preferences,
 		notifications
 	};

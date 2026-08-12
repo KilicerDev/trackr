@@ -11,10 +11,12 @@ export * from './services/mail';
 export * from './services/prune';
 export * from './services/cleanup';
 export * from './services/digest';
+export * from './services/push';
 
 import type { MailPayload } from './services/mail';
 import type { PrunePayload } from './services/prune';
 import type { NotifyDigestPayload } from './services/digest';
+import type { PushPayload } from './services/push';
 
 /**
  * The job type → payload contract — the single source of truth the Go worker
@@ -28,6 +30,9 @@ export type JobPayloads = {
 	'prune.invitations': PrunePayload;
 	'prune.notifications': PrunePayload;
 	'notify.digest': NotifyDigestPayload;
+	// Reserved: no Go handler yet — producers gate on PUSH_ENABLED (see
+	// services/push.ts) so nothing is enqueued until the FCM worker lands.
+	'push.send': PushPayload;
 };
 
 export type JobType = keyof JobPayloads;

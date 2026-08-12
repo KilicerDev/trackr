@@ -63,3 +63,39 @@ export type Memberships = {
 	orgs: { orgId: string; role: RoleId; isInternal: boolean }[];
 	projects: { projectId: string; role: RoleId }[];
 };
+
+// The server-computed answer to "what can this user see and do" — built once
+// per request by $lib/server/capabilities.ts and shipped to the web client
+// (layout data) and the mobile app (/api/v1/me). It replaces the scattered
+// client-side re-derivations (sidebar gating, settings access map, string-
+// prefix checks). These are authorization *hints* for UI gating: the server
+// always re-checks writes with scope-specific can().
+export type CapabilityManifest = {
+	// staff = member of the internal Trackr org; external = everyone else.
+	// Display concern only — feature access comes from `surfaces`.
+	userType: 'staff' | 'external';
+	isAdmin: boolean;
+	// Which top-level surfaces this user can reach at all. Drives navigation
+	// on web and mobile; a surface that is false has no reachable routes.
+	surfaces: {
+		tickets: boolean;
+		chat: boolean;
+		tasks: boolean;
+		projects: boolean;
+		wiki: boolean;
+		notes: boolean;
+		admin: boolean;
+	};
+	// Which entity types the quick-create affordances may offer.
+	quickCreate: { ticket: boolean; task: boolean; note: boolean };
+	// Union of every permission held anywhere (= effectivePermissions).
+	// Imprecise by design — "can do X somewhere". Use the per-target maps
+	// below when the target is known.
+	global: Permission[];
+	// Target-aware permission sets so clients can gate correctly per org /
+	// per project (and offline, in the mobile app). Note: project entries do
+	// not include the server's org-role fallback; when in doubt the server's
+	// can() is authoritative.
+	orgs: Record<string, { role: RoleId; isInternal: boolean; permissions: Permission[] }>;
+	projects: Record<string, { role: RoleId; permissions: Permission[] }>;
+};

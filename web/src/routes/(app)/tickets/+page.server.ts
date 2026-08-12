@@ -647,8 +647,14 @@ export const actions: Actions = {
 		if (!id) return fail(400, { message: m.tickets_id_required() });
 		if (!body) return fail(400, { message: m.tickets_message_required() });
 
-		const orgId = await getTicketOrgId(id);
-		if (!orgId) return fail(404, { message: m.tickets_not_found() });
+		const t = await getTicket(id);
+		if (!t) return fail(404, { message: m.tickets_not_found() });
+		const orgId = t.orgId;
+
+		// The comment grant is org-wide, but posting must additionally be scoped
+		// to tickets the author can actually see — otherwise an org.member could
+		// reply into any org ticket by id (mirrors the checklist action).
+		if (!(await canViewTicket(locals, t))) throw error(403, m.tickets_no_access());
 
 		if (internal) {
 			// Internal notes are restricted to the internal Trackr team. External
@@ -679,8 +685,7 @@ export const actions: Actions = {
 				uploadedBy: me.id
 			});
 
-			const t = await getTicket(id);
-			if (t) {
+			{
 				const recipients = await ticketRecipients(
 					{
 						orgId: t.orgId,
@@ -769,6 +774,9 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const id = String(form.get('id') ?? '').trim();
 		if (!id) return fail(400, { message: m.tickets_id_required() });
+		// Deliberately no read-check (unlike pinAdd): the delete is scoped to the
+		// caller's own favorite row, and a user must be able to unpin a ticket
+		// they have since lost access to.
 		await db
 			.delete(ticketFavorite)
 			.where(and(eq(ticketFavorite.userId, locals.user.id), eq(ticketFavorite.ticketId, id)));

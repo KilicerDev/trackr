@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { listSchedules, setScheduleEnabled } from '$lib/server/jobs';
+import { isSuperadmin } from '$lib/roles';
 import { m } from '$lib/paraglide/messages';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -28,6 +29,11 @@ export const actions: Actions = {
 	// Pause/resume a schedule. New rows are created via the schedules table
 	// (seed/SQL); this view manages the runtime on/off switch.
 	toggle: async (event) => {
+		// Layout loads don't run for action POSTs — re-check the caller here
+		// (the hooks.server.ts admin guard covers it too; defense in depth).
+		if (!isSuperadmin(event.locals.user?.role)) {
+			return fail(403, { message: m.schedules_action_error() });
+		}
 		const fd = await event.request.formData();
 		const id = fd.get('id')?.toString();
 		const enabled = fd.get('enabled')?.toString() === 'true';

@@ -1,0 +1,185 @@
+/**
+ * Trackr mobile design tokens — the web app's dark palette
+ * (web/src/app.css) expressed under the mobile kit's token names. The UI
+ * components (ported from the maja-mobile kit) consume these names; the
+ * values are Trackr's. Mobile-only base rules live at the bottom.
+ */
+
+@theme {
+  /* Brand knobs — Trackr coral. */
+  --color-app-brand: #ff4867;
+  --color-app-brand-strong: #ff6d85;
+  --color-app-brand-soft: rgba(255, 72, 103, 0.14);
+  --color-app-brand-fg: #ffffff;
+
+  --color-app-success: #7fc8a9;
+  --color-app-success-soft: rgba(127, 200, 169, 0.16);
+  --color-app-error: #ef4f5e;
+  --color-app-error-soft: rgba(239, 79, 94, 0.16);
+  --color-app-warning: #f0a85c;
+  --color-app-warning-soft: rgba(240, 168, 92, 0.16);
+  --color-app-info: #7a9cf0;
+  --color-app-info-soft: rgba(122, 156, 240, 0.16);
+
+  /* Priority + status dots (mirror web/src/app.css). */
+  --color-prio-low: #7a9cf0;
+  --color-prio-medium: #f0a85c;
+  --color-prio-high: #ef7a6d;
+  --color-prio-urgent: #ef4f5e;
+  --color-status-backlog: #7c7c84;
+  --color-status-todo: #9aa4b2;
+  --color-status-in_progress: #f0a85c;
+  --color-status-paused: #e9c46a;
+  --color-status-in_review: #b591e3;
+  --color-status-done: #7fc8a9;
+
+  /* Elevation on a dark canvas. */
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.3), 0 1px 3px 0 rgb(0 0 0 / 0.25);
+  --shadow-soft: 0 8px 24px -8px rgb(0 0 0 / 0.45);
+}
+
+::selection {
+  background: rgba(255, 72, 103, 0.3);
+  color: #f7f7fa;
+}
+
+@layer base {
+  :root {
+    /* Surfaces — Trackr dark canvas + raised surfaces */
+    --color-bg: oklch(0.16 0.005 270);
+    --color-bg-subtle: oklch(0.195 0.006 270);
+    --color-bg-inset: oklch(0.215 0.007 270);
+
+    /* Text — light heading → muted grays */
+    --color-text: oklch(0.97 0.005 270);
+    --color-text-muted: oklch(0.74 0.008 270);
+    --color-text-light: oklch(0.54 0.008 270);
+
+    /* Borders */
+    --color-border: oklch(0.285 0.008 270);
+    --color-border-subtle: oklch(0.245 0.008 270);
+    --color-border-strong: oklch(0.34 0.01 270);
+
+    /* Primary drives focus rings */
+    --color-primary: #ff4867;
+
+    /* Accent — coral */
+    --color-accent: #ff4867;
+    --color-accent-strong: #ff6d85;
+    --color-accent-fg: #ffffff;
+    --color-accent-soft: rgba(255, 72, 103, 0.14);
+    --color-accent-soft-strong: rgba(255, 72, 103, 0.24);
+
+    /* Dark — inverted CTA on a dark theme is a light surface */
+    --color-dark: #f2f2f5;
+    --color-dark-hover: #ffffff;
+    --color-dark-fg: #17171c;
+
+    /* Status families — soft bg + text + dot */
+    --color-status-neutral-bg: oklch(0.245 0.008 270);
+    --color-status-neutral-text: oklch(0.74 0.008 270);
+    --color-status-neutral-dot: #9aa4b2;
+
+    --color-status-pending-bg: rgba(240, 168, 92, 0.14);
+    --color-status-pending-text: #f0a85c;
+    --color-status-pending-dot: #f0a85c;
+
+    --color-status-success-bg: rgba(127, 200, 169, 0.14);
+    --color-status-success-text: #7fc8a9;
+    --color-status-success-dot: #7fc8a9;
+
+    --color-status-error-bg: rgba(239, 79, 94, 0.14);
+    --color-status-error-text: #ef4f5e;
+    --color-status-error-dot: #ef4f5e;
+
+    --color-status-info-bg: rgba(122, 156, 240, 0.14);
+    --color-status-info-text: #7a9cf0;
+    --color-status-info-dot: #7a9cf0;
+  }
+
+  /* ------------------------------------------------------------------------
+   * Mobile base — the webview should feel like a native surface, not a page.
+   * ---------------------------------------------------------------------- */
+  html {
+    /* No rubber-band overscroll behind the app chrome. */
+    overscroll-behavior: none;
+  }
+
+  body {
+    overscroll-behavior: none;
+    /* Kill the gray flash on tap and the double-tap zoom delay. */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    /* Text stays put when the OS font size changes mid-session. */
+    -webkit-text-size-adjust: 100%;
+    /* No text selection cursors on app chrome (inputs re-enable below). */
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--color-primary);
+  }
+
+  /* Native date/time inputs: strip the iOS default look so the fields match
+     the kit; keep the OS picker. */
+  input[type="date"],
+  input[type="time"] {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    font-family: inherit;
+    color: inherit;
+  }
+
+  input[type="date"]::-webkit-date-and-time-value,
+  input[type="time"]::-webkit-date-and-time-value {
+    text-align: left;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* Route crossfade (View Transitions API, see onNavigate in +layout.svelte) —
+   quick and subtle; the universal reduced-motion rule above can't reach these
+   pseudo-elements, so they get their own. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 160ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}

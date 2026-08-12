@@ -8,6 +8,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { ticketStatusLabel } from '$lib/utils/labels';
 	import { isPortalSeeAllRole } from '$lib/roles';
+	import type { CapabilityManifest } from '$lib/permissions';
 
 	function statusColor(id: TicketStatus): string {
 		return TICKET_STATUSES.find((s) => s.id === id)?.dot ?? '#7c7c84';
@@ -19,7 +20,7 @@
 		portalRole?: string | null;
 		pinnedTickets?: TicketRow[];
 		recentTickets?: TicketRow[];
-		effectivePermissions?: string[];
+		capabilities?: CapabilityManifest;
 	};
 
 	const orgs = $derived((page.data as LayoutShape).orgs ?? []);
@@ -31,10 +32,9 @@
 	// nav: a dashboard, the full board, and saved-view shortcuts. Keyed off the
 	// per-active-org role so it flips correctly on org switch.
 	const isAdmin = $derived(isPortalSeeAllRole((page.data as LayoutShape).portalRole));
-	// Members (the see-all tier) get the org chat; standard own-tickets users don't.
-	const canChat = $derived(
-		((page.data as LayoutShape).effectivePermissions ?? []).includes('org.chat.read')
-	);
+	// Members (the see-all tier) get the org chat; standard own-tickets users
+	// don't. Read from the server-computed capability manifest.
+	const canChat = $derived(!!(page.data as LayoutShape).capabilities?.surfaces.chat);
 
 	let switcherOpen = $state(false);
 

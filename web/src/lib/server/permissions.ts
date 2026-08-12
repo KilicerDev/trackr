@@ -197,12 +197,15 @@ export function isPortalUser(locals: Locals): boolean {
 }
 
 // True iff the user may VIEW a given ticket — the shared visibility rule used by
-// the detail load and the checklist write action. Agents (edit.any) and the
-// org.client tier (read.any) see every org ticket; an org.member (read.own) only
-// sees tickets where they're the customer or the assignee.
+// the detail load and the message/checklist write actions. Agents (edit.any) and
+// the org.client tier (read.any) see every org ticket; an org.member (read.own)
+// only sees tickets where they're the customer, the creator, or an assignee.
+// Creator matters: a ticket raised *for* another customer must stay visible to
+// whoever opened it (ticketRecipients notifies creators — without this, that
+// notification links to a 403).
 export async function canViewTicket(
 	locals: Locals,
-	ticket: { orgId: string; customerId: string | null; assignees: string[] }
+	ticket: { orgId: string; customerId: string | null; assignees: string[]; createdBy?: string | null }
 ): Promise<boolean> {
 	if (isTrackrTeam(locals)) return true;
 	if (await can(locals, 'org.tickets.edit.any', { orgId: ticket.orgId })) return true;
@@ -210,7 +213,7 @@ export async function canViewTicket(
 	const uid = locals.user?.id;
 	if (
 		uid &&
-		(ticket.customerId === uid || ticket.assignees.includes(uid)) &&
+		(ticket.customerId === uid || ticket.assignees.includes(uid) || ticket.createdBy === uid) &&
 		(await can(locals, 'org.tickets.read.own', { orgId: ticket.orgId }))
 	) {
 		return true;
