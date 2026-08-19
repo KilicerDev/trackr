@@ -40,6 +40,10 @@ export async function notifyTicketCreated(opts: {
 		creatorId: t.creatorId ?? null,
 		assigneeIds: t.assigneeIds
 	});
+	// Assignees get the personal `ticketAssigned` below instead of a
+	// `ticketCreated` duplicate for the same ticket (both default to instant
+	// email). `participants` stays complete for scope-narrowing.
+	for (const aid of t.assigneeIds) recipients.delete(aid);
 	await notify({
 		kind: 'ticketCreated',
 		recipients,
@@ -92,6 +96,10 @@ export async function notifyTicketMessage(opts: {
 		},
 		{ teamOnly: opts.internal }
 	);
+	// Mention wins: a mentioned user gets only `ticketMentioned`, never a
+	// `ticketMessage` duplicate for the same message.
+	const mentionIds = parseMentionIds(opts.body).filter((mid) => recipients.has(mid));
+	for (const mid of mentionIds) recipients.delete(mid);
 	await notify({
 		kind: 'ticketMessage',
 		recipients,
@@ -109,7 +117,6 @@ export async function notifyTicketMessage(opts: {
 		baseUrl: opts.origin
 	});
 
-	const mentionIds = parseMentionIds(opts.body).filter((mid) => recipients.has(mid));
 	if (mentionIds.length > 0) {
 		await notify({
 			kind: 'ticketMentioned',
@@ -188,8 +195,11 @@ export async function notifyTicketUpdated(opts: {
 		});
 	}
 
+	// When status and priority change in the same submit, the status
+	// notification (whose audience is a superset) carries the update — a second
+	// `ticketStatusChanged` for the priority would double-notify internal staff.
 	const newPriority = opts.newPriority;
-	if (newPriority) {
+	if (newPriority && !newStatus) {
 		const recipients = await ticketRecipients(
 			{
 				orgId: t.orgId,

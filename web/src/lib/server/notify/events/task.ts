@@ -92,6 +92,10 @@ export async function notifyTaskComment(opts: {
 		assigneeIds: opts.assigneeIds,
 		extraIds: opts.priorCommenterIds
 	});
+	// Mention wins: an @-mentioned user gets only `taskMentioned` (the more
+	// specific kind), never a `taskCommented` duplicate for the same comment.
+	const mentioned = await projectMentionRecipients(opts.projectId, parseMentionIds(opts.body));
+	for (const mid of mentioned) recipients.delete(mid);
 	await notify({
 		kind: 'taskCommented',
 		recipients,
@@ -106,7 +110,6 @@ export async function notifyTaskComment(opts: {
 		baseUrl: opts.origin
 	});
 
-	const mentioned = await projectMentionRecipients(opts.projectId, parseMentionIds(opts.body));
 	if (mentioned.size > 0) {
 		await notify({
 			kind: 'taskMentioned',

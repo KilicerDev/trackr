@@ -16,13 +16,17 @@ export async function notifyChatMessage(opts: {
 	origin: string;
 }): Promise<void> {
 	const chatUrl = `/chat?org=${opts.orgId}&thread=${opts.threadId}`;
-	const [audience, followers, muters] = await Promise.all([
+	const [audience, followers, muters, mentioned] = await Promise.all([
 		orgChatRecipients(opts.orgId),
 		tagFollowers(opts.threadId),
-		tagMuters(opts.threadId)
+		tagMuters(opts.threadId),
+		orgMentionRecipients(opts.orgId, parseMentionIds(opts.body))
 	]);
 	const recipients = new Set<string>([...audience, ...followers]);
 	for (const id of muters) recipients.delete(id);
+	// Mention wins: an @-mentioned user gets only `chatMentioned` (the more
+	// specific kind), never a `chatMessage` duplicate for the same message.
+	for (const id of mentioned) recipients.delete(id);
 
 	await notify({
 		kind: 'chatMessage',
@@ -40,7 +44,6 @@ export async function notifyChatMessage(opts: {
 		baseUrl: opts.origin
 	}).catch((err) => console.error('chat message notify failed', err));
 
-	const mentioned = await orgMentionRecipients(opts.orgId, parseMentionIds(opts.body));
 	if (mentioned.size > 0) {
 		await notify({
 			kind: 'chatMentioned',
