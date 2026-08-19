@@ -111,6 +111,12 @@
 		box-sizing: border-box;
 		outline: none;
 	}
+	/* Brand-tinted text selection — the accent-soft family (same as the
+	   inline ticket marker), lifted to stay legible as a selection. Alpha
+	   only, so the selected text keeps its own color in both themes. */
+	::selection {
+		background: color-mix(in srgb, var(--accent) 28%, transparent);
+	}
 	html,
 	body {
 		margin: 0;
