@@ -334,13 +334,15 @@ async function ensureSystemTemplates(): Promise<void> {
 	systemTemplatesSeeded = true;
 }
 
-// System templates plus the user's own custom ones.
-export async function listTemplates(userId: string) {
+// All templates — system ones plus every team member's custom ones. Templates
+// are only reachable behind the isTrackrTeam gate, and a template anyone on
+// the team creates should be usable by the whole team (rename/delete stay
+// owner-scoped).
+export async function listTemplates() {
 	await ensureSystemTemplates();
 	return db
 		.select()
 		.from(noteTemplate)
-		.where(or(eq(noteTemplate.isSystem, true), eq(noteTemplate.ownerId, userId)))
 		.orderBy(desc(noteTemplate.isSystem), desc(noteTemplate.updatedAt));
 }
 

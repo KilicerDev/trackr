@@ -16,7 +16,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			.from(note)
 			.where(and(eq(note.kind, 'meeting'), eq(note.taskId, params.taskId)))
 			.orderBy(desc(note.meetingDate)),
-		listTemplates(locals.user.id)
+		listTemplates()
 	]);
 	return json({
 		notes,

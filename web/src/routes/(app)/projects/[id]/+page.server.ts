@@ -117,7 +117,7 @@ export const load: ServerLoad = async ({ params, locals }) => {
 	const internal = isTrackrTeam(locals);
 	const taskUuids = tasks.map((t) => t.uuid).filter((x): x is string => !!x);
 	const [meetings, meetingTemplates] = internal
-		? await Promise.all([listProjectMeetings(id, taskUuids), listTemplates(locals.user.id)])
+		? await Promise.all([listProjectMeetings(id, taskUuids), listTemplates()])
 		: [[], []];
 
 	// Initial page of the activity feed for the history sidebar. The sidebar

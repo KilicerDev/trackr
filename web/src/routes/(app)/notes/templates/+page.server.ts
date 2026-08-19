@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	// direct hit could otherwise 500 on the user assertion below.
 	if (!locals.user) redirect(302, `/login?next=${encodeURIComponent(url.pathname)}`);
 	if (!isTrackrTeam(locals)) error(403, m.notes_err_restricted());
-	const all = await listTemplates(locals.user.id);
+	const all = await listTemplates();
 	return {
 		templates: all.map((t) => ({
 			id: t.id,

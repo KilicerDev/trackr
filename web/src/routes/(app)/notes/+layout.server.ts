@@ -23,7 +23,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		listQuickNotes(userId),
 		listSharedWithMe(userId),
 		listMeetingNotes(),
-		listTemplates(userId),
+		listTemplates(),
 		// Tasks feed the meeting-note task picker (filtered client-side by the
 		// chosen project) and the task chip on a meeting note's header. Team-only
 		// feature, so all live tasks are in scope.
