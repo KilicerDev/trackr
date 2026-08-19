@@ -4,12 +4,9 @@
 	import Button from '$lib/components/Button.svelte';
 	import Inspector from '$lib/components/tasks/Inspector.svelte';
 	import CreateTaskModal from '$lib/components/tasks/CreateTaskModal.svelte';
-	import MWTaskRow from '$lib/components/week/MWTaskRow.svelte';
+	import TaskRow from '$lib/components/tasks/TaskRow.svelte';
 	import SmartComposer from '$lib/components/week/SmartComposer.svelte';
 	import type { ComposerDraft } from '$lib/components/week/SmartComposer.svelte';
-	import PriorityBars from '$lib/components/PriorityBars.svelte';
-	import { resolveProject } from '$lib/stores/lookup.svelte';
-	import { formatEstimate } from '$lib/utils/format';
 	import { taskTimeMinutes } from '$lib/utils/task';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -30,6 +27,7 @@
 		// ISO dates the user has collapsed. Persisted by date (not weekday index)
 		// so collapsing one day doesn't collapse that weekday in every week.
 		collapsedDates?: string[];
+		unscheduledCollapsed?: boolean;
 	};
 	// localStorage cache wins over the server snapshot — it's mirrored on
 	// every saveView() call so it always reflects the latest in-tab change,
@@ -171,6 +169,12 @@
 		saveView('week', { tab: t });
 	}
 
+	let unscheduledCollapsed = $state(saved.unscheduledCollapsed === true);
+	function toggleUnscheduled() {
+		unscheduledCollapsed = !unscheduledCollapsed;
+		saveView('week', { unscheduledCollapsed });
+	}
+
 	const unscheduled = $derived.by(() => {
 		// Open = still actionable; we never surface done/in-review here.
 		const isOpen = (t: Task) => t.status !== 'done' && t.status !== 'in_review';
@@ -272,7 +276,9 @@
 <Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: m.week_title() }]} />
 
 <div class="min-h-0 flex-1 overflow-y-auto">
-	<div class="flex items-center gap-3 border-b border-border px-6 py-3">
+	<div
+		class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-4 py-3 sm:px-6"
+	>
 		<Button size="sm" variant="default" onclick={() => gotoWeek(null)} disabled={weekDelta === 0}>
 			{m.common_today()}
 		</Button>
@@ -302,17 +308,15 @@
 					>{m.week_now()}</span
 				>
 			{/if}
-			<span class="text-text-4">·</span>
-			<span class="font-mono text-[14px] text-text-3">{weekRangeLabel()}</span>
+			<span class="hidden text-text-4 sm:inline">·</span>
+			<span class="hidden font-mono text-[14px] text-text-3 sm:inline">{weekRangeLabel()}</span>
 		</div>
-		<div
-			class="ml-auto flex items-center gap-3 rounded-xl border border-border bg-bg-elev px-3.5 py-2"
-		>
+		<div class="ml-auto flex items-center gap-3">
 			<div class="text-right">
 				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">{m.week_capacity()}</div>
 				<div class="font-mono text-[14px] text-text">{Math.round(weekMinutes / 60)}h / 40h</div>
 			</div>
-			<div class="h-1.5 w-24 overflow-hidden rounded-full bg-surface">
+			<div class="hidden h-1.5 w-24 overflow-hidden rounded-full bg-surface sm:block">
 				<div
 					class="h-full bg-accent"
 					style:width="{Math.min(100, (weekMinutes / WEEK_CAPACITY) * 100)}%"
@@ -321,8 +325,8 @@
 		</div>
 	</div>
 
-	<div class="grid gap-5 px-6 py-5 lg:grid-cols-[1fr_320px]">
-		<div class="space-y-2.5">
+	<div>
+		<div class="min-w-0">
 			{#each WEEK_DAYS as day, i (day)}
 				{@const tasks = plannedByDay[i]}
 				{@const mins = dayMinutes(i)}
@@ -331,32 +335,32 @@
 				{@const isCollapsed = collapsed.has(i)}
 				{@const pct = Math.min(100, (mins / CAPACITY) * 100)}
 				{@const over = mins > CAPACITY}
-				<div
-					class="rounded-2xl border bg-bg-elev transition-colors {isToday
-						? 'border-accent/40'
-						: 'border-border'} {isWeekend ? 'opacity-85' : ''}"
-				>
+				<section>
 					<button
 						type="button"
 						onclick={() => toggle(i)}
-						class="flex w-full items-center gap-2.5 rounded-t-2xl px-4 py-3 text-left hover:bg-surface/40 {isCollapsed
-							? 'rounded-b-2xl'
-							: ''}"
+						class="sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-y border-border bg-surface pr-3 pl-4 text-left sm:pl-5"
 					>
 						<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
 							<Icon name="chevron" size={13} />
 						</span>
-						<span class="text-[15px] font-semibold text-text">{WEEK_DAY_LABELS[i]()}</span>
+						<span
+							class="text-[14px] font-semibold {isToday
+								? 'text-accent'
+								: isWeekend
+									? 'text-text-2'
+									: 'text-text'}">{WEEK_DAY_LABELS[i]()}</span
+						>
 						<span class="font-mono text-[13px] text-text-4">{dayLabels[i].dayOfMonth}</span>
 						{#if isToday}
 							<span
-								class="rounded-full bg-accent-soft px-2 py-0.5 text-[12px] font-medium tracking-[0.06em] text-accent uppercase"
+								class="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium tracking-[0.06em] text-accent uppercase"
 								>{m.common_today()}</span
 							>
 						{/if}
 						<span class="font-mono text-[12px] text-text-3">{tasks.length}</span>
 						<div class="ml-auto flex items-center gap-2.5">
-							<div class="h-1 w-28 overflow-hidden rounded-full bg-surface">
+							<div class="h-1 w-16 overflow-hidden rounded-full bg-bg-elev sm:w-28">
 								<div
 									class="h-full"
 									style:width="{pct}%"
@@ -371,7 +375,13 @@
 					{#if !isCollapsed}
 						<div transition:slide={{ duration: 180, easing: cubicOut }}>
 							{#each tasks as t (t.id)}
-								<MWTaskRow task={t} onclick={() => (selectedId = t.id)} />
+								<TaskRow
+									task={t}
+									selected={selectedId === t.id}
+									showPlanned={false}
+									showTime
+									onclick={() => (selectedId = t.id)}
+								/>
 							{/each}
 							{#if composerDay === i}
 								<SmartComposer
@@ -385,41 +395,47 @@
 									onexpand={expandComposer}
 								/>
 							{:else}
-								<div class="flex items-center gap-1.5 px-3.5 py-2">
-									<button
-										type="button"
-										onclick={() => (composerDay = i)}
-										class="flex items-center gap-1.5 rounded-md px-2 py-1 text-[13px] text-text-3 transition-colors hover:bg-surface hover:text-text"
-									>
-										<Icon name="plus" size={13} />
-										{m.week_add_task()}
-									</button>
-								</div>
+								<button
+									type="button"
+									onclick={() => (composerDay = i)}
+									class="flex h-9 w-full items-center gap-1.5 border-b border-border/60 px-4 text-left text-[13px] text-text-3 transition-colors hover:bg-surface hover:text-text sm:px-5"
+								>
+									<Icon name="plus" size={13} />
+									{m.week_add_task()}
+								</button>
 							{/if}
 						</div>
 					{/if}
-				</div>
+				</section>
 			{/each}
 		</div>
 
-		<aside class="flex flex-col self-start rounded-2xl border border-border bg-bg-elev">
-			<div class="px-4 pt-4 pb-2">
-				<div class="flex items-center gap-2">
+		<section class="pb-6">
+			<div
+				class="sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-y border-border bg-surface pr-3 pl-4 sm:pl-5"
+			>
+				<button
+					type="button"
+					onclick={toggleUnscheduled}
+					class="flex h-full min-w-0 flex-1 items-center gap-2.5 text-left"
+				>
+					<span
+						class="text-text-3 transition-transform {unscheduledCollapsed ? '-rotate-90' : ''}"
+					>
+						<Icon name="chevron" size={13} />
+					</span>
 					<span class="text-[14px] font-semibold text-text">{m.week_unscheduled()}</span>
 					<span class="font-mono text-[12px] text-text-3">{unscheduled.length}</span>
-				</div>
-				<p class="mt-1 text-[12px] text-text-4">{m.week_unscheduled_hint()}</p>
-			</div>
-			<div class="px-4 pb-2">
+				</button>
 				<div
-					class="inline-flex h-7 w-full items-center rounded-lg border border-border bg-surface p-0.5 text-[12px]"
+					class="inline-flex h-7 shrink-0 items-center rounded-lg border border-border bg-bg-elev p-0.5 text-[12px]"
 				>
 					{#each [['past', m.week_tab_past()], ['mine', m.week_tab_my_tasks()], ['others', m.week_tab_others()]] as [k, lbl] (k)}
 						<button
 							type="button"
 							onclick={() => setUnscheduledTab(k as UnscheduledTab)}
-							class="h-full flex-1 rounded-md transition-colors {unscheduledTab === k
-								? 'bg-bg-elev text-text'
+							class="h-full rounded-md px-2.5 transition-colors {unscheduledTab === k
+								? 'bg-surface-2 text-text'
 								: 'text-text-3 hover:text-text'}"
 						>
 							{lbl}
@@ -427,44 +443,28 @@
 					{/each}
 				</div>
 			</div>
-			<div class="space-y-1 px-2 pb-3">
-				{#each unscheduled as t (t.id)}
-					{@const proj = resolveProject(t.project)}
-					<button
-						type="button"
-						onclick={() => (selectedId = t.id)}
-						class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left leading-none transition-colors hover:bg-surface"
-					>
-						<span class="inline-flex h-3 w-3 shrink-0 items-center justify-center">
-							{#if t.inMyPlan}
-								<span class="inline-flex text-accent" title={m.week_in_your_week()}>
-									<Icon name="bookmark" size={12} />
-								</span>
-							{:else}
-								<span class="h-2 w-2 rounded-full" style:background={proj?.color ?? '#7c7c84'}
-								></span>
-							{/if}
-						</span>
-						<span class="font-mono text-[12px] text-text-3">{t.id}</span>
-						<PriorityBars priority={t.priority} />
-						<span class="flex-1 truncate text-[14px] text-text">{t.title}</span>
-						<span class="font-mono text-[11px] {t.estimate ? 'text-text-4' : 'text-text-4/60'}">
-							{t.estimate ? formatEstimate(t.estimate) : '—'}
-						</span>
-					</button>
-				{/each}
-				{#if unscheduled.length === 0}
-					<div class="py-8 text-center text-text-3">
+			{#if !unscheduledCollapsed}
+				<div transition:slide={{ duration: 180, easing: cubicOut }}>
+					{#each unscheduled as t (t.id)}
+						<TaskRow
+							task={t}
+							selected={selectedId === t.id}
+							showTime
+							onclick={() => (selectedId = t.id)}
+						/>
+					{/each}
+					{#if unscheduled.length === 0}
 						<div
-							class="mb-2 inline-grid h-9 w-9 place-items-center rounded-xl border border-border bg-surface"
+							class="flex items-center gap-2 border-b border-border/60 px-4 py-3 text-[13px] sm:px-5"
 						>
-							<Icon name="check" size={16} />
+							<Icon name="check" size={14} class="text-text-3" />
+							<span class="text-text-2">{m.week_inbox_zero()}</span>
+							<span class="text-text-4">{m.week_unscheduled_hint()}</span>
 						</div>
-						<div class="text-[13px] text-text-2">{m.week_inbox_zero()}</div>
-					</div>
-				{/if}
-			</div>
-		</aside>
+					{/if}
+				</div>
+			{/if}
+		</section>
 	</div>
 </div>
 

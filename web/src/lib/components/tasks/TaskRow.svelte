@@ -7,7 +7,8 @@
 	import Avatar from '../Avatar.svelte';
 	import Icon from '../Icon.svelte';
 	import { TRACKR_PRIORITIES } from '$lib/config/taxonomy';
-	import { formatDateShort, dueCountdown } from '$lib/utils/format';
+	import { formatDateShort, formatEstimate, dueCountdown } from '$lib/utils/format';
+	import { loggedMinutes } from '$lib/utils/task';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
 	import { priorityLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
@@ -16,11 +17,20 @@
 		task: Task;
 		selected?: boolean;
 		onclick?: () => void;
+		// My-week rows sit under their planned day's header, so the planned-date
+		// chip is redundant there.
+		showPlanned?: boolean;
+		// My week trades the "updated" column for logged/estimated time —
+		// capacity is that page's currency.
+		showTime?: boolean;
 	}
-	let { task, selected = false, onclick }: Props = $props();
+	let { task, selected = false, onclick, showPlanned = true, showTime = false }: Props = $props();
 
 	let prio = $derived(TRACKR_PRIORITIES.find((p) => p.id === task.priority)!);
 	let assignee = $derived(resolveUser(task.assignee));
+	// Real logged time when any exists, otherwise the estimate.
+	let logged = $derived(loggedMinutes(task));
+	let timeMinutes = $derived(logged > 0 ? logged : task.estimate);
 
 	// Suppress the countdown for completed tasks — a finished task isn't
 	// "overdue". Only show the live indicator while work is still pending.
@@ -35,7 +45,7 @@
 <button
 	type="button"
 	{onclick}
-	class="group grid w-full grid-cols-[22px_minmax(0,1fr)_auto_28px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors md:grid-cols-[22px_88px_minmax(0,1fr)_110px_88px_88px_96px_30px]
+	class="grid w-full grid-cols-[22px_minmax(0,1fr)_auto_28px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors md:grid-cols-[22px_88px_minmax(0,1fr)_110px_88px_88px_28px]
 	{selected ? 'bg-[var(--row-active)]' : 'hover:bg-[var(--row-hover)]'}"
 	style:height="var(--row-h)"
 >
@@ -44,7 +54,7 @@
 	<span class="flex min-w-0 items-center gap-2">
 		<span class="shrink-0"><TypeBadge type={task.type ?? 'task'} showLabel={false} /></span>
 		<span class="truncate text-[14px] text-text">{task.title}</span>
-		{#if task.plannedFor || task.inMyPlan}
+		{#if showPlanned && (task.plannedFor || task.inMyPlan)}
 			<span
 				class="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-accent-soft px-2 py-0.5 text-[12px] text-accent"
 				title={task.plannedFor
@@ -96,13 +106,19 @@
 			<span class="font-mono text-text-3">{formatDateShort(task.due)}</span>
 		{/if}
 	</span>
-	<span class="hidden font-mono text-[13px] text-text-3 md:block">
-		{formatDateShort(task.updated)}
-	</span>
-	<span class="flex justify-start">
+	{#if showTime}
+		<span
+			class="hidden font-mono text-[13px] md:block {logged > 0 ? 'text-text-2' : 'text-text-3'}"
+			title={timeMinutes ? (logged > 0 ? m.week_time_logged() : m.week_time_estimated()) : undefined}
+		>
+			{timeMinutes ? formatEstimate(timeMinutes) : '—'}
+		</span>
+	{:else}
+		<span class="hidden font-mono text-[13px] text-text-3 md:block">
+			{formatDateShort(task.updated)}
+		</span>
+	{/if}
+	<span class="flex justify-end">
 		<Avatar user={assignee} size={24} />
-	</span>
-	<span class="hidden text-text-3 opacity-0 transition-opacity group-hover:opacity-100 md:block">
-		<Icon name="chevron-r" size={15} />
 	</span>
 </button>
