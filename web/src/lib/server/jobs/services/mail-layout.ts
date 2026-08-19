@@ -1,15 +1,17 @@
-// Branded HTML email shell, on a pure-white theme.
+// Branded HTML email shell: pure-white light theme + an authored dark theme.
 //
-// Why pure white: new Outlook's dark mode runs its own color-inversion and
-// cannot be stopped (color-scheme metas, !important, hardcoded light — none
-// hold). It pushes every background toward a muddy gray, WORST on warm
-// off-whites and dark themes (they sit in its "invert toward middle" zone). A
-// true #ffffff card with near-black text is the one design its algorithm
-// handles gracefully: often left nearly untouched, and where it does shift,
-// white→light-gray with black→white text stays readable rather than muddy.
-// Brand identity comes through the coral mark + button, which no client
-// inverts (the approach Linear, Stripe and GitHub all take despite dark apps).
-// The palette is deliberately static: the email never adapts to dark mode.
+// Light stays pure white: new Outlook's dark mode runs its own color-inversion
+// and cannot be stopped (color-scheme metas, !important — none hold). A true
+// #ffffff card with near-black text is the one design its algorithm handles
+// gracefully. Brand identity comes through the coral mark + button, which no
+// client inverts (the approach Linear, Stripe and GitHub all take).
+//
+// Dark ("app graphite", the product's dark tokens) is served where clients
+// honour author dark modes: Apple Mail via prefers-color-scheme, Outlook.com
+// via its [data-ogsc]/[data-ogsb] hooks. Everything themed carries an em-*
+// class the dark blocks re-color with !important (inline styles win
+// otherwise); clients honouring neither hook keep light or apply their own
+// inversion of it, which lands near this palette anyway.
 //
 // Standard email HTML: tables for layout, inline styles only, bulletproof
 // (padded-<a>) buttons for Outlook.
@@ -37,6 +39,22 @@ const FAINT = '#909297'; // --text-4
 const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 const MONO = "ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace";
 const CARD_SHADOW = '0 8px 24px -14px rgba(40,30,30,0.14), 0 2px 4px rgba(40,30,30,0.04)';
+
+// Authored dark palette — the app's dark theme tokens (app.css oklch → hex),
+// with body/subtle text lifted a step for email-safe contrast. The button and
+// logo stay brand coral in both themes; only links lighten on dark ground.
+const DARK_PAGE_BG = '#0c0d0f';
+const DARK_CARD_BG = '#17181c';
+const DARK_CARD_BORDER = '#2b2d32';
+const DARK_CHIP_BG = '#212227';
+const DARK_QUOTE_BG = '#1f2024';
+const DARK_META_LINE = '#26272c';
+const DARK_HEADING = '#f4f5f9';
+const DARK_BODY = '#b7b9be';
+const DARK_SUBTLE = '#8a8c92';
+const DARK_FAINT = '#6d6e73';
+const DARK_LINK = '#ef8477';
+const DARK_CARD_SHADOW = '0 10px 28px -14px rgba(0,0,0,0.7), 0 2px 5px rgba(0,0,0,0.4)';
 
 export function escapeHtml(value: string): string {
 	return value
@@ -96,7 +114,7 @@ function brandMark(): string {
 				</table>
 			</td>
 			<td width="10" style="font-size:0;line-height:0;">&nbsp;</td>
-			<td valign="middle" style="font-family:${FONT};font-size:17px;font-weight:700;letter-spacing:-0.02em;color:${HEADING};">Trackr</td>
+			<td valign="middle" class="em-heading" style="font-family:${FONT};font-size:17px;font-weight:700;letter-spacing:-0.02em;color:${HEADING};">Trackr</td>
 		</tr>
 	</table>`;
 }
@@ -123,11 +141,11 @@ function linkChip(url: string): string {
 	return `
 	<tr>
 		<td style="padding:20px 0 0;">
-			<div style="font-family:${FONT};font-size:12px;line-height:1.5;color:${SUBTLE};padding:0 0 8px;">Or paste this link into your browser</div>
+			<div class="em-subtle" style="font-family:${FONT};font-size:12px;line-height:1.5;color:${SUBTLE};padding:0 0 8px;">Or paste this link into your browser</div>
 			<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 				<tr>
 					<td class="em-chip" style="background-color:${CHIP_BG};border:1px solid ${CARD_BORDER};border-radius:8px;padding:11px 13px;">
-						<a href="${escapeHtml(url)}" target="_blank" style="font-family:${MONO};font-size:12px;line-height:1.55;color:${ACCENT_LINK};text-decoration:none;word-break:break-all;">${escapeHtml(url)}</a>
+						<a href="${escapeHtml(url)}" target="_blank" class="em-link" style="font-family:${MONO};font-size:12px;line-height:1.55;color:${ACCENT_LINK};text-decoration:none;word-break:break-all;">${escapeHtml(url)}</a>
 					</td>
 				</tr>
 			</table>
@@ -137,13 +155,13 @@ function linkChip(url: string): string {
 
 function eyebrowRow(eyebrow: { label: string; ref?: string }): string {
 	const refCell = eyebrow.ref
-		? `<td align="right" valign="middle" style="padding:0 0 12px;"><span class="em-chip" style="display:inline-block;font-family:${MONO};font-size:11.5px;line-height:1.4;color:${BODY};background-color:${CHIP_BG};border:1px solid ${CARD_BORDER};border-radius:6px;padding:2px 7px;">${escapeHtml(eyebrow.ref)}</span></td>`
+		? `<td align="right" valign="middle" style="padding:0 0 12px;"><span class="em-chip em-body" style="display:inline-block;font-family:${MONO};font-size:11.5px;line-height:1.4;color:${BODY};background-color:${CHIP_BG};border:1px solid ${CARD_BORDER};border-radius:6px;padding:2px 7px;">${escapeHtml(eyebrow.ref)}</span></td>`
 		: '';
 	return `
 	<tr><td style="padding:0;">
 		<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
 			<tr>
-				<td valign="middle" style="font-family:${FONT};font-size:11px;font-weight:600;letter-spacing:0.09em;text-transform:uppercase;color:${SUBTLE};padding:0 0 12px;">${escapeHtml(eyebrow.label)}</td>
+				<td valign="middle" class="em-subtle" style="font-family:${FONT};font-size:11px;font-weight:600;letter-spacing:0.09em;text-transform:uppercase;color:${SUBTLE};padding:0 0 12px;">${escapeHtml(eyebrow.label)}</td>
 				${refCell}
 			</tr>
 		</table>
@@ -155,8 +173,8 @@ function metaTable(rows: { label: string; value: string }[]): string {
 		.map(
 			(r, i) =>
 				`<tr>
-					<td width="108" valign="top" class="em-subtle" style="font-family:${FONT};font-size:12px;line-height:1.5;color:${SUBTLE};padding:7px 12px 7px 0;border-top:1px solid ${META_LINE};${i === rows.length - 1 ? `border-bottom:1px solid ${META_LINE};` : ''}">${escapeHtml(r.label)}</td>
-					<td valign="top" class="em-meta-v" style="font-family:${FONT};font-size:13px;line-height:1.5;color:${HEADING};padding:7px 0;border-top:1px solid ${META_LINE};${i === rows.length - 1 ? `border-bottom:1px solid ${META_LINE};` : ''}">${escapeHtml(r.value)}</td>
+					<td width="108" valign="top" class="em-subtle em-metaline" style="font-family:${FONT};font-size:12px;line-height:1.5;color:${SUBTLE};padding:7px 12px 7px 0;border-top:1px solid ${META_LINE};${i === rows.length - 1 ? `border-bottom:1px solid ${META_LINE};` : ''}">${escapeHtml(r.label)}</td>
+					<td valign="top" class="em-meta-v em-metaline" style="font-family:${FONT};font-size:13px;line-height:1.5;color:${HEADING};padding:7px 0;border-top:1px solid ${META_LINE};${i === rows.length - 1 ? `border-bottom:1px solid ${META_LINE};` : ''}">${escapeHtml(r.value)}</td>
 				</tr>`
 		)
 		.join('');
@@ -196,11 +214,11 @@ export function renderEmail(opts: EmailLayoutOptions): string {
 		opts.footnotes && opts.footnotes.length
 			? `<tr><td style="padding:24px 0 0;">
 					<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-						<tr><td style="border-top:1px solid ${CARD_BORDER};font-size:0;line-height:0;padding:0 0 18px;">&nbsp;</td></tr>
+						<tr><td class="em-divider" style="border-top:1px solid ${CARD_BORDER};font-size:0;line-height:0;padding:0 0 18px;">&nbsp;</td></tr>
 						${opts.footnotes
 							.map(
 								(f) =>
-									`<tr><td style="font-family:${FONT};font-size:12.5px;line-height:1.6;color:${SUBTLE};padding:0 0 6px;">${f}</td></tr>`
+									`<tr><td class="em-subtle" style="font-family:${FONT};font-size:12.5px;line-height:1.6;color:${SUBTLE};padding:0 0 6px;">${f}</td></tr>`
 							)
 							.join('')}
 					</table>
@@ -211,7 +229,7 @@ export function renderEmail(opts: EmailLayoutOptions): string {
 		opts.footerText ?? 'Trackr · You received this email because of activity on your account.'
 	);
 	const footerLink = opts.footerLink
-		? `<br /><a href="${escapeHtml(opts.footerLink.url)}" target="_blank" style="color:${ACCENT_LINK};text-decoration:none;">${escapeHtml(opts.footerLink.label)}</a>`
+		? `<br /><a href="${escapeHtml(opts.footerLink.url)}" target="_blank" class="em-link" style="color:${ACCENT_LINK};text-decoration:none;">${escapeHtml(opts.footerLink.label)}</a>`
 		: '';
 
 	// Heading spacing: 16px below when a meta table follows (structured
@@ -223,30 +241,47 @@ export function renderEmail(opts: EmailLayoutOptions): string {
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
-	<meta name="color-scheme" content="light" />
-	<meta name="supported-color-schemes" content="light" />
+	<meta name="color-scheme" content="light dark" />
+	<meta name="supported-color-schemes" content="light dark" />
 	<title>${escapeHtml(opts.heading)}</title>
 	<style>
-		:root { color-scheme: light only; supported-color-schemes: light; }
-		/* The palette is static: re-force surfaces AND text in clients that
-		   honour prefers-color-scheme (Apple Mail dark mode), plus Outlook.com's
-		   [data-ogsc] dark-mode attribute hooks. */
+		:root { color-scheme: light dark; supported-color-schemes: light dark; }
+		/* Authored dark theme ("app graphite") for clients that honour author
+		   dark modes: Apple Mail via prefers-color-scheme, Outlook.com via its
+		   [data-ogsc] (text) / [data-ogsb] (background) hooks. Inline styles
+		   carry the light palette, so every dark rule needs !important. */
 		@media (prefers-color-scheme: dark) {
-			body, .em-canvas { background-color: ${PAGE_BG} !important; }
-			.em-card { background-color: ${CARD_BG} !important; }
-			.em-chip { background-color: ${CHIP_BG} !important; }
-			.em-quote { background-color: ${QUOTE_BG} !important; }
-			.em-heading, .em-meta-v { color: ${HEADING} !important; }
-			.em-body { color: ${BODY} !important; }
-			.em-subtle { color: ${SUBTLE} !important; }
+			body, .em-canvas { background-color: ${DARK_PAGE_BG} !important; }
+			.em-card { background-color: ${DARK_CARD_BG} !important; border-color: ${DARK_CARD_BORDER} !important; box-shadow: ${DARK_CARD_SHADOW} !important; }
+			.em-chip { background-color: ${DARK_CHIP_BG} !important; border-color: ${DARK_CARD_BORDER} !important; }
+			.em-quote { background-color: ${DARK_QUOTE_BG} !important; }
+			.em-heading, .em-meta-v { color: ${DARK_HEADING} !important; }
+			.em-body { color: ${DARK_BODY} !important; }
+			.em-subtle { color: ${DARK_SUBTLE} !important; }
+			.em-faint { color: ${DARK_FAINT} !important; }
+			.em-link { color: ${DARK_LINK} !important; }
+			.em-metaline { border-color: ${DARK_META_LINE} !important; }
+			.em-divider { border-top-color: ${DARK_CARD_BORDER} !important; }
+			.em-md-code { background-color: ${DARK_CHIP_BG} !important; }
+			.em-md-quote { border-left-color: ${DARK_CARD_BORDER} !important; color: ${DARK_SUBTLE} !important; }
+			.em-md-hr { border-top-color: ${DARK_META_LINE} !important; }
 		}
-		[data-ogsc] body, [data-ogsc] .em-canvas { background-color: ${PAGE_BG} !important; }
-		[data-ogsc] .em-card { background-color: ${CARD_BG} !important; }
-		[data-ogsc] .em-chip { background-color: ${CHIP_BG} !important; }
-		[data-ogsc] .em-quote { background-color: ${QUOTE_BG} !important; }
-		[data-ogsc] .em-heading, [data-ogsc] .em-meta-v { color: ${HEADING} !important; }
-		[data-ogsc] .em-body { color: ${BODY} !important; }
-		[data-ogsc] .em-subtle { color: ${SUBTLE} !important; }
+		[data-ogsb] body, [data-ogsb] .em-canvas { background-color: ${DARK_PAGE_BG} !important; }
+		[data-ogsb] .em-card { background-color: ${DARK_CARD_BG} !important; }
+		[data-ogsb] .em-chip { background-color: ${DARK_CHIP_BG} !important; }
+		[data-ogsb] .em-quote { background-color: ${DARK_QUOTE_BG} !important; }
+		[data-ogsc] .em-card { border-color: ${DARK_CARD_BORDER} !important; box-shadow: ${DARK_CARD_SHADOW} !important; }
+		[data-ogsc] .em-chip { border-color: ${DARK_CARD_BORDER} !important; }
+		[data-ogsc] .em-heading, [data-ogsc] .em-meta-v { color: ${DARK_HEADING} !important; }
+		[data-ogsc] .em-body { color: ${DARK_BODY} !important; }
+		[data-ogsc] .em-subtle { color: ${DARK_SUBTLE} !important; }
+		[data-ogsc] .em-faint { color: ${DARK_FAINT} !important; }
+		[data-ogsc] .em-link { color: ${DARK_LINK} !important; }
+		[data-ogsc] .em-metaline { border-color: ${DARK_META_LINE} !important; }
+		[data-ogsc] .em-divider { border-top-color: ${DARK_CARD_BORDER} !important; }
+		[data-ogsb] .em-md-code { background-color: ${DARK_CHIP_BG} !important; }
+		[data-ogsc] .em-md-quote { border-left-color: ${DARK_CARD_BORDER} !important; color: ${DARK_SUBTLE} !important; }
+		[data-ogsc] .em-md-hr { border-top-color: ${DARK_META_LINE} !important; }
 	</style>
 </head>
 <body class="em-canvas" style="margin:0;padding:0;background-color:${PAGE_BG};-webkit-text-size-adjust:100%;">
@@ -271,7 +306,7 @@ export function renderEmail(opts: EmailLayoutOptions): string {
 						</td>
 					</tr>
 					<tr>
-						<td align="center" class="em-canvas em-subtle" bgcolor="${PAGE_BG}" style="font-family:${FONT};font-size:11.5px;line-height:1.7;color:${FAINT};padding:18px 12px 44px;background-color:${PAGE_BG};">
+						<td align="center" class="em-canvas em-faint" bgcolor="${PAGE_BG}" style="font-family:${FONT};font-size:11.5px;line-height:1.7;color:${FAINT};padding:18px 12px 44px;background-color:${PAGE_BG};">
 							${footerText}${footerLink}
 						</td>
 					</tr>

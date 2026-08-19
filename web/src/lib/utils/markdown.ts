@@ -122,7 +122,7 @@ function inlineHtml(tokens: Token[] | undefined, mentions: MentionRef[]): string
 				out += `<del>${inlineHtml((tok as Tokens.Del).tokens, mentions)}</del>`;
 				break;
 			case 'codespan':
-				out += `<code style="${CODE_STYLE}">${esc((tok as Tokens.Codespan).text)}</code>`;
+				out += `<code class="em-md-code" style="${CODE_STYLE}">${esc((tok as Tokens.Codespan).text)}</code>`;
 				break;
 			case 'br':
 				out += '<br />';
@@ -167,10 +167,10 @@ function blockHtml(tokens: Token[], mentions: MentionRef[]): string {
 				out += `<p style="margin:8px 0 4px;font-weight:600;">${inlineHtml((tok as Tokens.Heading).tokens, mentions)}</p>`;
 				break;
 			case 'blockquote':
-				out += `<blockquote style="${QUOTE_STYLE}">${blockHtml((tok as Tokens.Blockquote).tokens, mentions)}</blockquote>`;
+				out += `<blockquote class="em-md-quote" style="${QUOTE_STYLE}">${blockHtml((tok as Tokens.Blockquote).tokens, mentions)}</blockquote>`;
 				break;
 			case 'code':
-				out += `<pre style="${PRE_STYLE}">${esc((tok as Tokens.Code).text)}</pre>`;
+				out += `<pre class="em-md-code" style="${PRE_STYLE}">${esc((tok as Tokens.Code).text)}</pre>`;
 				break;
 			case 'list': {
 				const l = tok as Tokens.List;
@@ -182,7 +182,7 @@ function blockHtml(tokens: Token[], mentions: MentionRef[]): string {
 				break;
 			}
 			case 'hr':
-				out += '<hr style="border:none;border-top:1px solid #e4e4e8;margin:10px 0;" />';
+				out += '<hr class="em-md-hr" style="border:none;border-top:1px solid #e4e4e8;margin:10px 0;" />';
 				break;
 			// Block-level text (tight list items) renders inline without a <p>.
 			case 'text': {

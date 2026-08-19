@@ -256,8 +256,8 @@ func buildDigestMessage(to, locale string, items []digestItem) mailMessage {
 			bottom = "border-bottom:1px solid #eeece9;"
 		}
 		list.WriteString(fmt.Sprintf(
-			`<tr><td style="padding:9px 0;border-top:1px solid #eeece9;%sfont-family:%s;font-size:13.5px;line-height:1.5;">`+
-				`<a href="%s" target="_blank" style="color:#191a1e;text-decoration:none;font-weight:600;">%s</a></td></tr>`,
+			`<tr><td class="em-metaline" style="padding:9px 0;border-top:1px solid #eeece9;%sfont-family:%s;font-size:13.5px;line-height:1.5;">`+
+				`<a href="%s" target="_blank" class="em-heading" style="color:#191a1e;text-decoration:none;font-weight:600;">%s</a></td></tr>`,
 			bottom, font, html.EscapeString(it.url), html.EscapeString(it.title)))
 	}
 
@@ -266,12 +266,13 @@ func buildDigestMessage(to, locale string, items []digestItem) mailMessage {
 	manageLink := ""
 	if u, err := neturl.Parse(items[0].url); err == nil && u.Scheme != "" && u.Host != "" {
 		manageLink = fmt.Sprintf(
-			`<br /><a href="%s://%s/me/settings" target="_blank" style="color:#cf5447;text-decoration:none;">%s</a>`,
+			`<br /><a href="%s://%s/me/settings" target="_blank" class="em-link" style="color:#cf5447;text-decoration:none;">%s</a>`,
 			u.Scheme, u.Host, html.EscapeString(manage))
 	}
 
-	// Same static-light shell as the web templates (mail-layout.ts): centered
-	// brand bars, white card with warm hairline, forced-light color scheme.
+	// Same shell as the web templates (mail-layout.ts): centered brand bars,
+	// white card with warm hairline, plus the authored "app graphite" dark
+	// palette for clients honouring prefers-color-scheme / [data-ogsc] hooks.
 	brand := `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tr>` +
 		`<td valign="middle" style="font-size:0;line-height:0;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tr>` +
 		`<td width="4" valign="middle" style="padding-right:3px;font-size:0;line-height:0;"><div style="width:4px;height:18px;background-color:#FF4867;border-radius:1px;font-size:0;line-height:18px;">&nbsp;</div></td>` +
@@ -279,25 +280,46 @@ func buildDigestMessage(to, locale string, items []digestItem) mailMessage {
 		`<td width="4" valign="middle" style="font-size:0;line-height:0;"><div style="width:4px;height:18px;background-color:#FF4867;border-radius:1px;font-size:0;line-height:18px;">&nbsp;</div></td>` +
 		`</tr></table></td>` +
 		`<td width="10" style="font-size:0;line-height:0;">&nbsp;</td>` +
-		fmt.Sprintf(`<td valign="middle" style="font-family:%s;font-size:17px;font-weight:700;letter-spacing:-0.02em;color:#191a1e;">Trackr</td>`, font) +
+		fmt.Sprintf(`<td valign="middle" class="em-heading" style="font-family:%s;font-size:17px;font-weight:700;letter-spacing:-0.02em;color:#191a1e;">Trackr</td>`, font) +
 		`</tr></table>`
 
 	htmlBody := fmt.Sprintf(`<!doctype html>
-<html lang="%s"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="color-scheme" content="light"/><meta name="supported-color-schemes" content="light"/>
-<style>:root { color-scheme: light only; supported-color-schemes: light; }</style></head>
-<body style="margin:0;padding:0;background-color:#ffffff;">
-	<table role="presentation" width="100%%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="background-color:#ffffff;">
-		<tr><td align="center" bgcolor="#ffffff" style="padding:0 16px;background-color:#ffffff;">
+<html lang="%s"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="color-scheme" content="light dark"/><meta name="supported-color-schemes" content="light dark"/>
+<style>
+:root { color-scheme: light dark; supported-color-schemes: light dark; }
+@media (prefers-color-scheme: dark) {
+	body, .em-canvas { background-color: #0c0d0f !important; }
+	.em-card { background-color: #17181c !important; border-color: #2b2d32 !important; box-shadow: 0 10px 28px -14px rgba(0,0,0,0.7), 0 2px 5px rgba(0,0,0,0.4) !important; }
+	.em-heading { color: #f4f5f9 !important; }
+	.em-body { color: #b7b9be !important; }
+	.em-subtle { color: #8a8c92 !important; }
+	.em-faint { color: #6d6e73 !important; }
+	.em-link { color: #ef8477 !important; }
+	.em-metaline { border-color: #26272c !important; }
+}
+[data-ogsb] body, [data-ogsb] .em-canvas { background-color: #0c0d0f !important; }
+[data-ogsb] .em-card { background-color: #17181c !important; }
+[data-ogsc] .em-card { border-color: #2b2d32 !important; }
+[data-ogsc] .em-heading { color: #f4f5f9 !important; }
+[data-ogsc] .em-body { color: #b7b9be !important; }
+[data-ogsc] .em-subtle { color: #8a8c92 !important; }
+[data-ogsc] .em-faint { color: #6d6e73 !important; }
+[data-ogsc] .em-link { color: #ef8477 !important; }
+[data-ogsc] .em-metaline { border-color: #26272c !important; }
+</style></head>
+<body class="em-canvas" style="margin:0;padding:0;background-color:#ffffff;">
+	<table role="presentation" class="em-canvas" width="100%%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="background-color:#ffffff;">
+		<tr><td align="center" class="em-canvas" bgcolor="#ffffff" style="padding:0 16px;background-color:#ffffff;">
 			<table role="presentation" width="452" cellpadding="0" cellspacing="0" border="0" style="width:100%%;max-width:452px;">
-				<tr><td align="center" bgcolor="#ffffff" style="padding:44px 0 24px;background-color:#ffffff;">%s</td></tr>
-				<tr><td bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #e4e2df;border-radius:16px;padding:26px 28px 24px;box-shadow:0 8px 24px -14px rgba(40,30,30,0.14), 0 2px 4px rgba(40,30,30,0.04);">
+				<tr><td align="center" class="em-canvas" bgcolor="#ffffff" style="padding:44px 0 24px;background-color:#ffffff;">%s</td></tr>
+				<tr><td class="em-card" bgcolor="#ffffff" style="background-color:#ffffff;border:1px solid #e4e2df;border-radius:16px;padding:26px 28px 24px;box-shadow:0 8px 24px -14px rgba(40,30,30,0.14), 0 2px 4px rgba(40,30,30,0.04);">
 					<table role="presentation" width="100%%" cellpadding="0" cellspacing="0" border="0">
-						<tr><td style="font-family:%s;font-size:11px;font-weight:600;letter-spacing:0.09em;text-transform:uppercase;color:#787a7f;padding:0 0 12px;">%s</td></tr>
-						<tr><td style="font-family:%s;font-size:14px;line-height:1.6;color:#4e5054;padding:0 0 14px;">%s</td></tr>
+						<tr><td class="em-subtle" style="font-family:%s;font-size:11px;font-weight:600;letter-spacing:0.09em;text-transform:uppercase;color:#787a7f;padding:0 0 12px;">%s</td></tr>
+						<tr><td class="em-body" style="font-family:%s;font-size:14px;line-height:1.6;color:#4e5054;padding:0 0 14px;">%s</td></tr>
 						%s
 					</table>
 				</td></tr>
-				<tr><td align="center" bgcolor="#ffffff" style="font-family:%s;font-size:11.5px;line-height:1.7;color:#909297;padding:18px 12px 44px;background-color:#ffffff;">%s%s</td></tr>
+				<tr><td align="center" class="em-canvas em-faint" bgcolor="#ffffff" style="font-family:%s;font-size:11.5px;line-height:1.7;color:#909297;padding:18px 12px 44px;background-color:#ffffff;">%s%s</td></tr>
 			</table>
 		</td></tr>
 	</table>
