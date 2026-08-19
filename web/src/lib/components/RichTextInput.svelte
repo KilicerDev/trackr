@@ -1,0 +1,441 @@
+<script lang="ts">
+	// WYSIWYG input for messages, comments, and descriptions (Tiptap). The
+	// bound `value` is a markdown string with `@[Name](id)` mention tokens —
+	// the exact wire format the old plain composers produced — so hosts,
+	// server actions, and notifications are untouched. Typing markdown
+	// (`**bold**`, `- `, `> `, backticks) formats live via StarterKit's input
+	// rules; `@` mentions and `#` tags reuse the same dropdown UX the plain
+	// composer had.
+	import { onDestroy, onMount } from 'svelte';
+	import { Editor } from '@tiptap/core';
+	import Placeholder from '@tiptap/extension-placeholder';
+	import Suggestion, { type SuggestionProps } from '@tiptap/suggestion';
+	import { PluginKey } from '@tiptap/pm/state';
+	import { page } from '$app/state';
+	import Avatar from './Avatar.svelte';
+	import Icon from './Icon.svelte';
+	import { autoPlace } from '$lib/actions/autoPlace';
+	import { m } from '$lib/paraglide/messages';
+	import {
+		messageSchemaExtensions,
+		docToMarkdown,
+		markdownToEditorHtml
+	} from '$lib/editor/message';
+	import type { ChatTag } from '$lib/server/chat';
+
+	type MentionUser = {
+		id: string;
+		name: string;
+		email: string;
+		initials: string;
+		color: string;
+		status: 'active' | 'invited' | 'disabled';
+		internal?: boolean;
+		projectIds?: string[];
+	};
+
+	interface Props {
+		/** Markdown with `@[Name](id)` mention tokens. */
+		value: string;
+		placeholder?: string;
+		disabled?: boolean;
+		rows?: number;
+		/** Growth cap: grows with content from `rows` up to this, then scrolls. */
+		maxRows?: number;
+		/** Classes applied to the editable surface (padding, text size, …). */
+		class?: string;
+		/** Host keydown (e.g. Composer's Cmd+Enter to send). */
+		onkeydown?: (e: KeyboardEvent) => void;
+		/** Called with the serialized markdown on every edit (besides `bind:value`). */
+		onchange?: (markdown: string) => void;
+		/** Editor lost focus — hosts use this for save-on-blur (Inspector). */
+		onblur?: () => void;
+		/** Scope @-mention candidates to people with access to this project. */
+		projectId?: string | null;
+		/** Override the @-mention directory (defaults to layout `users`). */
+		users?: MentionUser[];
+		/** Opt-in `#` tagging (chat) — see MentionTextarea's old contract. */
+		tags?: ChatTag[];
+		onTagAdd?: (id: string | null, label: string) => void;
+		/** `document` adds headings — for description fields. */
+		flavor?: 'chat' | 'document';
+		/** Disable @-mentions entirely (descriptions — the server doesn't parse them there). */
+		mentions?: boolean;
+	}
+	let {
+		value = $bindable(''),
+		placeholder = '',
+		disabled = false,
+		rows = 2,
+		maxRows = 7,
+		class: cls = '',
+		onkeydown,
+		onchange,
+		onblur,
+		projectId = null,
+		users,
+		tags,
+		onTagAdd,
+		flavor = 'chat',
+		mentions = true
+	}: Props = $props();
+
+	let host: HTMLDivElement | undefined = $state();
+	let editor: Editor | undefined;
+	let ready = $state(false);
+	// The value we last pushed up — lets the sync effect tell an external
+	// change (clear-on-send, ticket switch) apart from our own edits.
+	let lastEmitted: string | null = null;
+
+	// ── Suggestion dropdown (one menu, '@' or '#' mode) ──────────────────────
+	let menu = $state<{
+		kind: '@' | '#';
+		query: string;
+		command: (props: unknown) => void;
+	} | null>(null);
+	let menuEl = $state<HTMLDivElement | null>(null);
+	let activeIndex = $state(0);
+
+	const candidates = $derived.by<MentionUser[]>(() => {
+		if (menu?.kind !== '@') return [];
+		const directory = users ?? (page.data as { users?: MentionUser[] }).users ?? [];
+		const all = directory.filter(
+			(u) =>
+				u.status !== 'disabled' &&
+				(!projectId || u.internal || (u.projectIds ?? []).includes(projectId))
+		);
+		const needle = menu.query.toLowerCase();
+		const matches = needle
+			? all.filter(
+					(u) => u.name.toLowerCase().includes(needle) || u.email.toLowerCase().includes(needle)
+				)
+			: all;
+		return matches.sort(
+			(a, b) =>
+				a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }) ||
+				a.email.localeCompare(b.email, undefined, { sensitivity: 'base' }) ||
+				a.id.localeCompare(b.id)
+		);
+	});
+
+	const tagMatches = $derived.by<ChatTag[]>(() => {
+		if (menu?.kind !== '#' || !tags) return [];
+		const needle = menu.query.toLowerCase();
+		return tags.filter((t) => t.label.toLowerCase().includes(needle)).slice(0, 6);
+	});
+	const showCreateTag = $derived(
+		menu?.kind === '#' &&
+			!!onTagAdd &&
+			menu.query.trim().length > 0 &&
+			!(tags ?? []).some((t) => t.label.toLowerCase() === menu!.query.trim().toLowerCase())
+	);
+	const optionCount = $derived(
+		menu?.kind === '@' ? candidates.length : tagMatches.length + (showCreateTag ? 1 : 0)
+	);
+
+	function pick(index: number) {
+		if (!menu) return;
+		if (menu.kind === '@') {
+			const u = candidates[index];
+			if (u) menu.command(u);
+		} else if (index < tagMatches.length) {
+			menu.command({ id: tagMatches[index].id, label: tagMatches[index].label });
+		} else if (showCreateTag) {
+			menu.command({ id: null, label: menu.query.trim() });
+		}
+		menu = null;
+	}
+
+	function menuKey(e: KeyboardEvent): boolean {
+		if (!menu || !optionCount || e.metaKey || e.ctrlKey) return false;
+		if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+			activeIndex = (activeIndex + (e.key === 'ArrowDown' ? 1 : -1) + optionCount) % optionCount;
+			menuEl
+				?.querySelector<HTMLElement>(`[data-option-index="${activeIndex}"]`)
+				?.scrollIntoView({ block: 'nearest' });
+			return true;
+		}
+		if (e.key === 'Enter' || e.key === 'Tab') {
+			pick(activeIndex);
+			return true;
+		}
+		if (e.key === 'Escape') {
+			menu = null;
+			return true;
+		}
+		return false;
+	}
+
+	function suggestionRender(kind: '@' | '#') {
+		return () => ({
+			onStart: (p: SuggestionProps) => {
+				menu = { kind, query: p.query, command: p.command as (props: unknown) => void };
+				activeIndex = 0;
+			},
+			onUpdate: (p: SuggestionProps) => {
+				menu = { kind, query: p.query, command: p.command as (props: unknown) => void };
+				activeIndex = 0;
+			},
+			onKeyDown: (p: { event: KeyboardEvent }) => menuKey(p.event),
+			onExit: () => {
+				if (menu?.kind === kind) menu = null;
+			}
+		});
+	}
+
+	onMount(() => {
+		if (!host) return;
+		editor = new Editor({
+			element: host,
+			editable: !disabled,
+			editorProps: {
+				attributes: { class: `rt-content ${cls}`, role: 'textbox', 'aria-multiline': 'true' },
+				// Direct props run before plugins: hand the event to the host
+				// first (Cmd+Enter send) and stop if it consumed it, so the
+				// base keymap's Mod-Enter can't also fire into a cleared doc.
+				handleKeyDown: (_view, e) => {
+					onkeydown?.(e);
+					return e.defaultPrevented;
+				}
+			},
+			extensions: [
+				...messageSchemaExtensions({ flavor, mentions }),
+				Placeholder.configure({ placeholder })
+			],
+			onUpdate: ({ editor }) => {
+				const md = docToMarkdown(editor.state.doc);
+				lastEmitted = md;
+				value = md;
+				onchange?.(md);
+			},
+			onBlur: () => onblur?.()
+		});
+		if (value) {
+			editor.commands.setContent(markdownToEditorHtml(value), { emitUpdate: false });
+		}
+		lastEmitted = value;
+
+		if (mentions) {
+			editor.registerPlugin(
+				Suggestion<unknown, MentionUser>({
+					editor,
+					char: '@',
+					pluginKey: new PluginKey('rtMention'),
+					items: () => [],
+					command: ({ editor, range, props }) => {
+						editor
+							.chain()
+							.focus()
+							.insertContentAt(range, [
+								{ type: 'mention', attrs: { id: props.id, name: props.name } },
+								{ type: 'text', text: ' ' }
+							])
+							.run();
+					},
+					render: suggestionRender('@')
+				})
+			);
+		}
+		if (tags && onTagAdd) {
+			editor.registerPlugin(
+				Suggestion<unknown, { id: string | null; label: string }>({
+					editor,
+					char: '#',
+					pluginKey: new PluginKey('rtTag'),
+					items: () => [],
+					// The typed `#query` is removed and the tag handed to the host
+					// as a chip — nothing stays in the message text.
+					command: ({ editor, range, props }) => {
+						editor.chain().focus().deleteRange(range).run();
+						onTagAdd?.(props.id, props.label);
+					},
+					render: suggestionRender('#')
+				})
+			);
+		}
+		ready = true;
+	});
+
+	// External value change (clear-on-send, entity switch) → re-hydrate.
+	$effect(() => {
+		const v = value;
+		if (ready && editor && v !== lastEmitted) {
+			lastEmitted = v;
+			editor.commands.setContent(v ? markdownToEditorHtml(v) : '', { emitUpdate: false });
+		}
+	});
+
+	$effect(() => {
+		if (ready && editor && editor.isEditable === disabled) editor.setEditable(!disabled);
+	});
+
+	onDestroy(() => {
+		editor?.destroy();
+		editor = undefined;
+	});
+</script>
+
+<div class="relative">
+	<div
+		bind:this={host}
+		class="rt"
+		style:--rt-min="{rows * 1.45}em"
+		style:--rt-max="{maxRows * 1.45}em"
+	></div>
+
+	{#if menu && optionCount}
+		<div
+			bind:this={menuEl}
+			use:autoPlace
+			class="absolute top-full left-0 z-50 mt-1 max-h-64 max-w-[308px] min-w-[242px] overflow-y-auto overscroll-contain rounded-[10px] border border-border bg-bg-elev p-1 shadow-lg"
+		>
+			{#if menu.kind === '@'}
+				{#each candidates as u, i (u.id)}
+					<button
+						type="button"
+						data-option-index={i}
+						onmousedown={(e) => {
+							e.preventDefault();
+							pick(i);
+						}}
+						onmouseenter={() => (activeIndex = i)}
+						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left {i ===
+						activeIndex
+							? 'bg-surface-2 text-text'
+							: 'text-text-2'}"
+					>
+						<Avatar user={u} size={22} />
+						<span class="truncate text-[14px]">{u.name}</span>
+					</button>
+				{/each}
+			{:else}
+				{#each tagMatches as t, i (t.id)}
+					<button
+						type="button"
+						data-option-index={i}
+						onmousedown={(e) => {
+							e.preventDefault();
+							pick(i);
+						}}
+						onmouseenter={() => (activeIndex = i)}
+						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] {i ===
+						activeIndex
+							? 'bg-surface-2 text-text'
+							: 'text-text-2'}"
+					>
+						<span class="h-2 w-2 rounded-full" style:background={t.color ?? '#7c7c84'}></span>
+						<span class="truncate">{t.label}</span>
+					</button>
+				{/each}
+				{#if showCreateTag && menu}
+					<button
+						type="button"
+						data-option-index={tagMatches.length}
+						onmousedown={(e) => {
+							e.preventDefault();
+							pick(tagMatches.length);
+						}}
+						onmouseenter={() => (activeIndex = tagMatches.length)}
+						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] {activeIndex ===
+						tagMatches.length
+							? 'bg-surface-2 text-text'
+							: 'text-text-2'}"
+					>
+						<Icon name="plus" size={13} class="text-text-3" />
+						<span class="truncate">{m.chat_tag_create({ label: menu.query.trim() })}</span>
+					</button>
+				{/if}
+			{/if}
+		</div>
+	{/if}
+</div>
+
+<style>
+	/* The editable surface. Host-passed classes (padding, text size) land on
+	   .rt-content via editorProps; sizing and markdown chrome live here. */
+	.rt :global(.rt-content) {
+		min-height: var(--rt-min);
+		max-height: var(--rt-max);
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		outline: none;
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
+	.rt :global(.rt-content p) {
+		margin: 0.15em 0;
+	}
+	.rt :global(.rt-content h1),
+	.rt :global(.rt-content h2),
+	.rt :global(.rt-content h3) {
+		margin: 0.5em 0 0.25em;
+		font-weight: 600;
+		line-height: 1.3;
+	}
+	.rt :global(.rt-content h1) {
+		font-size: 1.25em;
+	}
+	.rt :global(.rt-content h2) {
+		font-size: 1.15em;
+	}
+	.rt :global(.rt-content h3) {
+		font-size: 1.05em;
+	}
+	.rt :global(.rt-content ul),
+	.rt :global(.rt-content ol) {
+		margin: 0.25em 0;
+		padding-left: 1.4em;
+	}
+	.rt :global(.rt-content ul) {
+		list-style: disc;
+	}
+	.rt :global(.rt-content ol) {
+		list-style: decimal;
+	}
+	.rt :global(.rt-content blockquote) {
+		margin: 0.35em 0;
+		padding-left: 0.8em;
+		border-left: 3px solid var(--color-border-strong, var(--color-border));
+		color: var(--color-text-3);
+	}
+	.rt :global(.rt-content code) {
+		font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+		font-size: 0.9em;
+		background: var(--color-surface-2, rgba(127, 127, 127, 0.15));
+		border: 1px solid var(--color-border);
+		border-radius: 5px;
+		padding: 0.08em 0.35em;
+	}
+	.rt :global(.rt-content pre) {
+		margin: 0.35em 0;
+		padding: 0.6em 0.8em;
+		background: var(--color-surface-2, rgba(127, 127, 127, 0.12));
+		border: 1px solid var(--color-border);
+		border-radius: 10px;
+		overflow-x: auto;
+	}
+	.rt :global(.rt-content pre code) {
+		background: none;
+		border: none;
+		padding: 0;
+		white-space: pre;
+	}
+	.rt :global(.rt-content a) {
+		color: var(--color-accent);
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+	.rt :global(.rt-content hr) {
+		border: none;
+		border-top: 1px solid var(--color-border);
+		margin: 0.7em 0;
+	}
+	/* Tiptap Placeholder: shown on the empty first paragraph. */
+	.rt :global(p.is-editor-empty:first-child::before) {
+		content: attr(data-placeholder);
+		color: var(--color-text-3);
+		float: left;
+		height: 0;
+		pointer-events: none;
+	}
+</style>

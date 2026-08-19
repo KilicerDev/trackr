@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import Icon from './Icon.svelte';
-	import MentionTextarea from './MentionTextarea.svelte';
+	import RichTextInput from './RichTextInput.svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	type Accent = 'default' | 'warning';
@@ -64,7 +64,7 @@
 		? 'border-[#e9c46a]/40 focus-within:border-[#e9c46a]/70'
 		: 'border-border focus-within:border-border-strong'}"
 >
-	<MentionTextarea
+	<RichTextInput
 		bind:value
 		onkeydown={onKey}
 		{projectId}
@@ -74,7 +74,7 @@
 		{placeholder}
 		rows={2}
 		disabled={disabled || sending}
-		class="w-full resize-none border-0 bg-transparent px-3.5 pt-3 pb-1 text-[14px] leading-relaxed outline-none placeholder:text-text-3 disabled:opacity-60"
+		class="w-full border-0 bg-transparent px-3.5 pt-3 pb-1 text-[14px] leading-relaxed disabled:opacity-60"
 	/>
 	<div class="flex items-center gap-1 px-2 pb-2">
 		<div class="ml-auto flex items-center gap-1">

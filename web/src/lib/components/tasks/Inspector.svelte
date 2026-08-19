@@ -16,6 +16,7 @@
 	import IconButton from '../IconButton.svelte';
 	import Composer from '../Composer.svelte';
 	import MentionText from '../MentionText.svelte';
+	import RichTextInput from '../RichTextInput.svelte';
 	import Checklist from '../Checklist.svelte';
 	import TypeBadge from '../TypeBadge.svelte';
 	import TimeLogger from './TimeLogger.svelte';
@@ -713,26 +714,36 @@
 				</div>
 			</div>
 
-			<textarea
-				use:autosize={draft.description ?? ''}
-				value={draft.description ?? ''}
-				rows="3"
-				placeholder={m.tasks_description_placeholder()}
-				readonly={!canEdit}
-				oninput={(e) => {
-					const el = e.currentTarget;
-					if (draft) draft.description = el.value || undefined;
-					el.style.height = 'auto';
-					el.style.height = el.scrollHeight + 'px';
-				}}
-				onblur={(e) => {
-					const next = e.currentTarget.value;
-					const current = task?.description ?? '';
-					if (next === current) return;
-					void patch('description', { description: next });
-				}}
-				class="mb-5 min-h-[66px] w-full resize-none border-0 bg-transparent text-[14px] leading-relaxed text-text-2 outline-none placeholder:text-text-4"
-			></textarea>
+			{#if canEdit}
+				{#key draft.id}
+					<div class="mb-5">
+						<RichTextInput
+							value={draft.description ?? ''}
+							onchange={(v) => {
+								if (draft) draft.description = v || undefined;
+							}}
+							onblur={() => {
+								const next = draft?.description ?? '';
+								const current = task?.description ?? '';
+								if (next === current) return;
+								void patch('description', { description: next });
+							}}
+							placeholder={m.tasks_description_placeholder()}
+							flavor="document"
+							mentions={false}
+							rows={3}
+							maxRows={16}
+							class="w-full border-0 bg-transparent text-[14px] leading-relaxed text-text-2"
+						/>
+					</div>
+				{/key}
+			{:else if draft.description}
+				<MentionText
+					text={draft.description}
+					flavor="document"
+					class="mb-5 text-[14px] leading-relaxed text-text-2"
+				/>
+			{/if}
 
 			<Checklist
 				items={checklistItems}

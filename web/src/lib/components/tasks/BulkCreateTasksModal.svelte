@@ -14,7 +14,7 @@
 	import Icon from '../Icon.svelte';
 	import Button from '../Button.svelte';
 	import TaskPropertyRail from './TaskPropertyRail.svelte';
-	import { autogrow } from '$lib/actions/autogrow';
+	import RichTextInput from '../RichTextInput.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import type { PriorityId, ProjectId, StatusId, TypeId } from '$lib/types';
 	import { m } from '$lib/paraglide/messages';
@@ -266,14 +266,16 @@
 				placeholder={m.tasks_title_placeholder()}
 				class="mb-2 w-full border-0 bg-transparent text-[22px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3 disabled:text-text-3"
 			/>
-			<textarea
+			<RichTextInput
 				bind:value={current.description}
-				use:autogrow={{ value: current.description }}
 				disabled={current.created}
 				placeholder={m.tasks_description_placeholder()}
-				rows="2"
-				class="w-full resize-none border-0 bg-transparent text-[14px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
-			></textarea>
+				flavor="document"
+				mentions={false}
+				rows={2}
+				maxRows={8}
+				class="w-full border-0 bg-transparent text-[14px] leading-relaxed text-text-2"
+			/>
 
 			<div class="mt-3">
 				<TaskPropertyRail

@@ -5,6 +5,7 @@
 	import type { ActionResult } from '@sveltejs/kit';
 	import Modal from '../Modal.svelte';
 	import Icon from '../Icon.svelte';
+	import RichTextInput from '../RichTextInput.svelte';
 	import Button from '../Button.svelte';
 	import Kbd from '../Kbd.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
@@ -150,13 +151,16 @@
 					class="mb-3 block w-full border-0 bg-transparent text-[22px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
 				/>
 
-				<textarea
-					name="description"
+				<RichTextInput
 					bind:value={description}
 					placeholder={m.tickets_description_placeholder()}
-					rows="4"
-					class="mb-4 w-full resize-none border-0 bg-transparent text-[14px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
-				></textarea>
+					flavor="document"
+					mentions={false}
+					rows={4}
+					maxRows={12}
+					class="mb-4 w-full border-0 bg-transparent text-[14px] leading-relaxed text-text-2"
+				/>
+				<input type="hidden" name="description" value={description} />
 
 				<div class="flex flex-wrap gap-2">
 					<!-- Org picker -->

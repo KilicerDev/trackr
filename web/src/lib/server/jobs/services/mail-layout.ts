@@ -14,6 +14,8 @@
 // Standard email HTML: tables for layout, inline styles only, bulletproof
 // (padded-<a>) buttons for Outlook.
 
+import { markdownToEmailHtml } from '$lib/utils/markdown';
+
 const ACCENT_DEEP = '#d8584b'; // flat button fill + quote accent border
 const ACCENT_LINK = '#cf5447'; // deeper coral so links read on a white surface
 const LOGO = '#FF4867'; // brand mark red — matches the app sidebar logo exactly
@@ -165,7 +167,10 @@ function metaTable(rows: { label: string; value: string }[]): string {
 }
 
 function quoteBlock(text: string): string {
-	const safe = escapeHtml(text).replace(/\n/g, '<br />');
+	// Message excerpts are user-authored markdown — render it (escaped,
+	// inline-styled) so **bold**, lists, and links arrive formatted. The
+	// renderer never passes raw HTML through, so no sanitizer is needed.
+	const safe = markdownToEmailHtml(text);
 	return `
 	<tr>
 		<td class="em-quote em-body" style="background-color:${QUOTE_BG};border-left:3px solid ${ACCENT_DEEP};border-radius:0 8px 8px 0;padding:11px 14px;font-family:${FONT};font-size:14px;line-height:1.6;color:${BODY};">${safe}</td>

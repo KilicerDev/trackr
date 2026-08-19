@@ -625,7 +625,7 @@
 					<div
 						class="mb-6 text-[14px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-text"
 					>
-						<MentionText text={t.description} />
+						<MentionText text={t.description} flavor="document" />
 					</div>
 				{/if}
 

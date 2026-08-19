@@ -4,6 +4,7 @@
 	import type { ActionResult } from '@sveltejs/kit';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import RichTextInput from '$lib/components/RichTextInput.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Kbd from '$lib/components/Kbd.svelte';
 	import PriorityBars from '$lib/components/PriorityBars.svelte';
@@ -109,13 +110,16 @@
 						placeholder={m.tickets_subject_placeholder()}
 						class="mb-3 block w-full border-0 bg-transparent text-[22px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
 					/>
-					<textarea
-						name="description"
+					<RichTextInput
 						bind:value={description}
 						placeholder={m.tickets_description_placeholder()}
-						rows="6"
-						class="mb-4 w-full resize-none border-0 bg-transparent text-[15px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
-					></textarea>
+						flavor="document"
+						mentions={false}
+						rows={6}
+						maxRows={12}
+						class="mb-4 w-full border-0 bg-transparent text-[15px] leading-relaxed text-text-2"
+					/>
+					<input type="hidden" name="description" value={description} />
 
 					<div class="flex flex-wrap gap-2">
 						<!-- Priority -->

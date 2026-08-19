@@ -12,6 +12,7 @@ import { defineJob } from '../core';
 import { m } from '$lib/paraglide/messages';
 import type { Locale } from '$lib/paraglide/runtime';
 import { escapeHtml, renderEmail } from './mail-layout';
+import { markdownToEmailHtml } from '$lib/utils/markdown';
 
 const PRODUCT_NAME = 'Trackr';
 
@@ -196,7 +197,8 @@ export function plainNotificationEmail(opts: {
 
 	const paragraphs: string[] = [];
 	if (opts.body) {
-		paragraphs.push(escapeHtml(opts.body).replace(/\n/g, '<br />'));
+		// Bodies are user-authored markdown — render (escaped) instead of flat text.
+		paragraphs.push(markdownToEmailHtml(opts.body));
 	}
 
 	const html = renderEmail({

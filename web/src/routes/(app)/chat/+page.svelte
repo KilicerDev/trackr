@@ -5,7 +5,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Popover from '$lib/components/Popover.svelte';
 	import Composer from '$lib/components/Composer.svelte';
-	import MentionTextarea from '$lib/components/MentionTextarea.svelte';
+	import RichTextInput from '$lib/components/RichTextInput.svelte';
 	import MentionText from '$lib/components/MentionText.svelte';
 	import AttachmentList from '$lib/components/attachments/AttachmentList.svelte';
 	import AttachmentDropzone from '$lib/components/attachments/AttachmentDropzone.svelte';
@@ -706,7 +706,7 @@
 						onkeydown={newKey}
 						class="w-full bg-transparent px-3.5 pt-3 text-[16px] font-semibold outline-none placeholder:text-text-3"
 					/>
-					<MentionTextarea
+					<RichTextInput
 						bind:value={newBody}
 						users={data.mentionUsers}
 						tags={data.tags}
@@ -714,7 +714,7 @@
 						onkeydown={newKey}
 						placeholder={m.chat_message_placeholder()}
 						rows={2}
-						class="w-full resize-none border-0 bg-transparent px-3.5 pt-1.5 pb-1 text-[14px] leading-relaxed outline-none placeholder:text-text-3"
+						class="w-full border-0 bg-transparent px-3.5 pt-1.5 pb-1 text-[14px] leading-relaxed"
 					/>
 					{#if newFiles.length}
 						<div class="px-3.5 pb-1">

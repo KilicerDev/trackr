@@ -9,8 +9,8 @@
 	import Kbd from '../Kbd.svelte';
 	import ProjectPopover from '../popovers/ProjectPopover.svelte';
 	import TaskPropertyRail from './TaskPropertyRail.svelte';
+	import RichTextInput from '../RichTextInput.svelte';
 	import { page } from '$app/state';
-	import { autogrow } from '$lib/actions/autogrow';
 	import type { PriorityId, ProjectId, StatusId, TypeId } from '$lib/types';
 	import { m } from '$lib/paraglide/messages';
 	import AttachmentDropzone from '../attachments/AttachmentDropzone.svelte';
@@ -259,14 +259,15 @@
 					placeholder={m.tasks_title_placeholder()}
 					class="mb-2 w-full border-0 bg-transparent text-[22px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
 				/>
-				<textarea
-					name="description"
+				<RichTextInput
 					bind:value={description}
-					use:autogrow={{ value: description }}
 					placeholder={m.tasks_description_placeholder()}
-					rows="3"
-					class="w-full resize-none border-0 bg-transparent text-[14px] leading-relaxed text-text-2 outline-none placeholder:text-text-3"
-				></textarea>
+					flavor="document"
+					mentions={false}
+					rows={3}
+					maxRows={10}
+					class="w-full border-0 bg-transparent text-[14px] leading-relaxed text-text-2"
+				/>
 
 				<!-- Property rail (shared with the bulk-create stepper). Project is
 				     picked in the modal header, so its chip is hidden here. -->
@@ -292,6 +293,7 @@
 				{#if sourceTicketId}
 					<input type="hidden" name="sourceTicketId" value={sourceTicketId} />
 				{/if}
+				<input type="hidden" name="description" value={description} />
 				<input type="hidden" name="project" value={project} />
 				<input type="hidden" name="type" value={type} />
 				<input type="hidden" name="status" value={status} />
