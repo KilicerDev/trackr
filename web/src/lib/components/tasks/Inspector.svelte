@@ -298,9 +298,8 @@
 	// tasks (fresher — covers tags added since the layout data last loaded).
 	const tagSuggestions = $derived.by(() => {
 		const d = page.data as { taskTags?: string[]; tasks?: { labels?: string[] }[] };
-		const set = new Set<string>(d.taskTags ?? []);
-		for (const t of d.tasks ?? []) for (const l of t.labels ?? []) set.add(l);
-		return [...set];
+		const fromTasks = (d.tasks ?? []).flatMap((t) => t.labels ?? []);
+		return [...new Set([...(d.taskTags ?? []), ...fromTasks])];
 	});
 
 	const canDelete = $derived.by(() => {

@@ -33,6 +33,9 @@
 		placeholder?: string;
 		disabled?: boolean;
 		rows?: number;
+		// Growth cap: the editor grows with its content from `rows` up to this
+		// many lines, then scrolls internally.
+		maxRows?: number;
 		class?: string;
 		// Host keydown (e.g. Composer's Cmd+Enter to send).
 		onkeydown?: (e: KeyboardEvent) => void;
@@ -59,6 +62,7 @@
 		placeholder = '',
 		disabled = false,
 		rows = 2,
+		maxRows = 7,
 		class: cls = '',
 		onkeydown,
 		projectId = null,
@@ -330,7 +334,8 @@
 		onkeydown={handleKeydown}
 		onblur={handleBlur}
 		style:min-height="{rows * 1.45}em"
-		class="mention-input {cls} {isEmpty ? 'is-empty' : ''}"
+		style:max-height="{maxRows * 1.45}em"
+		class="mention-input overflow-y-auto overscroll-contain {cls} {isEmpty ? 'is-empty' : ''}"
 	></div>
 
 	{#if open && optionCount}

@@ -1,8 +1,8 @@
 <script lang="ts">
 	// Shared task property rail: project, type, status, priority, assignees, due,
-	// estimate, tags — the same set of popover-backed fields the CreateTaskModal
-	// exposes. Extracted so the bulk "create tasks from to-dos" stepper can offer
-	// full parity per todo without duplicating the picker wiring.
+	// estimate, tags. The single source of the popover-backed field chips, used
+	// by CreateTaskModal and the bulk "create tasks from to-dos" stepper so the
+	// picker wiring isn't duplicated.
 	import Icon from '../Icon.svelte';
 	import Avatar from '../Avatar.svelte';
 	import AvatarStack from '../AvatarStack.svelte';
@@ -55,6 +55,9 @@
 		users: AssignableUser[];
 		memberProjectIds?: string[];
 		allAccess?: boolean;
+		// Hide the project chip when the host renders its own project picker
+		// elsewhere (CreateTaskModal has it in the header).
+		showProject?: boolean;
 	}
 
 	let {
@@ -69,7 +72,8 @@
 		projects,
 		users,
 		memberProjectIds = [],
-		allAccess = false
+		allAccess = false,
+		showProject = true
 	}: Props = $props();
 
 	// Which popover (if any) is open. Local to this rail instance.
@@ -80,9 +84,8 @@
 	// tasks (fresher — covers tags added since the layout data last loaded).
 	const tagSuggestions = $derived.by(() => {
 		const d = page.data as { taskTags?: string[]; tasks?: { labels?: string[] }[] };
-		const set = new Set<string>(d.taskTags ?? []);
-		for (const t of d.tasks ?? []) for (const l of t.labels ?? []) set.add(l);
-		return [...set];
+		const fromTasks = (d.tasks ?? []).flatMap((t) => t.labels ?? []);
+		return [...new Set([...(d.taskTags ?? []), ...fromTasks])];
 	});
 
 	const prioMeta = $derived(TRACKR_PRIORITIES.find((p) => p.id === priority)!);
@@ -91,33 +94,35 @@
 </script>
 
 <div class="flex flex-wrap gap-2">
-	<div class="relative">
-		<button
-			type="button"
-			onclick={() => (pop = pop === 'project' ? null : 'project')}
-			class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors {projectMeta
-				? 'border border-border bg-surface hover:border-border-strong'
-				: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
-		>
-			{#if projectMeta}
-				<span class="h-2 w-2 rounded-full" style:background={projectMeta.color}></span>
-				<span class="font-medium text-text">{projectMeta.name}</span>
-			{:else}
-				<span>{m.tasks_select_project()}</span>
+	{#if showProject}
+		<div class="relative">
+			<button
+				type="button"
+				onclick={() => (pop = pop === 'project' ? null : 'project')}
+				class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors {projectMeta
+					? 'border border-border bg-surface hover:border-border-strong'
+					: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
+			>
+				{#if projectMeta}
+					<span class="h-2 w-2 rounded-full" style:background={projectMeta.color}></span>
+					<span class="font-medium text-text">{projectMeta.name}</span>
+				{:else}
+					<span>{m.tasks_select_project()}</span>
+				{/if}
+				<Icon name="chevron" size={12} class="text-text-3" />
+			</button>
+			{#if pop === 'project'}
+				<ProjectPopover
+					value={project}
+					onchange={(v) => (project = v)}
+					onclose={() => (pop = null)}
+					{projects}
+					{memberProjectIds}
+					{allAccess}
+				/>
 			{/if}
-			<Icon name="chevron" size={12} class="text-text-3" />
-		</button>
-		{#if pop === 'project'}
-			<ProjectPopover
-				value={project}
-				onchange={(v) => (project = v)}
-				onclose={() => (pop = null)}
-				{projects}
-				{memberProjectIds}
-				{allAccess}
-			/>
-		{/if}
-	</div>
+		</div>
+	{/if}
 
 	<div class="relative">
 		<button

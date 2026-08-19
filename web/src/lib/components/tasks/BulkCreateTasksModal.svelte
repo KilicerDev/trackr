@@ -14,6 +14,7 @@
 	import Icon from '../Icon.svelte';
 	import Button from '../Button.svelte';
 	import TaskPropertyRail from './TaskPropertyRail.svelte';
+	import { autogrow } from '$lib/actions/autogrow';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import type { PriorityId, ProjectId, StatusId, TypeId } from '$lib/types';
 	import { m } from '$lib/paraglide/messages';
@@ -267,6 +268,7 @@
 			/>
 			<textarea
 				bind:value={current.description}
+				use:autogrow={{ value: current.description }}
 				disabled={current.created}
 				placeholder={m.tasks_description_placeholder()}
 				rows="2"
