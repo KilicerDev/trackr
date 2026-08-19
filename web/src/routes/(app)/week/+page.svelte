@@ -8,6 +8,7 @@
 	import SmartComposer from '$lib/components/week/SmartComposer.svelte';
 	import type { ComposerDraft } from '$lib/components/week/SmartComposer.svelte';
 	import { taskTimeMinutes } from '$lib/utils/task';
+	import { resolveProject } from '$lib/stores/lookup.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
@@ -160,6 +161,38 @@
 		return plannedByDay[i].reduce((s, t) => s + (taskTimeMinutes(t) ?? DEFAULT_ESTIMATE), 0);
 	}
 
+	// Per-project sub-sections within a day, alphabetical — so a mixed day
+	// reads as "which project gets how much of it" at a glance.
+	type DayGroup = { key: string; name: string; color: string; tasks: Task[] };
+	function dayProjectGroups(tasks: Task[]): DayGroup[] {
+		const keys = Array.from(new Set(tasks.map((t) => t.project)));
+		return keys
+			.map((key) => {
+				const p = resolveProject(key);
+				return {
+					key,
+					name: p?.name ?? key,
+					color: p?.color ?? '#7c7c84',
+					tasks: tasks.filter((t) => t.project === key)
+				};
+			})
+			.sort((a, b) => a.name.localeCompare(b.name));
+	}
+
+	function groupMinutes(tasks: Task[]): number {
+		return tasks.reduce((sum, t) => sum + (taskTimeMinutes(t) ?? DEFAULT_ESTIMATE), 0);
+	}
+
+	function fmtMins(mins: number): string {
+		return `${Math.floor(mins / 60)}h${mins % 60 > 0 ? `${mins % 60}m` : ''}`;
+	}
+
+	// Project detail link for a sub-section header (tasks store project keys).
+	function projectHref(key: string): string | undefined {
+		const proj = data.projects.find((x) => x.key === key);
+		return proj ? `/projects/${proj.id}` : undefined;
+	}
+
 	type UnscheduledTab = 'past' | 'mine' | 'others';
 	const validTab = (t: unknown): t is UnscheduledTab =>
 		t === 'past' || t === 'mine' || t === 'others';
@@ -276,9 +309,7 @@
 <Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: m.week_title() }]} />
 
 <div class="min-h-0 flex-1 overflow-y-auto">
-	<div
-		class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-4 py-3 sm:px-6"
-	>
+	<div class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-4 py-3 sm:px-6">
 		<Button size="sm" variant="default" onclick={() => gotoWeek(null)} disabled={weekDelta === 0}>
 			{m.common_today()}
 		</Button>
@@ -368,20 +399,41 @@
 								></div>
 							</div>
 							<span class="w-12 text-right font-mono text-[12px] text-text-3">
-								{Math.floor(mins / 60)}h{mins % 60 > 0 ? `${mins % 60}m` : ''}
+								{fmtMins(mins)}
 							</span>
 						</div>
 					</button>
 					{#if !isCollapsed}
 						<div transition:slide={{ duration: 180, easing: cubicOut }}>
-							{#each tasks as t (t.id)}
-								<TaskRow
-									task={t}
-									selected={selectedId === t.id}
-									showPlanned={false}
-									showTime
-									onclick={() => (selectedId = t.id)}
-								/>
+							{#each dayProjectGroups(tasks) as g (g.key)}
+								{@const href = projectHref(g.key)}
+								<div
+									class="flex h-8 items-center gap-2 border-b border-border/60 bg-surface/40 pr-4 pl-5 sm:pr-5"
+								>
+									<span class="h-2 w-2 shrink-0 rounded-full" style:background={g.color}></span>
+									{#if href}
+										<a
+											{href}
+											class="truncate text-[13px] font-medium text-text-2 hover:text-text hover:underline"
+											>{g.name}</a
+										>
+									{:else}
+										<span class="truncate text-[13px] font-medium text-text-2">{g.name}</span>
+									{/if}
+									<span class="font-mono text-[11px] text-text-4">{g.tasks.length}</span>
+									<span class="ml-auto font-mono text-[11px] text-text-4"
+										>{fmtMins(groupMinutes(g.tasks))}</span
+									>
+								</div>
+								{#each g.tasks as t (t.id)}
+									<TaskRow
+										task={t}
+										selected={selectedId === t.id}
+										showPlanned={false}
+										showTime
+										onclick={() => (selectedId = t.id)}
+									/>
+								{/each}
 							{/each}
 							{#if composerDay === i}
 								<SmartComposer
@@ -419,9 +471,7 @@
 					onclick={toggleUnscheduled}
 					class="flex h-full min-w-0 flex-1 items-center gap-2.5 text-left"
 				>
-					<span
-						class="text-text-3 transition-transform {unscheduledCollapsed ? '-rotate-90' : ''}"
-					>
+					<span class="text-text-3 transition-transform {unscheduledCollapsed ? '-rotate-90' : ''}">
 						<Icon name="chevron" size={13} />
 					</span>
 					<span class="text-[14px] font-semibold text-text">{m.week_unscheduled()}</span>
