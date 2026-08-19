@@ -651,7 +651,9 @@
 					</button>
 				</div>
 				{#if data.meetings.length}
-					<div class="grid gap-1.5">
+					<!-- Cap the card at ~6 rows; older meetings scroll within it so the
+					     column doesn't outgrow the About/Members side of the page. -->
+					<div class="grid max-h-72 gap-1.5 overflow-y-auto overscroll-contain pr-0.5">
 						{#each data.meetings as n (n.id)}
 							<a
 								href="/notes/{n.id}"
