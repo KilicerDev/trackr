@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { and, asc, count, desc, eq, inArray, isNull, ne } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import {
@@ -237,6 +237,27 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 		);
 	const taskCount = Number(activeTasks?.total ?? 0);
 
+	// Every tag in use on visible live tasks — app-wide suggestions for the
+	// task tag pickers. Sourced here (not from a page's task list) so the
+	// pickers offer existing tags regardless of which page the modal opens
+	// from and of any list filters.
+	const tagRows = await db
+		.select({ tags: taskTable.tags })
+		.from(taskTable)
+		.innerJoin(projectTable, eq(projectTable.id, taskTable.projectId))
+		.where(
+			and(
+				isNull(taskTable.deletedAt),
+				isNull(taskTable.archivedAt),
+				ne(projectTable.status, 'archived'),
+				sql`cardinality(${taskTable.tags}) > 0`,
+				...(projectAccessFilter ? [projectAccessFilter] : [])
+			)
+		);
+	const taskTags = [...new Set(tagRows.flatMap((r) => r.tags))].sort((a, b) =>
+		a.localeCompare(b, undefined, { sensitivity: 'base' })
+	);
+
 	// The current user's starred projects — drives the sidebar's Projects list.
 	const favoriteRows = await db
 		.select({ projectId: projectFavoriteTable.projectId })
@@ -354,6 +375,7 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 		archivedProjects,
 		favoriteProjectIds,
 		taskCount,
+		taskTags,
 		currentUserId: locals.user.id,
 		orgs,
 		isAdmin: !!locals.isAdmin,

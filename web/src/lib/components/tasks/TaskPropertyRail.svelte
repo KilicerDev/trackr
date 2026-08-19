@@ -22,6 +22,7 @@
 	import { formatDateLong, formatEstimate } from '$lib/utils/format';
 	import type { PriorityId, ProjectId, StatusId, TypeId } from '$lib/types';
 	import { statusLabel, priorityLabel, typeLabel } from '$lib/utils/labels';
+	import { page } from '$app/state';
 	import { m } from '$lib/paraglide/messages';
 
 	type AssignableUser = {
@@ -73,6 +74,16 @@
 
 	// Which popover (if any) is open. Local to this rail instance.
 	let pop = $state<string | null>(null);
+
+	// Every tag in use across tasks: the app-wide list from the layout load
+	// (complete, works from any page) unioned with tags on currently loaded
+	// tasks (fresher — covers tags added since the layout data last loaded).
+	const tagSuggestions = $derived.by(() => {
+		const d = page.data as { taskTags?: string[]; tasks?: { labels?: string[] }[] };
+		const set = new Set<string>(d.taskTags ?? []);
+		for (const t of d.tasks ?? []) for (const l of t.labels ?? []) set.add(l);
+		return [...set];
+	});
 
 	const prioMeta = $derived(TRACKR_PRIORITIES.find((p) => p.id === priority)!);
 	const projectMeta = $derived(project ? projects.find((p) => p.key === project) : undefined);
@@ -237,7 +248,12 @@
 			{/if}
 		</button>
 		{#if pop === 'tags'}
-			<TagsPopover value={tags} onchange={(v) => (tags = v)} onclose={() => (pop = null)} />
+			<TagsPopover
+				value={tags}
+				suggestions={tagSuggestions}
+				onchange={(v) => (tags = v)}
+				onclose={() => (pop = null)}
+			/>
 		{/if}
 	</div>
 </div>

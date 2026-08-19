@@ -109,13 +109,13 @@
 	);
 	const meId = $derived(currentUserId ?? '');
 
-	// TagsPopover prepends the predefined labels itself; feed it every tag already
-	// in use across loaded tasks so custom tags reappear as suggestions (mirrors
-	// the Inspector). Without this the modal only ever offers the defaults.
+	// Every tag in use across tasks: the app-wide list from the layout load
+	// (complete, works from any page) unioned with tags on currently loaded
+	// tasks (fresher — covers tags added since the layout data last loaded).
 	const tagSuggestions = $derived.by(() => {
-		const tasks = (page.data as { tasks?: { labels?: string[] }[] }).tasks ?? [];
-		const set = new Set<string>();
-		for (const t of tasks) for (const l of t.labels ?? []) set.add(l);
+		const d = page.data as { taskTags?: string[]; tasks?: { labels?: string[] }[] };
+		const set = new Set<string>(d.taskTags ?? []);
+		for (const t of d.tasks ?? []) for (const l of t.labels ?? []) set.add(l);
 		return [...set];
 	});
 
