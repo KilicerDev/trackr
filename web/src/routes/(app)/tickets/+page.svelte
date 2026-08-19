@@ -60,6 +60,9 @@
 		boardGroup?: GroupBy;
 		sub?: SubGroup;
 		filters?: Record<string, string[]>;
+		// Collapsed group/column ids per grouping mode (see readCollapsed).
+		listCollapsed?: Record<string, string[]>;
+		boardCollapsed?: Record<string, string[]>;
 		savedViews?: SavedViewEntry<TicketsViewConfig>[];
 	};
 	type TicketsViewConfig = {
@@ -331,6 +334,7 @@
 		tickets={filtered}
 		{group}
 		persistKey="tickets"
+		initialCollapsed={saved.listCollapsed}
 		onSelect={(t) => (manualSelectedId = t.id)}
 		selectedId={selected?.id}
 	/>
@@ -339,6 +343,7 @@
 		tickets={filtered}
 		group={boardGroup}
 		persistKey="tickets"
+		initialCollapsed={saved.boardCollapsed}
 		{sub}
 		onSelect={(t) => (manualSelectedId = t.id)}
 		onAddInOrg={(orgId) => openCreate(orgId)}

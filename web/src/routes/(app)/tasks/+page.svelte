@@ -24,6 +24,9 @@
 		sub?: SubGroup;
 		filters?: Record<string, string[]>;
 		time?: TimeWindow;
+		// Collapsed group/column ids per grouping mode (see readCollapsed).
+		listCollapsed?: Record<string, string[]>;
+		boardCollapsed?: Record<string, string[]>;
 		savedViews?: SavedViewEntry<TasksViewConfig>[];
 	};
 	type TasksViewConfig = {
@@ -230,6 +233,7 @@
 		{tasks}
 		{group}
 		persistKey="tasks"
+		initialCollapsed={saved.listCollapsed}
 		onSelect={(t) => (manualSelectedId = t.id)}
 		selectedId={selected?.id}
 		onAddInProject={(pid) => openCreate({ project: pid })}
@@ -239,6 +243,7 @@
 		{tasks}
 		group={boardGroup}
 		persistKey="tasks"
+		initialCollapsed={saved.boardCollapsed}
 		{sub}
 		onSelect={(t) => (manualSelectedId = t.id)}
 		onAddInProject={(pid, statusId) => openCreate({ project: pid, status: statusId })}

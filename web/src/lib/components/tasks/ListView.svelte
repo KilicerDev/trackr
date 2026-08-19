@@ -23,12 +23,24 @@
 		// View-state key (e.g. 'tasks') to remember collapsed groups under.
 		// Omitted → collapse state is session-only, as before.
 		persistKey?: string;
+		// Server-persisted snapshot of collapsed ids per grouping, used as the
+		// SSR/first-paint fallback when localStorage isn't available yet.
+		initialCollapsed?: Record<string, string[]>;
 	}
-	let { tasks, group = 'status', onSelect, selectedId, onAddInProject, persistKey }: Props =
-		$props();
+	let {
+		tasks,
+		group = 'status',
+		onSelect,
+		selectedId,
+		onAddInProject,
+		persistKey,
+		initialCollapsed
+	}: Props = $props();
 
 	const loadCollapsed = () =>
-		persistKey ? readCollapsed(persistKey, 'listCollapsed', group) : new Set<string>();
+		persistKey
+			? readCollapsed(persistKey, 'listCollapsed', group, initialCollapsed)
+			: new Set<string>();
 	let collapsed = $state(loadCollapsed());
 	// Re-hydrate when the grouping changes — each grouping mode has its own
 	// id namespace and its own remembered set. (The mount run just re-reads

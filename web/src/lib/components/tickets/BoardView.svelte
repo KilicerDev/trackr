@@ -27,6 +27,9 @@
 		// View-state key (e.g. 'tickets') to remember collapsed columns under.
 		// Omitted → collapse state is session-only, as before.
 		persistKey?: string;
+		// Server-persisted snapshot of collapsed ids per grouping, used as the
+		// SSR/first-paint fallback when localStorage isn't available yet.
+		initialCollapsed?: Record<string, string[]>;
 	}
 	let {
 		tickets,
@@ -35,7 +38,8 @@
 		onSelect,
 		onAddInOrg,
 		canCreate = true,
-		persistKey
+		persistKey,
+		initialCollapsed
 	}: Props = $props();
 
 	const prioRank: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
@@ -129,7 +133,9 @@
 	});
 
 	const loadCollapsed = () =>
-		persistKey ? readCollapsed(persistKey, 'boardCollapsed', group) : new Set<string>();
+		persistKey
+			? readCollapsed(persistKey, 'boardCollapsed', group, initialCollapsed)
+			: new Set<string>();
 	let collapsed = $state(loadCollapsed());
 	// Re-hydrate when the grouping changes — each grouping mode has its own
 	// key namespace and its own remembered set. (The mount run just re-reads

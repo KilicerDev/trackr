@@ -72,8 +72,10 @@ export function saveView(key: string, patch: Record<string, unknown>) {
 // ── Collapsed list/board groups ─────────────────────────────────────────────
 // Stored inside a page's view state as `field: { [groupBy]: string[] }` so
 // each grouping mode remembers its own set (status ids vs project keys vs
-// user ids don't bleed into each other). localStorage-first: a fresh device
-// simply starts fully expanded.
+// user ids don't bleed into each other). localStorage wins when present;
+// `fallback` carries the server-persisted snapshot so SSR (where there is no
+// localStorage) renders the right collapse state and the page doesn't flash
+// expanded→collapsed on reload.
 
 function readCollapsedMap(viewKey: string, field: string): Record<string, unknown> {
 	const raw = readLocal(viewKey)[field];
@@ -82,8 +84,13 @@ function readCollapsedMap(viewKey: string, field: string): Record<string, unknow
 		: {};
 }
 
-export function readCollapsed(viewKey: string, field: string, group: string): Set<string> {
-	const ids = readCollapsedMap(viewKey, field)[group];
+export function readCollapsed(
+	viewKey: string,
+	field: string,
+	group: string,
+	fallback?: Record<string, string[]>
+): Set<string> {
+	const ids = readCollapsedMap(viewKey, field)[group] ?? fallback?.[group];
 	return new Set(Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : []);
 }
 
