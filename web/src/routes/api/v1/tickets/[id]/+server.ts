@@ -19,10 +19,8 @@ import {
 	type TicketPriority,
 	type TicketStatus
 } from '$lib/server/tickets';
-import { notify } from '$lib/server/notify';
-import { ticketRecipients } from '$lib/server/notify/recipients';
+import { notifyTicketUpdated } from '$lib/server/notify/events/ticket';
 import { recordAudit } from '$lib/server/audit';
-import { ticketStatusLabel } from '$lib/utils/labels';
 import { m } from '$lib/paraglide/messages';
 import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
 import type { RequestHandler } from './$types';
@@ -38,8 +36,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 	// Same grant as PATCH below and the web update action — plain org.staff
 	// reads everything but must not be offered status/assignee controls.
 	const canEdit = await can(locals, 'org.tickets.edit.any', { orgId: ticket.orgId });
-	const canComment =
-		canEdit || (await can(locals, 'org.tickets.comment', { orgId: ticket.orgId }));
+	const canComment = canEdit || (await can(locals, 'org.tickets.comment', { orgId: ticket.orgId }));
 	// Display directory (name + color only, emails stripped) so the app can
 	// label message authors without a users endpoint.
 	const users = await loadTicketDisplayUsers([
@@ -146,55 +143,25 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 	await updateTicket(ticket.id, patch);
 	await addTicketSystemEvents(ticket.id, user.id, events);
 
-	// Notifications mirror the web update action's two interesting cases.
-	if (patch.status) {
-		const recipients = await ticketRecipients({
+	// Notifications mirror the web update action (minus priority, which the
+	// app's pill editor treats as a silent triage edit): newly-added assignees
+	// and status changes, fanned out by the shared event helper.
+	await notifyTicketUpdated({
+		ticket: {
+			id: ticket.id,
+			displayId: ticket.displayId,
 			orgId: ticket.orgId,
+			subject: ticket.subject,
 			customerId: ticket.customerId,
 			creatorId: ticket.createdBy,
 			assigneeIds: patch.assigneeIds ?? ticket.assignees
-		});
-		await notify({
-			kind: 'ticketStatusChanged',
-			recipients,
-			actorId: user.id,
-			orgId: ticket.orgId,
-			participants: [...ticket.assignees, ticket.customerId, ticket.createdBy].filter(
-				(x): x is string => !!x
-			),
-			render: (locale) => ({
-				title: m.notify_ticket_status_changed(
-					{
-						ref: ticket.displayId,
-						status: ticketStatusLabel(patch.status as TicketStatus, locale),
-						subject: ticket.subject
-					},
-					{ locale }
-				)
-			}),
-			url: `/tickets/${ticket.id}`,
-			entity: { type: 'ticket', id: ticket.id },
-			baseUrl: url.origin
-		});
-	}
-	const newlyAssigned = (patch.assigneeIds ?? []).filter((id) => !ticket.assignees.includes(id));
-	if (newlyAssigned.length) {
-		await notify({
-			kind: 'ticketAssigned',
-			recipients: newlyAssigned,
-			actorId: user.id,
-			orgId: ticket.orgId,
-			render: (locale) => ({
-				title: m.notify_ticket_assigned(
-					{ ref: ticket.displayId, subject: ticket.subject },
-					{ locale }
-				)
-			}),
-			url: `/tickets/${ticket.id}`,
-			entity: { type: 'ticket', id: ticket.id },
-			baseUrl: url.origin
-		});
-	}
+		},
+		addedAssigneeIds: (patch.assigneeIds ?? []).filter((id) => !ticket.assignees.includes(id)),
+		newStatus: (patch.status as TicketStatus | undefined) ?? null,
+		newPriority: null,
+		actorId: user.id,
+		origin: url.origin
+	});
 	void recordAudit({
 		type: 'ticket.update',
 		actorId: user.id,

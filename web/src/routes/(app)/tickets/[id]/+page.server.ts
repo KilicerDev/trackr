@@ -19,7 +19,7 @@ import {
 } from '$lib/server/tickets';
 import { createTask } from '$lib/server/tasks';
 import { recordAudit } from '$lib/server/audit';
-import { notify } from '$lib/server/notify';
+import { notifyTaskAssigned } from '$lib/server/notify/events/task';
 import { listAttachments, listAttachmentsForMany } from '$lib/server/attachments';
 import { m } from '$lib/paraglide/messages';
 
@@ -291,17 +291,11 @@ export const actions: Actions = {
 		}
 
 		// Notify newly-assigned users (mirrors the /tasks create action).
-		void notify({
-			kind: 'taskAssigned',
-			recipients: created.assignedIds,
+		void notifyTaskAssigned({
+			task: { id: created.id, displayId: created.displayId, title, orgId: p.orgId },
+			assigneeIds: created.assignedIds,
 			actorId: me.id,
-			orgId: p.orgId,
-			render: (locale) => ({
-				title: m.notify_task_assigned({ ref: created.displayId, title }, { locale })
-			}),
-			url: `/tasks?task=${created.displayId}`,
-			entity: { type: 'task', id: created.id },
-			baseUrl: url.origin
+			origin: url.origin
 		}).catch((err) => console.error('ticket→task notify failed', err));
 
 		void recordAudit({

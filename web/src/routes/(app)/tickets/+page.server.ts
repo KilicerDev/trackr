@@ -33,13 +33,14 @@ import {
 	type TicketRow,
 	type TicketStatus
 } from '$lib/server/tickets';
-import { notify } from '$lib/server/notify';
+import {
+	notifyTicketCreated,
+	notifyTicketMessage,
+	notifyTicketUpdated
+} from '$lib/server/notify/events/ticket';
 import { recordAudit } from '$lib/server/audit';
-import { ticketRecipients } from '$lib/server/notify/recipients';
-import { parseMentionIds } from '$lib/utils/mentions';
 import { getPreferences } from '$lib/server/preferences';
 import { m } from '$lib/paraglide/messages';
-import { priorityLabel, ticketStatusLabel } from '$lib/utils/labels';
 
 // Order-insensitive equality for id lists (assignees, tags).
 function sameIdSet(a: string[], b: string[]): boolean {
@@ -230,42 +231,22 @@ export const actions: Actions = {
 
 			// Fan out: a `ticketCreated` notification to everyone allowed to see
 			// the new ticket, and a separate `ticketAssigned` to each assignee set
-			// on create. Recipients scoped by ticketRecipients() — clients of other
-			// orgs cannot appear in the set.
-			const recipients = await ticketRecipients({
-				orgId,
-				customerId,
-				assigneeIds: assignedIds
-			});
-			await notify({
-				kind: 'ticketCreated',
-				recipients,
-				actorId: me.id,
-				orgId,
-				participants: [...assignedIds, customerId].filter((x): x is string => !!x),
-				render: (locale) => ({
-					title: m.notify_ticket_created({ ref: displayId, subject }, { locale }),
-					body: description
-				}),
-				url: `/tickets/${id}`,
-				entity: { type: 'ticket', id },
-				baseUrl: url.origin
-			});
-			const assignedToNotify = assignedIds.filter((aid) => aid !== me.id);
-			if (assignedToNotify.length) {
-				await notify({
-					kind: 'ticketAssigned',
-					recipients: assignedToNotify,
-					actorId: me.id,
+			// on create. Recipient scoping lives in the event helper — clients of
+			// other orgs cannot appear in the set.
+			await notifyTicketCreated({
+				ticket: {
+					id,
+					displayId,
 					orgId,
-					render: (locale) => ({
-						title: m.notify_ticket_assigned({ ref: displayId, subject }, { locale })
-					}),
-					url: `/tickets/${id}`,
-					entity: { type: 'ticket', id },
-					baseUrl: url.origin
-				});
-			}
+					subject,
+					customerId,
+					creatorId: me.id,
+					assigneeIds: assignedIds
+				},
+				description,
+				actorId: me.id,
+				origin: url.origin
+			});
 
 			// Attach any files dropped on the create modal. Best-effort: the
 			// ticket already exists, so a failed attachment is warned, not fatal.
@@ -488,101 +469,25 @@ export const actions: Actions = {
 				await addTicketSystemEvents(id, actorId, events);
 			}
 
-			// ── Notifications
-			// Notify the *newly-added* assignees (excluding the actor). Assignees are
-			// trivially allowed to read the ticket, so no separate access check.
-			// Removed assignees are not notified (mirrors tasks).
+			// ── Notifications: newly-added assignees, status change (full
+			// audience), priority change (internal only). Audience scoping and the
+			// per-kind fan-out live in the event helper.
 			if (before) {
-				const addedToNotify = added.filter((aid) => aid !== actorId);
-				if (addedToNotify.length) {
-					await notify({
-						kind: 'ticketAssigned',
-						recipients: addedToNotify,
-						actorId,
+				await notifyTicketUpdated({
+					ticket: {
+						id,
+						displayId: before.displayId,
 						orgId: before.orgId,
-						render: (locale) => ({
-							title: m.notify_ticket_assigned(
-								{ ref: before.displayId, subject: before.subject },
-								{ locale }
-							)
-						}),
-						url: `/tickets/${id}`,
-						entity: { type: 'ticket', id },
-						baseUrl: url.origin
-					});
-				}
-			}
-
-			// Status change → full audience (customer included: they want to know
-			// when their ticket moves, e.g. Resolved). Creator included via ctx.
-			if (before && statusChanged) {
-				const recipients = await ticketRecipients({
-					orgId: before.orgId,
-					customerId: before.customerId,
-					creatorId: before.createdBy,
-					assigneeIds: patch.assigneeIds ?? before.assignees
-				});
-				await notify({
-					kind: 'ticketStatusChanged',
-					recipients,
-					actorId,
-					orgId: before.orgId,
-					participants: [
-						...(patch.assigneeIds ?? before.assignees),
-						before.customerId,
-						before.createdBy
-					].filter((x): x is string => !!x),
-					render: (locale) => ({
-						title: m.notify_ticket_status_changed(
-							{
-								ref: before.displayId,
-								subject: before.subject,
-								status: ticketStatusLabel(patch.status as TicketStatus, locale)
-							},
-							{ locale }
-						)
-					}),
-					url: `/tickets/${id}`,
-					entity: { type: 'ticket', id },
-					baseUrl: url.origin
-				});
-			}
-
-			// Priority change → internal only (agents/staff/assignees). Priority is
-			// an internal triage concern, so the customer is not notified.
-			if (before && priorityChanged) {
-				const recipients = await ticketRecipients(
-					{
-						orgId: before.orgId,
+						subject: before.subject,
 						customerId: before.customerId,
 						creatorId: before.createdBy,
 						assigneeIds: patch.assigneeIds ?? before.assignees
 					},
-					{ internalOnly: true }
-				);
-				await notify({
-					kind: 'ticketStatusChanged',
-					recipients,
+					addedAssigneeIds: added,
+					newStatus: statusChanged ? (patch.status as TicketStatus) : null,
+					newPriority: priorityChanged ? (patch.priority as TicketPriority) : null,
 					actorId,
-					orgId: before.orgId,
-					participants: [
-						...(patch.assigneeIds ?? before.assignees),
-						before.customerId,
-						before.createdBy
-					].filter((x): x is string => !!x),
-					render: (locale) => ({
-						title: m.notify_ticket_priority_changed(
-							{
-								ref: before.displayId,
-								subject: before.subject,
-								priority: priorityLabel(patch.priority as TicketPriority, locale)
-							},
-							{ locale }
-						)
-					}),
-					url: `/tickets/${id}`,
-					entity: { type: 'ticket', id },
-					baseUrl: url.origin
+					origin: url.origin
 				});
 			}
 			return { ok: true };
@@ -686,51 +591,24 @@ export const actions: Actions = {
 			});
 
 			{
-				const recipients = await ticketRecipients(
-					{
+				// Fan-out (incl. @-mentions, which are intersected with the scoped
+				// audience so an internal note's mention can never reach the customer)
+				// lives in the event helper.
+				await notifyTicketMessage({
+					ticket: {
+						id,
+						displayId: t.displayId,
 						orgId: t.orgId,
+						subject: t.subject,
 						customerId: t.customerId,
 						creatorId: t.createdBy,
 						assigneeIds: t.assignees
 					},
-					{ teamOnly: internal }
-				);
-				await notify({
-					kind: 'ticketMessage',
-					recipients,
+					body,
+					internal,
 					actorId: me.id,
-					orgId: t.orgId,
-					participants: [...t.assignees, t.customerId, t.createdBy].filter((x): x is string => !!x),
-					render: (locale) => ({
-						title: internal
-							? m.notify_ticket_internal_note({ ref: t.displayId }, { locale })
-							: m.notify_ticket_message({ ref: t.displayId, subject: t.subject }, { locale }),
-						body: body.slice(0, 280)
-					}),
-					url: `/tickets/${id}`,
-					entity: { type: 'ticket', id },
-					baseUrl: url.origin
+					origin: url.origin
 				});
-
-				// @-mentions in the message. `recipients` is already scoped (and
-				// excludes the customer for internal notes), so intersecting with
-				// it guarantees a mention can never leak past the ticket audience.
-				const mentionIds = parseMentionIds(body).filter((mid) => recipients.has(mid));
-				if (mentionIds.length > 0) {
-					await notify({
-						kind: 'ticketMentioned',
-						recipients: mentionIds,
-						actorId: me.id,
-						orgId: t.orgId,
-						render: (locale) => ({
-							title: m.notify_mentioned({ label: `${t.displayId} — ${t.subject}` }, { locale }),
-							body: body.slice(0, 280)
-						}),
-						url: `/tickets/${id}`,
-						entity: { type: 'ticket', id },
-						baseUrl: url.origin
-					});
-				}
 
 				void recordAudit({
 					type: 'ticket.message',

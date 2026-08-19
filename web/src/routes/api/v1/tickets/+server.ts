@@ -7,14 +7,8 @@
 // Reuses loadTickets/createTicket and the exact org-split scoping of the
 // web tickets page.
 import { can, isTrackrTeam } from '$lib/server/permissions';
-import {
-	createTicket,
-	loadTickets,
-	TICKET_STATUS_SET,
-	type TicketRow
-} from '$lib/server/tickets';
-import { notify } from '$lib/server/notify';
-import { ticketRecipients } from '$lib/server/notify/recipients';
+import { createTicket, loadTickets, TICKET_STATUS_SET, type TicketRow } from '$lib/server/tickets';
+import { notifyTicketCreated } from '$lib/server/notify/events/ticket';
 import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
 import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
@@ -101,29 +95,19 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		createdBy: user.id
 	});
 
-	const recipients = await ticketRecipients({
-		orgId,
-		customerId: isAgent ? null : user.id,
-		creatorId: user.id,
-		assigneeIds: []
-	});
-	await notify({
-		kind: 'ticketCreated',
-		recipients,
+	await notifyTicketCreated({
+		ticket: {
+			id: created.id,
+			displayId: created.displayId,
+			orgId,
+			subject,
+			customerId: isAgent ? null : user.id,
+			creatorId: user.id,
+			assigneeIds: []
+		},
+		description: body.description?.slice(0, 280) ?? null,
 		actorId: user.id,
-		orgId,
-		participants: [user.id],
-		render: (locale) =>
-			({
-				title: m.notify_ticket_created(
-					{ ref: created.displayId, subject },
-					{ locale }
-				),
-				body: body.description?.slice(0, 280) ?? null
-			}),
-		url: `/tickets/${created.id}`,
-		entity: { type: 'ticket', id: created.id },
-		baseUrl: url.origin
+		origin: url.origin
 	});
 	void recordAudit({
 		type: 'ticket.create',

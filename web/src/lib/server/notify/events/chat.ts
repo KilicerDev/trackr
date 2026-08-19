@@ -1,14 +1,9 @@
-// Chat notification fan-out shared by the /api/v1 chat endpoints — a compact
-// mirror of the web chat page's local notifyChatMessage helper (broad audience
-// minus muters, tag followers as participants, mentions scoped to the
-// deliverable audience). Candidate for the web action to adopt too.
-import { notify } from './index';
-import {
-	orgChatRecipients,
-	orgMentionRecipients,
-	tagFollowers,
-	tagMuters
-} from './recipients';
+// Event fan-out for the org support chat. One function = the complete
+// notification set for one user action, shared by the web action and the
+// /api/v1 chat endpoints: broad audience minus muters, tag followers as
+// participants, mentions scoped to the deliverable audience.
+import { notify } from '../index';
+import { orgChatRecipients, orgMentionRecipients, tagFollowers, tagMuters } from '../recipients';
 import { parseMentionIds } from '$lib/utils/mentions';
 import { m } from '$lib/paraglide/messages';
 
@@ -28,7 +23,8 @@ export async function notifyChatMessage(opts: {
 	]);
 	const recipients = new Set<string>([...audience, ...followers]);
 	for (const id of muters) recipients.delete(id);
-	void notify({
+
+	await notify({
 		kind: 'chatMessage',
 		recipients,
 		actorId: opts.actorId,
@@ -46,7 +42,7 @@ export async function notifyChatMessage(opts: {
 
 	const mentioned = await orgMentionRecipients(opts.orgId, parseMentionIds(opts.body));
 	if (mentioned.size > 0) {
-		void notify({
+		await notify({
 			kind: 'chatMentioned',
 			recipients: mentioned,
 			actorId: opts.actorId,

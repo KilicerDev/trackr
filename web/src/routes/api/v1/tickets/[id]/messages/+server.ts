@@ -3,10 +3,8 @@
 // canViewTicket, comment grant for public replies, isTrackrTeam for internal.
 import { assertCan, can, canViewTicket, isTrackrTeam } from '$lib/server/permissions';
 import { addTicketMessage, getTicket } from '$lib/server/tickets';
-import { notify } from '$lib/server/notify';
-import { ticketRecipients } from '$lib/server/notify/recipients';
+import { notifyTicketMessage } from '$lib/server/notify/events/ticket';
 import { recordAudit } from '$lib/server/audit';
-import { parseMentionIds } from '$lib/utils/mentions';
 import { m } from '$lib/paraglide/messages';
 import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
 import type { RequestHandler } from './$types';
@@ -36,50 +34,23 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		authorIsAgent
 	});
 
-	const recipients = await ticketRecipients(
-		{
+	// Fan-out (incl. @-mentions, intersected with the scoped audience so an
+	// internal note's mention can never reach the customer) lives in the helper.
+	await notifyTicketMessage({
+		ticket: {
+			id: t.id,
+			displayId: t.displayId,
 			orgId: t.orgId,
+			subject: t.subject,
 			customerId: t.customerId,
 			creatorId: t.createdBy,
 			assigneeIds: t.assignees
 		},
-		{ teamOnly: internal }
-	);
-	await notify({
-		kind: 'ticketMessage',
-		recipients,
+		body: text,
+		internal,
 		actorId: user.id,
-		orgId: t.orgId,
-		participants: [...t.assignees, t.customerId, t.createdBy].filter((x): x is string => !!x),
-		render: (locale) => ({
-			title: internal
-				? m.notify_ticket_internal_note({ ref: t.displayId }, { locale })
-				: m.notify_ticket_message({ ref: t.displayId, subject: t.subject }, { locale }),
-			body: text.slice(0, 280)
-		}),
-		url: `/tickets/${t.id}`,
-		entity: { type: 'ticket', id: t.id },
-		baseUrl: url.origin
+		origin: url.origin
 	});
-
-	// Mentions intersected with the already-scoped audience so an internal
-	// note's mention can never reach the customer.
-	const mentionIds = parseMentionIds(text).filter((mid) => recipients.has(mid));
-	if (mentionIds.length > 0) {
-		await notify({
-			kind: 'ticketMentioned',
-			recipients: mentionIds,
-			actorId: user.id,
-			orgId: t.orgId,
-			render: (locale) => ({
-				title: m.notify_mentioned({ label: `${t.displayId} — ${t.subject}` }, { locale }),
-				body: text.slice(0, 280)
-			}),
-			url: `/tickets/${t.id}`,
-			entity: { type: 'ticket', id: t.id },
-			baseUrl: url.origin
-		});
-	}
 	void recordAudit({
 		type: 'ticket.message',
 		actorId: user.id,

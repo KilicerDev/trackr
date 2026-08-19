@@ -28,16 +28,9 @@ import {
 	type TicketPriority
 } from '$lib/server/tickets';
 import { attachFormFiles } from '$lib/server/attachments';
-import { notify } from '$lib/server/notify';
+import { notifyChatMessage } from '$lib/server/notify/events/chat';
+import { notifyTicketCreated } from '$lib/server/notify/events/ticket';
 import { recordAudit } from '$lib/server/audit';
-import {
-	orgChatRecipients,
-	orgMentionRecipients,
-	tagFollowers,
-	tagMuters,
-	ticketRecipients
-} from '$lib/server/notify/recipients';
-import { parseMentionIds } from '$lib/utils/mentions';
 
 type ChatOrg = { id: string; name: string; color: string };
 
@@ -105,62 +98,6 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		mentionUsers
 	};
 };
-
-// Fan-out for a new chat message: derived org-chat audience ∪ tag followers, less
-// muters, then notify(). @-mentions are notified separately so a muted topic
-// still pings a mentioned user.
-async function notifyChatMessage(opts: {
-	threadId: string;
-	orgId: string;
-	threadTitle: string | null;
-	actorId: string;
-	body: string;
-	origin: string;
-}) {
-	const { threadId, orgId, threadTitle, actorId, body, origin } = opts;
-	const url = `/chat?org=${orgId}&thread=${threadId}`;
-
-	const [audience, followers, muters] = await Promise.all([
-		orgChatRecipients(orgId),
-		tagFollowers(threadId),
-		tagMuters(threadId)
-	]);
-	const recipients = new Set<string>([...audience, ...followers]);
-	for (const id of muters) recipients.delete(id);
-
-	void notify({
-		kind: 'chatMessage',
-		recipients,
-		actorId,
-		orgId,
-		// "Participating" in a thread = explicitly following its tags.
-		participants: [...followers],
-		render: (locale) => ({
-			title: m.notify_chat_message({ thread: threadTitle ?? m.chat_untitled() }, { locale }),
-			body: body.slice(0, 280)
-		}),
-		url,
-		entity: { type: 'thread', id: threadId },
-		baseUrl: origin
-	}).catch((err) => console.error('chat message notify failed', err));
-
-	const mentioned = await orgMentionRecipients(orgId, parseMentionIds(body));
-	if (mentioned.size > 0) {
-		void notify({
-			kind: 'chatMentioned',
-			recipients: mentioned,
-			actorId,
-			orgId,
-			render: (locale) => ({
-				title: m.notify_mentioned({ label: threadTitle ?? m.chat_untitled() }, { locale }),
-				body: body.slice(0, 280)
-			}),
-			url,
-			entity: { type: 'thread', id: threadId },
-			baseUrl: origin
-		}).catch((err) => console.error('chat mention notify failed', err));
-	}
-}
 
 function parseTagIds(raw: FormDataEntryValue | null): string[] {
 	if (typeof raw !== 'string' || !raw.trim()) return [];
@@ -314,21 +251,21 @@ export const actions: Actions = {
 				console.error('chat ticket marker failed', err);
 			}
 
-			// Notify everyone allowed to see the new ticket (scoped by
-			// ticketRecipients — clients of other orgs can't appear).
-			const recipients = await ticketRecipients({ orgId, customerId, assigneeIds: [] });
-			void notify({
-				kind: 'ticketCreated',
-				recipients,
+			// Notify everyone allowed to see the new ticket (recipient scoping
+			// lives in the event helper — clients of other orgs can't appear).
+			void notifyTicketCreated({
+				ticket: {
+					id,
+					displayId,
+					orgId,
+					subject,
+					customerId,
+					creatorId: me.id,
+					assigneeIds: []
+				},
+				description,
 				actorId: me.id,
-				orgId,
-				render: (locale) => ({
-					title: m.notify_ticket_created({ ref: displayId, subject }, { locale }),
-					body: description
-				}),
-				url: `/tickets/${id}`,
-				entity: { type: 'ticket', id },
-				baseUrl: url.origin
+				origin: url.origin
 			}).catch((err) => console.error('chat→ticket notify failed', err));
 
 			void recordAudit({

@@ -13,9 +13,7 @@ import { loadTasks } from '$lib/server/tasks';
 import { loadProjectActivity } from '$lib/server/activity/feed';
 import { logActivityFF } from '$lib/server/activity';
 import { recordAudit } from '$lib/server/audit';
-import { notify } from '$lib/server/notify';
-import { projectMentionRecipients } from '$lib/server/notify/recipients';
-import { parseMentionIds } from '$lib/utils/mentions';
+import { notifyProjectComment } from '$lib/server/notify/events/project';
 import { assertCan, isTrackrTeam } from '$lib/server/permissions';
 import { listProjectMeetings, listTemplates } from '$lib/server/notes';
 import { m } from '$lib/paraglide/messages';
@@ -509,25 +507,19 @@ export const actions: Actions = {
 		}
 
 		// Notify members @-mentioned in the comment.
-		const mentioned = await projectMentionRecipients(params.id, parseMentionIds(body));
-		if (mentioned.size > 0) {
+		{
 			const [proj] = await db
 				.select({ name: project.name, orgId: project.orgId })
 				.from(project)
 				.where(eq(project.id, params.id))
 				.limit(1);
-			void notify({
-				kind: 'projectMentioned',
-				recipients: mentioned,
-				actorId: locals.user.id,
+			void notifyProjectComment({
+				projectId: params.id,
+				projectName: proj?.name ?? '',
 				orgId: proj?.orgId ?? null,
-				render: (locale) => ({
-					title: m.notify_mentioned({ label: proj?.name ?? '' }, { locale }),
-					body
-				}),
-				url: `/projects/${params.id}`,
-				entity: { type: 'project', id: params.id },
-				baseUrl: url.origin
+				body,
+				actorId: locals.user.id,
+				origin: url.origin
 			}).catch((err) => console.error('project comment mention notify failed', err));
 		}
 

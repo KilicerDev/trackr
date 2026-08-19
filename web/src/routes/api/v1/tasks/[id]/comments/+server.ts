@@ -1,12 +1,12 @@
 // Add a comment to a task's thread. `id` is the task UUID. Mirrors the web
-// comment action (project.tasks.comment) minus attachments/mentions — those
-// stay a desktop concern for now.
+// comment action (project.tasks.comment) minus attachments — those stay a
+// desktop concern for now. Notification fan-out (incl. @-mentions) is shared
+// with the web action via notifyTaskComment.
 import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { message, project, task, taskAssignee, thread } from '$lib/server/db/app.schema';
 import { assertCan } from '$lib/server/permissions';
-import { taskRecipients } from '$lib/server/notify/recipients';
-import { notify } from '$lib/server/notify';
+import { notifyTaskComment } from '$lib/server/notify/events/task';
 import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
 import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
@@ -76,23 +76,22 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 				)
 			)
 	]);
-	const recipients = taskRecipients({
+	void notifyTaskComment({
+		task: {
+			id: target.id,
+			displayId,
+			title: target.title,
+			orgId: target.projectOrgId
+		},
+		projectId: target.projectId,
 		creatorId: target.createdBy,
 		assigneeIds: assigneeRows.map((r) => r.userId),
-		extraIds: priorCommenterRows.map((r) => r.authorId).filter((id): id is string => id !== null)
-	});
-	void notify({
-		kind: 'taskCommented',
-		recipients,
+		priorCommenterIds: priorCommenterRows
+			.map((r) => r.authorId)
+			.filter((id): id is string => id !== null),
+		body,
 		actorId: user.id,
-		orgId: target.projectOrgId,
-		render: (locale) => ({
-			title: m.notify_task_commented({ ref: displayId, title: target.title }, { locale }),
-			body
-		}),
-		url: `/tasks?task=${displayId}`,
-		entity: { type: 'task', id: target.id },
-		baseUrl: url.origin
+		origin: url.origin
 	}).catch((err) => console.error('task comment notify failed', err));
 
 	void recordAudit({

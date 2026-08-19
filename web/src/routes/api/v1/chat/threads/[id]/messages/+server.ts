@@ -1,7 +1,7 @@
 // Reply into a chat thread — the app's push→thread→answer path for chat.
 import { assertCan } from '$lib/server/permissions';
 import { addMessage, getThreadContext, markThreadRead } from '$lib/server/chat';
-import { notifyChatMessage } from '$lib/server/notify/chat';
+import { notifyChatMessage } from '$lib/server/notify/events/chat';
 import { m } from '$lib/paraglide/messages';
 import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
 import type { RequestHandler } from './$types';

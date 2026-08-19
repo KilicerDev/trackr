@@ -24,14 +24,15 @@ import { normalizeTag } from '$lib/utils/label-meta';
 import { logActivityFF } from '$lib/server/activity';
 import { recordAudit } from '$lib/server/audit';
 import { syncTicketChecklistFromTask } from '$lib/server/tickets';
-import { notify } from '$lib/server/notify';
-import { taskRecipients, projectMentionRecipients } from '$lib/server/notify/recipients';
-import { parseMentionIds } from '$lib/utils/mentions';
+import {
+	notifyTaskAssigned,
+	notifyTaskComment,
+	notifyTaskStatusChanged
+} from '$lib/server/notify/events/task';
 import { accessibleProjectIds, assertCan, can } from '$lib/server/permissions';
 import { attachFormFiles, deleteAttachmentsFor } from '$lib/server/attachments';
 import { getPreferences } from '$lib/server/preferences';
 import { m } from '$lib/paraglide/messages';
-import { statusLabel } from '$lib/utils/labels';
 
 export const load: ServerLoad = async ({ locals }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
@@ -169,17 +170,11 @@ export const actions: Actions = {
 		// Notify each newly-assigned user (notify() drops the actor itself, so
 		// self-assignment is silent). Fire-and-forget: a failed notification
 		// must never undo the create.
-		void notify({
-			kind: 'taskAssigned',
-			recipients: assignedIds,
+		void notifyTaskAssigned({
+			task: { id: newId, displayId, title, orgId: p.orgId },
+			assigneeIds: assignedIds,
 			actorId: me.id,
-			orgId: p.orgId,
-			render: (locale) => ({
-				title: m.notify_task_assigned({ ref: displayId, title }, { locale })
-			}),
-			url: `/tasks?task=${displayId}`,
-			entity: { type: 'task', id: newId },
-			baseUrl: url.origin
+			origin: url.origin
 		}).catch((err) => console.error('task create notify failed', err));
 
 		// Attach any files dropped on the create modal. Best-effort: the task
@@ -354,24 +349,23 @@ export const actions: Actions = {
 		}
 
 		const me = locals.user;
-		const taskUrl = `/tasks?task=${displayId}`;
+		const taskCtx = {
+			id: target.id,
+			displayId,
+			title: target.title,
+			orgId: target.projectOrgId
+		};
 
 		// Notify users newly added to the task.
 		const assigned = assigneeOut.next;
 		if (assigned !== null) {
 			const added = assigned.filter((id) => !priorAssignees.has(id));
 			if (added.length > 0) {
-				void notify({
-					kind: 'taskAssigned',
-					recipients: added,
+				void notifyTaskAssigned({
+					task: taskCtx,
+					assigneeIds: added,
 					actorId: me.id,
-					orgId: target.projectOrgId,
-					render: (locale) => ({
-						title: m.notify_task_assigned({ ref: displayId, title: target.title }, { locale })
-					}),
-					url: taskUrl,
-					entity: { type: 'task', id: target.id },
-					baseUrl: url.origin
+					origin: url.origin
 				}).catch((err) => console.error('task assign notify failed', err));
 			}
 		}
@@ -379,26 +373,13 @@ export const actions: Actions = {
 		// Notify watchers on status change. "Watchers" = current assignees +
 		// the creator. Use the post-update assignee set if it changed.
 		if (typeof patch.status === 'string' && patch.status !== priorStatus) {
-			const finalAssignees = assigneeOut.next ?? [...priorAssignees];
-			const recipients = taskRecipients({
+			void notifyTaskStatusChanged({
+				task: taskCtx,
 				creatorId: target.createdBy,
-				assigneeIds: finalAssignees
-			});
-			const newStatus = patch.status;
-			void notify({
-				kind: 'taskStatusChanged',
-				recipients,
+				assigneeIds: assigneeOut.next ?? [...priorAssignees],
+				newStatus: patch.status,
 				actorId: me.id,
-				orgId: target.projectOrgId,
-				render: (locale) => ({
-					title: m.notify_task_status(
-						{ ref: displayId, status: statusLabel(newStatus, locale), title: target.title },
-						{ locale }
-					)
-				}),
-				url: taskUrl,
-				entity: { type: 'task', id: target.id },
-				baseUrl: url.origin
+				origin: url.origin
 			}).catch((err) => console.error('task status notify failed', err));
 		}
 
@@ -535,42 +516,23 @@ export const actions: Actions = {
 					)
 				)
 		]);
-		const recipients = taskRecipients({
+		void notifyTaskComment({
+			task: {
+				id: target.id,
+				displayId,
+				title: target.title,
+				orgId: target.projectOrgId
+			},
+			projectId: target.projectId,
 			creatorId: target.createdBy,
 			assigneeIds: assigneeRows.map((r) => r.userId),
-			extraIds: priorCommenterRows.map((r) => r.authorId).filter((id): id is string => id !== null)
-		});
-		void notify({
-			kind: 'taskCommented',
-			recipients,
+			priorCommenterIds: priorCommenterRows
+				.map((r) => r.authorId)
+				.filter((id): id is string => id !== null),
+			body,
 			actorId: me.id,
-			orgId: target.projectOrgId,
-			render: (locale) => ({
-				title: m.notify_task_commented({ ref: displayId, title: target.title }, { locale }),
-				body
-			}),
-			url: `/tasks?task=${displayId}`,
-			entity: { type: 'task', id: target.id },
-			baseUrl: url.origin
+			origin: url.origin
 		}).catch((err) => console.error('task comment notify failed', err));
-
-		// Notify anyone @-mentioned in the comment (project members only).
-		const mentioned = await projectMentionRecipients(target.projectId, parseMentionIds(body));
-		if (mentioned.size > 0) {
-			void notify({
-				kind: 'taskMentioned',
-				recipients: mentioned,
-				actorId: me.id,
-				orgId: target.projectOrgId,
-				render: (locale) => ({
-					title: m.notify_mentioned({ label: `${displayId} — ${target.title}` }, { locale }),
-					body
-				}),
-				url: `/tasks?task=${displayId}`,
-				entity: { type: 'task', id: target.id },
-				baseUrl: url.origin
-			}).catch((err) => console.error('task comment mention notify failed', err));
-		}
 
 		void recordAudit({
 			type: 'task.comment',

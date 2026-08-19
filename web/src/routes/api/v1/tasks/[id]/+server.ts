@@ -27,11 +27,9 @@ import {
 	loadTicketDisplayUsers,
 	syncTicketChecklistFromTask
 } from '$lib/server/tickets';
-import { taskRecipients } from '$lib/server/notify/recipients';
-import { notify } from '$lib/server/notify';
+import { notifyTaskAssigned, notifyTaskStatusChanged } from '$lib/server/notify/events/task';
 import { logActivityFF } from '$lib/server/activity';
 import { recordAudit } from '$lib/server/audit';
-import { statusLabel } from '$lib/utils/labels';
 import { m } from '$lib/paraglide/messages';
 import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
 import type { RequestHandler } from './$types';
@@ -221,26 +219,21 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 	const displayId = `${target.projectKey}-${target.number}`;
 	const currentAssignees = assigneeOut.next ?? [...priorAssignees];
 
+	const taskCtx = {
+		id: target.id,
+		displayId,
+		title: target.title,
+		orgId: target.projectOrgId
+	};
 	const statusChanged = patch.status !== undefined && patch.status !== target.status;
 	if (statusChanged) {
-		const recipients = taskRecipients({
+		void notifyTaskStatusChanged({
+			task: taskCtx,
 			creatorId: target.createdBy,
-			assigneeIds: currentAssignees
-		});
-		void notify({
-			kind: 'taskStatusChanged',
-			recipients,
+			assigneeIds: currentAssignees,
+			newStatus: String(patch.status),
 			actorId: user.id,
-			orgId: target.projectOrgId,
-			render: (locale) => ({
-				title: m.notify_task_status(
-					{ ref: displayId, status: statusLabel(String(patch.status), locale), title: target.title },
-					{ locale }
-				)
-			}),
-			url: `/tasks?task=${displayId}`,
-			entity: { type: 'task', id: target.id },
-			baseUrl: url.origin
+			origin: url.origin
 		}).catch((err) => console.error('task status notify failed', err));
 		logActivityFF({
 			projectId: target.projectId,
@@ -261,17 +254,11 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 		(id) => !priorAssignees.has(id) && id !== user.id
 	);
 	if (newlyAssigned.length) {
-		void notify({
-			kind: 'taskAssigned',
-			recipients: newlyAssigned,
+		void notifyTaskAssigned({
+			task: taskCtx,
+			assigneeIds: newlyAssigned,
 			actorId: user.id,
-			orgId: target.projectOrgId,
-			render: (locale) => ({
-				title: m.notify_task_assigned({ ref: displayId, title: target.title }, { locale })
-			}),
-			url: `/tasks?task=${displayId}`,
-			entity: { type: 'task', id: target.id },
-			baseUrl: url.origin
+			origin: url.origin
 		}).catch((err) => console.error('task assigned notify failed', err));
 	}
 

@@ -4,7 +4,7 @@
 //   POST { orgId, title, body } — start a thread.
 import { assertCan } from '$lib/server/permissions';
 import { createThread, loadOrgFeed, markThreadRead } from '$lib/server/chat';
-import { notifyChatMessage } from '$lib/server/notify/chat';
+import { notifyChatMessage } from '$lib/server/notify/events/chat';
 import { m } from '$lib/paraglide/messages';
 import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
 import type { RequestHandler } from './$types';
