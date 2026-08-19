@@ -10,6 +10,7 @@
 	import PriorityBars from '../PriorityBars.svelte';
 	import StatusDot from '../StatusDot.svelte';
 	import Checklist from '../Checklist.svelte';
+	import AttachmentList from '../attachments/AttachmentList.svelte';
 	import TagsPopover from '../popovers/TagsPopover.svelte';
 	import AssigneePopover from '../popovers/AssigneePopover.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
@@ -26,6 +27,7 @@
 	import { labelMeta } from '$lib/utils/label-meta';
 	import type { TicketRow } from '$lib/server/tickets';
 	import type { StatusId } from '$lib/types';
+	import type { AttachmentDTO } from '$lib/config/attachments';
 	import { m } from '$lib/paraglide/messages';
 
 	type AgentUser = { id: string; name: string; initials: string; color: string; status?: string };
@@ -62,9 +64,7 @@
 	// the tasks fix).
 	const tagSuggestions = $derived.by(() => {
 		const tickets = (page.data as { tickets?: { tags?: string[] }[] }).tickets ?? [];
-		const set = new Set<string>();
-		for (const t of tickets) for (const l of t.tags ?? []) set.add(l);
-		return [...set];
+		return [...new Set(tickets.flatMap((t) => t.tags ?? []))];
 	});
 
 	let pop = $state<'status' | 'priority' | 'category' | 'assignee' | 'tags' | null>(null);
@@ -83,10 +83,28 @@
 		if (id !== lastTicketId) {
 			lastTicketId = id;
 			pop = null;
+			attachments = [];
+			if (id) void loadAttachments(id);
 		}
 		subjectDraft = ticket?.subject ?? '';
 		checklistDraft = ticket?.checklist ?? [];
 	});
+
+	// Ticket-level attachments, fetched on demand when a ticket opens — kept out
+	// of the bulk ticket-list load (mirrors the tasks Inspector's meetings).
+	let attachments = $state<AttachmentDTO[]>([]);
+	async function loadAttachments(id: string) {
+		try {
+			const res = await fetch(`/api/attachments?entityType=ticket&entityId=${id}`);
+			if (!res.ok) return;
+			const body = (await res.json()) as { attachments: AttachmentDTO[] };
+			// Ignore if the open ticket changed while we were fetching.
+			if (ticket?.id !== id) return;
+			attachments = body.attachments;
+		} catch {
+			/* non-fatal — section just stays empty */
+		}
+	}
 
 	async function saveChecklist(items: { id: string; text: string; done: boolean }[]) {
 		if (!ticket) return;
@@ -485,6 +503,21 @@
 						label={m.tasks_checklist()}
 						addPlaceholder={m.tasks_checklist_add()}
 						onChange={saveChecklist}
+					/>
+				</div>
+			{/if}
+
+			<!-- Attachments (ticket-level; message files live in the conversation) -->
+			{#if attachments.length}
+				<div class="mt-5 border-t border-border pt-4">
+					<div class="mb-2 text-[12px] tracking-[0.08em] text-text-4 uppercase">
+						{m.tickets_attachments()}<span class="ml-1.5 text-text-3">{attachments.length}</span>
+					</div>
+					<AttachmentList
+						{attachments}
+						canDelete={canEdit}
+						currentUserId={(page.data as { currentUserId?: string }).currentUserId ?? null}
+						ondeleted={(id) => (attachments = attachments.filter((a) => a.id !== id))}
 					/>
 				</div>
 			{/if}

@@ -3,7 +3,8 @@ import {
 	authorizeAttachmentAccess,
 	createAttachment,
 	resolveEntityContext,
-	AttachmentError
+	AttachmentError,
+	listAttachments
 } from '$lib/server/attachments';
 import { ATTACHMENT_ENTITY_TYPES, type AttachmentEntityType } from '$lib/config/attachments';
 import type { RequestHandler } from './$types';
@@ -68,4 +69,30 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 		throw err;
 	}
+};
+
+/**
+ * List an entity's attachments (newest first). Query: `entityType`, `entityId`.
+ * Read-authorized against the parent's resolved scope, same as uploads —
+ * powers the ticket quick-view, which loads attachments on demand.
+ */
+export const GET: RequestHandler = async ({ url, locals }) => {
+	if (!locals.user) return json({ message: 'Not authenticated' }, { status: 401 });
+
+	const entityType = url.searchParams.get('entityType') ?? '';
+	const entityId = url.searchParams.get('entityId') ?? '';
+	if (!ENTITY_TYPES.has(entityType)) {
+		return json({ message: 'Invalid entityType' }, { status: 400 });
+	}
+	if (!entityId) return json({ message: 'Missing entityId' }, { status: 400 });
+
+	const ctx = await resolveEntityContext(entityType as AttachmentEntityType, entityId);
+	if (!ctx) return json({ message: 'Parent not found' }, { status: 404 });
+	if (!(await authorizeAttachmentAccess(locals, entityType as AttachmentEntityType, ctx, 'read'))) {
+		return json({ message: 'You do not have permission to view these files.' }, { status: 403 });
+	}
+
+	return json({
+		attachments: await listAttachments(entityType as AttachmentEntityType, entityId)
+	});
 };
