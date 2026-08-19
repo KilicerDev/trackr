@@ -2,6 +2,7 @@
 	import Icon from '../Icon.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
 	import AvatarStack from '../AvatarStack.svelte';
+	import { readCollapsed, saveCollapsed } from '$lib/stores/view';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
@@ -18,14 +19,26 @@
 		group?: GroupBy;
 		onSelect?: (t: TicketRow) => void;
 		selectedId?: string;
+		// View-state key (e.g. 'tickets') to remember collapsed groups under.
+		// Omitted → collapse state is session-only, as before.
+		persistKey?: string;
 	}
-	let { tickets, group = 'status', onSelect, selectedId }: Props = $props();
+	let { tickets, group = 'status', onSelect, selectedId, persistKey }: Props = $props();
 
-	let collapsed = $state(new Set<string>());
+	const loadCollapsed = () =>
+		persistKey ? readCollapsed(persistKey, 'listCollapsed', group) : new Set<string>();
+	let collapsed = $state(loadCollapsed());
+	// Re-hydrate when the grouping changes — each grouping mode has its own
+	// id namespace and its own remembered set. (The mount run just re-reads
+	// the same initial value.)
+	$effect(() => {
+		collapsed = loadCollapsed();
+	});
 	function toggle(id: string) {
 		const next = new Set(collapsed);
 		next.has(id) ? next.delete(id) : next.add(id);
 		collapsed = next;
+		if (persistKey) saveCollapsed(persistKey, 'listCollapsed', group, next);
 	}
 
 	let groups = $derived.by(() => {

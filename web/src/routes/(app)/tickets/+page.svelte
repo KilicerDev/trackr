@@ -330,6 +330,7 @@
 	<ListView
 		tickets={filtered}
 		{group}
+		persistKey="tickets"
 		onSelect={(t) => (manualSelectedId = t.id)}
 		selectedId={selected?.id}
 	/>
@@ -337,6 +338,7 @@
 	<BoardView
 		tickets={filtered}
 		group={boardGroup}
+		persistKey="tickets"
 		{sub}
 		onSelect={(t) => (manualSelectedId = t.id)}
 		onAddInOrg={(orgId) => openCreate(orgId)}

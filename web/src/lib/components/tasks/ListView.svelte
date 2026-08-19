@@ -8,6 +8,7 @@
 	import TaskRow from './TaskRow.svelte';
 	import Icon from '../Icon.svelte';
 	import IconButton from '../IconButton.svelte';
+	import { readCollapsed, saveCollapsed } from '$lib/stores/view';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 
@@ -19,15 +20,28 @@
 		onSelect?: (t: Task) => void;
 		selectedId?: string;
 		onAddInProject?: (pid: ProjectId) => void;
+		// View-state key (e.g. 'tasks') to remember collapsed groups under.
+		// Omitted → collapse state is session-only, as before.
+		persistKey?: string;
 	}
-	let { tasks, group = 'status', onSelect, selectedId, onAddInProject }: Props = $props();
+	let { tasks, group = 'status', onSelect, selectedId, onAddInProject, persistKey }: Props =
+		$props();
 
-	let collapsed = $state(new Set<string>());
+	const loadCollapsed = () =>
+		persistKey ? readCollapsed(persistKey, 'listCollapsed', group) : new Set<string>();
+	let collapsed = $state(loadCollapsed());
+	// Re-hydrate when the grouping changes — each grouping mode has its own
+	// id namespace and its own remembered set. (The mount run just re-reads
+	// the same initial value.)
+	$effect(() => {
+		collapsed = loadCollapsed();
+	});
 
 	function toggle(id: string) {
 		const next = new Set(collapsed);
 		next.has(id) ? next.delete(id) : next.add(id);
 		collapsed = next;
+		if (persistKey) saveCollapsed(persistKey, 'listCollapsed', group, next);
 	}
 
 	// Map a project key (the group id when grouping by project) to its detail

@@ -69,6 +69,28 @@ export function saveView(key: string, patch: Record<string, unknown>) {
 	);
 }
 
+// ── Collapsed list/board groups ─────────────────────────────────────────────
+// Stored inside a page's view state as `field: { [groupBy]: string[] }` so
+// each grouping mode remembers its own set (status ids vs project keys vs
+// user ids don't bleed into each other). localStorage-first: a fresh device
+// simply starts fully expanded.
+
+function readCollapsedMap(viewKey: string, field: string): Record<string, unknown> {
+	const raw = readLocal(viewKey)[field];
+	return raw && typeof raw === 'object' && !Array.isArray(raw)
+		? (raw as Record<string, unknown>)
+		: {};
+}
+
+export function readCollapsed(viewKey: string, field: string, group: string): Set<string> {
+	const ids = readCollapsedMap(viewKey, field)[group];
+	return new Set(Array.isArray(ids) ? ids.filter((x): x is string => typeof x === 'string') : []);
+}
+
+export function saveCollapsed(viewKey: string, field: string, group: string, ids: Set<string>) {
+	saveView(viewKey, { [field]: { ...readCollapsedMap(viewKey, field), [group]: [...ids] } });
+}
+
 export function flushViewSaves() {
 	for (const key of [...timers.keys()]) {
 		clearTimeout(timers.get(key)!);

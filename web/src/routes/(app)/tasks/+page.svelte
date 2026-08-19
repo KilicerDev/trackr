@@ -229,6 +229,7 @@
 	<ListView
 		{tasks}
 		{group}
+		persistKey="tasks"
 		onSelect={(t) => (manualSelectedId = t.id)}
 		selectedId={selected?.id}
 		onAddInProject={(pid) => openCreate({ project: pid })}
@@ -237,6 +238,7 @@
 	<BoardView
 		{tasks}
 		group={boardGroup}
+		persistKey="tasks"
 		{sub}
 		onSelect={(t) => (manualSelectedId = t.id)}
 		onAddInProject={(pid, statusId) => openCreate({ project: pid, status: statusId })}

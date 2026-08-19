@@ -10,6 +10,7 @@
 	import Avatar from '../Avatar.svelte';
 	import Icon from '../Icon.svelte';
 	import IconButton from '../IconButton.svelte';
+	import { readCollapsed, saveCollapsed } from '$lib/stores/view';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 
@@ -23,6 +24,9 @@
 		onSelect?: (t: TicketRow) => void;
 		onAddInOrg?: (orgId: string | null) => void;
 		canCreate?: boolean;
+		// View-state key (e.g. 'tickets') to remember collapsed columns under.
+		// Omitted → collapse state is session-only, as before.
+		persistKey?: string;
 	}
 	let {
 		tickets,
@@ -30,7 +34,8 @@
 		sub = 'none',
 		onSelect,
 		onAddInOrg,
-		canCreate = true
+		canCreate = true,
+		persistKey
 	}: Props = $props();
 
 	const prioRank: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
@@ -123,11 +128,20 @@
 		return [{ key: 'all', label: m.tickets_all(), dot: 'transparent', tickets }];
 	});
 
-	let collapsed = $state(new Set<string>());
+	const loadCollapsed = () =>
+		persistKey ? readCollapsed(persistKey, 'boardCollapsed', group) : new Set<string>();
+	let collapsed = $state(loadCollapsed());
+	// Re-hydrate when the grouping changes — each grouping mode has its own
+	// key namespace and its own remembered set. (The mount run just re-reads
+	// the same initial value.)
+	$effect(() => {
+		collapsed = loadCollapsed();
+	});
 	function toggle(key: string) {
 		const n = new Set(collapsed);
 		n.has(key) ? n.delete(key) : n.add(key);
 		collapsed = n;
+		if (persistKey) saveCollapsed(persistKey, 'boardCollapsed', group, n);
 	}
 
 	interface SubGroupDef {

@@ -11,6 +11,7 @@
 	import Avatar from '../Avatar.svelte';
 	import Icon from '../Icon.svelte';
 	import IconButton from '../IconButton.svelte';
+	import { readCollapsed, saveCollapsed } from '$lib/stores/view';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 
@@ -23,8 +24,12 @@
 		sub?: BoardSub;
 		onSelect?: (t: Task) => void;
 		onAddInProject?: (pid: ProjectId, statusId?: StatusId) => void;
+		// View-state key (e.g. 'tasks') to remember collapsed columns under.
+		// Omitted → collapse state is session-only, as before.
+		persistKey?: string;
 	}
-	let { tasks, group = 'project', sub = 'status', onSelect, onAddInProject }: Props = $props();
+	let { tasks, group = 'project', sub = 'status', onSelect, onAddInProject, persistKey }: Props =
+		$props();
 
 	const prioRank: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1, none: 0 };
 
@@ -99,11 +104,20 @@
 		return [{ key: 'all', label: m.tasks_all_tasks(), color: 'transparent', tasks }];
 	});
 
-	let collapsed = $state(new Set<string>());
+	const loadCollapsed = () =>
+		persistKey ? readCollapsed(persistKey, 'boardCollapsed', group) : new Set<string>();
+	let collapsed = $state(loadCollapsed());
+	// Re-hydrate when the grouping changes — each grouping mode has its own
+	// key namespace and its own remembered set. (The mount run just re-reads
+	// the same initial value.)
+	$effect(() => {
+		collapsed = loadCollapsed();
+	});
 	function toggle(key: string) {
 		const n = new Set(collapsed);
 		n.has(key) ? n.delete(key) : n.add(key);
 		collapsed = n;
+		if (persistKey) saveCollapsed(persistKey, 'boardCollapsed', group, n);
 	}
 
 	// Map a project key to its detail page. resolveProject doesn't expose the DB
