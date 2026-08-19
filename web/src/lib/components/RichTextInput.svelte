@@ -94,6 +94,12 @@
 		command: (props: unknown) => void;
 	} | null>(null);
 	let menuEl = $state<HTMLDivElement | null>(null);
+	// The Suggestion plugin has no blur handling — it stays active while the
+	// caret sits in the @query, so the menu would linger after focus leaves.
+	// Gate visibility on focus instead: blur hides it, and re-focusing with
+	// the caret still inside the query shows it again (option clicks use
+	// mousedown+preventDefault, so they never blur the editor).
+	let focused = $state(false);
 	let activeIndex = $state(0);
 
 	const candidates = $derived.by<MentionUser[]>(() => {
@@ -190,10 +196,15 @@
 			editable: !disabled,
 			editorProps: {
 				attributes: { class: `rt-content ${cls}`, role: 'textbox', 'aria-multiline': 'true' },
-				// Direct props run before plugins: hand the event to the host
-				// first (Cmd+Enter send) and stop if it consumed it, so the
-				// base keymap's Mod-Enter can't also fire into a cleared doc.
+				// Direct props run before plugins. The suggestion menu gets
+				// first claim: registerPlugin appends the Suggestion plugin
+				// AFTER the base keymap, so without this Enter hits splitBlock
+				// (newline) before the menu's own onKeyDown ever runs. Then the
+				// host handler (Cmd+Enter send) — stop if it consumed the
+				// event, so the base keymap's Mod-Enter can't also fire into a
+				// cleared doc.
 				handleKeyDown: (_view, e) => {
+					if (menuKey(e)) return true;
 					onkeydown?.(e);
 					return e.defaultPrevented;
 				}
@@ -208,7 +219,11 @@
 				value = md;
 				onchange?.(md);
 			},
-			onBlur: () => onblur?.()
+			onFocus: () => (focused = true),
+			onBlur: () => {
+				focused = false;
+				onblur?.();
+			}
 		});
 		if (value) {
 			editor.commands.setContent(markdownToEditorHtml(value), { emitUpdate: false });
@@ -283,7 +298,7 @@
 		style:--rt-max="{maxRows * 1.45}em"
 	></div>
 
-	{#if menu && optionCount}
+	{#if menu && optionCount && focused}
 		<div
 			bind:this={menuEl}
 			use:autoPlace
