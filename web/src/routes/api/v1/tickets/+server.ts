@@ -103,10 +103,12 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 			subject,
 			customerId: isAgent ? null : user.id,
 			creatorId: user.id,
-			assigneeIds: []
+			assigneeIds: [],
+			status: 'open',
+			priority: 'medium'
 		},
 		description: body.description?.slice(0, 280) ?? null,
-		actorId: user.id,
+		actor: { id: user.id, name: user.name },
 		origin: url.origin
 	});
 	void recordAudit({

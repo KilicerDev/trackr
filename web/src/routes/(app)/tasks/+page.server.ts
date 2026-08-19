@@ -173,7 +173,7 @@ export const actions: Actions = {
 		void notifyTaskAssigned({
 			task: { id: newId, displayId, title, orgId: p.orgId },
 			assigneeIds: assignedIds,
-			actorId: me.id,
+			actor: { id: me.id, name: me.name },
 			origin: url.origin
 		}).catch((err) => console.error('task create notify failed', err));
 
@@ -364,7 +364,7 @@ export const actions: Actions = {
 				void notifyTaskAssigned({
 					task: taskCtx,
 					assigneeIds: added,
-					actorId: me.id,
+					actor: { id: me.id, name: me.name },
 					origin: url.origin
 				}).catch((err) => console.error('task assign notify failed', err));
 			}
@@ -378,7 +378,7 @@ export const actions: Actions = {
 				creatorId: target.createdBy,
 				assigneeIds: assigneeOut.next ?? [...priorAssignees],
 				newStatus: patch.status,
-				actorId: me.id,
+				actor: { id: me.id, name: me.name },
 				origin: url.origin
 			}).catch((err) => console.error('task status notify failed', err));
 		}
@@ -530,7 +530,7 @@ export const actions: Actions = {
 				.map((r) => r.authorId)
 				.filter((id): id is string => id !== null),
 			body,
-			actorId: me.id,
+			actor: { id: me.id, name: me.name },
 			origin: url.origin
 		}).catch((err) => console.error('task comment notify failed', err));
 

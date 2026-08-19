@@ -154,12 +154,14 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 			subject: ticket.subject,
 			customerId: ticket.customerId,
 			creatorId: ticket.createdBy,
-			assigneeIds: patch.assigneeIds ?? ticket.assignees
+			assigneeIds: patch.assigneeIds ?? ticket.assignees,
+			status: patch.status ?? ticket.status,
+			priority: patch.priority ?? ticket.priority
 		},
 		addedAssigneeIds: (patch.assigneeIds ?? []).filter((id) => !ticket.assignees.includes(id)),
 		newStatus: (patch.status as TicketStatus | undefined) ?? null,
 		newPriority: null,
-		actorId: user.id,
+		actor: { id: user.id, name: user.name },
 		origin: url.origin
 	});
 	void recordAudit({

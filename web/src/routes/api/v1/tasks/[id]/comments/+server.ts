@@ -90,7 +90,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 			.map((r) => r.authorId)
 			.filter((id): id is string => id !== null),
 		body,
-		actorId: user.id,
+		actor: { id: user.id, name: user.name },
 		origin: url.origin
 	}).catch((err) => console.error('task comment notify failed', err));
 

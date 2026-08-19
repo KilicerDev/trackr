@@ -518,7 +518,7 @@ export const actions: Actions = {
 				projectName: proj?.name ?? '',
 				orgId: proj?.orgId ?? null,
 				body,
-				actorId: locals.user.id,
+				actor: { id: locals.user.id, name: locals.user.name },
 				origin: url.origin
 			}).catch((err) => console.error('project comment mention notify failed', err));
 		}

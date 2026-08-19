@@ -22,7 +22,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		threadId: params.id,
 		orgId: ctx.orgId,
 		threadTitle: ctx.title,
-		actorId: user.id,
+		actor: { id: user.id, name: user.name },
 		body: text,
 		origin: url.origin
 	});

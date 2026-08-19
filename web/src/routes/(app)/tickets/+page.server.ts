@@ -241,10 +241,12 @@ export const actions: Actions = {
 					subject,
 					customerId,
 					creatorId: me.id,
-					assigneeIds: assignedIds
+					assigneeIds: assignedIds,
+					status: 'open',
+					priority
 				},
 				description,
-				actorId: me.id,
+				actor: { id: me.id, name: me.name },
 				origin: url.origin
 			});
 
@@ -481,12 +483,14 @@ export const actions: Actions = {
 						subject: before.subject,
 						customerId: before.customerId,
 						creatorId: before.createdBy,
-						assigneeIds: patch.assigneeIds ?? before.assignees
+						assigneeIds: patch.assigneeIds ?? before.assignees,
+						status: patch.status ?? before.status,
+						priority: patch.priority ?? before.priority
 					},
 					addedAssigneeIds: added,
 					newStatus: statusChanged ? (patch.status as TicketStatus) : null,
 					newPriority: priorityChanged ? (patch.priority as TicketPriority) : null,
-					actorId,
+					actor: { id: actorId, name: locals.user.name },
 					origin: url.origin
 				});
 			}
@@ -602,11 +606,13 @@ export const actions: Actions = {
 						subject: t.subject,
 						customerId: t.customerId,
 						creatorId: t.createdBy,
-						assigneeIds: t.assignees
+						assigneeIds: t.assignees,
+						status: t.status,
+						priority: t.priority
 					},
 					body,
 					internal,
-					actorId: me.id,
+					actor: { id: me.id, name: me.name },
 					origin: url.origin
 				});
 

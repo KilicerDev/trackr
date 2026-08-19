@@ -294,7 +294,7 @@ export const actions: Actions = {
 		void notifyTaskAssigned({
 			task: { id: created.id, displayId: created.displayId, title, orgId: p.orgId },
 			assigneeIds: created.assignedIds,
-			actorId: me.id,
+			actor: { id: me.id, name: me.name },
 			origin: url.origin
 		}).catch((err) => console.error('ticket→task notify failed', err));
 

@@ -115,12 +115,74 @@ export function invitationEmail(opts: {
 	};
 }
 
+// Structured content for a notification email, built per-locale by the
+// notify/events modules. `heading` and `quote` carry user content (escaped at
+// render time); `subjectLabel`/`eyebrow`/`meta`/`ctaLabel` are localized app
+// strings; `ref` is the entity display id ("SGRP-T-31") — subjects contain
+// only ref + label, never user-typed text (user content in a subject line is
+// a spam signal).
+export type NotificationEmailContent = {
+	/** Short event label for the subject, e.g. "Neue Nachricht". */
+	subjectLabel: string;
+	/** Eyebrow above the heading, e.g. "Ticket · Neue Nachricht". */
+	eyebrow: string;
+	/** Entity display id shown as a chip; also leads the subject. */
+	ref?: string | null;
+	/** Entity title (ticket subject / task title / thread title). */
+	heading: string;
+	/** Label/value detail rows (Von / Status / Priorität / Datum). */
+	meta: { label: string; value: string }[];
+	/** Message excerpt for message/comment/mention kinds. */
+	quote?: string | null;
+	/** Button label, e.g. "Ticket öffnen". */
+	ctaLabel: string;
+};
+
 export function notificationEmail(opts: {
+	to: string;
+	content: NotificationEmailContent;
+	url: string;
+	/** Absolute link to the recipient's notification settings, if resolvable. */
+	settingsUrl?: string | null;
+	locale?: Locale;
+}): MailPayload {
+	const c = opts.content;
+	const subject = c.ref
+		? `[${PRODUCT_NAME}] ${c.ref} · ${c.subjectLabel}`
+		: `[${PRODUCT_NAME}] ${c.subjectLabel}`;
+
+	const lines = [c.eyebrow + (c.ref ? ` · ${c.ref}` : ''), c.heading];
+	for (const row of c.meta) lines.push(`${row.label}: ${row.value}`);
+	if (c.quote) lines.push('', c.quote);
+	lines.push('', `${c.ctaLabel}: ${opts.url}`);
+	lines.push('', `— ${PRODUCT_NAME}`);
+
+	const html = renderEmail({
+		preheader: c.quote?.trim() || c.heading,
+		lang: opts.locale,
+		eyebrow: { label: c.eyebrow, ref: c.ref ?? undefined },
+		heading: c.heading,
+		metaRows: c.meta,
+		quote: c.quote,
+		button: { label: c.ctaLabel, url: opts.url },
+		// Deliberately no fallbackUrl: a raw UUID link is the #1 phishing signal
+		// for normal recipients. The footer settings link covers "is this real?".
+		footerText: `${PRODUCT_NAME} · ${m.email_footer_activity(undefined, { locale: opts.locale })}`,
+		footerLink: opts.settingsUrl
+			? { label: m.email_footer_manage(undefined, { locale: opts.locale }), url: opts.settingsUrl }
+			: undefined
+	});
+
+	return { to: opts.to, subject, text: lines.join('\n'), html };
+}
+
+// Legacy flat notification email — kept for callers without structured
+// content (e.g. the task-import summary). Same layout, no meta/eyebrow.
+export function plainNotificationEmail(opts: {
 	to: string;
 	title: string;
 	body?: string | null;
 	url: string;
-	actorName?: string | null;
 	locale?: Locale;
 }): MailPayload {
 	const openLabel = m.notify_email_open(undefined, { locale: opts.locale });
@@ -139,10 +201,11 @@ export function notificationEmail(opts: {
 
 	const html = renderEmail({
 		preheader: opts.body?.trim() || opts.title,
+		lang: opts.locale,
 		heading: opts.title,
-		paragraphs: paragraphs.length ? paragraphs : ['You have a new update in Trackr.'],
+		paragraphs: paragraphs.length ? paragraphs : undefined,
 		button: { label: openLabel, url: opts.url },
-		fallbackUrl: opts.url
+		footerText: `${PRODUCT_NAME} · ${m.email_footer_activity(undefined, { locale: opts.locale })}`
 	});
 
 	return {

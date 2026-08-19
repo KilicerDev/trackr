@@ -144,7 +144,7 @@ export const actions: Actions = {
 			threadId,
 			orgId,
 			threadTitle: title,
-			actorId: me.id,
+			actor: { id: me.id, name: me.name },
 			body,
 			origin: url.origin
 		});
@@ -184,7 +184,7 @@ export const actions: Actions = {
 			threadId,
 			orgId: ctx.orgId,
 			threadTitle: ctx.title,
-			actorId: me.id,
+			actor: { id: me.id, name: me.name },
 			body,
 			origin: url.origin
 		});
@@ -261,10 +261,12 @@ export const actions: Actions = {
 					subject,
 					customerId,
 					creatorId: me.id,
-					assigneeIds: []
+					assigneeIds: [],
+					status: 'open',
+					priority
 				},
 				description,
-				actorId: me.id,
+				actor: { id: me.id, name: me.name },
 				origin: url.origin
 			}).catch((err) => console.error('chat→ticket notify failed', err));
 

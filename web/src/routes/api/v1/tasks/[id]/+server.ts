@@ -232,7 +232,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 			creatorId: target.createdBy,
 			assigneeIds: currentAssignees,
 			newStatus: String(patch.status),
-			actorId: user.id,
+			actor: { id: user.id, name: user.name },
 			origin: url.origin
 		}).catch((err) => console.error('task status notify failed', err));
 		logActivityFF({
@@ -257,7 +257,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 		void notifyTaskAssigned({
 			task: taskCtx,
 			assigneeIds: newlyAssigned,
-			actorId: user.id,
+			actor: { id: user.id, name: user.name },
 			origin: url.origin
 		}).catch((err) => console.error('task assigned notify failed', err));
 	}

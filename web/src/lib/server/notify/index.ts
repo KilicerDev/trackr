@@ -15,7 +15,9 @@ import {
 	sendEmailFireAndForget,
 	sendPushFireAndForget,
 	notificationEmail,
-	EMAIL_PRIORITY
+	plainNotificationEmail,
+	EMAIL_PRIORITY,
+	type NotificationEmailContent
 } from '$lib/server/jobs';
 import { baseLocale, isLocale, type Locale } from '$lib/paraglide/runtime';
 import { plainifyMentions } from '$lib/utils/mentions';
@@ -37,6 +39,12 @@ export type NotifyInput = {
 	title?: string;
 	body?: string | null;
 	url: string;
+	// Structured email content, rendered per recipient locale. When present,
+	// the email channel sends the rich card (eyebrow / heading / meta rows /
+	// quote / entity-specific CTA) with a compact `[Trackr] REF · Event`
+	// subject; without it, the legacy flat title/body email goes out.
+	// The in-app inbox and push always use `render`/`title` regardless.
+	email?: (locale: Locale) => NotificationEmailContent;
 	entity?: { type: string; id: string } | null;
 	// For the broad audience kinds (see BROAD_SCOPED_KINDS), the ids of users
 	// directly involved (assignees, customer, creator, thread followers). Lets a
@@ -167,19 +175,43 @@ export async function notify(input: NotifyInput): Promise<void> {
 			.select({ id: userTable.id, email: userTable.email, banned: userTable.banned })
 			.from(userTable)
 			.where(inArray(userTable.id, wantsEmail));
+		// Structured email content per distinct locale (mirrors contentFor).
+		const emailContentCache = new Map<Locale, NotificationEmailContent>();
+		const emailContentFor = (locale: Locale): NotificationEmailContent | null => {
+			if (!input.email) return null;
+			let c = emailContentCache.get(locale);
+			if (!c) {
+				c = input.email(locale);
+				emailContentCache.set(locale, c);
+			}
+			return c;
+		};
+		// Footer settings link needs an absolute URL; skip it when no origin is
+		// known (the relative path would 404 out of a mail client).
+		const settingsUrl = buildUrl('/me/settings', input.baseUrl);
 		for (const u of emailRows) {
 			if (u.banned) continue;
-			const content = contentFor(u.id);
-			sendEmailFireAndForget(
-				notificationEmail({
-					to: u.email,
-					title: content.title,
-					body: content.body,
-					url: fullUrl,
-					locale: localeOf.get(u.id) ?? baseLocale
-				}),
-				{ priority: EMAIL_PRIORITY.low }
-			);
+			const locale = localeOf.get(u.id) ?? baseLocale;
+			const structured = emailContentFor(locale);
+			const payload = structured
+				? notificationEmail({
+						to: u.email,
+						content: {
+							...structured,
+							quote: structured.quote ? plainifyMentions(structured.quote) : structured.quote
+						},
+						url: fullUrl,
+						settingsUrl: settingsUrl.startsWith('http') ? settingsUrl : null,
+						locale
+					})
+				: plainNotificationEmail({
+						to: u.email,
+						title: contentFor(u.id).title,
+						body: contentFor(u.id).body,
+						url: fullUrl,
+						locale
+					});
+			sendEmailFireAndForget(payload, { priority: EMAIL_PRIORITY.low });
 		}
 	}
 

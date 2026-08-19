@@ -44,11 +44,13 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 			subject: t.subject,
 			customerId: t.customerId,
 			creatorId: t.createdBy,
-			assigneeIds: t.assignees
+			assigneeIds: t.assignees,
+			status: t.status,
+			priority: t.priority
 		},
 		body: text,
 		internal,
-		actorId: user.id,
+		actor: { id: user.id, name: user.name },
 		origin: url.origin
 	});
 	void recordAudit({
