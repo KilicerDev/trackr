@@ -90,6 +90,10 @@
 	const isActive = (e: SavedViewEntry<C>) =>
 		JSON.stringify(normalize(e.config)) === JSON.stringify(normalize(current));
 
+	// Surfaced on the trigger so an applied view is visible without opening
+	// the menu.
+	const activeView = $derived(views.find(isActive) ?? null);
+
 	// JSON round-trip instead of structuredClone: `current` closes over $state
 	// proxies, which structuredClone refuses to serialize.
 	const plain = (v: C): C => JSON.parse(JSON.stringify(v)) as C;
@@ -151,11 +155,17 @@
 	<button
 		type="button"
 		onclick={(e) => toggle(e.currentTarget)}
-		class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[14px] whitespace-nowrap transition-colors hover:bg-surface-2"
+		class="inline-flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-[14px] whitespace-nowrap transition-colors {activeView
+			? 'border-accent/40 bg-accent/10 hover:bg-accent/15'
+			: 'border-border bg-surface hover:bg-surface-2'}"
 	>
-		<Icon name="bookmark" size={14} class="text-text-3" />
-		<span class="font-medium text-text">{m.views_menu_label()}</span>
-		<Icon name="chevron" size={11} class="text-text-3" />
+		<Icon name="bookmark" size={14} class={activeView ? 'text-accent' : 'text-text-3'} />
+		{#if activeView}
+			<span class="max-w-[140px] truncate font-medium text-accent">{activeView.name}</span>
+		{:else}
+			<span class="font-medium text-text">{m.views_menu_label()}</span>
+		{/if}
+		<Icon name="chevron" size={11} class={activeView ? 'text-accent/70' : 'text-text-3'} />
 	</button>
 
 	{#if open && popPos}
