@@ -8,6 +8,11 @@
 	import type { BoardColumn } from '$lib/components/projects/ProjectsBoard.svelte';
 	import type { ProjectView, ProjectGroup } from '$lib/components/projects/ProjectsToolbar.svelte';
 	import CreateProjectModal from '$lib/components/projects/CreateProjectModal.svelte';
+	import ProjectHistory, {
+		type ActivityItem
+	} from '$lib/components/projects/ProjectHistory.svelte';
+	import { deserialize } from '$app/forms';
+	import type { ActionResult } from '@sveltejs/kit';
 	import { PROJECT_STATUS } from '$lib/config/taxonomy';
 	import { projectStatusLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
@@ -111,6 +116,49 @@
 	}
 
 	let createOpen = $state(false);
+
+	// ── In-place history drawer (weekly-review flow) ─────────────────────────
+	// Opens a project's activity feed from the row/card without leaving the
+	// list; the drawer's own load-more/comment calls go to the project detail
+	// route's actions via actionBase.
+	let historyProject = $state<ProjectListItem | null>(null);
+	let historyActivity = $state<ActivityItem[]>([]);
+
+	async function fetchActivityPage(projectId: string): Promise<ActivityItem[]> {
+		const fd = new FormData();
+		fd.append('offset', '0');
+		const res = await fetch(`/projects/${projectId}?/activity`, {
+			method: 'POST',
+			body: fd,
+			headers: { 'x-sveltekit-action': 'true' }
+		});
+		const result = deserialize(await res.text()) as ActionResult;
+		if (result.type !== 'success') throw new Error('activity fetch failed');
+		return (result.data as { items?: ActivityItem[] } | undefined)?.items ?? [];
+	}
+
+	async function openHistory(p: ProjectListItem) {
+		historyProject = p;
+		historyActivity = [];
+		try {
+			const items = await fetchActivityPage(p.id);
+			// Ignore if the user already switched to another project's history.
+			if (historyProject?.id === p.id) historyActivity = items;
+		} catch {
+			showToast('err', m.projects_load_more_failed());
+		}
+	}
+
+	async function refreshHistory() {
+		const id = historyProject?.id;
+		if (!id) return;
+		try {
+			const items = await fetchActivityPage(id);
+			if (historyProject?.id === id) historyActivity = items;
+		} catch {
+			/* keep the stale feed — the comment itself was saved */
+		}
+	}
 	const canCreate = $derived((data.effectivePermissions ?? []).includes('project.create'));
 
 	const sourceProjects = $derived(data.projectsList);
@@ -239,13 +287,13 @@
 		{/if}
 	</div>
 {:else if view === 'board'}
-	<ProjectsBoard {columns} />
+	<ProjectsBoard {columns} onhistory={openHistory} />
 {:else if view === 'grid'}
 	<div class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
 		{#if group === 'none'}
 			<div class="grid gap-4" style:grid-template-columns="repeat(auto-fill, minmax(340px, 1fr))">
 				{#each visibleProjects as p (p.id)}
-					<ProjectCard project={p} />
+					<ProjectCard project={p} onhistory={() => openHistory(p)} />
 				{/each}
 				{#if canCreate && Object.keys(filters).length === 0 && !search}
 					<button
@@ -286,7 +334,7 @@
 								style:grid-template-columns="repeat(auto-fill, minmax(340px, 1fr))"
 							>
 								{#each col.projects as p (p.id)}
-									<ProjectCard project={p} />
+									<ProjectCard project={p} onhistory={() => openHistory(p)} />
 								{/each}
 							</div>
 						{/if}
@@ -300,13 +348,14 @@
 	<div class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
 		<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
 			<div
-				class="grid grid-cols-[1.5fr_1fr] items-center gap-3 border-b border-border px-5 py-2.5 text-[12px] tracking-[0.08em] text-text-4 uppercase md:grid-cols-[1.5fr_1fr_1fr_0.6fr_1fr]"
+				class="grid grid-cols-[1.5fr_1fr_28px] items-center gap-3 border-b border-border px-5 py-2.5 text-[12px] tracking-[0.08em] text-text-4 uppercase md:grid-cols-[1.5fr_1fr_1fr_0.6fr_1fr_28px]"
 			>
 				<span>{m.projects_col_project()}</span>
 				<span class="hidden md:block">{m.projects_col_lead()}</span>
 				<span>{m.projects_col_status()}</span>
 				<span class="hidden md:block">{m.projects_col_key()}</span>
 				<span class="hidden md:block">{m.projects_col_updated()}</span>
+				<span></span>
 			</div>
 			{#each group === 'none' ? [{ key: 'all', label: '', color: '', projects: visibleProjects }] : listColumns as col (col.key)}
 				{@const isCollapsed = collapsed.has(col.key)}
@@ -331,7 +380,7 @@
 								PROJECT_STATUS[p.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.active}
 							<a
 								href="/projects/{p.id}"
-								class="grid grid-cols-[1.5fr_1fr] items-center gap-3 px-5 py-3 text-[14px] transition-colors hover:bg-[var(--row-hover)] md:grid-cols-[1.5fr_1fr_1fr_0.6fr_1fr]"
+								class="grid grid-cols-[1.5fr_1fr_28px] items-center gap-3 px-5 py-3 text-[14px] transition-colors hover:bg-[var(--row-hover)] md:grid-cols-[1.5fr_1fr_1fr_0.6fr_1fr_28px]"
 							>
 								<span class="flex min-w-0 items-center gap-2.5">
 									<span
@@ -350,6 +399,19 @@
 								<span class="hidden text-text-3 md:block"
 									>{p.updatedAt.toISOString().slice(0, 10)}</span
 								>
+								<button
+									type="button"
+									aria-label={m.projects_aria_history()}
+									title={m.projects_aria_history()}
+									onclick={(e) => {
+										e.preventDefault();
+										e.stopPropagation();
+										void openHistory(p);
+									}}
+									class="grid h-7 w-7 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
+								>
+									<Icon name="logs" size={14} />
+								</button>
 							</a>
 						{/each}
 					</div>
@@ -358,6 +420,15 @@
 		</div>
 	</div>
 {/if}
+
+<ProjectHistory
+	open={historyProject != null}
+	onclose={() => (historyProject = null)}
+	activity={historyActivity}
+	projectId={historyProject?.id ?? null}
+	actionBase={historyProject ? `/projects/${historyProject.id}` : ''}
+	oncommented={refreshHistory}
+/>
 
 <CreateProjectModal
 	open={createOpen}

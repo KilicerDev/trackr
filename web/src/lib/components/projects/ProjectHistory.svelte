@@ -33,8 +33,25 @@
 		// (deleted/archived) render as plain text rather than a link.
 		taskIds?: string[];
 		onOpenTask?: (ref: string) => void;
+		// Route whose ?/activity and ?/commentAdd actions to call. Empty (the
+		// default) keeps the detail page's relative fetches; the projects list
+		// passes `/projects/<id>` so the drawer works from any page.
+		actionBase?: string;
+		// After a successful comment. Hosts that own `activity` locally (the
+		// projects list) refresh it here; without it we invalidateAll(), which
+		// refreshes the detail page's server-loaded feed.
+		oncommented?: () => void;
 	}
-	let { open, onclose, activity, projectId = null, taskIds = [], onOpenTask }: Props = $props();
+	let {
+		open,
+		onclose,
+		activity,
+		projectId = null,
+		taskIds = [],
+		onOpenTask,
+		actionBase = '',
+		oncommented
+	}: Props = $props();
 
 	const openableTasks = $derived(new Set(taskIds));
 
@@ -60,7 +77,7 @@
 		const fd = new FormData();
 		fd.append('offset', String(items.length));
 		try {
-			const res = await fetch(`?/activity`, {
+			const res = await fetch(`${actionBase}?/activity`, {
 				method: 'POST',
 				body: fd,
 				headers: { 'x-sveltekit-action': 'true' }
@@ -88,7 +105,7 @@
 		const fd = new FormData();
 		fd.append('body', text);
 		try {
-			const res = await fetch(`?/commentAdd`, {
+			const res = await fetch(`${actionBase}?/commentAdd`, {
 				method: 'POST',
 				body: fd,
 				headers: { 'x-sveltekit-action': 'true' }
@@ -96,7 +113,8 @@
 			const result: ActionResult = deserialize(await res.text());
 			if (result.type === 'success') {
 				commentBody = '';
-				await invalidateAll();
+				if (oncommented) oncommented();
+				else await invalidateAll();
 			} else {
 				const msg =
 					result.type === 'failure'

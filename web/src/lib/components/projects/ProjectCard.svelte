@@ -3,12 +3,16 @@
 	import { projectStatusLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 	import AvatarStack from '../AvatarStack.svelte';
+	import Icon from '../Icon.svelte';
 	import type { ProjectListItem } from '../../../routes/(app)/projects/+page.server';
 
 	interface Props {
 		project: ProjectListItem;
+		// Opens the history drawer in place (weekly-review flow) — the card
+		// itself still navigates to the project.
+		onhistory?: () => void;
 	}
-	let { project }: Props = $props();
+	let { project, onhistory }: Props = $props();
 
 	let st = $derived(
 		PROJECT_STATUS[project.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.active
@@ -37,7 +41,7 @@
 >
 	<div class="mb-3 flex items-start gap-3">
 		<span
-			class="relative inline-grid shrink-0 place-items-center font-semibold text-white shadow-edge size-10"
+			class="relative inline-grid size-10 shrink-0 place-items-center font-semibold text-white shadow-edge"
 			style:border-radius="11px"
 			style:font-size="20px"
 			style:background="linear-gradient(140deg, {project.color}, color-mix(in oklch, {project.color} 70%,
@@ -60,6 +64,21 @@
 		<div class="flex shrink-0 items-center gap-1.5 text-[13px] text-text-2">
 			<span class="h-2 w-2 rounded-full" style:background={st.color}></span>
 			{projectStatusLabel(project.status)}
+			{#if onhistory}
+				<button
+					type="button"
+					aria-label={m.projects_aria_history()}
+					title={m.projects_aria_history()}
+					onclick={(e) => {
+						e.preventDefault();
+						e.stopPropagation();
+						onhistory();
+					}}
+					class="grid h-7 w-7 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
+				>
+					<Icon name="logs" size={14} />
+				</button>
+			{/if}
 		</div>
 	</div>
 

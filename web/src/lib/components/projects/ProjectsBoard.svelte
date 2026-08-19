@@ -1,5 +1,6 @@
 <script lang="ts">
 	import AvatarStack from '../AvatarStack.svelte';
+	import Icon from '../Icon.svelte';
 	import type { ProjectListItem } from '../../../routes/(app)/projects/+page.server';
 	import { PROJECT_STATUS } from '$lib/config/taxonomy';
 	import { projectStatusLabel } from '$lib/utils/labels';
@@ -13,9 +14,11 @@
 	}
 
 	interface Props {
+		// Open the history drawer for a project without navigating.
+		onhistory?: (p: ProjectListItem) => void;
 		columns: BoardColumn[];
 	}
-	let { columns }: Props = $props();
+	let { columns, onhistory }: Props = $props();
 
 	function relative(d: Date): string {
 		const ms = Date.now() - d.getTime();
@@ -49,7 +52,7 @@
 						>
 							<div class="mb-2.5 flex items-start gap-2.5">
 								<span
-									class="inline-grid shrink-0 place-items-center font-semibold text-white size-[33px]"
+									class="inline-grid size-[33px] shrink-0 place-items-center font-semibold text-white"
 									style:border-radius="9px"
 									style:font-size="15px"
 									style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%,
@@ -81,8 +84,23 @@
 									{projectStatusLabel(p.status)}
 								</span>
 							</div>
-							<div class="mt-1.5 text-[11px] text-text-4">
-								{m.projects_updated_relative({ time: relative(p.updatedAt) })}
+							<div class="mt-1.5 flex items-center text-[11px] text-text-4">
+								<span>{m.projects_updated_relative({ time: relative(p.updatedAt) })}</span>
+								{#if onhistory}
+									<button
+										type="button"
+										aria-label={m.projects_aria_history()}
+										title={m.projects_aria_history()}
+										onclick={(e) => {
+											e.preventDefault();
+											e.stopPropagation();
+											onhistory(p);
+										}}
+										class="ml-auto grid h-6 w-6 place-items-center rounded-md text-text-3 transition-colors hover:bg-surface hover:text-text"
+									>
+										<Icon name="logs" size={13} />
+									</button>
+								{/if}
 							</div>
 						</a>
 					{/each}
