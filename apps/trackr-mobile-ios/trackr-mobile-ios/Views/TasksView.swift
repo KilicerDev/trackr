@@ -49,8 +49,9 @@ struct TasksView: View {
                 .padding(.bottom, 24)
             }
             .background(Color(.systemGroupedBackground))
+            .refreshable { await model.sync?.refreshTasks() }
             .navigationDestination(for: TaskItem.self) { task in
-                TaskDetailView(task: task)
+                TaskDetailView(task: task, model: model)
             }
             .navigationTitle("Tasks")
             .toolbar {
@@ -84,8 +85,24 @@ struct TasksView: View {
                 SavedViewsSheet(filters: $filters)
             }
             .sheet(isPresented: $showingCreate) {
-                CreateTaskSheet(tasks: model.tasks) { task in
+                CreateTaskSheet(tasks: model.tasks, model: model) { task in
                     model.tasks.insert(task, at: 0)
+                    // POST accepts title/project/description; the rest lands
+                    // via a follow-up PATCH inside createTask.
+                    if let key = model.projects.first(where: { $0.name == task.project })?.key {
+                        model.sync?.createTask(
+                            title: task.title,
+                            projectKey: key,
+                            description: task.details.isEmpty ? nil : task.details,
+                            status: task.status,
+                            priority: task.priority,
+                            type: task.type,
+                            due: task.due,
+                            estimate: task.estimate,
+                            assignees: task.assignees,
+                            checklist: task.checklist
+                        )
+                    }
                 }
             }
         }

@@ -11,13 +11,15 @@
 import SwiftUI
 
 enum ProfileRoute: Hashable {
-    case account, notifications, appearance, language, userManagement, logs, whatsNew
+    case account, notifications, appearance, language, whatsNew
 }
 
 struct ProfileSheet: View {
+    var model: AppModel? = nil
     @Environment(\.dismiss) private var dismiss
 
-    private let me = TaskItem.sampleUsers[0]  // current user later
+    private var me: UserRef { model?.me ?? TaskItem.sampleUsers[0] }
+    private var host: String { ServerConfig.savedHost?.host() ?? "trackr" }
 
     var body: some View {
         NavigationStack {
@@ -32,7 +34,7 @@ struct ProfileSheet: View {
 
                     accentCard("Sign Out", role: .destructive)
                         .padding(.top, 22)
-                    caption("Signed in as \(me.name) on trackr.kilohertz.dev.")
+                    caption("Signed in as \(me.name) on \(host).")
 
                     shortcutRow
                         .padding(.top, 26)
@@ -76,12 +78,10 @@ struct ProfileSheet: View {
             }
             .navigationDestination(for: ProfileRoute.self) { route in
                 switch route {
-                case .account: AccountView()
-                case .notifications: NotificationSettingsView()
-                case .appearance: AppearanceSettingsView()
-                case .language: LanguageSettingsView()
-                case .userManagement: UserManagementView()
-                case .logs: LogsView()
+                case .account: AccountView(model: model)
+                case .notifications: NotificationSettingsView(model: model)
+                case .appearance: AppearanceSettingsView(model: model)
+                case .language: LanguageSettingsView(model: model)
                 case .whatsNew: WhatsNewView()
                 }
             }
@@ -120,10 +120,6 @@ struct ProfileSheet: View {
             settingsRow("Appearance", route: .appearance)
             rowDivider
             settingsRow("Language", route: .language)
-            rowDivider
-            settingsRow("User Management", route: .userManagement)
-            rowDivider
-            settingsRow("Logs", route: .logs)
         }
         .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20))
     }
@@ -146,7 +142,10 @@ struct ProfileSheet: View {
 
     private func accentCard(_ label: String, role: ButtonRole? = nil) -> some View {
         Button(role: role) {
-            // Wired up later
+            if label == "Sign Out" {
+                dismiss()
+                model?.onSignOut?()
+            }
         } label: {
             Text(label)
                 .font(.system(size: 17, weight: .medium))

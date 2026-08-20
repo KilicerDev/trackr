@@ -7,7 +7,13 @@
 // Reuses loadTickets/createTicket and the exact org-split scoping of the
 // web tickets page.
 import { can, isTrackrTeam } from '$lib/server/permissions';
-import { createTicket, loadTickets, TICKET_STATUS_SET, type TicketRow } from '$lib/server/tickets';
+import {
+	createTicket,
+	loadTicketDisplayUsers,
+	loadTickets,
+	TICKET_STATUS_SET,
+	type TicketRow
+} from '$lib/server/tickets';
 import { notifyTicketCreated } from '$lib/server/notify/events/ticket';
 import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
@@ -65,7 +71,15 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	tickets.sort((a, b) =>
 		(b.lastMessageAt ?? b.updatedAt).localeCompare(a.lastMessageAt ?? a.updatedAt)
 	);
-	return json({ tickets });
+	// Display directory (name + color only) for customers/assignees — same
+	// contract as the tasks list's `users` map.
+	const displayUsers = await loadTicketDisplayUsers(
+		tickets.flatMap((t) => [t.customerId, t.createdBy, ...t.assignees])
+	);
+	const users = Object.fromEntries(
+		displayUsers.map((u) => [u.id, { name: u.name, color: u.color }])
+	);
+	return json({ tickets, users });
 };
 
 export const POST: RequestHandler = async ({ locals, request, url }) => {

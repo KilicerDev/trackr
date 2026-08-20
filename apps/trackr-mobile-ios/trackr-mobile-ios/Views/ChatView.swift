@@ -12,9 +12,11 @@ import SwiftUI
 struct ChatView: View {
     @Bindable var model: AppModel
 
-    @State private var activeOrg = TicketItem.sampleOrgs[0]
+    @State private var selectedOrg: OrgRef?
     @State private var tagFilter: ChatTag?
     @State private var showingNewThread = false
+
+    private var activeOrg: OrgRef? { selectedOrg ?? model.orgs.first }
 
     private var orgThreads: [ChatThread] {
         model.chatThreads
@@ -61,13 +63,14 @@ struct ChatView: View {
             .padding(.bottom, 24)
         }
         .background(Color(.systemGroupedBackground))
+        .refreshable { await model.sync?.refreshChat() }
         .navigationTitle("Chat")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Picker("Organization", selection: $activeOrg) {
-                        ForEach(TicketItem.sampleOrgs, id: \.self) { org in
-                            Text(org.name).tag(org)
+                    Picker("Organization", selection: $selectedOrg) {
+                        ForEach(model.orgs, id: \.self) { org in
+                            Text(org.name).tag(org as OrgRef?)
                         }
                     }
                 } label: {
@@ -85,12 +88,19 @@ struct ChatView: View {
             }
         }
         .sheet(isPresented: $showingNewThread) {
-            NewThreadSheet(org: activeOrg) { thread in
-                model.chatThreads.insert(thread, at: 0)
+            if let activeOrg {
+                NewThreadSheet(org: activeOrg, availableTags: model.chatTags) { thread in
+                    model.chatThreads.insert(thread, at: 0)
+                    if let orgId = activeOrg.serverId, let root = thread.root {
+                        model.sync?.createChatThread(
+                            orgId: orgId, title: thread.title, body: root.text
+                        )
+                    }
+                }
             }
         }
         // Switching orgs drops a tag filter that may not exist there.
-        .onChange(of: activeOrg) { tagFilter = nil }
+        .onChange(of: selectedOrg) { tagFilter = nil }
     }
 
     private var tagChips: some View {

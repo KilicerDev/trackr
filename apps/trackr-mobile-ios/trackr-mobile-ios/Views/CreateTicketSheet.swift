@@ -11,6 +11,7 @@ import SwiftUI
 struct CreateTicketSheet: View {
     /// Existing tickets — source for org options and the next display id.
     let tickets: [TicketItem]
+    var model: AppModel? = nil
     let onCreate: (TicketItem) -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -22,7 +23,8 @@ struct CreateTicketSheet: View {
     @State private var assignees: Set<UserRef> = []
 
     private var orgOptions: [OrgRef] {
-        Array(Set(tickets.map(\.org))).sorted { $0.name < $1.name }
+        if let model, !model.orgs.isEmpty { return model.orgs }
+        return Array(Set(tickets.map(\.org))).sorted { $0.name < $1.name }
     }
 
     private var canCreate: Bool {
@@ -55,7 +57,7 @@ struct CreateTicketSheet: View {
                     }
                     MultiSelectRow(
                         title: "Assignees",
-                        options: TaskItem.sampleUsers.map { ($0, $0.name) },
+                        options: (model?.assignableUsers ?? TaskItem.sampleUsers).map { ($0, $0.name) },
                         selection: $assignees
                     )
                 }
@@ -84,7 +86,7 @@ struct CreateTicketSheet: View {
             .compactMap { Int($0.id.split(separator: "-").last ?? "") }
             .max()
             .map { $0 + 1 } ?? 1
-        let me = TaskItem.sampleUsers[0]  // current user later
+        let me = model?.me ?? TaskItem.sampleUsers[0]
         let text = message.trimmingCharacters(in: .whitespacesAndNewlines)
         let ticket = TicketItem(
             id: "\(org.key)-\(nextNumber)",

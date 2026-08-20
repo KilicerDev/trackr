@@ -65,6 +65,10 @@ struct NoteDetailView: View {
             .padding(.bottom, 16)
         }
         .background(Color(.systemGroupedBackground))
+        .onAppear {
+            // The list payload has no body — fetch it when the note opens.
+            Task { await model.sync?.loadNoteBody(id: note.id) }
+        }
         .navigationTitle(current.kind == .meeting ? "Meeting Note" : "Note")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

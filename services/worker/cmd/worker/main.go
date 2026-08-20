@@ -17,6 +17,7 @@ import (
 	"github.com/KilicerDev/trackr/services/worker/internal/config"
 	"github.com/KilicerDev/trackr/services/worker/internal/jobs"
 	"github.com/KilicerDev/trackr/services/worker/internal/mail"
+	"github.com/KilicerDev/trackr/services/worker/internal/push"
 )
 
 func main() {
@@ -54,8 +55,27 @@ func main() {
 		os.Exit(1)
 	}
 
+	// APNs client for push.send — optional: without the env vars the handler
+	// acks push jobs as skipped, so a deployment without the key just runs.
+	var apns *push.Client
+	apnsCfg := push.Config{
+		Key:         cfg.ApnsKey,
+		KeyID:       cfg.ApnsKeyID,
+		TeamID:      cfg.ApnsTeamID,
+		BundleID:    cfg.ApnsBundleID,
+		Environment: cfg.ApnsEnvironment,
+	}
+	if apnsCfg.Enabled() {
+		apns, err = push.New(apnsCfg)
+		if err != nil {
+			logger.Error("apns configuration invalid", "error", err)
+			os.Exit(1)
+		}
+		logger.Info("apns push enabled", "bundle", cfg.ApnsBundleID, "env", cfg.ApnsEnvironment)
+	}
+
 	// Inject deps into handlers (explicit DI — no package globals).
-	handlers := jobs.Register(jobs.Deps{DB: pool, Mailer: mailer})
+	handlers := jobs.Register(jobs.Deps{DB: pool, Mailer: mailer, Push: apns})
 
 	engine, err := jobworker.New(pool, jobworker.Config{
 		Concurrency:       cfg.Concurrency,

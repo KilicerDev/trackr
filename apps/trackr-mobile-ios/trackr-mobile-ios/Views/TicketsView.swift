@@ -48,8 +48,9 @@ struct TicketsView: View {
                 .padding(.bottom, 24)
             }
             .background(Color(.systemGroupedBackground))
+            .refreshable { await model.sync?.refreshTickets() }
             .navigationDestination(for: TicketItem.self) { ticket in
-                TicketDetailView(ticket: ticket)
+                TicketDetailView(ticket: ticket, model: model)
             }
             .navigationTitle("Tickets")
             .toolbar {
@@ -74,8 +75,17 @@ struct TicketsView: View {
                 TicketFiltersSheet(filters: $filters, tickets: model.tickets)
             }
             .sheet(isPresented: $showingCreate) {
-                CreateTicketSheet(tickets: model.tickets) { ticket in
+                CreateTicketSheet(tickets: model.tickets, model: model) { ticket in
                     model.tickets.insert(ticket, at: 0)
+                    if let orgId = ticket.org.serverId {
+                        let text = ticket.messages.first?.text
+                        model.sync?.createTicket(
+                            orgId: orgId,
+                            subject: ticket.subject,
+                            description: text,
+                            assignees: ticket.assignees
+                        )
+                    }
                 }
             }
         }

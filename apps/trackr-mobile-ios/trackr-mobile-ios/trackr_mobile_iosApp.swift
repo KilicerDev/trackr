@@ -9,9 +9,11 @@ import SwiftUI
 
 @main
 struct trackr_mobile_iosApp: App {
+    @UIApplicationDelegateAdaptor(PushRegistrar.self) private var pushRegistrar
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView(push: pushRegistrar)
         }
     }
 }

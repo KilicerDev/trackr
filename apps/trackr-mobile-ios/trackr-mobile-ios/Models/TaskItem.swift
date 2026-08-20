@@ -11,16 +11,20 @@ struct UserRef: Hashable {
     let name: String
     let initials: String
     let color: Color
+    /// Server user id — nil for sample/preview data.
+    var serverId: String? = nil
 }
 
 struct ChecklistItem: Identifiable, Hashable {
-    let id = UUID()
+    // String (not UUID) so server checklist ids survive round-trips — the
+    // ticket↔task checklist sync matches items by id.
+    var id: String = UUID().uuidString
     var text: String
     var done = false
 }
 
 struct TaskComment: Identifiable, Hashable {
-    let id = UUID()
+    var id: String = UUID().uuidString
     var user: UserRef
     var date: Date
     var text: String
@@ -38,7 +42,7 @@ struct ActivityEvent: Identifiable, Hashable {
 }
 
 struct TimeLog: Identifiable, Hashable {
-    let id = UUID()
+    var id: String = UUID().uuidString
     var user: UserRef
     var minutes: Int
     var date: Date
@@ -47,6 +51,9 @@ struct TimeLog: Identifiable, Hashable {
 
 struct TaskItem: Identifiable, Hashable {
     let id: String
+    /// Server task UUID (the PATCH/comment/time endpoints key) — nil for
+    /// sample/preview data.
+    var uuid: String? = nil
     var title: String
     var status: TaskStatus
     var priority: TaskPriority

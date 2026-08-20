@@ -51,6 +51,7 @@ struct NotesView: View {
             .padding(.bottom, 24)
         }
         .background(Color(.systemGroupedBackground))
+        .refreshable { await model.sync?.refreshNotes() }
         .navigationTitle("Notes")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -62,8 +63,12 @@ struct NotesView: View {
             }
         }
         .sheet(isPresented: $showingCreate) {
-            QuickNoteSheet { note in
+            QuickNoteSheet { note, plainText in
                 model.notes.insert(note, at: 0)
+                model.sync?.createQuickNote(
+                    title: note.title,
+                    body: plainText.isEmpty ? nil : plainText
+                )
             }
         }
     }

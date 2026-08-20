@@ -14,7 +14,10 @@ import SwiftUI
 
 struct TicketDetailView: View {
     @State var ticket: TicketItem
+    /// nil in previews; the real app passes it so edits persist + push.
+    var model: AppModel? = nil
 
+    @State private var baseline: TicketItem?
     @State private var showingConversation = false
     @State private var newChecklistItem = ""
 
@@ -38,13 +41,34 @@ struct TicketDetailView: View {
         // typed activity events.
         .onChange(of: ticket.status) { _, status in
             logActivity("changed status to \(status.label)", icon: "arrow.triangle.2.circlepath")
+            persist()
         }
         .onChange(of: ticket.priority) { _, priority in
             logActivity("changed priority to \(priority.label)", icon: "flag")
+            persist()
         }
         .onChange(of: ticket.category) { _, category in
             logActivity("changed category to \(category.label)", icon: "square.grid.2x2")
+            persist()
         }
+        .onChange(of: ticket.assignees) { persist() }
+        .onAppear {
+            baseline = ticket
+            // Screen-appear revalidation: the list payload has no messages,
+            // so the conversation and fresh properties load here.
+            if let uuid = ticket.uuid, let model {
+                Task {
+                    await model.sync?.loadTicketDetail(uuid: uuid)
+                    if baseline == ticket,
+                       let fresh = model.tickets.first(where: { $0.uuid == uuid })
+                    {
+                        ticket = fresh
+                        baseline = fresh
+                    }
+                }
+            }
+        }
+        .onDisappear { persist() }
         .navigationTitle(ticket.id)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -57,7 +81,7 @@ struct TicketDetailView: View {
             }
         }
         .navigationDestination(isPresented: $showingConversation) {
-            TicketConversationView(ticket: $ticket)
+            TicketConversationView(ticket: $ticket, model: model)
         }
     }
 
@@ -132,7 +156,7 @@ struct TicketDetailView: View {
         VStack(spacing: 0) {
             propertyRow("Assignees") {
                 Menu {
-                    ForEach(TaskItem.sampleUsers, id: \.self) { user in
+                    ForEach(model?.assignableUsers ?? TaskItem.sampleUsers, id: \.self) { user in
                         Toggle(user.name, isOn: Binding(
                             get: { ticket.assignees.contains(user) },
                             set: { isOn in
@@ -320,9 +344,22 @@ struct TicketDetailView: View {
 
     private func logActivity(_ text: String, icon: String) {
         ticket.activity.append(
-            ActivityEvent(user: TaskItem.sampleUsers[0], date: .now,  // current user later
+            ActivityEvent(user: model?.me ?? TaskItem.sampleUsers[0], date: .now,
                           text: text, icon: icon)
         )
+    }
+
+    /// Write back into the shared model and push the API-editable fields
+    /// (status/priority/category/assignees — checklist/tags/subject are
+    /// desktop-only on the server and stay local).
+    private func persist() {
+        guard ticket != baseline else { return }
+        baseline = ticket
+        guard let model else { return }
+        if let index = model.tickets.firstIndex(where: { $0.id == ticket.id }) {
+            model.tickets[index] = ticket
+        }
+        model.sync?.pushTicket(ticket)
     }
 
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {

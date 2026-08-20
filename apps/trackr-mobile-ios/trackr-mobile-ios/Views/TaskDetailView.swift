@@ -14,7 +14,10 @@ import SwiftUI
 
 struct TaskDetailView: View {
     @State var task: TaskItem
+    /// nil in previews; the real app passes it so edits persist + push.
+    var model: AppModel? = nil
 
+    @State private var baseline: TaskItem?
     @State private var showingComments = false
     @State private var showingTimeLog = false
     @State private var showingAddTag = false
@@ -67,10 +70,33 @@ struct TaskDetailView: View {
         // Inspector events.
         .onChange(of: task.status) { _, status in
             logActivity("changed status to \(status.label)", icon: "arrow.triangle.2.circlepath")
+            persist()
         }
         .onChange(of: task.priority) { _, priority in
             logActivity("changed priority to \(priority.label)", icon: "flag")
+            persist()
         }
+        .onChange(of: task.type) { persist() }
+        .onChange(of: task.assignees) { persist() }
+        .onChange(of: task.due) { persist() }
+        .onChange(of: task.checklist) { persist() }
+        .onAppear {
+            baseline = task
+            // Screen-appear revalidation: pull the freshest detail (and the
+            // assignable-users directory) without blocking the cached render.
+            if let uuid = task.uuid, let model {
+                Task {
+                    await model.sync?.loadTaskDetail(uuid: uuid)
+                    if baseline == task,
+                       let fresh = model.tasks.first(where: { $0.uuid == uuid })
+                    {
+                        task = fresh
+                        baseline = fresh
+                    }
+                }
+            }
+        }
+        .onDisappear { persist() }
         .navigationTitle(task.id)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -103,11 +129,16 @@ struct TaskDetailView: View {
             }
         }
         .navigationDestination(isPresented: $showingComments) {
-            TaskCommentsView(task: $task)
+            TaskCommentsView(task: $task, model: model)
         }
         .sheet(isPresented: $showingTimeLog) {
-            TimeLogSheet(task: task) { log in
+            TimeLogSheet(task: task, me: model?.me ?? TaskItem.sampleUsers[0]) { log in
                 task.timeLogs.append(log)
+                if let uuid = task.uuid {
+                    model?.sync?.logTime(
+                        taskUUID: uuid, minutes: log.minutes, date: log.date, note: log.note
+                    )
+                }
             }
         }
         .sheet(isPresented: $showingAddTag) {
@@ -178,7 +209,7 @@ struct TaskDetailView: View {
         VStack(spacing: 0) {
             propertyRow("Assignees") {
                 Menu {
-                    ForEach(TaskItem.sampleUsers, id: \.self) { user in
+                    ForEach(model?.assignableUsers ?? TaskItem.sampleUsers, id: \.self) { user in
                         Toggle(user.name, isOn: Binding(
                             get: { task.assignees.contains(user) },
                             set: { isOn in
@@ -368,9 +399,21 @@ struct TaskDetailView: View {
 
     private func logActivity(_ text: String, icon: String) {
         task.activity.append(
-            ActivityEvent(user: TaskItem.sampleUsers[0], date: .now,  // current user later
+            ActivityEvent(user: model?.me ?? TaskItem.sampleUsers[0], date: .now,
                           text: text, icon: icon)
         )
+    }
+
+    /// Write the edit back into the shared model and push it to the server.
+    /// Compared against the last pushed state so no-op closes don't PATCH.
+    private func persist() {
+        guard task != baseline else { return }
+        baseline = task
+        guard let model else { return }
+        if let index = model.tasks.firstIndex(where: { $0.id == task.id }) {
+            model.tasks[index] = task
+        }
+        model.sync?.pushTask(task)
     }
 
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {

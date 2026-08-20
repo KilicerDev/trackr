@@ -10,6 +10,7 @@ import SwiftUI
 
 struct NewThreadSheet: View {
     let org: OrgRef
+    var availableTags: [ChatTag] = ChatThread.sampleTags
     let onCreate: (ChatThread) -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -36,7 +37,7 @@ struct NewThreadSheet: View {
                 Section("Tags") {
                     MultiSelectRow(
                         title: "Tags",
-                        options: ChatThread.sampleTags.map { ($0, $0.label) },
+                        options: availableTags.map { ($0, $0.label) },
                         selection: $tags
                     )
                 }
@@ -69,7 +70,7 @@ struct NewThreadSheet: View {
     }
 
     private func create() {
-        let me = TaskItem.sampleUsers[0]  // current user later
+        let me = TaskItem.sampleUsers[0]  // replaced by server data on refetch
         let thread = ChatThread(
             id: "th-\(UUID().uuidString.prefix(8))",
             org: org,

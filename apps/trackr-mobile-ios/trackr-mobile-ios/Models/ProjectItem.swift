@@ -10,6 +10,8 @@ import SwiftUI
 
 struct ProjectItem: Identifiable, Hashable {
     let key: String  // "TRK"
+    /// Server project id — nil for sample/preview data.
+    var serverId: String? = nil
     var name: String
     var color: Color
     var about = ""

@@ -15,7 +15,7 @@ struct ChatTag: Hashable {
 }
 
 struct ChatMessageItem: Identifiable, Hashable {
-    let id = UUID()
+    var id: String = UUID().uuidString
     var user: UserRef
     var date: Date
     var text: String

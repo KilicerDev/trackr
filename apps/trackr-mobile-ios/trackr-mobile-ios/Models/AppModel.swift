@@ -14,7 +14,7 @@ enum AppTab: Hashable {
 
 /// Value-based routes for the Home tab's navigation stack.
 enum HomeRoute: Hashable {
-    case allProjects, notes, meetings, wiki, chat
+    case allProjects, notes, meetings, wiki, chat, inbox
 }
 
 struct ProjectRef: Identifiable, Hashable {
@@ -32,18 +32,50 @@ struct WorkSession {
     var isRunning: Bool { startedAt != nil }
 }
 
-@Observable
+@Observable @MainActor
 final class AppModel {
-    var tasks = TaskItem.samples
-    var projects = ProjectItem.samples
-    var tickets = TicketItem.samples
-    var notes = NoteItem.samples
-    var wikiPages = WikiPageItem.samples
-    var chatThreads = ChatThread.samples
+    var tasks: [TaskItem] = []
+    var projects: [ProjectItem] = []
+    var tickets: [TicketItem] = []
+    var notes: [NoteItem] = []
+    var wikiPages: [WikiPageItem] = []
+    var chatThreads: [ChatThread] = []
     var selectedTab: AppTab = .home
     var taskPath: [TaskItem] = []
     var session = WorkSession()
     var showingPlayer = false
+
+    // Session context, filled by SyncEngine from /api/v1/me.
+    var currentUser: UserRef?
+    var currentUserEmail = ""
+    var isStaff = true
+    var unreadCount = 0
+    var orgs: [OrgRef] = []
+    var assignableUsers: [UserRef] = []
+    var chatTags: [ChatTag] = []
+    /// Set when the app runs against a real server; nil in previews.
+    weak var sync: SyncEngine?
+    /// Wired by RootView — the profile sheet's Sign Out calls it.
+    var onSignOut: (() -> Void)?
+
+    /// Previews and design work run on the bundled sample data; the real app
+    /// starts empty and is filled by SyncEngine (cache first, then network).
+    init(sampleData: Bool = true) {
+        if sampleData {
+            tasks = TaskItem.samples
+            projects = ProjectItem.samples
+            tickets = TicketItem.samples
+            notes = NoteItem.samples
+            wikiPages = WikiPageItem.samples
+            chatThreads = ChatThread.samples
+            currentUser = TaskItem.sampleUsers[0]
+            orgs = TicketItem.sampleOrgs
+            assignableUsers = TaskItem.sampleUsers
+            chatTags = ChatThread.sampleTags
+        }
+    }
+
+    var me: UserRef { currentUser ?? TaskItem.sampleUsers[0] }
 
     var favoriteProjects: [ProjectRef] {
         projects.filter(\.isFavorite).map(\.ref)
@@ -52,12 +84,13 @@ final class AppModel {
     func toggleFavorite(projectKey: String) {
         guard let index = projects.firstIndex(where: { $0.key == projectKey }) else { return }
         projects[index].isFavorite.toggle()
+        sync?.setFavorite(projectKey: projectKey, favorite: projects[index].isFavorite)
     }
 
     func addProjectComment(projectKey: String, text: String) {
         guard let index = projects.firstIndex(where: { $0.key == projectKey }) else { return }
         projects[index].history.append(
-            ProjectEvent(user: TaskItem.sampleUsers[0], date: .now, text: text)  // current user later
+            ProjectEvent(user: me, date: .now, text: text)
         )
         projects[index].updatedAt = .now
     }
@@ -82,7 +115,6 @@ final class AppModel {
             .max()
             .map { $0 + 1 } ?? 1
         let title = session.title.trimmingCharacters(in: .whitespaces)
-        let me = TaskItem.sampleUsers[0]  // current user later
         let task = TaskItem(
             id: "TRK-\(nextNumber)",
             title: title.isEmpty ? "Work session" : title,
@@ -99,5 +131,9 @@ final class AppModel {
         showingPlayer = false
         selectedTab = .tasks
         taskPath = [task]
+        // Materialize server-side; the placeholder row is replaced when the
+        // refetch lands (see SyncEngine.pushWorkSession).
+        let projectKey = projects.first(where: { $0.name == project.name })?.key
+        sync?.pushWorkSession(task: task, projectKey: projectKey)
     }
 }

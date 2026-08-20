@@ -63,6 +63,15 @@ type Config struct {
 	SmtpUser   string // SMTP_USER
 	SmtpPass   string // SMTP_PASS
 	EmailFrom  string // EMAIL_FROM — default From for outgoing mail
+
+	// APNs — consumed by the push.send handler. All four required for push to
+	// be active; with any missing the handler acks jobs as skipped. The key is
+	// the .p8 from the Apple Developer portal (PEM content or a file path).
+	ApnsKey         string // APNS_KEY
+	ApnsKeyID       string // APNS_KEY_ID
+	ApnsTeamID      string // APNS_TEAM_ID
+	ApnsBundleID    string // APNS_BUNDLE_ID
+	ApnsEnvironment string // APNS_ENV — production (default) | development
 }
 
 func Load() (Config, error) {
@@ -94,6 +103,11 @@ func Load() (Config, error) {
 		SmtpUser:          os.Getenv("SMTP_USER"),
 		SmtpPass:          os.Getenv("SMTP_PASS"),
 		EmailFrom:         os.Getenv("EMAIL_FROM"),
+		ApnsKey:           os.Getenv("APNS_KEY"),
+		ApnsKeyID:         os.Getenv("APNS_KEY_ID"),
+		ApnsTeamID:        os.Getenv("APNS_TEAM_ID"),
+		ApnsBundleID:      os.Getenv("APNS_BUNDLE_ID"),
+		ApnsEnvironment:   os.Getenv("APNS_ENV"),
 	}
 
 	if cfg.WorkerID == "" {

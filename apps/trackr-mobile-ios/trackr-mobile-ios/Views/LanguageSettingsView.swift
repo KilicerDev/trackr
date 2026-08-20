@@ -9,13 +9,14 @@
 import SwiftUI
 
 struct LanguageSettingsView: View {
-    @State private var selected = "system"
+    var model: AppModel? = nil
 
+    @State private var selected = "en"
+
+    // Server reality: paraglide ships exactly en + de.
     private let options: [(id: String, label: String, detail: String?)] = [
-        ("system", "System Default", nil),
         ("en", "English", nil),
         ("de", "Deutsch", "German"),
-        ("tr", "Türkçe", "Turkish"),
     ]
 
     var body: some View {
@@ -24,6 +25,10 @@ struct LanguageSettingsView: View {
                 ForEach(options, id: \.id) { option in
                     Button {
                         selected = option.id
+                        model?.sync?.updatePreferences(
+                            .init(locale: option.id),
+                            apply: { $0.locale = option.id }
+                        )
                     } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
@@ -51,6 +56,10 @@ struct LanguageSettingsView: View {
         }
         .navigationTitle("Language")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await model?.sync?.loadPreferences()
+            if let saved = model?.sync?.preferences?.locale { selected = saved }
+        }
     }
 }
 

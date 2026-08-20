@@ -11,6 +11,7 @@ import SwiftUI
 
 struct TaskCommentsView: View {
     @Binding var task: TaskItem
+    var model: AppModel? = nil
     @State private var draft = ""
 
     private enum Event: Identifiable {
@@ -18,11 +19,11 @@ struct TaskCommentsView: View {
         case time(TimeLog)
         case activity(ActivityEvent)
 
-        var id: UUID {
+        var id: String {
             switch self {
             case .comment(let c): c.id
             case .time(let t): t.id
-            case .activity(let a): a.id
+            case .activity(let a): a.id.uuidString
             }
         }
 
@@ -119,9 +120,12 @@ struct TaskCommentsView: View {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         task.comments.append(
-            TaskComment(user: TaskItem.sampleUsers[0], date: .now, text: text)  // current user later
+            TaskComment(user: model?.me ?? TaskItem.sampleUsers[0], date: .now, text: text)
         )
         draft = ""
+        if let uuid = task.uuid {
+            model?.sync?.sendTaskComment(taskUUID: uuid, text: text)
+        }
     }
 }
 

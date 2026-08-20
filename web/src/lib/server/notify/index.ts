@@ -21,6 +21,7 @@ import {
 } from '$lib/server/jobs';
 import { baseLocale, isLocale, type Locale } from '$lib/paraglide/runtime';
 import { plainifyMentions } from '$lib/utils/mentions';
+import { publishEvent } from '../events';
 import { enqueueDigestItems, isWithinQuietHours } from './digest';
 
 export type NotifyContent = { title: string; body?: string | null };
@@ -138,6 +139,19 @@ export async function notify(input: NotifyInput): Promise<void> {
 
 	const fullUrl = buildUrl(input.url, input.baseUrl);
 
+	// Live invalidation for connected clients (SSE). The entity hint goes to
+	// every eligible recipient — including scope-filtered ones, who can still
+	// *see* the entity even when they've muted broad notifications about it.
+	// Callers persist their domain rows before notify(), so a refetch triggered
+	// by this event always observes the new state.
+	if (input.entity) {
+		publishEvent(recipientIds, {
+			type: 'entity',
+			entityType: input.entity.type,
+			entityId: input.entity.id
+		});
+	}
+
 	if (wantsInApp.length > 0) {
 		const rows = wantsInApp.map((recipientId) => {
 			const content = contentFor(recipientId);
@@ -155,6 +169,7 @@ export async function notify(input: NotifyInput): Promise<void> {
 			};
 		});
 		await db.insert(notification).values(rows);
+		publishEvent(wantsInApp, { type: 'inbox' });
 
 		// Native push mirrors the in-app channel: whoever gets an inbox row gets a
 		// push to their registered devices. No-op until PUSH_ENABLED is set (the
@@ -252,6 +267,8 @@ export async function markEntityRead(
 				isNull(notification.readAt)
 			)
 		);
+	// Reading on one device clears the badge on the user's others.
+	publishEvent([recipientId], { type: 'inbox' });
 }
 
 // Mark a single notification read. Scoped to the recipient so a user can only
@@ -267,6 +284,7 @@ export async function markRead(recipientId: string, notificationId: string): Pro
 				isNull(notification.readAt)
 			)
 		);
+	publishEvent([recipientId], { type: 'inbox' });
 }
 
 export async function markAllRead(recipientId: string): Promise<void> {
@@ -274,4 +292,5 @@ export async function markAllRead(recipientId: string): Promise<void> {
 		.update(notification)
 		.set({ readAt: new Date() })
 		.where(and(eq(notification.recipientId, recipientId), isNull(notification.readAt)));
+	publishEvent([recipientId], { type: 'inbox' });
 }

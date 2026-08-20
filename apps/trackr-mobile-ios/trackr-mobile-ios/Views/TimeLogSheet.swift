@@ -10,6 +10,7 @@ import SwiftUI
 
 struct TimeLogSheet: View {
     let task: TaskItem
+    var me: UserRef = TaskItem.sampleUsers[0]
     let onLog: (TimeLog) -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -79,7 +80,7 @@ struct TimeLogSheet: View {
                     Button("Log") {
                         let trimmed = note.trimmingCharacters(in: .whitespaces)
                         onLog(TimeLog(
-                            user: TaskItem.sampleUsers[0],  // current user later
+                            user: me,
                             minutes: totalMinutes,
                             date: date,
                             note: trimmed.isEmpty ? nil : trimmed

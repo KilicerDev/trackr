@@ -12,6 +12,7 @@ import SwiftUI
 struct CreateTaskSheet: View {
     /// Existing tasks — source for project options and the next task id.
     let tasks: [TaskItem]
+    var model: AppModel? = nil
     let onCreate: (TaskItem) -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -26,9 +27,17 @@ struct CreateTaskSheet: View {
     @State private var due = Date.now
     @State private var estimate: Int?
 
-    private var projectOptions: [String] { Set(tasks.map(\.project)).sorted() }
+    private var projectOptions: [String] {
+        if let model, !model.projects.isEmpty {
+            return model.projects
+                .filter { $0.status != .archived }
+                .map(\.name)
+        }
+        return Set(tasks.map(\.project)).sorted()
+    }
     private var userOptions: [UserRef] {
-        Array(Set(tasks.flatMap(\.assignees))).sorted { $0.name < $1.name }
+        if let model, !model.assignableUsers.isEmpty { return model.assignableUsers }
+        return Array(Set(tasks.flatMap(\.assignees))).sorted { $0.name < $1.name }
     }
 
     var body: some View {

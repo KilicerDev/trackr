@@ -9,7 +9,9 @@
 import SwiftUI
 
 struct QuickNoteSheet: View {
-    let onCreate: (NoteItem) -> Void
+    /// Local note for optimistic insert + the raw text for the API (the
+    /// server seeds its own HTML from plain text).
+    let onCreate: (NoteItem, _ plainText: String) -> Void
     @Environment(\.dismiss) private var dismiss
 
     @State private var title = ""
@@ -60,9 +62,9 @@ struct QuickNoteSheet: View {
             title: title.trimmingCharacters(in: .whitespaces),
             icon: "doc.text",
             bodyHtml: paragraphs,
-            owner: TaskItem.sampleUsers[0]  // current user later
+            owner: TaskItem.sampleUsers[0]  // replaced by server data on refetch
         )
-        onCreate(note)
+        onCreate(note, text.trimmingCharacters(in: .whitespacesAndNewlines))
         dismiss()
     }
 
@@ -76,6 +78,6 @@ struct QuickNoteSheet: View {
 
 #Preview {
     Color.clear.sheet(isPresented: .constant(true)) {
-        QuickNoteSheet { _ in }
+        QuickNoteSheet { _, _ in }
     }
 }

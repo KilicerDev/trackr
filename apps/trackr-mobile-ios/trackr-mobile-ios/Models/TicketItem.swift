@@ -12,10 +12,12 @@ struct OrgRef: Hashable {
     let key: String  // "MEDI" — display-id prefix
     let name: String
     let color: Color
+    /// Server org id — nil for sample/preview data.
+    var serverId: String? = nil
 }
 
 struct TicketMessage: Identifiable, Hashable {
-    let id = UUID()
+    var id: String = UUID().uuidString
     var user: UserRef
     var date: Date
     var text: String
@@ -24,6 +26,9 @@ struct TicketMessage: Identifiable, Hashable {
 
 struct TicketItem: Identifiable, Hashable {
     let id: String  // displayId, e.g. "MEDI-14"
+    /// Server ticket UUID (the PATCH/message endpoints key) — nil for
+    /// sample/preview data.
+    var uuid: String? = nil
     var subject: String
     var status: TicketStatus
     var priority: TaskPriority
@@ -39,13 +44,19 @@ struct TicketItem: Identifiable, Hashable {
     var createdAt: Date
     var firstResponseAt: Date?
     var resolvedAt: Date?
+    /// List rows arrive without their messages — the server's counts fill in
+    /// until the detail fetch loads the real conversation.
+    var serverMessageCount: Int? = nil
+    var serverLastMessageAt: Date? = nil
 
     var checklistDone: Int { checklist.count { $0.done } }
     var checklistTotal: Int { checklist.count }
     /// Public messages only — internal notes don't count toward the
     /// conversation badge (web parity: messageCount).
-    var messageCount: Int { messages.count { !$0.internalNote } }
-    var lastActivityAt: Date { messages.map(\.date).max() ?? createdAt }
+    var messageCount: Int {
+        messages.isEmpty ? (serverMessageCount ?? 0) : messages.count { !$0.internalNote }
+    }
+    var lastActivityAt: Date { messages.map(\.date).max() ?? serverLastMessageAt ?? createdAt }
 
     /// Web parity (utils/ticket-sla.ts slaSignal): one muted management
     /// signal — awaiting first response, or resolved-when. Nil otherwise;

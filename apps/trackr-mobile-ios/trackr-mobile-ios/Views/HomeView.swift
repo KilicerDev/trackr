@@ -19,7 +19,7 @@ struct HomeView: View {
 
     /// Time-of-day greeting with the current user's first name.
     private var greeting: String {
-        let name = TaskItem.sampleUsers[0].name  // current user later
+        let name = model.me.name
         let firstName = name.split(separator: " ").first.map(String.init) ?? name
         switch Calendar.current.component(.hour, from: .now) {
         case 5..<12: return "Good morning, \(firstName)"
@@ -72,6 +72,7 @@ struct HomeView: View {
                 .padding(16)
             }
             .background(Color(.systemGroupedBackground))
+            .refreshable { await model.sync?.refreshAll() }
             // All Home-stack destinations live here at the stack root —
             // registering them inside pushed views scrambles push order.
             .navigationDestination(for: HomeRoute.self) { route in
@@ -81,28 +82,43 @@ struct HomeView: View {
                 case .meetings: MeetingsView(model: model)
                 case .wiki: WikiView(model: model)
                 case .chat: ChatView(model: model)
+                case .inbox: InboxView(model: model)
                 }
             }
             .navigationDestination(for: ProjectItem.self) { project in
                 ProjectDetailView(model: model, project: project)
             }
             .navigationDestination(for: TaskItem.self) { task in
-                TaskDetailView(task: task)
+                TaskDetailView(task: task, model: model)
             }
             .navigationDestination(for: NoteItem.self) { note in
                 NoteDetailView(model: model, note: note)
             }
             .navigationDestination(for: WikiPageItem.self) { page in
-                WikiPageView(page: page)
+                WikiPageView(page: page, model: model)
             }
             .navigationDestination(for: ChatThread.self) { thread in
                 ChatThreadView(model: model, threadId: thread.id)
             }
             .navigationDestination(for: TicketItem.self) { ticket in
-                TicketDetailView(ticket: ticket)
+                TicketDetailView(ticket: ticket, model: model)
             }
             .navigationTitle(greeting)
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink(value: HomeRoute.inbox) {
+                        Image(systemName: "bell")
+                            .overlay(alignment: .topTrailing) {
+                                if model.unreadCount > 0 {
+                                    Circle()
+                                        .fill(Color.accentColor)
+                                        .frame(width: 8, height: 8)
+                                        .offset(x: 2, y: -2)
+                                }
+                            }
+                    }
+                }
+                ToolbarSpacer(.fixed, placement: .topBarTrailing)
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingProfile = true
@@ -113,7 +129,7 @@ struct HomeView: View {
                 }
             }
             .sheet(isPresented: $showingProfile) {
-                ProfileSheet()
+                ProfileSheet(model: model)
             }
         }
     }

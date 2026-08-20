@@ -6,7 +6,9 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var model = AppModel()
+    let model: AppModel
+    /// nil in previews — the profile sheet's Sign Out needs it in the real app.
+    var auth: AuthSession? = nil
 
     var body: some View {
         @Bindable var model = model
@@ -24,7 +26,7 @@ struct ContentView: View {
                 MyWeekView(model: model)
             }
             Tab(value: AppTab.search, role: .search) {
-                SearchView()
+                SearchView(model: model)
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
@@ -42,5 +44,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    ContentView(model: AppModel())
 }

@@ -11,6 +11,7 @@ import SwiftUI
 
 struct TicketConversationView: View {
     @Binding var ticket: TicketItem
+    var model: AppModel? = nil
 
     @State private var draft = ""
     @State private var internalNote = false
@@ -21,10 +22,10 @@ struct TicketConversationView: View {
         case message(TicketMessage)
         case activity(ActivityEvent)
 
-        var id: UUID {
+        var id: String {
             switch self {
             case .message(let m): m.id
-            case .activity(let a): a.id
+            case .activity(let a): a.id.uuidString
             }
         }
 
@@ -145,12 +146,15 @@ struct TicketConversationView: View {
     private func send() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        let me = TaskItem.sampleUsers[0]  // current user later
+        let me = model?.me ?? TaskItem.sampleUsers[0]
         ticket.messages.append(
             TicketMessage(user: me, date: .now, text: text, internalNote: internalNote)
         )
         if ticket.firstResponseAt == nil && !internalNote {
             ticket.firstResponseAt = .now
+        }
+        if let uuid = ticket.uuid {
+            model?.sync?.sendTicketMessage(ticketUUID: uuid, text: text, internalNote: internalNote)
         }
         draft = ""
         internalNote = false

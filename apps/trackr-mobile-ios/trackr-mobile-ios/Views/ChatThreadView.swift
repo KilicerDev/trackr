@@ -21,6 +21,8 @@ struct ChatThreadView: View {
             ?? ChatThread(id: threadId, org: TicketItem.sampleOrgs[0], title: "")
     }
 
+    private var me: UserRef { model.me }
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -79,7 +81,12 @@ struct ChatThreadView: View {
                 // Attachments — wired up later
             }, onSend: send)
         }
-        .onAppear { markRead() }
+        .onAppear {
+            markRead()
+            // Screen-appear revalidation + server-side read cursor (the
+            // thread GET marks it read).
+            Task { await model.sync?.loadChatThread(id: threadId) }
+        }
     }
 
     // MARK: - Sections
@@ -195,15 +202,14 @@ struct ChatThreadView: View {
     private func send() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        let me = TaskItem.sampleUsers[0]  // current user later
         withThread { $0.messages.append(ChatMessageItem(user: me, date: .now, text: text)) }
         draft = ""
+        model.sync?.sendChatMessage(threadId: threadId, text: text)
     }
 
     /// Web parity (CreateTicketFromThreadModal): materialize the thread into
     /// a ticket and drop a system marker into the conversation.
     private func createTicket() {
-        let me = TaskItem.sampleUsers[0]  // current user later
         let nextNumber = model.tickets
             .filter { $0.org == thread.org }
             .compactMap { Int($0.id.split(separator: "-").last ?? "") }
@@ -231,6 +237,20 @@ struct ChatThreadView: View {
                 user: me, date: .now,
                 text: "Tracked as a ticket:", systemTicketId: ticketId
             ))
+        }
+        // v1 has no create-from-thread endpoint (the system marker is a web
+        // form action) — create the ticket and post a plain marker message.
+        if let orgId = thread.org.serverId {
+            model.sync?.createTicket(
+                orgId: orgId,
+                subject: thread.title,
+                description: thread.root?.text,
+                assignees: [me]
+            )
+            model.sync?.sendChatMessage(
+                threadId: threadId,
+                text: "Tracked as a ticket: \(thread.title)"
+            )
         }
     }
 }

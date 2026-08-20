@@ -10,6 +10,8 @@
 import SwiftUI
 
 struct AppearanceSettingsView: View {
+    var model: AppModel? = nil
+
     @State private var theme = "system"
     @State private var accent: UInt32 = 0xFF4867
     @State private var appIcon = "default"
@@ -24,7 +26,7 @@ struct AppearanceSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Theme") {
+            Section {
                 Picker("Theme", selection: $theme) {
                     Text("System").tag("system")
                     Text("Light").tag("light")
@@ -33,6 +35,10 @@ struct AppearanceSettingsView: View {
                 .pickerStyle(.segmented)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
+            } header: {
+                Text("Theme")
+            } footer: {
+                Text("Synced with your trackr account — the web app follows the same setting.")
             }
 
             Section {
@@ -71,6 +77,13 @@ struct AppearanceSettingsView: View {
         }
         .navigationTitle("Appearance")
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            await model?.sync?.loadPreferences()
+            if let saved = model?.sync?.preferences?.theme { theme = saved }
+        }
+        .onChange(of: theme) { _, fresh in
+            model?.sync?.updatePreferences(.init(theme: fresh), apply: { $0.theme = fresh })
+        }
     }
 
     private func iconRow(_ id: String, label: String, background: Color) -> some View {

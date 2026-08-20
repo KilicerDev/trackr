@@ -11,6 +11,7 @@ import (
 
 	"github.com/KilicerDev/trackr/services/shared/jobworker"
 	"github.com/KilicerDev/trackr/services/worker/internal/mail"
+	"github.com/KilicerDev/trackr/services/worker/internal/push"
 )
 
 // Deps are the shared clients handlers need, injected by main() at startup.
@@ -18,6 +19,8 @@ import (
 type Deps struct {
 	DB     *pgxpool.Pool
 	Mailer mail.Sender
+	// nil when APNs env vars are absent — push.send then acks as skipped.
+	Push *push.Client
 }
 
 // Register builds the type → handler map for the engine.
@@ -28,5 +31,6 @@ func Register(d Deps) map[string]jobworker.Handler {
 		"prune.invitations":   pruneInvitations(d.DB),
 		"prune.notifications": pruneNotifications(d.DB),
 		"notify.digest":       notifyDigest(d.DB),
+		"push.send":           sendPush(d.DB, d.Push),
 	}
 }

@@ -141,7 +141,7 @@ struct MyWeekView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationDestination(for: TaskItem.self) { task in
-                TaskDetailView(task: task)
+                TaskDetailView(task: task, model: model)
             }
             .navigationTitle("My Week")
             .toolbar {
