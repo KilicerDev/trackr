@@ -84,7 +84,12 @@ struct TaskFilters: Equatable {
         if !statuses.isEmpty, !statuses.contains(task.status) { return false }
         if !priorities.isEmpty, !priorities.contains(task.priority) { return false }
         if !assignees.isEmpty {
-            guard task.assignees.contains(where: assignees.contains) else { return false }
+            // By server id: the filter's refs may come from a different
+            // source (saved view, picker directory) than the task row's.
+            let assigned = task.assignees.contains { member in
+                assignees.contains { $0.sameUser(as: member) }
+            }
+            guard assigned else { return false }
         }
         if !projects.isEmpty, !projects.contains(task.project) { return false }
         return true

@@ -58,9 +58,15 @@ struct TicketFilters: Equatable {
         if !statuses.isEmpty, !statuses.contains(ticket.status) { return false }
         if !priorities.isEmpty, !priorities.contains(ticket.priority) { return false }
         if !categories.isEmpty, !categories.contains(ticket.category) { return false }
-        if !orgs.isEmpty, !orgs.contains(ticket.org) { return false }
+        // Org/assignee refs compare by server id: the filter's refs and the
+        // ticket's refs come from different sources (saved views resolve via
+        // /me, ticket rows embed their own) and differ as whole values.
+        if !orgs.isEmpty, !orgs.contains(where: { $0.sameOrg(as: ticket.org) }) { return false }
         if !assignees.isEmpty {
-            guard ticket.assignees.contains(where: assignees.contains) else { return false }
+            let assigned = ticket.assignees.contains { member in
+                assignees.contains { $0.sameUser(as: member) }
+            }
+            guard assigned else { return false }
         }
         return true
     }

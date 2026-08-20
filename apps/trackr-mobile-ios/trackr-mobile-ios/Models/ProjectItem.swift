@@ -48,7 +48,14 @@ struct ProjectFilters: Equatable {
 
     func matches(_ project: ProjectItem) -> Bool {
         if !statuses.isEmpty, !statuses.contains(project.status) { return false }
-        if !members.isEmpty, !project.members.contains(where: members.contains) { return false }
+        if !members.isEmpty {
+            // By server id — filter refs and project member refs can come
+            // from different directories with differing colors/initials.
+            let hasMember = project.members.contains { member in
+                members.contains { $0.sameUser(as: member) }
+            }
+            guard hasMember else { return false }
+        }
         return true
     }
 }

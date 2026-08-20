@@ -40,6 +40,11 @@ struct SavedViewEntry: Identifiable, Equatable, Hashable {
 
 /// Lookup tables for translating between the web's id-based filter values
 /// (project keys, user ids, org ids) and the app's resolved models.
+///
+/// Entity-embedded refs (a ticket's `org`, a task's `assignees`) take
+/// precedence over the /me and picker directories: they're the instances the
+/// filter sheets offer and the ones matching compares against, so resolving
+/// a saved view to the same instances keeps `==` (active checkmark) honest.
 struct ViewDirectories {
     var projectKeyForName: [String: String] = [:]
     var projectNameForKey: [String: String] = [:]
@@ -53,9 +58,6 @@ struct ViewDirectories {
             projectNameForKey[project.key] = project.name
         }
         var users: [String: UserRef] = [:]
-        for user in model.assignableUsers {
-            if let id = user.serverId { users[id] = user }
-        }
         for task in model.tasks {
             for assignee in task.assignees {
                 if let id = assignee.serverId, users[id] == nil { users[id] = assignee }
@@ -66,13 +68,44 @@ struct ViewDirectories {
                 if let id = assignee.serverId, users[id] == nil { users[id] = assignee }
             }
         }
+        for user in model.assignableUsers {
+            if let id = user.serverId, users[id] == nil { users[id] = user }
+        }
         if let me = model.currentUser, let id = me.serverId, users[id] == nil {
             users[id] = me
         }
         usersById = users
-        for org in model.orgs {
-            if let id = org.serverId { orgsById[id] = org }
+        var orgs: [String: OrgRef] = [:]
+        for ticket in model.tickets {
+            if let id = ticket.org.serverId, orgs[id] == nil { orgs[id] = ticket.org }
         }
+        for org in model.orgs {
+            if let id = org.serverId, orgs[id] == nil { orgs[id] = org }
+        }
+        orgsById = orgs
+    }
+}
+
+// MARK: - Id-aware ref matching
+
+extension UserRef {
+    /// Same person: by server id when both sides have one, else whole-value
+    /// equality (sample/preview data). Refs for one user are built from
+    /// different sources (/me, picker directories, entity rows) whose
+    /// key/color details can differ — id is the identity.
+    func sameUser(as other: UserRef) -> Bool {
+        if let mine = serverId, let theirs = other.serverId { return mine == theirs }
+        return self == other
+    }
+}
+
+extension OrgRef {
+    /// Same org: by server id when both sides have one (a ticket's OrgRef
+    /// keys off the display-id prefix, /me's off the slug — never equal as
+    /// whole values), else whole-value equality for sample data.
+    func sameOrg(as other: OrgRef) -> Bool {
+        if let mine = serverId, let theirs = other.serverId { return mine == theirs }
+        return self == other
     }
 }
 
