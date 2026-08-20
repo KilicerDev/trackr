@@ -188,7 +188,7 @@ private struct ThreadCard: View {
                                 .font(.system(size: 11, design: .monospaced))
                                 .foregroundStyle(.tertiary)
                         }
-                        Text(root.text)
+                        Text(Mentions.flattened(root.text))
                             .font(.system(size: 14))
                             .foregroundStyle(.secondary)
                             .lineLimit(3)

@@ -1,10 +1,11 @@
 // Task detail + edits. `id` is the task UUID.
 //   GET   — full task view model + display directory + canEdit; editors also
 //           get the assignee picker candidates (internal users only).
-//   PATCH { status?, priority?, type?, description?, due?, checklist?,
-//           assigneeIds? } — permission mirrors the web update action:
-//   project.tasks.edit.any, or creator + edit.own. Estimate/tags/title stay
-//   desktop-only.
+//   PATCH { status?, priority?, type?, title?, description?, due?, estimate?,
+//           tags?, checklist?, assigneeIds?, plannedFor? } — permission mirrors
+//   the web update action: project.tasks.edit.any, or creator + edit.own.
+//   plannedFor plans the task into the *caller's* week (web planSet parity)
+//   and only needs read access, like the web action.
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
@@ -12,7 +13,8 @@ import {
 	organizationMember,
 	project,
 	task,
-	taskAssignee
+	taskAssignee,
+	taskPlanning
 } from '$lib/server/db/app.schema';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import { can } from '$lib/server/permissions';
@@ -29,6 +31,7 @@ import {
 } from '$lib/server/tickets';
 import { notifyTaskAssigned, notifyTaskStatusChanged } from '$lib/server/notify/events/task';
 import { logActivityFF } from '$lib/server/activity';
+import { normalizeTag } from '$lib/utils/label-meta';
 import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
 import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
@@ -85,10 +88,14 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 		status?: string;
 		priority?: string;
 		type?: string;
+		title?: string;
 		description?: string | null;
 		due?: string | null;
+		estimate?: number | null;
+		tags?: string[];
 		checklist?: { id?: string; text?: string; done?: boolean }[];
 		assigneeIds?: string[];
+		plannedFor?: string | null;
 	}>(request);
 
 	const [target] = await db
@@ -113,7 +120,6 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 	const allowed =
 		(await can(locals, 'project.tasks.edit.any', { projectId: target.projectId })) ||
 		(isCreator && (await can(locals, 'project.tasks.edit.own', { projectId: target.projectId })));
-	if (!allowed) apiError(403, m.tasks_err_cannot_edit());
 
 	const patch: Record<string, unknown> = {};
 	if (body.status !== undefined) {
@@ -134,8 +140,30 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 		}
 		patch.type = body.type;
 	}
+	if (body.title !== undefined) {
+		const v = String(body.title).trim();
+		if (!v) apiError(400, m.tasks_err_title_empty());
+		patch.title = v;
+	}
 	if (body.description !== undefined) {
 		patch.description = String(body.description ?? '').trim() || null;
+	}
+	if (body.estimate !== undefined) {
+		if (body.estimate === null) {
+			patch.estimateMinutes = null;
+		} else {
+			if (typeof body.estimate !== 'number' || !Number.isFinite(body.estimate)) {
+				apiError(400, 'estimate must be a number of minutes or null.');
+			}
+			patch.estimateMinutes = body.estimate > 0 ? Math.round(body.estimate) : null;
+		}
+	}
+	// Tags: full array, normalized + deduped like the web action ([] clears).
+	if (body.tags !== undefined) {
+		if (!Array.isArray(body.tags) || body.tags.some((x) => typeof x !== 'string')) {
+			apiError(400, 'tags must be a string array.');
+		}
+		patch.tags = [...new Set(body.tags.map((v) => normalizeTag(v)).filter(Boolean))];
 	}
 	if (body.due !== undefined) {
 		if (body.due) {
@@ -168,9 +196,50 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 		}
 		assigneesUpdate = [...new Set(body.assigneeIds)];
 	}
+	// plannedFor plans the task into the caller's own week (a date string) or
+	// removes it (null). Web planSet parity: per-user planning row, read access
+	// is enough — it never touches the task row itself.
+	let plannedUpdate: { date: string | null } | null = null;
+	if (body.plannedFor !== undefined) {
+		if (body.plannedFor === null || body.plannedFor === '') {
+			plannedUpdate = { date: null };
+		} else {
+			if (typeof body.plannedFor !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body.plannedFor)) {
+				apiError(400, m.tasks_err_invalid_date());
+			}
+			plannedUpdate = { date: body.plannedFor };
+		}
+	}
 
-	if (Object.keys(patch).length === 0 && assigneesUpdate === null) {
+	const hasEdits = Object.keys(patch).length > 0 || assigneesUpdate !== null;
+	if (hasEdits && !allowed) apiError(403, m.tasks_err_cannot_edit());
+	if (!hasEdits && plannedUpdate !== null) {
+		// Planning-only calls need read access; answer 404 (not 403) so the
+		// endpoint doesn't leak which task uuids exist — same as GET.
+		if (!(await can(locals, 'project.tasks.read', { projectId: target.projectId }))) {
+			apiError(404, m.tasks_err_task_not_found());
+		}
+	}
+
+	if (!hasEdits && plannedUpdate === null) {
 		return json({ ok: true, unchanged: true });
+	}
+
+	if (plannedUpdate !== null) {
+		if (plannedUpdate.date) {
+			await db
+				.insert(taskPlanning)
+				.values({ taskId: target.id, userId: user.id, plannedFor: plannedUpdate.date })
+				.onConflictDoUpdate({
+					target: [taskPlanning.taskId, taskPlanning.userId],
+					set: { plannedFor: plannedUpdate.date, updatedAt: new Date() }
+				});
+		} else {
+			await db
+				.delete(taskPlanning)
+				.where(and(eq(taskPlanning.taskId, target.id), eq(taskPlanning.userId, user.id)));
+		}
+		if (!hasEdits) return json({ ok: true });
 	}
 
 	const priorAssigneeRows = await db

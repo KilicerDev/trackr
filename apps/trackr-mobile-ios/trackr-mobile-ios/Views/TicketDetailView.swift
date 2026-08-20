@@ -313,7 +313,7 @@ struct TicketDetailView: View {
                             .font(.system(size: 12, design: .monospaced))
                             .foregroundStyle(.tertiary)
                     }
-                    Text(last.text)
+                    Text(Mentions.flattened(last.text))
                         .font(.system(size: 14))
                         .foregroundStyle(.secondary)
                         .lineLimit(3)

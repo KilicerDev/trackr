@@ -12,12 +12,11 @@ import SwiftUI
 struct TasksView: View {
     @Bindable var model: AppModel
 
-    @State private var filters = TaskFilters()
     @State private var showingFilters = false
     @State private var showingViews = false
     @State private var showingCreate = false
 
-    private var groups: [TaskGroup] { filters.grouped(model.tasks) }
+    private var groups: [TaskGroup] { model.taskFilters.grouped(model.tasks) }
 
     var body: some View {
         NavigationStack(path: $model.taskPath) {
@@ -67,7 +66,7 @@ struct TasksView: View {
                     } label: {
                         Image(systemName: "line.3.horizontal.decrease")
                     }
-                    .tint(filters.hasActiveFilters ? .accentColor : nil)
+                    .tint(model.taskFilters.hasActiveFilters ? .accentColor : nil)
                 }
                 ToolbarSpacer(.fixed, placement: .topBarTrailing)
                 ToolbarItem(placement: .topBarTrailing) {
@@ -79,16 +78,30 @@ struct TasksView: View {
                 }
             }
             .sheet(isPresented: $showingFilters) {
-                TaskFiltersSheet(filters: $filters, tasks: model.tasks)
+                TaskFiltersSheet(filters: $model.taskFilters, tasks: model.tasks)
             }
             .sheet(isPresented: $showingViews) {
-                SavedViewsSheet(filters: $filters)
+                SavedViewsSheet(
+                    entries: model.savedTaskViews,
+                    summary: {
+                        TaskFilters(
+                            webConfig: $0.config, directories: ViewDirectories(model: model)
+                        ).summary
+                    },
+                    isActive: {
+                        TaskFilters(
+                            webConfig: $0.config, directories: ViewDirectories(model: model)
+                        ) == model.taskFilters
+                    },
+                    onApply: { model.sync?.applySavedView(.tasks, entry: $0) },
+                    onCreate: { model.sync?.createSavedView(.tasks, name: $0) },
+                    onRename: { model.sync?.renameSavedView(.tasks, id: $0.id, to: $1) },
+                    onDelete: { model.sync?.deleteSavedView(.tasks, id: $0.id) }
+                )
             }
             .sheet(isPresented: $showingCreate) {
                 CreateTaskSheet(tasks: model.tasks, model: model) { task in
                     model.tasks.insert(task, at: 0)
-                    // POST accepts title/project/description; the rest lands
-                    // via a follow-up PATCH inside createTask.
                     if let key = model.projects.first(where: { $0.name == task.project })?.key {
                         model.sync?.createTask(
                             title: task.title,

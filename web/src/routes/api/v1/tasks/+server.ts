@@ -1,15 +1,25 @@
 // Tasks for the app — the reactive slice only: see my tasks, tick them off
 // (via PATCH on [id]), quick-add with a single field. Structuring work
-// (boards, planning, bulk edits) stays on the desktop.
+// (boards, bulk edits) stays on the desktop.
 //   GET  ?scope=mine|all — `mine` (default) = tasks I'm assigned to or created.
-//   POST { title, projectKey, description? } — quick-create with defaults.
+//   POST { title, projectKey, description?, status?, priority?, type?, due?,
+//          estimate?, tags?, assigneeIds?, plannedFor? } — full create, same
+//          field semantics as the web create action.
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { project } from '$lib/server/db/app.schema';
 import { accessibleProjectIds, assertCan } from '$lib/server/permissions';
-import { createTask, loadTasks } from '$lib/server/tasks';
+import {
+	ALLOWED_TASK_PRIORITY,
+	ALLOWED_TASK_STATUS,
+	ALLOWED_TASK_TYPE,
+	createTask,
+	loadTasks
+} from '$lib/server/tasks';
 import { loadTicketDisplayUsers } from '$lib/server/tickets';
+import { notifyTaskAssigned } from '$lib/server/notify/events/task';
 import { logActivityFF } from '$lib/server/activity';
+import { normalizeTag } from '$lib/utils/label-meta';
 import { m } from '$lib/paraglide/messages';
 import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
 import type { RequestHandler } from './$types';
@@ -19,7 +29,13 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	const scope = url.searchParams.get('scope') ?? 'mine';
 
 	const access = accessibleProjectIds(locals);
-	const tasks = await loadTasks(access.all ? {} : { projectIds: [...access.ids] });
+	// plannerUserId populates plannedFor/inMyPlan for the caller's own week —
+	// without it the app's Plan tab has nothing to render.
+	const tasks = await loadTasks(
+		access.all
+			? { plannerUserId: user.id }
+			: { projectIds: [...access.ids], plannerUserId: user.id }
+	);
 	const mine =
 		scope === 'mine'
 			? tasks.filter(
@@ -35,15 +51,57 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	return json({ tasks: mine, users });
 };
 
-export const POST: RequestHandler = async ({ locals, request }) => {
+export const POST: RequestHandler = async ({ locals, request, url }) => {
 	const user = requireUser(locals);
-	const body = await readJson<{ title?: string; projectKey?: string; description?: string }>(
-		request
-	);
+	const body = await readJson<{
+		title?: string;
+		projectKey?: string;
+		description?: string;
+		status?: string;
+		priority?: string;
+		type?: string;
+		due?: string | null;
+		estimate?: number | null;
+		tags?: string[];
+		assigneeIds?: string[];
+		plannedFor?: string | null;
+	}>(request);
 	const title = body.title?.trim();
 	const projectKey = body.projectKey?.trim().toUpperCase();
 	if (!title) apiError(400, m.tasks_err_title_empty());
 	if (!projectKey) apiError(400, 'projectKey is required.');
+
+	const status = body.status ?? 'todo';
+	const priority = body.priority ?? 'none';
+	const type = body.type ?? 'task';
+	if (!ALLOWED_TASK_STATUS.has(status)) {
+		apiError(400, m.tasks_err_invalid_status({ value: String(status) }));
+	}
+	if (!ALLOWED_TASK_PRIORITY.has(priority)) {
+		apiError(400, m.tasks_err_invalid_priority({ value: String(priority) }));
+	}
+	if (!ALLOWED_TASK_TYPE.has(type)) {
+		apiError(400, m.tasks_err_invalid_type({ type: String(type) }));
+	}
+	let dueDate: Date | null = null;
+	if (body.due) {
+		dueDate = new Date(body.due);
+		if (Number.isNaN(dueDate.getTime())) apiError(400, m.tasks_err_invalid_date());
+	}
+	const estimate =
+		typeof body.estimate === 'number' && Number.isFinite(body.estimate) && body.estimate > 0
+			? Math.round(body.estimate)
+			: null;
+	const tags = Array.isArray(body.tags)
+		? [...new Set(body.tags.map((v) => normalizeTag(String(v))).filter(Boolean))]
+		: [];
+	const assigneeIds = Array.isArray(body.assigneeIds)
+		? body.assigneeIds.filter((v): v is string => typeof v === 'string' && v.length > 0)
+		: [];
+	const plannedFor = body.plannedFor?.trim() || null;
+	if (plannedFor && !/^\d{4}-\d{2}-\d{2}$/.test(plannedFor)) {
+		apiError(400, m.tasks_err_invalid_planned_date());
+	}
 
 	const [proj] = await db
 		.select({ id: project.id, key: project.key, orgId: project.orgId })
@@ -58,10 +116,16 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		projectKey: proj.key,
 		title,
 		description: body.description?.trim() || null,
-		status: 'todo',
-		priority: 'none',
-		type: 'task',
-		createdBy: user.id
+		status,
+		priority,
+		type,
+		dueDate,
+		estimateMinutes: estimate,
+		tags,
+		assigneeIds,
+		createdBy: user.id,
+		plannedForUserId: user.id,
+		plannedFor
 	});
 	logActivityFF({
 		projectId: proj.id,
@@ -70,5 +134,13 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		type: 'task.created',
 		meta: { taskRef: created.displayId, taskTitle: title, via: 'api.v1' }
 	});
+	// Same contract as the web create action: notify assigned users (notify()
+	// drops the actor, so plain self-assignment stays silent).
+	void notifyTaskAssigned({
+		task: { id: created.id, displayId: created.displayId, title, orgId: proj.orgId },
+		assigneeIds: created.assignedIds,
+		actor: { id: user.id, name: user.name },
+		origin: url.origin
+	}).catch((err) => console.error('task create notify failed', err));
 	return json({ id: created.id, displayId: created.displayId }, { status: 201 });
 };

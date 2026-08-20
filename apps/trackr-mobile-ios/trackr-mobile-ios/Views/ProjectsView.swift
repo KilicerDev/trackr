@@ -11,7 +11,6 @@ import SwiftUI
 struct ProjectsView: View {
     @Bindable var model: AppModel
 
-    @State private var filters = ProjectFilters()
     @State private var showingFilters = false
     @State private var showingViews = false
     @State private var showingCreate = false
@@ -19,7 +18,7 @@ struct ProjectsView: View {
 
     private var visible: [ProjectItem] {
         model.projects
-            .filter(filters.matches)
+            .filter(model.projectFilters.matches)
             .sorted { $0.updatedAt > $1.updatedAt }
     }
 
@@ -66,7 +65,7 @@ struct ProjectsView: View {
                 } label: {
                     Image(systemName: "line.3.horizontal.decrease")
                 }
-                .tint(filters.hasActiveFilters ? .accentColor : nil)
+                .tint(model.projectFilters.hasActiveFilters ? .accentColor : nil)
             }
             ToolbarSpacer(.fixed, placement: .topBarTrailing)
             ToolbarItem(placement: .topBarTrailing) {
@@ -78,10 +77,26 @@ struct ProjectsView: View {
             }
         }
         .sheet(isPresented: $showingFilters) {
-            ProjectFiltersSheet(filters: $filters, projects: model.projects)
+            ProjectFiltersSheet(filters: $model.projectFilters, projects: model.projects)
         }
         .sheet(isPresented: $showingViews) {
-            ProjectViewsSheet(filters: $filters)
+            SavedViewsSheet(
+                entries: model.savedProjectViews,
+                summary: {
+                    ProjectFilters(
+                        webConfig: $0.config, directories: ViewDirectories(model: model)
+                    ).summary
+                },
+                isActive: {
+                    ProjectFilters(
+                        webConfig: $0.config, directories: ViewDirectories(model: model)
+                    ) == model.projectFilters
+                },
+                onApply: { model.sync?.applySavedView(.projects, entry: $0) },
+                onCreate: { model.sync?.createSavedView(.projects, name: $0) },
+                onRename: { model.sync?.renameSavedView(.projects, id: $0.id, to: $1) },
+                onDelete: { model.sync?.deleteSavedView(.projects, id: $0.id) }
+            )
         }
         .sheet(item: $historyProject) { project in
             ProjectHistorySheet(model: model, projectKey: project.key)
@@ -133,47 +148,6 @@ struct ProjectFiltersSheet: View {
                         .fontWeight(.semibold)
                 }
             }
-        }
-        .presentationDetents([.medium])
-    }
-}
-
-struct ProjectViewsSheet: View {
-    @Binding var filters: ProjectFilters
-    @Environment(\.dismiss) private var dismiss
-
-    private static let presets: [(name: String, icon: String, statuses: Set<ProjectStatus>)] = [
-        ("Active", "bolt", [.active]),
-        ("Pipeline", "hourglass", [.prospect, .planned]),
-        ("Delivered", "checkmark.seal", [.completed]),
-        ("Everything", "tray.full", []),
-    ]
-
-    var body: some View {
-        NavigationStack {
-            List(Self.presets, id: \.name) { preset in
-                Button {
-                    filters.statuses = preset.statuses
-                    dismiss()
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: preset.icon)
-                            .font(.system(size: 17))
-                            .foregroundStyle(Color.accentColor)
-                            .frame(width: 26)
-                        Text(preset.name)
-                            .foregroundStyle(Color.primary)
-                        Spacer()
-                        if filters.statuses == preset.statuses {
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(Color.accentColor)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Views")
-            .navigationBarTitleDisplayMode(.inline)
         }
         .presentationDetents([.medium])
     }

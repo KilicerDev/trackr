@@ -60,13 +60,17 @@ type Client struct {
 type Notification struct {
 	DeviceToken string
 	Title       string
-	Body        string
+	// Second alert line under the title (the entity label). Empty = omitted.
+	Subtitle string
+	Body     string
 	// In-app route (e.g. /tickets/abc) — delivered as a custom key for the
 	// app to deep-link on tap.
 	URL string
 	// APNs thread-id: notifications sharing it group together on the lock
 	// screen. Empty = ungrouped.
 	ThreadID string
+	// App icon badge count. Nil = leave the badge untouched.
+	Badge *int
 }
 
 // ErrUnregistered marks a device token APNs rejected as gone — the caller
@@ -181,6 +185,9 @@ func (c *Client) Send(ctx context.Context, n Notification) error {
 	}
 
 	alert := map[string]string{"title": n.Title}
+	if n.Subtitle != "" {
+		alert["subtitle"] = n.Subtitle
+	}
 	if n.Body != "" {
 		alert["body"] = n.Body
 	}
@@ -190,6 +197,9 @@ func (c *Client) Send(ctx context.Context, n Notification) error {
 	}
 	if n.ThreadID != "" {
 		aps["thread-id"] = n.ThreadID
+	}
+	if n.Badge != nil {
+		aps["badge"] = *n.Badge
 	}
 	payload := map[string]any{
 		"aps": aps,

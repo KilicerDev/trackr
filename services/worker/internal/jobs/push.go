@@ -18,9 +18,11 @@ import (
 type pushPayload struct {
 	UserID   string  `json:"userId"`
 	Title    string  `json:"title"`
+	Subtitle *string `json:"subtitle"`
 	Body     *string `json:"body"`
 	URL      string  `json:"url"`
 	ThreadID *string `json:"threadId"`
+	Badge    *int    `json:"badge"`
 }
 
 // sendPush returns the `push.send` handler: resolve the user's registered
@@ -65,6 +67,10 @@ func sendPush(db *pgxpool.Pool, apns *push.Client) jobworker.Handler {
 			return map[string]any{"sent": 0}, nil
 		}
 
+		subtitle := ""
+		if p.Subtitle != nil {
+			subtitle = *p.Subtitle
+		}
 		body := ""
 		if p.Body != nil {
 			body = *p.Body
@@ -80,9 +86,11 @@ func sendPush(db *pgxpool.Pool, apns *push.Client) jobworker.Handler {
 			err := apns.Send(ctx, push.Notification{
 				DeviceToken: token,
 				Title:       p.Title,
+				Subtitle:    subtitle,
 				Body:        body,
 				URL:         p.URL,
 				ThreadID:    threadID,
+				Badge:       p.Badge,
 			})
 			switch {
 			case err == nil:

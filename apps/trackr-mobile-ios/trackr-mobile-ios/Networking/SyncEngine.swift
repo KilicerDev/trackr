@@ -16,6 +16,12 @@
 
 import Foundation
 import SwiftUI
+import UserNotifications
+
+/// The view_state page keys the app manages (web ALLOWED_KEYS subset).
+enum ViewKey: String, CaseIterable {
+    case tasks, tickets, projects
+}
 
 @MainActor @Observable
 final class SyncEngine {
@@ -71,6 +77,9 @@ final class SyncEngine {
         if let cached = store.load("me", as: API.Me.self) {
             apply(me: cached)
         }
+        if let cached = store.load("views", as: API.ViewStateResponse.self) {
+            apply(views: cached)
+        }
         if let cached = store.load("projects", as: API.ProjectsResponse.self) {
             apply(projects: cached)
         }
@@ -108,7 +117,11 @@ final class SyncEngine {
         async let chat: Void = refreshChat()
         async let notes: Void = refreshNotes()
         async let wiki: Void = refreshWiki()
-        _ = await (tasks, tickets, chat, notes, wiki)
+        async let views: Void = refreshViews()
+        _ = await (tasks, tickets, chat, notes, wiki, views)
+        // Directories (projects, user ids) are loaded now — the cached
+        // filters can resolve their ids.
+        restoreFiltersIfNeeded()
     }
 
     func refreshMe() async {
@@ -170,6 +183,15 @@ final class SyncEngine {
     func refreshBadge() async {
         guard let badge = try? await client.inboxBadge() else { return }
         model.unreadCount = badge.unread
+        // Keep the app icon badge in sync — pushes set it (aps.badge), and
+        // reading on any device clears it here via the SSE inbox hint.
+        try? await UNUserNotificationCenter.current().setBadgeCount(badge.unread)
+    }
+
+    func refreshViews() async {
+        guard let fresh = try? await client.views() else { return }
+        store.save("views", fresh)
+        apply(views: fresh)
     }
 
     // MARK: - Detail loads (screen-appear revalidation)
@@ -236,17 +258,23 @@ final class SyncEngine {
     /// set keeps call sites trivial.
     func pushTask(_ task: TaskItem) {
         guard let uuid = task.uuid else { return }
-        let patch = APIClient.TaskPatch(
+        var patch = APIClient.TaskPatch(
             status: task.status.apiValue,
             priority: task.priority.apiValue,
             type: task.type.apiValue,
             description: task.details,
             due: .some(task.due.map { APIDate.dayString($0) }),
+            estimate: .some(task.estimate),
+            tags: task.tags,
             checklist: task.checklist.map {
                 API.ChecklistEntry(id: $0.id, text: $0.text, done: $0.done)
             },
-            assigneeIds: task.assignees.compactMap(\.serverId)
+            assigneeIds: task.assignees.compactMap(\.serverId),
+            plannedFor: .some(task.plannedFor.map { APIDate.dayString($0) })
         )
+        // Title can't be cleared server-side — only send a non-empty edit.
+        let title = task.title.trimmingCharacters(in: .whitespaces)
+        if !title.isEmpty { patch.title = title }
         Task {
             try? await client.updateTask(uuid: uuid, patch: patch)
             await refreshTasks()
@@ -295,8 +323,10 @@ final class SyncEngine {
         }
     }
 
-    /// Create a task with the sheet's full field set: POST accepts only
-    /// title/projectKey/description, everything else follows as a PATCH.
+    /// Create a task with the sheet's full field set in one POST (the v1
+    /// endpoint accepts the same fields as the web create action). Checklist
+    /// still lands via a follow-up PATCH — the create endpoint doesn't take
+    /// one, matching the web modal.
     func createTask(
         title: String,
         projectKey: String,
@@ -311,23 +341,23 @@ final class SyncEngine {
     ) {
         Task {
             guard let created = try? await client.createTask(
-                .init(title: title, projectKey: projectKey, description: description)
+                .init(
+                    title: title,
+                    projectKey: projectKey,
+                    description: description,
+                    status: status.apiValue,
+                    priority: priority.apiValue,
+                    type: type.apiValue,
+                    due: due.map { APIDate.dayString($0) },
+                    estimate: estimate,
+                    assigneeIds: assignees.compactMap(\.serverId)
+                )
             ) else { return }
-            var patch = APIClient.TaskPatch()
-            if status != .todo { patch.status = status.apiValue }
-            if priority != .none { patch.priority = priority.apiValue }
-            if type != .task { patch.type = type.apiValue }
-            if let due { patch.due = .some(APIDate.dayString(due)) }
             if !checklist.isEmpty {
+                var patch = APIClient.TaskPatch()
                 patch.checklist = checklist.map {
                     API.ChecklistEntry(id: $0.id, text: $0.text, done: $0.done)
                 }
-            }
-            let assigneeIds = assignees.compactMap(\.serverId)
-            if !assigneeIds.isEmpty { patch.assigneeIds = assigneeIds }
-            let hasPatch = patch.status != nil || patch.priority != nil || patch.type != nil
-                || patch.due != nil || patch.checklist != nil || patch.assigneeIds != nil
-            if hasPatch {
                 try? await client.updateTask(uuid: created.id, patch: patch)
             }
             await refreshTasks()
@@ -456,6 +486,155 @@ final class SyncEngine {
         Task {
             try? await client.markInboxAllRead()
             await refreshBadge()
+        }
+    }
+
+    // MARK: - Saved views & filter persistence
+
+    /// Last server view_state snapshot, per page key.
+    private var serverViewState: [String: JSONValue] = [:]
+    private var filtersRestored = false
+    /// Guards the didSet → filtersChanged loop while a restore/apply writes
+    /// the model filters programmatically.
+    private var restoringFilters = false
+    private var viewPushTasks: [ViewKey: Task<Void, Never>] = [:]
+
+    private func localViewKey(_ key: ViewKey) -> String { "trackr.view.\(key.rawValue)" }
+
+    private func loadLocalView(_ key: ViewKey) -> JSONValue? {
+        guard let data = UserDefaults.standard.data(forKey: localViewKey(key)) else { return nil }
+        return try? JSONDecoder().decode(JSONValue.self, from: data)
+    }
+
+    private func saveLocalView(_ key: ViewKey, _ value: JSONValue) {
+        if let data = try? JSONEncoder().encode(value) {
+            UserDefaults.standard.set(data, forKey: localViewKey(key))
+        }
+    }
+
+    private func apply(views fresh: API.ViewStateResponse) {
+        serverViewState = fresh.viewState
+        model.savedTaskViews = SavedViewEntry.list(from: fresh.viewState["tasks"])
+        model.savedTicketViews = SavedViewEntry.list(from: fresh.viewState["tickets"])
+        model.savedProjectViews = SavedViewEntry.list(from: fresh.viewState["projects"])
+    }
+
+    /// Called from AppModel whenever the user edits a page's filters: cache
+    /// on-device immediately, push to view_state debounced (web parity:
+    /// localStorage sync + 400 ms server flush).
+    func filtersChanged(_ key: ViewKey) {
+        guard !restoringFilters else { return }
+        let directories = ViewDirectories(model: model)
+        let patch: JSONValue = switch key {
+        case .tasks: model.taskFilters.webPatch(directories: directories)
+        case .tickets: model.ticketFilters.webPatch(directories: directories)
+        case .projects: model.projectFilters.webPatch(directories: directories)
+        }
+        saveLocalView(key, patch)
+        viewPushTasks[key]?.cancel()
+        let client = self.client
+        viewPushTasks[key] = Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
+            try? await client.updateViews(key: key.rawValue, patch: patch)
+        }
+    }
+
+    /// Restore last-used filters once per launch, after the directories
+    /// (projects, users) are loaded so ids resolve. The device-local cache
+    /// wins over the server snapshot (web parity: localStorage first).
+    private func restoreFiltersIfNeeded() {
+        guard !filtersRestored else { return }
+        filtersRestored = true
+        let directories = ViewDirectories(model: model)
+        restoringFilters = true
+        defer { restoringFilters = false }
+        for key in ViewKey.allCases {
+            guard let state = loadLocalView(key) ?? serverViewState[key.rawValue] else { continue }
+            switch key {
+            case .tasks:
+                model.taskFilters = TaskFilters(webConfig: state, directories: directories)
+            case .tickets:
+                model.ticketFilters = TicketFilters(webConfig: state, directories: directories)
+            case .projects:
+                model.projectFilters = ProjectFilters(webConfig: state, directories: directories)
+            }
+        }
+    }
+
+    func savedViews(for key: ViewKey) -> [SavedViewEntry] {
+        switch key {
+        case .tasks: model.savedTaskViews
+        case .tickets: model.savedTicketViews
+        case .projects: model.savedProjectViews
+        }
+    }
+
+    private func setSavedViews(_ key: ViewKey, _ views: [SavedViewEntry]) {
+        switch key {
+        case .tasks: model.savedTaskViews = views
+        case .tickets: model.savedTicketViews = views
+        case .projects: model.savedProjectViews = views
+        }
+    }
+
+    /// Snapshot the page's current filters as a new saved view (web parity:
+    /// ViewsMenu "Save current" appends and resends the whole array).
+    func createSavedView(_ key: ViewKey, name: String) {
+        let trimmed = String(name.trimmingCharacters(in: .whitespacesAndNewlines)
+            .prefix(SavedViewEntry.maxNameLength))
+        guard !trimmed.isEmpty else { return }
+        var list = savedViews(for: key)
+        guard list.count < SavedViewEntry.maxCount else { return }
+        let directories = ViewDirectories(model: model)
+        let config: JSONValue = switch key {
+        case .tasks: model.taskFilters.webConfig(directories: directories)
+        case .tickets: model.ticketFilters.webConfig(directories: directories)
+        case .projects: model.projectFilters.webConfig(directories: directories)
+        }
+        list.append(SavedViewEntry(
+            id: UUID().uuidString.lowercased(), name: trimmed, config: config
+        ))
+        setSavedViews(key, list)
+        pushSavedViews(key, list)
+    }
+
+    func renameSavedView(_ key: ViewKey, id: String, to name: String) {
+        let trimmed = String(name.trimmingCharacters(in: .whitespacesAndNewlines)
+            .prefix(SavedViewEntry.maxNameLength))
+        guard !trimmed.isEmpty else { return }
+        var list = savedViews(for: key)
+        guard let index = list.firstIndex(where: { $0.id == id }) else { return }
+        list[index].name = trimmed
+        setSavedViews(key, list)
+        pushSavedViews(key, list)
+    }
+
+    func deleteSavedView(_ key: ViewKey, id: String) {
+        let list = savedViews(for: key).filter { $0.id != id }
+        setSavedViews(key, list)
+        pushSavedViews(key, list)
+    }
+
+    /// Apply a saved view's config to the page filters. The filter didSet
+    /// then persists the applied state, like the web writing it back.
+    func applySavedView(_ key: ViewKey, entry: SavedViewEntry) {
+        let directories = ViewDirectories(model: model)
+        switch key {
+        case .tasks:
+            model.taskFilters = TaskFilters(webConfig: entry.config, directories: directories)
+        case .tickets:
+            model.ticketFilters = TicketFilters(webConfig: entry.config, directories: directories)
+        case .projects:
+            model.projectFilters = ProjectFilters(webConfig: entry.config, directories: directories)
+        }
+    }
+
+    private func pushSavedViews(_ key: ViewKey, _ views: [SavedViewEntry]) {
+        let patch = JSONValue.object(["savedViews": .array(views.map(\.asJSON))])
+        Task {
+            try? await client.updateViews(key: key.rawValue, patch: patch)
+            await refreshViews()
         }
     }
 

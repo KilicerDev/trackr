@@ -15,6 +15,17 @@ final class PushRegistrar: NSObject, UIApplicationDelegate, UNUserNotificationCe
     private static let tokenKey = "trackr.pushToken"
 
     private var client: APIClient?
+    /// Wired by RootView once the session is ready — receives the `url`
+    /// custom key of a tapped push for in-app deep-linking.
+    @MainActor var onOpen: ((String) -> Void)?
+    /// A tap that arrived before the session was ready (cold start).
+    @MainActor private var pendingURL: String?
+
+    @MainActor
+    func consumePendingURL() -> String? {
+        defer { pendingURL = nil }
+        return pendingURL
+    }
 
     func application(
         _ application: UIApplication,
@@ -76,5 +87,24 @@ final class PushRegistrar: NSObject, UIApplicationDelegate, UNUserNotificationCe
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
         [.banner, .sound, .badge]
+    }
+
+    /// Tap on a notification: deep-link to the entity the push names via
+    /// its `url` custom key (set by the server's push payload).
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        guard
+            let url = response.notification.request.content.userInfo["url"] as? String,
+            !url.isEmpty
+        else { return }
+        await MainActor.run {
+            if let onOpen {
+                onOpen(url)
+            } else {
+                pendingURL = url
+            }
+        }
     }
 }

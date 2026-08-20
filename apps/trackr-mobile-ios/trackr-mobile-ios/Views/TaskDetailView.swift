@@ -66,20 +66,21 @@ struct TaskDetailView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Color(.systemGroupedBackground))
+        // One snapshot-typed trigger instead of a per-field onChange stack:
+        // keeps the modifier chain type-checkable and excludes the free-text
+        // fields (title/description persist on disappear, not per keystroke).
         // Chip edits land on the activity timeline, like the web's typed
         // Inspector events.
-        .onChange(of: task.status) { _, status in
-            logActivity("changed status to \(status.label)", icon: "arrow.triangle.2.circlepath")
+        .onChange(of: PersistedFields(task)) { old, new in
+            if old.status != new.status {
+                logActivity("changed status to \(new.status.label)",
+                            icon: "arrow.triangle.2.circlepath")
+            }
+            if old.priority != new.priority {
+                logActivity("changed priority to \(new.priority.label)", icon: "flag")
+            }
             persist()
         }
-        .onChange(of: task.priority) { _, priority in
-            logActivity("changed priority to \(priority.label)", icon: "flag")
-            persist()
-        }
-        .onChange(of: task.type) { persist() }
-        .onChange(of: task.assignees) { persist() }
-        .onChange(of: task.due) { persist() }
-        .onChange(of: task.checklist) { persist() }
         .onAppear {
             baseline = task
             // Screen-appear revalidation: pull the freshest detail (and the
@@ -148,6 +149,32 @@ struct TaskDetailView: View {
         }
         .sheet(isPresented: $showingAttachments) {
             AttachmentsSheet()
+        }
+    }
+
+    /// The fields whose edits push immediately (title/description are
+    /// excluded on purpose — they persist when the screen closes).
+    private struct PersistedFields: Equatable {
+        let status: TaskStatus
+        let priority: TaskPriority
+        let type: TaskType
+        let assignees: [UserRef]
+        let due: Date?
+        let plannedFor: Date?
+        let estimate: Int?
+        let tags: [String]
+        let checklist: [ChecklistItem]
+
+        init(_ task: TaskItem) {
+            status = task.status
+            priority = task.priority
+            type = task.type
+            assignees = task.assignees
+            due = task.due
+            plannedFor = task.plannedFor
+            estimate = task.estimate
+            tags = task.tags
+            checklist = task.checklist
         }
     }
 

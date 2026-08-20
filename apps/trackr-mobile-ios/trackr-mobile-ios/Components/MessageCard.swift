@@ -15,7 +15,7 @@ struct MessageCard: View {
     var accent: Color?
 
     var body: some View {
-        Text(text)
+        Text(Mentions.attributed(text))
             .font(.system(size: 15))
             .lineSpacing(3)
             .frame(maxWidth: .infinity, alignment: .leading)

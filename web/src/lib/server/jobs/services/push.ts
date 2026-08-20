@@ -1,14 +1,10 @@
 /**
  * Push service — the `push.send` job: one native push notification to all of a
- * user's registered devices (see `push_token` in app.schema.ts).
- *
- * GROUNDWORK ONLY for now: the Go worker has no `push.send` handler yet
- * (FCM/APNs is a planned follow-up), so enqueueing is gated behind
- * `PUSH_ENABLED=true`. With the flag off (the default) `sendPushFireAndForget`
- * is a no-op — notify() can call it unconditionally today, and flipping the
- * flag once the worker handler + Firebase credentials exist turns push on
- * without touching any call site. The worker resolves the user's device
- * tokens itself so a token registered after enqueue still receives the send.
+ * user's registered devices (see `push_token` in app.schema.ts). The Go worker
+ * (worker/internal/jobs/push.go) resolves the user's device tokens at send
+ * time, so a token registered after enqueue still receives the send. Enqueue
+ * is gated behind `PUSH_ENABLED=true`; with the flag off,
+ * `sendPushFireAndForget` is a no-op, so notify() can call it unconditionally.
  */
 
 import { env } from '$env/dynamic/private';
@@ -18,6 +14,8 @@ import { defineJob } from '../core';
 export type PushPayload = {
 	userId: string;
 	title: string;
+	/** APNs alert subtitle — the entity label ("TRACK-91 — Fix the thing"). */
+	subtitle?: string | null;
 	body?: string | null;
 	/** In-app route (e.g. `/tickets/abc`) — the app deep-links to it on tap. */
 	url: string;
@@ -27,6 +25,8 @@ export type PushPayload = {
 	 * coalesces instead of flooding.
 	 */
 	threadId?: string | null;
+	/** App icon badge: the recipient's unread inbox count at enqueue time. */
+	badge?: number | null;
 };
 
 export const pushJob = defineJob<PushPayload>('push.send');
@@ -38,7 +38,14 @@ export function pushEnabled(): boolean {
 /** Enqueue one push per recipient; no-op unless PUSH_ENABLED. */
 export function sendPushFireAndForget(
 	userIds: Iterable<string>,
-	content: { title: string; body?: string | null; url: string; threadId?: string | null }
+	content: {
+		title: string;
+		subtitle?: string | null;
+		body?: string | null;
+		url: string;
+		threadId?: string | null;
+		badge?: number | null;
+	}
 ): void {
 	if (!pushEnabled()) return;
 	for (const userId of userIds) {
@@ -46,9 +53,11 @@ export function sendPushFireAndForget(
 			.enqueue({
 				userId,
 				title: content.title,
+				subtitle: content.subtitle ?? null,
 				body: content.body ?? null,
 				url: content.url,
-				threadId: content.threadId ?? null
+				threadId: content.threadId ?? null,
+				badge: content.badge ?? null
 			})
 			.catch((err) => {
 				console.error('[push] enqueue failed', { userId, err });

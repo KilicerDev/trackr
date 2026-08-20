@@ -48,27 +48,41 @@ extension APIClient {
         var status: String?
         var priority: String?
         var type: String?
+        var title: String?
         var description: String?
         var due: String??
+        var estimate: Int??
+        var tags: [String]?
         var checklist: [API.ChecklistEntry]?
         var assigneeIds: [String]?
+        var plannedFor: String??
 
-        // `due` is double-optional: outer nil = not part of the patch, inner
-        // nil = clear the date. Encode explicit nulls only for the inner case.
+        // due/estimate/plannedFor are double-optional: outer nil = not part
+        // of the patch, inner nil = clear the value. Encode explicit nulls
+        // only for the inner case.
         enum CodingKeys: String, CodingKey {
-            case status, priority, type, description, due, checklist, assigneeIds
+            case status, priority, type, title, description, due, estimate,
+                 tags, checklist, assigneeIds, plannedFor
         }
         func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encodeIfPresent(status, forKey: .status)
             try container.encodeIfPresent(priority, forKey: .priority)
             try container.encodeIfPresent(type, forKey: .type)
+            try container.encodeIfPresent(title, forKey: .title)
             try container.encodeIfPresent(description, forKey: .description)
             if let due {
                 try container.encode(due, forKey: .due)
             }
+            if let estimate {
+                try container.encode(estimate, forKey: .estimate)
+            }
+            try container.encodeIfPresent(tags, forKey: .tags)
             try container.encodeIfPresent(checklist, forKey: .checklist)
             try container.encodeIfPresent(assigneeIds, forKey: .assigneeIds)
+            if let plannedFor {
+                try container.encode(plannedFor, forKey: .plannedFor)
+            }
         }
     }
 
@@ -79,7 +93,15 @@ extension APIClient {
     struct CreateTaskBody: Encodable {
         let title: String
         let projectKey: String
-        let description: String?
+        var description: String? = nil
+        var status: String? = nil
+        var priority: String? = nil
+        var type: String? = nil
+        var due: String? = nil
+        var estimate: Int? = nil
+        var tags: [String]? = nil
+        var assigneeIds: [String]? = nil
+        var plannedFor: String? = nil
     }
 
     func createTask(_ body: CreateTaskBody) async throws -> API.CreatedResponse {
@@ -269,6 +291,22 @@ extension APIClient {
         }
         struct Response: Decodable { let ok: Bool }
         let _: Response = try await patch("/api/v1/me/profile", body: Body(name: name, image: image))
+    }
+
+    // MARK: - Saved views / per-page view state
+
+    func views() async throws -> API.ViewStateResponse {
+        try await get("/api/v1/me/views")
+    }
+
+    /// Shallow-merges `patch` into view_state[key] server-side; a
+    /// `savedViews` array replaces the stored one wholesale (web parity).
+    func updateViews(key: String, patch: JSONValue) async throws {
+        struct Body: Encodable {
+            let key: String
+            let patch: JSONValue
+        }
+        let _: API.OkResponse = try await post("/api/v1/me/views", body: Body(key: key, patch: patch))
     }
 
     // MARK: - Push tokens

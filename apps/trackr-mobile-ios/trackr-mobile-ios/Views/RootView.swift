@@ -41,7 +41,16 @@ struct RootView: View {
                     Task { await auth?.signOut() }
                 }
                 push?.enable(client: client)
-                Task { await fresh.start() }
+                // Notification taps deep-link into the entity; a tap that
+                // cold-started the app is queued and consumed here.
+                let model = self.model
+                push?.onOpen = { url in model.handlePushURL(url) }
+                Task { [weak push] in
+                    await fresh.start()
+                    if let pending = push?.consumePendingURL() {
+                        model.handlePushURL(pending)
+                    }
+                }
             case .signedOut:
                 engine?.stop()
                 engine = nil

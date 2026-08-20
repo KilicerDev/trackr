@@ -1,10 +1,8 @@
 // Read-only note for the app (search hit → detail). Access via
 // resolveNoteRole — the same owner/share/meeting inheritance the web and the
 // collab websocket use.
-import { eq } from 'drizzle-orm';
-import { db } from '$lib/server/db';
-import { document } from '$lib/server/db/app.schema';
 import { isTrackrTeam } from '$lib/server/permissions';
+import { loadBodyHtml } from '$lib/server/collab/derive';
 import { getNote, resolveNoteRole } from '$lib/server/notes';
 import { m } from '$lib/paraglide/messages';
 import { apiError, json, requireUser } from '$lib/server/api/guard';
@@ -19,15 +17,10 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 	const role = await resolveNoteRole(note, user.id, locals.memberships!);
 	if (!role) apiError(403, m.notes_err_no_access());
 
-	let bodyHtml = '';
-	if (note.documentId) {
-		const [doc] = await db
-			.select({ bodyHtml: document.bodyHtml })
-			.from(document)
-			.where(eq(document.id, note.documentId))
-			.limit(1);
-		bodyHtml = doc?.bodyHtml ?? '';
-	}
+	// loadBodyHtml re-derives an empty read model from the Yjs state — the
+	// store-time derivation is best-effort and has failed in prod, leaving
+	// notes whose content only exists in the ydoc binary.
+	const bodyHtml = note.documentId ? await loadBodyHtml(note.documentId) : '';
 
 	return json({
 		note: {

@@ -42,8 +42,25 @@ final class AppModel {
     var chatThreads: [ChatThread] = []
     var selectedTab: AppTab = .home
     var taskPath: [TaskItem] = []
+    var ticketPath: [TicketItem] = []
+    var homePath = NavigationPath()
     var session = WorkSession()
     var showingPlayer = false
+
+    // Per-page view state, shared across tab switches and synced with the
+    // web's view_state (SyncEngine persists it locally + server-side).
+    var taskFilters = TaskFilters() {
+        didSet { if taskFilters != oldValue { sync?.filtersChanged(.tasks) } }
+    }
+    var ticketFilters = TicketFilters() {
+        didSet { if ticketFilters != oldValue { sync?.filtersChanged(.tickets) } }
+    }
+    var projectFilters = ProjectFilters() {
+        didSet { if projectFilters != oldValue { sync?.filtersChanged(.projects) } }
+    }
+    var savedTaskViews: [SavedViewEntry] = []
+    var savedTicketViews: [SavedViewEntry] = []
+    var savedProjectViews: [SavedViewEntry] = []
 
     // Session context, filled by SyncEngine from /api/v1/me.
     var currentUser: UserRef?
@@ -93,6 +110,61 @@ final class AppModel {
             ProjectEvent(user: me, date: .now, text: text)
         )
         projects[index].updatedAt = .now
+    }
+
+    /// Deep-link from a tapped push notification: `url` is the server's
+    /// in-app route (e.g. "/tickets/<uuid>"). Switches tab and pushes the
+    /// entity's detail, fetching it first when it isn't loaded yet.
+    func handlePushURL(_ raw: String) {
+        let path = raw.hasPrefix("http") ? (URL(string: raw)?.path ?? raw) : raw
+        let parts = path.split(separator: "/").map(String.init)
+        switch parts.first {
+        case "tickets":
+            selectedTab = .tickets
+            guard parts.count > 1 else { return }
+            let id = parts[1]
+            if let ticket = tickets.first(where: { $0.uuid == id || $0.id == id }) {
+                ticketPath = [ticket]
+            } else {
+                Task {
+                    await sync?.loadTicketDetail(uuid: id)
+                    if let ticket = tickets.first(where: { $0.uuid == id }) {
+                        ticketPath = [ticket]
+                    }
+                }
+            }
+        case "tasks":
+            selectedTab = .tasks
+            guard parts.count > 1 else { return }
+            let id = parts[1]
+            if let task = tasks.first(where: { $0.uuid == id || $0.id == id }) {
+                taskPath = [task]
+            } else {
+                Task {
+                    await sync?.refreshTasks()
+                    if let task = tasks.first(where: { $0.uuid == id || $0.id == id }) {
+                        taskPath = [task]
+                    }
+                }
+            }
+        case "chat":
+            selectedTab = .home
+            var fresh = NavigationPath()
+            fresh.append(HomeRoute.chat)
+            if parts.count > 1, let thread = chatThreads.first(where: { $0.id == parts[1] }) {
+                fresh.append(thread)
+            }
+            homePath = fresh
+        case "inbox":
+            selectedTab = .home
+            var fresh = NavigationPath()
+            fresh.append(HomeRoute.inbox)
+            homePath = fresh
+        case "week":
+            selectedTab = .plan
+        default:
+            selectedTab = .home
+        }
     }
 
     func startSession(for project: ProjectRef) {

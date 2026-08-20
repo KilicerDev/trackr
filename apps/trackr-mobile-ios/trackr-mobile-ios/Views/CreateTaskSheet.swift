@@ -115,6 +115,12 @@ struct CreateTaskSheet: View {
             }
             .onAppear {
                 if project.isEmpty { project = projectOptions.first ?? "" }
+                // Web parity: the creator is the default assignee (the server
+                // falls back to them anyway — preselect so the UI matches).
+                if assignees.isEmpty, let me = model?.currentUser {
+                    let match = userOptions.first { $0.serverId == me.serverId } ?? me
+                    assignees = [match]
+                }
             }
         }
         .presentationDetents([.medium, .large])

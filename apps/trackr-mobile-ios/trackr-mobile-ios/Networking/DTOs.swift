@@ -412,6 +412,12 @@ enum API {
         let preferences: Preferences
     }
 
+    /// GET /api/v1/me/views — the web pages' per-key view bookkeeping
+    /// (saved views + last-used filters), kept raw: configs are opaque blobs.
+    struct ViewStateResponse: Codable {
+        let viewState: [String: JSONValue]
+    }
+
     // MARK: - Events (SSE payloads)
 
     struct Event: Codable {

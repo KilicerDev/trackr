@@ -10,7 +10,6 @@
 import { Hocuspocus } from '@hocuspocus/server';
 import { Database } from '@hocuspocus/extension-database';
 import { TiptapTransformer } from '@hocuspocus/transformer';
-import { generateHTML } from '@tiptap/html';
 import { getSchema } from '@tiptap/core';
 import { DOMParser as PMDOMParser } from '@tiptap/pm/model';
 import { JSDOM } from 'jsdom';
@@ -20,18 +19,11 @@ import { db } from '$lib/server/db';
 import { document, note, wikiPage } from '$lib/server/db/app.schema';
 import { collabSchemaExtensions, COLLAB_FIELD } from '$lib/editor/extensions';
 import { resolveCollabSession } from './auth';
+import { deriveHtml } from './derive';
 import { resolveNoteRole, touchNoteByDocument } from '$lib/server/notes';
 
 declare global {
 	var __hocuspocus: Hocuspocus | undefined;
-}
-
-function deriveHtml(state: Uint8Array): string {
-	const ydoc = new Y.Doc();
-	Y.applyUpdate(ydoc, state);
-	const json = TiptapTransformer.fromYdoc(ydoc, COLLAB_FIELD);
-	ydoc.destroy();
-	return generateHTML(json, collabSchemaExtensions);
 }
 
 // Parse stored HTML into ProseMirror JSON. We don't use @tiptap/html's

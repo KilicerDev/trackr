@@ -11,14 +11,14 @@ import SwiftUI
 struct TicketsView: View {
     @Bindable var model: AppModel
 
-    @State private var filters = TicketFilters()
     @State private var showingFilters = false
+    @State private var showingViews = false
     @State private var showingCreate = false
 
-    private var groups: [TicketGroup] { filters.grouped(model.tickets) }
+    private var groups: [TicketGroup] { model.ticketFilters.grouped(model.tickets) }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $model.ticketPath) {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(groups) { group in
@@ -54,13 +54,20 @@ struct TicketsView: View {
             }
             .navigationTitle("Tickets")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                // Views + filter share one capsule, Apple Music style —
+                // same trio as the Tasks tab.
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button {
+                        showingViews = true
+                    } label: {
+                        Image(systemName: "text.badge.plus")
+                    }
                     Button {
                         showingFilters = true
                     } label: {
                         Image(systemName: "line.3.horizontal.decrease")
                     }
-                    .tint(filters.hasActiveFilters ? .accentColor : nil)
+                    .tint(model.ticketFilters.hasActiveFilters ? .accentColor : nil)
                 }
                 ToolbarSpacer(.fixed, placement: .topBarTrailing)
                 ToolbarItem(placement: .topBarTrailing) {
@@ -72,7 +79,26 @@ struct TicketsView: View {
                 }
             }
             .sheet(isPresented: $showingFilters) {
-                TicketFiltersSheet(filters: $filters, tickets: model.tickets)
+                TicketFiltersSheet(filters: $model.ticketFilters, tickets: model.tickets)
+            }
+            .sheet(isPresented: $showingViews) {
+                SavedViewsSheet(
+                    entries: model.savedTicketViews,
+                    summary: {
+                        TicketFilters(
+                            webConfig: $0.config, directories: ViewDirectories(model: model)
+                        ).summary
+                    },
+                    isActive: {
+                        TicketFilters(
+                            webConfig: $0.config, directories: ViewDirectories(model: model)
+                        ) == model.ticketFilters
+                    },
+                    onApply: { model.sync?.applySavedView(.tickets, entry: $0) },
+                    onCreate: { model.sync?.createSavedView(.tickets, name: $0) },
+                    onRename: { model.sync?.renameSavedView(.tickets, id: $0.id, to: $1) },
+                    onDelete: { model.sync?.deleteSavedView(.tickets, id: $0.id) }
+                )
             }
             .sheet(isPresented: $showingCreate) {
                 CreateTicketSheet(tickets: model.tickets, model: model) { ticket in

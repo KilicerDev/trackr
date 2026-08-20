@@ -6,7 +6,7 @@
 // notify-recipients.ts), preferences and channel routing are ours.
 
 import { env } from '$env/dynamic/private';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { notification, type NotificationKind } from '../db/app.schema';
 import { user as userTable } from '../db/auth.schema';
@@ -75,6 +75,65 @@ function buildUrl(path: string, baseUrl?: string | null): string {
 	const origin = (baseUrl ?? env.ORIGIN ?? '').replace(/\/$/, '');
 	if (!origin) return path;
 	return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
+}
+
+// ---------------------------------------------------------------------------
+// Push composition. Inbox strings are dense one-liners ("New comment on
+// TRACK-12: Fix the thing") — fine in a list, bad as a bold lock-screen line.
+// Every kind is therefore recomposed into the APNs title / subtitle / body
+// triple: the event phrase becomes the title, the entity label the subtitle,
+// and the message excerpt (markdown flattened, truncated) the body. The split
+// keys off the two separators every inbox string uses (" — " and ": "), in
+// both locales, so it applies uniformly to all notification kinds.
+
+const PUSH_BODY_MAX = 240;
+
+/** Flatten markdown syntax to plain text for the lock screen. */
+function plainifyMarkdown(text: string): string {
+	return text
+		.replace(/```[a-zA-Z0-9]*\n?([\s\S]*?)```/g, '$1')
+		.replace(/`([^`]*)`/g, '$1')
+		.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+		.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+		.replace(/(\*\*|__)([\s\S]*?)\1/g, '$2')
+		.replace(/~~([\s\S]*?)~~/g, '$1')
+		.replace(/^#{1,6}\s+/gm, '')
+		.replace(/^>\s?/gm, '')
+		.replace(/^[-*+]\s+/gm, '')
+		.replace(/\n{2,}/g, '\n')
+		.trim();
+}
+
+function pushExcerpt(text: string): string | null {
+	const flat = plainifyMarkdown(text);
+	if (!flat) return null;
+	if (flat.length <= PUSH_BODY_MAX) return flat;
+	return flat.slice(0, PUSH_BODY_MAX - 1).trimEnd() + '…';
+}
+
+export function composePush(content: NotifyContent): {
+	title: string;
+	subtitle: string | null;
+	body: string | null;
+} {
+	let title = content.title;
+	let subtitle: string | null = null;
+	// Prefer the em-dash separator ("Assigned to you: TRACK-91 — Fix the
+	// thing" keeps the ref in the title); fall back to the first ": " for the
+	// colon-style strings ("New comment on TRACK-12: Fix the thing").
+	const em = title.indexOf(' — ');
+	if (em > 0) {
+		subtitle = title.slice(em + 3).trim() || null;
+		title = title.slice(0, em).trim();
+	} else {
+		const colon = title.indexOf(': ');
+		if (colon > 0) {
+			subtitle = title.slice(colon + 2).trim() || null;
+			title = title.slice(0, colon).trim();
+		}
+	}
+	const body = content.body ? pushExcerpt(content.body) : null;
+	return { title, subtitle, body };
 }
 
 export async function notify(input: NotifyInput): Promise<void> {
@@ -171,30 +230,31 @@ export async function notify(input: NotifyInput): Promise<void> {
 		await db.insert(notification).values(rows);
 		publishEvent(wantsInApp, { type: 'inbox' });
 
-		// Native push mirrors the in-app channel: whoever gets an inbox row gets a
-		// push to their registered devices (no-op until PUSH_ENABLED); content is
-		// per-locale so enqueue per recipient. Inbox titles are one-liners like
-		// "Assigned to you: TRACK-91 — Fix the thing" — on the lock screen that
-		// reads badly as a bold single line, so bodyless notifications are split
-		// at the em-dash into a short title + a body line. The entity keys the
-		// APNs thread-id so a busy ticket stacks instead of flooding.
+		// Native push mirrors the in-app channel: whoever gets an inbox row gets
+		// a push to their registered devices (no-op until PUSH_ENABLED); content
+		// is per-locale so enqueue per recipient. composePush() reshapes the
+		// inbox one-liner into the title/subtitle/body triple for the lock
+		// screen. The entity keys the APNs thread-id so a busy ticket stacks
+		// instead of flooding, and the unread count rides along as the badge.
+		const unreadRows = await db
+			.select({
+				recipientId: notification.recipientId,
+				count: sql<number>`count(*)::int`
+			})
+			.from(notification)
+			.where(and(inArray(notification.recipientId, wantsInApp), isNull(notification.readAt)))
+			.groupBy(notification.recipientId);
+		const badgeOf = new Map(unreadRows.map((r) => [r.recipientId, r.count]));
 		const threadId = input.entity ? `${input.entity.type}:${input.entity.id}` : null;
 		for (const recipientId of wantsInApp) {
-			const content = contentFor(recipientId);
-			let pushTitle = content.title;
-			let pushBody = content.body ?? null;
-			if (!pushBody) {
-				const split = pushTitle.indexOf(' — ');
-				if (split > 0) {
-					pushBody = pushTitle.slice(split + 3).trim() || null;
-					pushTitle = pushTitle.slice(0, split).trim();
-				}
-			}
+			const push = composePush(contentFor(recipientId));
 			sendPushFireAndForget([recipientId], {
-				title: pushTitle,
-				body: pushBody,
+				title: push.title,
+				subtitle: push.subtitle,
+				body: push.body,
 				url: input.url,
-				threadId
+				threadId,
+				badge: badgeOf.get(recipientId) ?? null
 			});
 		}
 	}

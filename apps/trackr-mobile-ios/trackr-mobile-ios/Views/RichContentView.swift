@@ -11,10 +11,15 @@
 import SwiftUI
 
 struct RichContentView: View {
-    @State private var blocks: [NoteBlock]
+    let html: String
+    // Parsed via .task(id: html), NOT in init: @State's initial value only
+    // counts on the first render of a view identity — detail screens fetch
+    // the body *after* first render, and an init-time parse would keep
+    // showing the initial empty state forever.
+    @State private var blocks: [NoteBlock] = []
 
     init(html: String) {
-        _blocks = State(initialValue: RichContentParser.parse(html))
+        self.html = html
     }
 
     var body: some View {
@@ -26,6 +31,9 @@ struct RichContentView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .textSelection(.enabled)
         .tint(.accentColor)
+        .task(id: html) {
+            blocks = RichContentParser.parse(html)
+        }
     }
 
     @ViewBuilder

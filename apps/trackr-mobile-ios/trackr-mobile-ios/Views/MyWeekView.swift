@@ -100,8 +100,18 @@ struct MyWeekView: View {
     private var unscheduled: [TaskItem] {
         // Open = still actionable; done/in-review never surfaces here.
         let isOpen = { (t: TaskItem) in t.status != .done && t.status != .inReview }
-        let me = TaskItem.sampleUsers[0]  // current user later
-        let mine = { (t: TaskItem) in t.assignees.contains(me) }
+        let me = model.me
+        // Match by server id when both sides have one (UserRef color/initials
+        // can differ between /me and the tasks directory), fall back to
+        // whole-value equality for sample data.
+        let mine = { (t: TaskItem) in
+            t.assignees.contains { assignee in
+                if let mineId = me.serverId, let theirId = assignee.serverId {
+                    return mineId == theirId
+                }
+                return assignee == me
+            }
+        }
 
         switch unscheduledTab {
         case .past:
@@ -140,6 +150,11 @@ struct MyWeekView: View {
                 .padding(.bottom, 24)
             }
             .background(Color(.systemGroupedBackground))
+            .refreshable { await model.sync?.refreshTasks() }
+            .onAppear {
+                // Screen-appear revalidation, same as the Tasks tab.
+                Task { await model.sync?.refreshTasks() }
+            }
             .navigationDestination(for: TaskItem.self) { task in
                 TaskDetailView(task: task, model: model)
             }

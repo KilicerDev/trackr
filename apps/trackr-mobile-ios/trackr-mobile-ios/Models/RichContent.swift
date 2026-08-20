@@ -49,16 +49,37 @@ enum RichContentParser {
         return blocks(in: root)
     }
 
-    /// XMLParser needs well-formed XML: self-close the HTML void elements
-    /// and swap the one non-XML entity TipTap emits.
+    /// The HTML named entities the serializer or legacy hand-authored pages
+    /// may contain. XMLParser only knows the five XML entities — any other
+    /// named entity aborts the whole parse, so they're substituted up front.
+    private static let namedEntities: [(String, String)] = [
+        ("&nbsp;", "\u{00A0}"), ("&mdash;", "—"), ("&ndash;", "–"),
+        ("&hellip;", "…"), ("&rsquo;", "\u{2019}"), ("&lsquo;", "\u{2018}"),
+        ("&rdquo;", "\u{201D}"), ("&ldquo;", "\u{201C}"), ("&copy;", "©"),
+        ("&reg;", "®"), ("&trade;", "™"), ("&deg;", "°"), ("&middot;", "·"),
+        ("&bull;", "•"), ("&times;", "×"), ("&euro;", "€"), ("&pound;", "£"),
+        ("&sect;", "§"), ("&para;", "¶"), ("&laquo;", "«"), ("&raquo;", "»"),
+        ("&auml;", "ä"), ("&ouml;", "ö"), ("&uuml;", "ü"),
+        ("&Auml;", "Ä"), ("&Ouml;", "Ö"), ("&Uuml;", "Ü"), ("&szlig;", "ß"),
+    ]
+
+    /// XMLParser needs well-formed XML: self-close the HTML void elements,
+    /// swap named entities for their characters, and drop a doctype if a
+    /// legacy page carries one.
     private static func prepared(_ html: String) -> String {
-        let closed = html
-            .replacingOccurrences(of: "&nbsp;", with: "\u{00A0}")
+        var closed = html
             .replacingOccurrences(
-                of: "<(br|hr|img|input)((?:[^>\"]|\"[^\"]*\")*?)\\s*/?>",
-                with: "<$1$2/>",
-                options: .regularExpression
+                of: "<!DOCTYPE[^>]*>", with: "",
+                options: [.regularExpression, .caseInsensitive]
             )
+        for (entity, replacement) in namedEntities {
+            closed = closed.replacingOccurrences(of: entity, with: replacement)
+        }
+        closed = closed.replacingOccurrences(
+            of: "<(br|hr|img|input|source|track|wbr|area|base|col|embed|link|meta)((?:[^>\"]|\"[^\"]*\")*?)\\s*/?>",
+            with: "<$1$2/>",
+            options: [.regularExpression, .caseInsensitive]
+        )
         return "<root>\(closed)</root>"
     }
 
