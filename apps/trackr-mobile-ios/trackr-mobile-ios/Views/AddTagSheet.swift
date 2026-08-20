@@ -10,15 +10,16 @@ import SwiftUI
 
 struct AddTagSheet: View {
     let existingTags: [String]
+    /// Suggestion pool: every tag in use across the caller's collection
+    /// (all loaded tasks or tickets).
+    var allTags: [String] = []
     let onAdd: (String) -> Void
     @Environment(\.dismiss) private var dismiss
 
     @State private var newTag = ""
 
     private var suggestions: [String] {
-        // All tags in use across tasks — from the API later.
-        let all = Set(TaskItem.samples.flatMap(\.tags))
-        return all.subtracting(existingTags).sorted()
+        Set(allTags).subtracting(existingTags).sorted()
     }
 
     var body: some View {
@@ -77,6 +78,6 @@ struct AddTagSheet: View {
 
 #Preview {
     Color.clear.sheet(isPresented: .constant(true)) {
-        AddTagSheet(existingTags: ["mobile"]) { _ in }
+        AddTagSheet(existingTags: ["mobile"], allTags: TaskItem.samples.flatMap(\.tags)) { _ in }
     }
 }

@@ -143,7 +143,10 @@ struct TaskDetailView: View {
             }
         }
         .sheet(isPresented: $showingAddTag) {
-            AddTagSheet(existingTags: task.tags) { tag in
+            AddTagSheet(
+                existingTags: task.tags,
+                allTags: (model?.tasks ?? TaskItem.samples).flatMap(\.tags)
+            ) { tag in
                 task.tags.append(tag)
             }
         }
@@ -378,7 +381,16 @@ struct TaskDetailView: View {
     private var tagsRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                ForEach(task.tags, id: \.self) { TagChip(tag: $0) }
+                ForEach(task.tags, id: \.self) { tag in
+                    TagChip(tag: tag)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                task.tags.removeAll { $0 == tag }
+                            } label: {
+                                Label("Remove", systemImage: "trash")
+                            }
+                        }
+                }
             }
         }
     }

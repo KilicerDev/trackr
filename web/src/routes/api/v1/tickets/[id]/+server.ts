@@ -1,8 +1,9 @@
 // Ticket detail for the app.
 //   GET   — ticket + full message timeline (internal notes only for staff);
 //           agents also get the assignable-users picker directory.
-//   PATCH { status?, priority?, category?, assigneeIds? } — the property-pill
-//   edits the app offers. Tags/checklist/subject stay a desktop concern.
+//   PATCH { status?, priority?, category?, assigneeIds?, tags? } — the
+//   property-pill and tag edits the app offers. Checklist/subject stay a
+//   desktop concern.
 import { canViewTicket, can, isTrackrTeam } from '$lib/server/permissions';
 import {
 	addTicketSystemEvents,
@@ -80,6 +81,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 		priority?: string;
 		category?: string;
 		assigneeIds?: string[];
+		tags?: string[];
 	}>(request);
 	const events: { meta: TicketEventMeta; internal: boolean }[] = [];
 	const patch: {
@@ -87,6 +89,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 		priority?: TicketPriority;
 		category?: TicketCategory;
 		assigneeIds?: string[];
+		tags?: string[];
 	} = {};
 
 	if (body.status !== undefined) {
@@ -135,6 +138,23 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 		if (added.length || removed.length) {
 			patch.assigneeIds = next;
 			events.push({ meta: { event: 'assigned', added, removed }, internal: false });
+		}
+	}
+	// Tags: full array, [] clears. Compared as a set like the web action;
+	// the change lands as an internal 'edited' event — bookkeeping the
+	// customer has no stake in.
+	if (body.tags !== undefined) {
+		if (!Array.isArray(body.tags) || body.tags.some((x) => typeof x !== 'string')) {
+			apiError(400, 'tags must be a string array.');
+		}
+		const next = [...new Set(body.tags.map((t) => t.trim()).filter(Boolean))];
+		const prev = new Set(ticket.tags);
+		if (next.length !== ticket.tags.length || !next.every((t) => prev.has(t))) {
+			patch.tags = next;
+			events.push({
+				meta: { event: 'edited', tags: { from: ticket.tags, to: next } },
+				internal: true
+			});
 		}
 	}
 

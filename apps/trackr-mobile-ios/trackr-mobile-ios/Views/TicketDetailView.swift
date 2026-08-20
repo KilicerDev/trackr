@@ -19,6 +19,7 @@ struct TicketDetailView: View {
 
     @State private var baseline: TicketItem?
     @State private var showingConversation = false
+    @State private var showingAddTag = false
     @State private var newChecklistItem = ""
 
     var body: some View {
@@ -52,6 +53,7 @@ struct TicketDetailView: View {
             persist()
         }
         .onChange(of: ticket.assignees) { persist() }
+        .onChange(of: ticket.tags) { persist() }
         .onAppear {
             baseline = ticket
             // Screen-appear revalidation: the list payload has no messages,
@@ -74,6 +76,14 @@ struct TicketDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
+                    showingAddTag = true
+                } label: {
+                    Image(systemName: "tag")
+                }
+            }
+            ToolbarSpacer(.fixed, placement: .topBarTrailing)
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
                     showingConversation = true
                 } label: {
                     Image(systemName: "bubble.left")
@@ -82,6 +92,14 @@ struct TicketDetailView: View {
         }
         .navigationDestination(isPresented: $showingConversation) {
             TicketConversationView(ticket: $ticket, model: model)
+        }
+        .sheet(isPresented: $showingAddTag) {
+            AddTagSheet(
+                existingTags: ticket.tags,
+                allTags: (model?.tickets ?? TicketItem.samples).flatMap(\.tags)
+            ) { tag in
+                ticket.tags.append(tag)
+            }
         }
     }
 
@@ -291,7 +309,16 @@ struct TicketDetailView: View {
     private var tagsRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                ForEach(ticket.tags, id: \.self) { TagChip(tag: $0) }
+                ForEach(ticket.tags, id: \.self) { tag in
+                    TagChip(tag: tag)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                ticket.tags.removeAll { $0 == tag }
+                            } label: {
+                                Label("Remove", systemImage: "trash")
+                            }
+                        }
+                }
             }
         }
     }
@@ -350,7 +377,7 @@ struct TicketDetailView: View {
     }
 
     /// Write back into the shared model and push the API-editable fields
-    /// (status/priority/category/assignees — checklist/tags/subject are
+    /// (status/priority/category/assignees/tags — checklist/subject are
     /// desktop-only on the server and stay local).
     private func persist() {
         guard ticket != baseline else { return }

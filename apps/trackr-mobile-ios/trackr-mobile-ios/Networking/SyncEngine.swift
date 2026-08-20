@@ -287,7 +287,8 @@ final class SyncEngine {
             status: ticket.status.apiValue,
             priority: ticket.priority.apiValue,
             category: ticket.category.apiValue,
-            assigneeIds: ticket.assignees.compactMap(\.serverId)
+            assigneeIds: ticket.assignees.compactMap(\.serverId),
+            tags: ticket.tags
         )
         Task {
             try? await client.updateTicket(uuid: uuid, patch: patch)

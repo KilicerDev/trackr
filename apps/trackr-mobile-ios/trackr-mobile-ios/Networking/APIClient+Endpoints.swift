@@ -140,6 +140,7 @@ extension APIClient {
         var priority: String?
         var category: String?
         var assigneeIds: [String]?
+        var tags: [String]?
     }
 
     func updateTicket(uuid: String, patch: TicketPatch) async throws {
