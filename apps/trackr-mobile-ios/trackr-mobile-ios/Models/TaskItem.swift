@@ -26,6 +26,17 @@ struct TaskComment: Identifiable, Hashable {
     var text: String
 }
 
+/// A system event on the activity timeline ("changed status to Done") —
+/// shared by tasks and tickets; comments/messages live in their own types.
+/// Web parity: the Inspector's typed activity entries.
+struct ActivityEvent: Identifiable, Hashable {
+    let id = UUID()
+    var user: UserRef
+    var date: Date
+    var text: String  // action phrase after the name, e.g. "changed status to Done"
+    var icon: String
+}
+
 struct TimeLog: Identifiable, Hashable {
     let id = UUID()
     var user: UserRef
@@ -50,6 +61,7 @@ struct TaskItem: Identifiable, Hashable {
     var tags: [String] = []
     var timeLogs: [TimeLog] = []
     var comments: [TaskComment] = []
+    var activity: [ActivityEvent] = []
 
     var checklistDone: Int { checklist.count { $0.done } }
     var checklistTotal: Int { checklist.count }
@@ -133,12 +145,22 @@ extension TaskItem {
                                      text: "1:1 — the hex values come straight from taxonomy.ts now. Filter sheet is next."),
                          TaskComment(user: sampleUsers[1], date: day(0),
                                      text: "Looks great on the 16 Pro Max. One thing: the group headers could use a bit more top spacing."),
+                     ],
+                     activity: [
+                         ActivityEvent(user: sampleUsers[0], date: day(-3),
+                                       text: "created the task", icon: "plus.circle"),
+                         ActivityEvent(user: sampleUsers[0], date: day(-2),
+                                       text: "added Jonas Weber", icon: "person.badge.plus"),
+                         ActivityEvent(user: sampleUsers[0], date: day(-1),
+                                       text: "changed status to In Progress",
+                                       icon: "arrow.triangle.2.circlepath"),
                      ]),
             TaskItem(id: "TRK-139", title: "Fix dark mode colors in email templates",
                      status: .inProgress, priority: .urgent, type: .bug,
                      project: "Trackr Web",
                      details: "Outlook dark mode inverts the header background — logo becomes invisible.",
                      due: day(0),
+                     plannedFor: day(0),
                      estimate: 120,
                      assignees: [sampleUsers[1]],
                      tags: ["email"],
@@ -149,6 +171,12 @@ extension TaskItem {
                      comments: [
                          TaskComment(user: sampleUsers[1], date: day(0),
                                      text: "Root cause: Outlook inverts any background darker than #333. Fix is a VML fallback."),
+                     ],
+                     activity: [
+                         ActivityEvent(user: sampleUsers[1], date: day(-1),
+                                       text: "created the task", icon: "plus.circle"),
+                         ActivityEvent(user: sampleUsers[1], date: day(0),
+                                       text: "changed priority to Urgent", icon: "flag"),
                      ]),
             TaskItem(id: "TRK-131", title: "Project differentiation in my-week view",
                      status: .inReview, priority: .medium, type: .improvement,
@@ -167,6 +195,7 @@ extension TaskItem {
                      project: "Infrastructure",
                      details: "Replace the external provider with our own Stalwart instance, IMAP-poll based.",
                      due: day(-2),
+                     plannedFor: day(-8),
                      checklist: [
                          ChecklistItem(text: "Stalwart instance on staging"),
                          ChecklistItem(text: "IMAP poll worker"),
@@ -188,7 +217,8 @@ extension TaskItem {
                      assignees: [sampleUsers[2]]),
             TaskItem(id: "TRK-090", title: "Rate limiting on public ticket form",
                      status: .paused, priority: .medium, type: .improvement,
-                     project: "Infrastructure", due: day(4),
+                     project: "Infrastructure", due: day(4), plannedFor: day(1),
+                     estimate: 90,
                      assignees: [sampleUsers[0]], tags: ["backend"]),
         ]
     }()

@@ -63,6 +63,14 @@ struct TaskDetailView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Color(.systemGroupedBackground))
+        // Chip edits land on the activity timeline, like the web's typed
+        // Inspector events.
+        .onChange(of: task.status) { _, status in
+            logActivity("changed status to \(status.label)", icon: "arrow.triangle.2.circlepath")
+        }
+        .onChange(of: task.priority) { _, priority in
+            logActivity("changed priority to \(priority.label)", icon: "flag")
+        }
         .navigationTitle(task.id)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -357,6 +365,13 @@ struct TaskDetailView: View {
     }
 
     // MARK: - Helpers
+
+    private func logActivity(_ text: String, icon: String) {
+        task.activity.append(
+            ActivityEvent(user: TaskItem.sampleUsers[0], date: .now,  // current user later
+                          text: text, icon: icon)
+        )
+    }
 
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 8) {

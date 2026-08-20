@@ -10,6 +10,9 @@ import SwiftUI
 
 struct MessageCard: View {
     let text: String
+    /// Tinted variant, e.g. the ticket internal-note yellow — nil keeps the
+    /// standard elevated look.
+    var accent: Color?
 
     var body: some View {
         Text(text)
@@ -17,10 +20,16 @@ struct MessageCard: View {
             .lineSpacing(3)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
-            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 12))
+            .background(
+                accent?.opacity(0.10) ?? Color(.secondarySystemGroupedBackground),
+                in: .rect(cornerRadius: 12)
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(Color(.separator).opacity(0.4), lineWidth: 0.5)
+                    .strokeBorder(
+                        accent?.opacity(0.30) ?? Color(.separator).opacity(0.4),
+                        lineWidth: accent == nil ? 0.5 : 1
+                    )
             )
     }
 }

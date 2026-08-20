@@ -9,12 +9,12 @@
 import SwiftUI
 
 enum AppTab: Hashable {
-    case home, tickets, tasks, notes, search
+    case home, tickets, tasks, plan, search
 }
 
 /// Value-based routes for the Home tab's navigation stack.
 enum HomeRoute: Hashable {
-    case allProjects
+    case allProjects, notes, meetings, wiki, chat
 }
 
 struct ProjectRef: Identifiable, Hashable {
@@ -36,6 +36,10 @@ struct WorkSession {
 final class AppModel {
     var tasks = TaskItem.samples
     var projects = ProjectItem.samples
+    var tickets = TicketItem.samples
+    var notes = NoteItem.samples
+    var wikiPages = WikiPageItem.samples
+    var chatThreads = ChatThread.samples
     var selectedTab: AppTab = .home
     var taskPath: [TaskItem] = []
     var session = WorkSession()

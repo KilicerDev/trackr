@@ -16,11 +16,13 @@ struct TaskCommentsView: View {
     private enum Event: Identifiable {
         case comment(TaskComment)
         case time(TimeLog)
+        case activity(ActivityEvent)
 
         var id: UUID {
             switch self {
             case .comment(let c): c.id
             case .time(let t): t.id
+            case .activity(let a): a.id
             }
         }
 
@@ -28,12 +30,15 @@ struct TaskCommentsView: View {
             switch self {
             case .comment(let c): c.date
             case .time(let t): t.date
+            case .activity(let a): a.date
             }
         }
     }
 
     private var events: [Event] {
-        (task.comments.map(Event.comment) + task.timeLogs.map(Event.time))
+        (task.comments.map(Event.comment)
+            + task.timeLogs.map(Event.time)
+            + task.activity.map(Event.activity))
             .sorted { $0.date < $1.date }
     }
 
@@ -100,6 +105,13 @@ struct TaskCommentsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+        case .activity(let event):
+            TimelineRow(
+                node: .icon(event.icon),
+                name: event.user.name,
+                action: event.text,
+                date: event.date
+            )
         }
     }
 

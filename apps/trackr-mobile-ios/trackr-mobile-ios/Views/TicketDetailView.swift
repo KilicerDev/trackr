@@ -1,0 +1,371 @@
+//
+//  TicketDetailView.swift
+//  trackr-mobile-ios
+//
+//  Mobile version of the web ticket Inspector / detail page: editable
+//  chips for status / priority / category, properties card, checklist,
+//  and the conversation behind a chat button.
+//
+//  Design phase: edits mutate a local copy only — persistence comes with
+//  the API.
+//
+
+import SwiftUI
+
+struct TicketDetailView: View {
+    @State var ticket: TicketItem
+
+    @State private var showingConversation = false
+    @State private var newChecklistItem = ""
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 22) {
+                header
+                properties
+                section(checklistTitle) { checklistCard }
+                if !ticket.tags.isEmpty {
+                    section("Tags") { tagsRow }
+                }
+                section("Conversation") { conversationCard }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
+        // Chip edits land on the conversation timeline, like the web's
+        // typed activity events.
+        .onChange(of: ticket.status) { _, status in
+            logActivity("changed status to \(status.label)", icon: "arrow.triangle.2.circlepath")
+        }
+        .onChange(of: ticket.priority) { _, priority in
+            logActivity("changed priority to \(priority.label)", icon: "flag")
+        }
+        .onChange(of: ticket.category) { _, category in
+            logActivity("changed category to \(category.label)", icon: "square.grid.2x2")
+        }
+        .navigationTitle(ticket.id)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showingConversation = true
+                } label: {
+                    Image(systemName: "bubble.left")
+                }
+            }
+        }
+        .navigationDestination(isPresented: $showingConversation) {
+            TicketConversationView(ticket: $ticket)
+        }
+    }
+
+    private var checklistTitle: String {
+        ticket.checklistTotal > 0
+            ? "Checklist \(ticket.checklistDone)/\(ticket.checklistTotal)"
+            : "Checklist"
+    }
+
+    // MARK: - Sections
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(ticket.org.color)
+                    .frame(width: 8, height: 8)
+                Text(ticket.org.name)
+                    .font(.system(size: 13))
+                    .foregroundStyle(.secondary)
+            }
+            TextField("Subject", text: $ticket.subject, axis: .vertical)
+                .font(.system(size: 22, weight: .semibold))
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    Menu {
+                        Picker("Status", selection: $ticket.status) {
+                            ForEach(TicketStatus.allCases) { Text($0.label).tag($0) }
+                        }
+                    } label: {
+                        chip(ticket.status.color) {
+                            Circle()
+                                .fill(ticket.status.color)
+                                .frame(width: 8, height: 8)
+                            Text(ticket.status.label)
+                        }
+                    }
+                    .id(ticket.status)
+                    Menu {
+                        Picker("Priority", selection: $ticket.priority) {
+                            ForEach(TaskPriority.ticketCases, id: \.self) {
+                                Text($0.label).tag($0)
+                            }
+                        }
+                    } label: {
+                        chip(ticket.priority.color) {
+                            PriorityBars(priority: ticket.priority)
+                            Text(ticket.priority.label)
+                        }
+                    }
+                    .id(ticket.priority)
+                    Menu {
+                        Picker("Category", selection: $ticket.category) {
+                            ForEach(TicketCategory.allCases) { Text($0.label).tag($0) }
+                        }
+                    } label: {
+                        chip(ticket.category.color) {
+                            Circle()
+                                .fill(ticket.category.color)
+                                .frame(width: 8, height: 8)
+                            Text(ticket.category.label)
+                        }
+                    }
+                    .id(ticket.category)
+                }
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    private var properties: some View {
+        VStack(spacing: 0) {
+            propertyRow("Assignees") {
+                Menu {
+                    ForEach(TaskItem.sampleUsers, id: \.self) { user in
+                        Toggle(user.name, isOn: Binding(
+                            get: { ticket.assignees.contains(user) },
+                            set: { isOn in
+                                if isOn {
+                                    ticket.assignees.append(user)
+                                } else {
+                                    ticket.assignees.removeAll { $0 == user }
+                                }
+                            }
+                        ))
+                    }
+                } label: {
+                    if ticket.assignees.isEmpty {
+                        Text("Unassigned")
+                            .foregroundStyle(Color(.tertiaryLabel))
+                    } else {
+                        HStack(spacing: 6) {
+                            AvatarStack(users: ticket.assignees, size: 20)
+                            Text(ticket.assignees.count == 1
+                                 ? ticket.assignees[0].name
+                                 : "\(ticket.assignees.count) assignees")
+                                .foregroundStyle(Color.primary)
+                        }
+                    }
+                }
+                .id(ticket.assignees)
+            }
+            divider
+            propertyRow("Customer") {
+                if let customer = ticket.customer {
+                    HStack(spacing: 6) {
+                        AvatarView(user: customer, size: 20)
+                        Text(customer.name)
+                    }
+                } else {
+                    Text("—")
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            divider
+            propertyRow("Channel") {
+                HStack(spacing: 5) {
+                    Image(systemName: ticket.channel.systemImage)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                    Text(ticket.channel.label)
+                }
+            }
+            divider
+            propertyRow("Created") {
+                Text(ticket.createdAt.formatted(.dateTime.day().month(.abbreviated).year()))
+                    .monospaced()
+            }
+            divider
+            propertyRow("First response") {
+                Text(ticket.firstResponseAt.map(\.relativeShort) ?? "—")
+                    .monospaced()
+                    .foregroundStyle(ticket.firstResponseAt == nil ? .tertiary : .primary)
+            }
+        }
+        .cardStyle(padded: false)
+    }
+
+    private var checklistCard: some View {
+        VStack(spacing: 0) {
+            if ticket.checklistTotal > 0 {
+                // Embedded non-scrolling List purely for the native swipe
+                // actions — invisible inside the card (TaskDetailView recipe).
+                List {
+                    ForEach($ticket.checklist) { $item in
+                        Button {
+                            item.done.toggle()
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: item.done ? "checkmark.square.fill" : "square")
+                                    .foregroundStyle(
+                                        item.done ? Color.accentColor : Color(.tertiaryLabel)
+                                    )
+                                Text(item.text)
+                                    .font(.system(size: 15))
+                                    .strikethrough(item.done)
+                                    .foregroundStyle(
+                                        item.done ? Color(.tertiaryLabel) : Color.primary
+                                    )
+                                Spacer()
+                            }
+                            .contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(Color(.secondarySystemGroupedBackground))
+                        .listRowInsets(EdgeInsets(top: 0, leading: 14, bottom: 0, trailing: 14))
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            Button {
+                                item.done.toggle()
+                            } label: {
+                                Label(
+                                    item.done ? "Uncheck" : "Done",
+                                    systemImage: item.done ? "arrow.uturn.backward" : "checkmark"
+                                )
+                            }
+                            .tint(item.done ? .gray : Color(hex: 0x7FC8A9))
+                        }
+                    }
+                    .onDelete { offsets in
+                        ticket.checklist.remove(atOffsets: offsets)
+                    }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .scrollDisabled(true)
+                .environment(\.defaultMinListRowHeight, 42)
+                .frame(height: CGFloat(ticket.checklist.count) * 42)
+            }
+            HStack(spacing: 10) {
+                Image(systemName: "plus")
+                    .foregroundStyle(.tertiary)
+                TextField("Add an item…", text: $newChecklistItem)
+                    .font(.system(size: 15))
+                    .onSubmit {
+                        let text = newChecklistItem.trimmingCharacters(in: .whitespaces)
+                        guard !text.isEmpty else { return }
+                        ticket.checklist.append(ChecklistItem(text: text))
+                        newChecklistItem = ""
+                    }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+        }
+        .cardStyle(padded: false)
+    }
+
+    private var tagsRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(ticket.tags, id: \.self) { TagChip(tag: $0) }
+            }
+        }
+    }
+
+    /// Preview of the latest public message with a jump into the full
+    /// conversation — the thread itself lives one push deeper.
+    private var conversationCard: some View {
+        Button {
+            showingConversation = true
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                if let last = ticket.messages.last(where: { !$0.internalNote }) {
+                    HStack(spacing: 6) {
+                        AvatarView(user: last.user, size: 20)
+                        Text(last.user.name)
+                            .font(.system(size: 13, weight: .medium))
+                        Spacer()
+                        Text(last.date.relativeShort)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                    }
+                    Text(last.text)
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(3)
+                        .multilineTextAlignment(.leading)
+                } else {
+                    Text("No messages yet.")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                }
+                HStack(spacing: 5) {
+                    Image(systemName: "bubble.left")
+                        .font(.system(size: 11))
+                    Text(ticket.messageCount == 1
+                         ? "1 message"
+                         : "\(ticket.messageCount) messages")
+                }
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Color.accentColor)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .cardStyle()
+    }
+
+    // MARK: - Helpers
+
+    private func logActivity(_ text: String, icon: String) {
+        ticket.activity.append(
+            ActivityEvent(user: TaskItem.sampleUsers[0], date: .now,  // current user later
+                          text: text, icon: icon)
+        )
+    }
+
+    private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased())
+                .font(.system(size: 11, weight: .semibold))
+                .tracking(0.6)
+                .foregroundStyle(.secondary)
+                .padding(.leading, 4)
+            content()
+        }
+    }
+
+    private func propertyRow(_ label: String, @ViewBuilder value: () -> some View) -> some View {
+        HStack {
+            Text(label)
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+            Spacer()
+            value()
+                .font(.system(size: 14))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+    }
+
+    private func chip(_ color: Color, @ViewBuilder content: () -> some View) -> some View {
+        HStack(spacing: 6, content: content)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(color)
+            .padding(.horizontal, 10)
+            .frame(height: 28)
+            .background(color.opacity(0.10), in: .capsule)
+            .overlay(Capsule().strokeBorder(color.opacity(0.30), lineWidth: 1))
+    }
+
+    private var divider: some View {
+        Divider().padding(.leading, 14)
+    }
+}
+
+#Preview {
+    NavigationStack {
+        TicketDetailView(ticket: TicketItem.samples[1])
+    }
+}

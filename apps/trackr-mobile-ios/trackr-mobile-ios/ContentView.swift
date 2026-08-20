@@ -15,13 +15,13 @@ struct ContentView: View {
                 HomeView(model: model)
             }
             Tab("Tickets", systemImage: "ticket.fill", value: AppTab.tickets) {
-                TicketsView()
+                TicketsView(model: model)
             }
             Tab("Tasks", systemImage: "checklist", value: AppTab.tasks) {
                 TasksView(model: model)
             }
-            Tab("Notes", systemImage: "note.text", value: AppTab.notes) {
-                NotesView()
+            Tab("Plan", systemImage: "calendar", value: AppTab.plan) {
+                MyWeekView(model: model)
             }
             Tab(value: AppTab.search, role: .search) {
                 SearchView()

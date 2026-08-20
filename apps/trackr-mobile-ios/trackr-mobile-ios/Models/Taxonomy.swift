@@ -122,6 +122,97 @@ enum DueTone {
     }
 }
 
+/// Mirror of web TICKET_STATUSES in taxonomy.ts.
+enum TicketStatus: String, CaseIterable, Identifiable {
+    case open, inProgress, waitingOnCustomer, waitingOnAgent, paused, resolved, closed
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .open: "Open"
+        case .inProgress: "In Progress"
+        case .waitingOnCustomer: "Waiting on customer"
+        case .waitingOnAgent: "Waiting on agent"
+        case .paused: "Paused"
+        case .resolved: "Resolved"
+        case .closed: "Closed"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .open: Color(hex: 0x7A9CF0)
+        case .inProgress: Color(hex: 0xF0A85C)
+        case .waitingOnCustomer: Color(hex: 0xB591E3)
+        case .waitingOnAgent: Color(hex: 0xEF7A6D)
+        case .paused: Color(hex: 0xE9C46A)
+        case .resolved: Color(hex: 0x7FC8A9)
+        case .closed: Color(hex: 0x7C7C84)
+        }
+    }
+
+    var isClosed: Bool { self == .resolved || self == .closed }
+}
+
+/// Mirror of web TICKET_CATEGORIES in taxonomy.ts.
+enum TicketCategory: String, CaseIterable, Identifiable {
+    case general, billing, technicalIssue, featureRequest
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .general: "General"
+        case .billing: "Billing"
+        case .technicalIssue: "Technical issue"
+        case .featureRequest: "Feature request"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .general: Color(hex: 0x9AA4B2)
+        case .billing: Color(hex: 0xE9C46A)
+        case .technicalIssue: Color(hex: 0xEF7A6D)
+        case .featureRequest: Color(hex: 0x7FC8A9)
+        }
+    }
+}
+
+/// Mirror of web TICKET_CHANNELS in taxonomy.ts.
+enum TicketChannel: String, CaseIterable, Identifiable {
+    case webForm, email, chat, api
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .webForm: "Web form"
+        case .email: "Email"
+        case .chat: "Chat"
+        case .api: "API"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .webForm: "globe"
+        case .email: "envelope"
+        case .chat: "bubble.left.and.bubble.right"
+        case .api: "terminal"
+        }
+    }
+}
+
+extension TaskPriority {
+    /// Tickets reuse the trackr priorities minus 'none' — every ticket has
+    /// a priority (web parity: TICKET_PRIORITIES).
+    static var ticketCases: [TaskPriority] {
+        allCases.filter { $0 != .none }
+    }
+}
+
 /// Estimate presets (minutes) shared by the create sheet and detail view.
 enum EstimateOptions {
     static let all: [(minutes: Int?, label: String)] = [

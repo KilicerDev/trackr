@@ -3,13 +3,15 @@
 //  trackr-mobile-ios
 //
 //  Favorite projects as gradient cards with a play button that starts a
-//  work session (the trackr "now playing").
+//  work session (the trackr "now playing"), plus Apple-Music-style quick
+//  links into the content areas (notes, meetings, wiki).
 //
 
 import SwiftUI
 
 struct HomeView: View {
     @Bindable var model: AppModel
+    @State private var showingProfile = false
 
     private func openTasks(in project: ProjectRef) -> Int {
         model.tasks.count { $0.project == project.name && $0.status != .done }
@@ -26,47 +28,10 @@ struct HomeView: View {
         }
     }
 
-    private var loggedTodayMinutes: Int {
-        model.tasks
-            .flatMap(\.timeLogs)
-            .filter { Calendar.current.isDateInToday($0.date) }
-            .reduce(0) { $0 + $1.minutes }
-    }
-
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    LazyVGrid(
-                        columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible())],
-                        spacing: 12
-                    ) {
-                        StatCard(
-                            label: "Open Tasks",
-                            value: "\(model.tasks.count { $0.status != .done })",
-                            icon: "tray.full",
-                            color: Color(hex: 0x7A9CF0)
-                        )
-                        StatCard(
-                            label: "In Progress",
-                            value: "\(model.tasks.count { $0.status == .inProgress })",
-                            icon: "play.circle",
-                            color: Color(hex: 0xF0A85C)
-                        )
-                        StatCard(
-                            label: "Due Soon",
-                            value: "\(model.tasks.count { $0.dueCountdown != nil })",
-                            icon: "calendar.badge.exclamationmark",
-                            color: Color(hex: 0xEF4F5E)
-                        )
-                        StatCard(
-                            label: "Logged Today",
-                            value: loggedTodayMinutes > 0 ? loggedTodayMinutes.minutesFormatted : "0m",
-                            icon: "clock",
-                            color: Color(hex: 0x7FC8A9)
-                        )
-                    }
-
                     HStack(alignment: .firstTextBaseline) {
                         Text("Favorite Projects")
                             .font(.title3.bold())
@@ -100,6 +65,9 @@ struct HomeView: View {
                             .buttonStyle(.plain)
                         }
                     }
+
+                    QuickLinksList()
+                        .padding(.top, 8)
                 }
                 .padding(16)
             }
@@ -109,6 +77,10 @@ struct HomeView: View {
             .navigationDestination(for: HomeRoute.self) { route in
                 switch route {
                 case .allProjects: ProjectsView(model: model)
+                case .notes: NotesView(model: model)
+                case .meetings: MeetingsView(model: model)
+                case .wiki: WikiView(model: model)
+                case .chat: ChatView(model: model)
                 }
             }
             .navigationDestination(for: ProjectItem.self) { project in
@@ -117,18 +89,72 @@ struct HomeView: View {
             .navigationDestination(for: TaskItem.self) { task in
                 TaskDetailView(task: task)
             }
+            .navigationDestination(for: NoteItem.self) { note in
+                NoteDetailView(model: model, note: note)
+            }
+            .navigationDestination(for: WikiPageItem.self) { page in
+                WikiPageView(page: page)
+            }
+            .navigationDestination(for: ChatThread.self) { thread in
+                ChatThreadView(model: model, threadId: thread.id)
+            }
+            .navigationDestination(for: TicketItem.self) { ticket in
+                TicketDetailView(ticket: ticket)
+            }
             .navigationTitle(greeting)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        // Profile — wired up later
+                        showingProfile = true
                     } label: {
                         Image(systemName: "person.crop.circle.fill")
                             .font(.title2)
                     }
                 }
             }
+            .sheet(isPresented: $showingProfile) {
+                ProfileSheet()
+            }
         }
+    }
+}
+
+/// Apple-Music-style link rows: tinted icon, plain label, chevron, hairline
+/// separators — deliberately flat next to the card-based sections.
+private struct QuickLinksList: View {
+    private let links: [(route: HomeRoute, icon: String, label: String)] = [
+        (.chat, "bubble.left.and.bubble.right.fill", "Chat"),
+        (.notes, "note.text", "Notes"),
+        (.meetings, "person.2.fill", "Meetings"),
+        (.wiki, "books.vertical.fill", "Wiki"),
+    ]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ForEach(links, id: \.route) { link in
+                NavigationLink(value: link.route) {
+                    HStack(spacing: 14) {
+                        Image(systemName: link.icon)
+                            .font(.system(size: 19))
+                            .foregroundStyle(Color.accentColor)
+                            .frame(width: 28)
+                        Text(link.label)
+                            .font(.system(size: 17))
+                            .foregroundStyle(Color(.label))
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(Color(.tertiaryLabel))
+                    }
+                    .padding(.vertical, 13)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                Divider()
+                    .padding(.leading, 42)
+            }
+        }
+        .padding(.horizontal, 4)
     }
 }
 
