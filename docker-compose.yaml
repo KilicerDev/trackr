@@ -93,6 +93,9 @@ services:
       STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
       STORAGE_LOCAL_DIR: /app/data/attachments
       BODY_SIZE_LIMIT: ${BODY_SIZE_LIMIT:-100M}
+      # Native push: with true the app enqueues one push.send job per inbox
+      # notification; the worker's APNs handler (APNS_* below) delivers them.
+      PUSH_ENABLED: ${PUSH_ENABLED:-false}
     volumes:
       - uploads:/app/data/attachments
     # No `ports:` — the reverse proxy routes to container port 3000 via the
@@ -132,6 +135,16 @@ services:
       SMTP_SECURE: ${SMTP_SECURE}
       SMTP_USER: ${SMTP_USER}
       SMTP_PASS: ${SMTP_PASS}
+      # APNs for push.send — all four required or the handler acks jobs as
+      # skipped. APNS_KEY is the .p8 from the Apple Developer portal: either
+      # the PEM content inline, or a container path (mount the file below).
+      APNS_KEY: ${APNS_KEY:-}
+      APNS_KEY_ID: ${APNS_KEY_ID:-}
+      APNS_TEAM_ID: ${APNS_TEAM_ID:-}
+      APNS_BUNDLE_ID: ${APNS_BUNDLE_ID:-}
+      # development = APNs sandbox (Xcode debug builds); production for
+      # TestFlight/App Store builds.
+      APNS_ENV: ${APNS_ENV:-production}
 
   # Go scheduler — turns due rows in `schedules` into jobs (services/README.md).
   # SKIP LOCKED makes multiple replicas safe, but one is enough for most setups.
