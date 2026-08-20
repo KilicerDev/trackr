@@ -24,9 +24,8 @@ struct ServerSetupView: View {
         VStack(spacing: 0) {
             Spacer()
 
-            Image(systemName: "circle.hexagongrid.fill")
-                .font(.system(size: 56))
-                .foregroundStyle(Color.accentColor)
+            BrandMark(color: .accentColor)
+                .frame(width: 56)
             Text("trackr")
                 .font(.system(size: 34, weight: .bold))
                 .padding(.top, 14)

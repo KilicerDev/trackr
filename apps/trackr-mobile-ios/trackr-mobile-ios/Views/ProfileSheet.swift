@@ -59,9 +59,8 @@ struct ProfileSheet: View {
                 // button on push like a leading item does.
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 8) {
-                        Image(systemName: "circle.hexagongrid.fill")
-                            .font(.system(size: 19))
-                            .foregroundStyle(Color.accentColor)
+                        BrandMark(color: .accentColor)
+                            .frame(width: 17)
                         Text("Trackr Account")
                             .font(.system(size: 17, weight: .bold))
                             .foregroundStyle(Color(.label))

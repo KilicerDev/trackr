@@ -172,15 +172,29 @@ export async function notify(input: NotifyInput): Promise<void> {
 		publishEvent(wantsInApp, { type: 'inbox' });
 
 		// Native push mirrors the in-app channel: whoever gets an inbox row gets a
-		// push to their registered devices. No-op until PUSH_ENABLED is set (the
-		// Go worker's FCM handler is a planned follow-up); content is per-locale
-		// so enqueue per recipient.
+		// push to their registered devices (no-op until PUSH_ENABLED); content is
+		// per-locale so enqueue per recipient. Inbox titles are one-liners like
+		// "Assigned to you: TRACK-91 — Fix the thing" — on the lock screen that
+		// reads badly as a bold single line, so bodyless notifications are split
+		// at the em-dash into a short title + a body line. The entity keys the
+		// APNs thread-id so a busy ticket stacks instead of flooding.
+		const threadId = input.entity ? `${input.entity.type}:${input.entity.id}` : null;
 		for (const recipientId of wantsInApp) {
 			const content = contentFor(recipientId);
+			let pushTitle = content.title;
+			let pushBody = content.body ?? null;
+			if (!pushBody) {
+				const split = pushTitle.indexOf(' — ');
+				if (split > 0) {
+					pushBody = pushTitle.slice(split + 3).trim() || null;
+					pushTitle = pushTitle.slice(0, split).trim();
+				}
+			}
 			sendPushFireAndForget([recipientId], {
-				title: content.title,
-				body: content.body,
-				url: input.url
+				title: pushTitle,
+				body: pushBody,
+				url: input.url,
+				threadId
 			});
 		}
 	}

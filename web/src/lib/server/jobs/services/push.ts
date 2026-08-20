@@ -14,13 +14,19 @@
 import { env } from '$env/dynamic/private';
 import { defineJob } from '../core';
 
-/** The `push.send` payload. Mirror in the future Go handler. */
+/** The `push.send` payload. Mirrored by the Go handler (worker/internal/jobs/push.go). */
 export type PushPayload = {
 	userId: string;
 	title: string;
 	body?: string | null;
 	/** In-app route (e.g. `/tickets/abc`) — the app deep-links to it on tap. */
 	url: string;
+	/**
+	 * APNs thread-id: notifications sharing it stack as one group on the
+	 * lock screen. We use the entity ("ticket:<id>"), so a busy ticket
+	 * coalesces instead of flooding.
+	 */
+	threadId?: string | null;
 };
 
 export const pushJob = defineJob<PushPayload>('push.send');
@@ -32,12 +38,18 @@ export function pushEnabled(): boolean {
 /** Enqueue one push per recipient; no-op unless PUSH_ENABLED. */
 export function sendPushFireAndForget(
 	userIds: Iterable<string>,
-	content: { title: string; body?: string | null; url: string }
+	content: { title: string; body?: string | null; url: string; threadId?: string | null }
 ): void {
 	if (!pushEnabled()) return;
 	for (const userId of userIds) {
 		void pushJob
-			.enqueue({ userId, title: content.title, body: content.body ?? null, url: content.url })
+			.enqueue({
+				userId,
+				title: content.title,
+				body: content.body ?? null,
+				url: content.url,
+				threadId: content.threadId ?? null
+			})
 			.catch((err) => {
 				console.error('[push] enqueue failed', { userId, err });
 			});

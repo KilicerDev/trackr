@@ -70,9 +70,10 @@ struct AppearanceSettingsView: View {
             }
 
             Section("App Icon") {
-                iconRow("default", label: "Default", background: Color(hex: 0xFF4867))
-                iconRow("dark", label: "Dark", background: Color(hex: 0x1C1C1E))
-                iconRow("mono", label: "Mono", background: Color(hex: 0x8E8E93))
+                iconRow("default", label: "Default", background: Color(hex: 0xFF4867), mark: .white)
+                iconRow("dark", label: "Dark", background: Color(hex: 0x1C1C1E),
+                        mark: Color(hex: 0xFF4867))
+                iconRow("mono", label: "Mono", background: Color(hex: 0x8E8E93), mark: .white)
             }
         }
         .navigationTitle("Appearance")
@@ -86,7 +87,9 @@ struct AppearanceSettingsView: View {
         }
     }
 
-    private func iconRow(_ id: String, label: String, background: Color) -> some View {
+    private func iconRow(
+        _ id: String, label: String, background: Color, mark: Color
+    ) -> some View {
         Button {
             appIcon = id
         } label: {
@@ -95,9 +98,8 @@ struct AppearanceSettingsView: View {
                     .fill(background)
                     .frame(width: 48, height: 48)
                     .overlay {
-                        Image(systemName: "circle.hexagongrid.fill")
-                            .font(.system(size: 22))
-                            .foregroundStyle(.white)
+                        BrandMark(color: mark)
+                            .frame(width: 20)
                     }
                 Text(label)
                     .foregroundStyle(Color(.label))

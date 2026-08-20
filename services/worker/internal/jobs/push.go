@@ -16,10 +16,11 @@ import (
 
 // pushPayload mirrors PushPayload in web/src/lib/server/jobs/services/push.ts.
 type pushPayload struct {
-	UserID string  `json:"userId"`
-	Title  string  `json:"title"`
-	Body   *string `json:"body"`
-	URL    string  `json:"url"`
+	UserID   string  `json:"userId"`
+	Title    string  `json:"title"`
+	Body     *string `json:"body"`
+	URL      string  `json:"url"`
+	ThreadID *string `json:"threadId"`
 }
 
 // sendPush returns the `push.send` handler: resolve the user's registered
@@ -68,6 +69,10 @@ func sendPush(db *pgxpool.Pool, apns *push.Client) jobworker.Handler {
 		if p.Body != nil {
 			body = *p.Body
 		}
+		threadID := ""
+		if p.ThreadID != nil {
+			threadID = *p.ThreadID
+		}
 
 		sent, dropped := 0, 0
 		var lastErr error
@@ -77,6 +82,7 @@ func sendPush(db *pgxpool.Pool, apns *push.Client) jobworker.Handler {
 				Title:       p.Title,
 				Body:        body,
 				URL:         p.URL,
+				ThreadID:    threadID,
 			})
 			switch {
 			case err == nil:

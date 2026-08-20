@@ -64,6 +64,9 @@ type Notification struct {
 	// In-app route (e.g. /tickets/abc) — delivered as a custom key for the
 	// app to deep-link on tap.
 	URL string
+	// APNs thread-id: notifications sharing it group together on the lock
+	// screen. Empty = ungrouped.
+	ThreadID string
 }
 
 // ErrUnregistered marks a device token APNs rejected as gone — the caller
@@ -177,14 +180,19 @@ func (c *Client) Send(ctx context.Context, n Notification) error {
 		return err
 	}
 
+	alert := map[string]string{"title": n.Title}
+	if n.Body != "" {
+		alert["body"] = n.Body
+	}
+	aps := map[string]any{
+		"alert": alert,
+		"sound": "default",
+	}
+	if n.ThreadID != "" {
+		aps["thread-id"] = n.ThreadID
+	}
 	payload := map[string]any{
-		"aps": map[string]any{
-			"alert": map[string]string{
-				"title": n.Title,
-				"body":  n.Body,
-			},
-			"sound": "default",
-		},
+		"aps": aps,
 		"url": n.URL,
 	}
 	body, _ := json.Marshal(payload)
