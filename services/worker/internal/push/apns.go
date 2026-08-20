@@ -73,20 +73,11 @@ type ErrUnregistered struct{ Token string }
 func (e ErrUnregistered) Error() string { return "apns: device token unregistered" }
 
 func New(cfg Config) (*Client, error) {
-	pemData := cfg.Key
-	// A path is more convenient in compose files than an inline multi-line PEM.
-	if !strings.Contains(pemData, "-----BEGIN") {
-		raw, err := os.ReadFile(pemData)
-		if err != nil {
-			return nil, fmt.Errorf("apns: reading key file %q: %w", cfg.Key, err)
-		}
-		pemData = string(raw)
+	der, err := keyDER(cfg.Key)
+	if err != nil {
+		return nil, err
 	}
-	block, _ := pem.Decode([]byte(pemData))
-	if block == nil {
-		return nil, fmt.Errorf("apns: APNS_KEY is not valid PEM")
-	}
-	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	parsed, err := x509.ParsePKCS8PrivateKey(der)
 	if err != nil {
 		return nil, fmt.Errorf("apns: parsing key: %w", err)
 	}
@@ -99,6 +90,47 @@ func New(cfg Config) (*Client, error) {
 		key:  ecKey,
 		http: &http.Client{Timeout: 15 * time.Second},
 	}, nil
+}
+
+// keyDER resolves APNS_KEY into PKCS8 DER bytes. Three accepted forms, so
+// env UIs that can't hold multi-line values still work:
+//  1. full PEM content (with escaped "\n" tolerated),
+//  2. a filesystem path to the .p8,
+//  3. the bare base64 body of the .p8 (the PEM without its header/footer).
+func keyDER(raw string) ([]byte, error) {
+	value := strings.TrimSpace(raw)
+
+	if strings.Contains(value, "-----BEGIN") {
+		// Env UIs often store newlines as the two characters \ n.
+		value = strings.ReplaceAll(value, `\n`, "\n")
+		block, _ := pem.Decode([]byte(value))
+		if block == nil {
+			return nil, fmt.Errorf("apns: APNS_KEY is not valid PEM")
+		}
+		return block.Bytes, nil
+	}
+
+	if fileData, err := os.ReadFile(value); err == nil {
+		block, _ := pem.Decode(fileData)
+		if block == nil {
+			return nil, fmt.Errorf("apns: key file %q is not valid PEM", value)
+		}
+		return block.Bytes, nil
+	}
+
+	// Not PEM, not a readable file — try the bare base64 body.
+	compact := strings.Map(func(r rune) rune {
+		if r == ' ' || r == '\n' || r == '\r' || r == '\t' {
+			return -1
+		}
+		return r
+	}, value)
+	if der, err := base64.StdEncoding.DecodeString(compact); err == nil {
+		return der, nil
+	}
+	return nil, fmt.Errorf(
+		"apns: APNS_KEY is neither PEM content, a readable file path, nor base64 key data",
+	)
 }
 
 func (c *Client) host() string {
