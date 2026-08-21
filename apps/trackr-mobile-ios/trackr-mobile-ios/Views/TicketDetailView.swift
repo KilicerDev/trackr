@@ -123,86 +123,89 @@ struct TicketDetailView: View {
             }
             TextField("Subject", text: $ticket.subject, axis: .vertical)
                 .font(.system(size: 22, weight: .semibold))
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    Menu {
-                        Picker("Status", selection: $ticket.status) {
-                            ForEach(TicketStatus.allCases) { Text($0.label).tag($0) }
-                        }
-                    } label: {
-                        chip(ticket.status.color) {
-                            Circle()
-                                .fill(ticket.status.color)
-                                .frame(width: 8, height: 8)
-                            Text(ticket.status.label)
-                        }
+            // Web ticket Inspector parity: neutral surface chips (colored
+            // glyph + primary label) in a wrapping rail, assignee included.
+            ChipFlow {
+                Menu {
+                    Picker("Status", selection: $ticket.status) {
+                        ForEach(TicketStatus.allCases) { Text($0.label).tag($0) }
                     }
-                    .id(ticket.status)
-                    Menu {
-                        Picker("Priority", selection: $ticket.priority) {
-                            ForEach(TaskPriority.ticketCases, id: \.self) {
-                                Text($0.label).tag($0)
-                            }
-                        }
-                    } label: {
-                        chip(ticket.priority.color) {
-                            PriorityBars(priority: ticket.priority)
-                            Text(ticket.priority.label)
-                        }
+                } label: {
+                    PropertyChip {
+                        Circle()
+                            .fill(ticket.status.color)
+                            .frame(width: 8, height: 8)
+                        Text(ticket.status.label)
                     }
-                    .id(ticket.priority)
-                    Menu {
-                        Picker("Category", selection: $ticket.category) {
-                            ForEach(TicketCategory.allCases) { Text($0.label).tag($0) }
-                        }
-                    } label: {
-                        chip(ticket.category.color) {
-                            Circle()
-                                .fill(ticket.category.color)
-                                .frame(width: 8, height: 8)
-                            Text(ticket.category.label)
-                        }
-                    }
-                    .id(ticket.category)
                 }
+                .id(ticket.status)
+                Menu {
+                    Picker("Priority", selection: $ticket.priority) {
+                        ForEach(TaskPriority.ticketCases, id: \.self) {
+                            Text($0.label).tag($0)
+                        }
+                    }
+                } label: {
+                    PropertyChip {
+                        PriorityBars(priority: ticket.priority)
+                        Text(ticket.priority.label)
+                    }
+                }
+                .id(ticket.priority)
+                Menu {
+                    Picker("Category", selection: $ticket.category) {
+                        ForEach(TicketCategory.allCases) { Text($0.label).tag($0) }
+                    }
+                } label: {
+                    PropertyChip {
+                        Circle()
+                            .fill(ticket.category.color)
+                            .frame(width: 8, height: 8)
+                        Text(ticket.category.label)
+                    }
+                }
+                .id(ticket.category)
+                assigneeChip
             }
         }
         .padding(.top, 8)
     }
 
-    private var properties: some View {
-        VStack(spacing: 0) {
-            propertyRow("Assignees") {
-                Menu {
-                    ForEach(model?.assignableUsers ?? TaskItem.sampleUsers, id: \.self) { user in
-                        Toggle(user.name, isOn: Binding(
-                            get: { ticket.assignees.contains(user) },
-                            set: { isOn in
-                                if isOn {
-                                    ticket.assignees.append(user)
-                                } else {
-                                    ticket.assignees.removeAll { $0 == user }
-                                }
-                            }
-                        ))
-                    }
-                } label: {
-                    if ticket.assignees.isEmpty {
-                        Text("Unassigned")
-                            .foregroundStyle(Color(.tertiaryLabel))
-                    } else {
-                        HStack(spacing: 6) {
-                            AvatarStack(users: ticket.assignees, size: 20)
-                            Text(ticket.assignees.count == 1
-                                 ? ticket.assignees[0].name
-                                 : "\(ticket.assignees.count) assignees")
-                                .foregroundStyle(Color.primary)
+    private var assigneeChip: some View {
+        Menu {
+            ForEach(model?.assignableUsers ?? TaskItem.sampleUsers, id: \.self) { user in
+                Toggle(user.name, isOn: Binding(
+                    get: { ticket.assignees.contains(user) },
+                    set: { isOn in
+                        if isOn {
+                            ticket.assignees.append(user)
+                        } else {
+                            ticket.assignees.removeAll { $0 == user }
                         }
                     }
-                }
-                .id(ticket.assignees)
+                ))
             }
-            divider
+        } label: {
+            if ticket.assignees.isEmpty {
+                PropertyChip(style: .empty) {
+                    Image(systemName: "person")
+                        .font(.system(size: 12))
+                    Text("Unassigned")
+                }
+            } else {
+                PropertyChip {
+                    AvatarStack(users: ticket.assignees, size: 20)
+                    Text(ticket.assignees.count == 1
+                         ? ticket.assignees[0].name
+                         : "\(ticket.assignees.count) assignees")
+                }
+            }
+        }
+        .id(ticket.assignees)
+    }
+
+    private var properties: some View {
+        VStack(spacing: 0) {
             propertyRow("Customer") {
                 if let customer = ticket.customer {
                     HStack(spacing: 6) {
@@ -411,16 +414,6 @@ struct TicketDetailView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
-    }
-
-    private func chip(_ color: Color, @ViewBuilder content: () -> some View) -> some View {
-        HStack(spacing: 6, content: content)
-            .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(color)
-            .padding(.horizontal, 10)
-            .frame(height: 28)
-            .background(color.opacity(0.10), in: .capsule)
-            .overlay(Capsule().strokeBorder(color.opacity(0.30), lineWidth: 1))
     }
 
     private var divider: some View {

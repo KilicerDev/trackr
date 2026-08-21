@@ -190,109 +190,118 @@ struct TaskDetailView: View {
                 .foregroundStyle(.secondary)
             TextField("Task title", text: $task.title, axis: .vertical)
                 .font(.system(size: 22, weight: .semibold))
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    Menu {
-                        Picker("Type", selection: $task.type) {
-                            ForEach(TaskType.allCases) { type in
-                                Text("\(Image(systemName: type.systemImage))  \(type.label)")
-                                    .tag(type)
-                            }
-                        }
-                    } label: {
-                        chip(task.type.color) {
-                            Image(systemName: task.type.systemImage)
-                                .font(.system(size: 12, weight: .semibold))
-                            Text(task.type.label)
+            // Web TaskPropertyRail parity: every editable property is a
+            // wrapping surface chip, not a form row.
+            ChipFlow {
+                Menu {
+                    Picker("Type", selection: $task.type) {
+                        ForEach(TaskType.allCases) { type in
+                            Text("\(Image(systemName: type.systemImage))  \(type.label)")
+                                .tag(type)
                         }
                     }
-                    .id(task.type)
-                    Menu {
-                        Picker("Status", selection: $task.status) {
-                            ForEach(TaskStatus.allCases) { Text($0.label).tag($0) }
-                        }
-                    } label: {
-                        chip(task.status.color) {
-                            StatusDot(status: task.status, size: 12)
-                            Text(task.status.label)
-                        }
+                } label: {
+                    PropertyChip {
+                        TypeBadge(type: task.type, showLabel: false)
+                        Text(task.type.label)
                     }
-                    .id(task.status)
-                    Menu {
-                        Picker("Priority", selection: $task.priority) {
-                            ForEach(TaskPriority.allCases) { Text($0.label).tag($0) }
-                        }
-                    } label: {
-                        chip(task.priority.color) {
-                            PriorityBars(priority: task.priority)
-                            Text(task.priority.label)
-                        }
-                    }
-                    .id(task.priority)
                 }
+                .id(task.type)
+                Menu {
+                    Picker("Status", selection: $task.status) {
+                        ForEach(TaskStatus.allCases) { Text($0.label).tag($0) }
+                    }
+                } label: {
+                    PropertyChip {
+                        StatusDot(status: task.status, size: 14)
+                        Text(task.status.label)
+                    }
+                }
+                .id(task.status)
+                Menu {
+                    Picker("Priority", selection: $task.priority) {
+                        ForEach(TaskPriority.allCases) { Text($0.label).tag($0) }
+                    }
+                } label: {
+                    PropertyChip {
+                        PriorityBars(priority: task.priority)
+                        Text(task.priority.label)
+                    }
+                }
+                .id(task.priority)
+                assigneeChip
+                dateChip($task.due, icon: "calendar", emptyLabel: "Due date")
+                dateChip(
+                    $task.plannedFor,
+                    icon: "bookmark",
+                    emptyLabel: "Plan for",
+                    accented: true
+                )
+                estimateChip
             }
         }
         .padding(.top, 8)
     }
 
+    private var assigneeChip: some View {
+        Menu {
+            ForEach(model?.assignableUsers ?? TaskItem.sampleUsers, id: \.self) { user in
+                Toggle(user.name, isOn: Binding(
+                    get: { task.assignees.contains(user) },
+                    set: { isOn in
+                        if isOn {
+                            task.assignees.append(user)
+                        } else {
+                            task.assignees.removeAll { $0 == user }
+                        }
+                    }
+                ))
+            }
+        } label: {
+            if task.assignees.isEmpty {
+                PropertyChip(style: .empty) {
+                    Image(systemName: "person")
+                        .font(.system(size: 12))
+                    Text("Unassigned")
+                }
+            } else {
+                PropertyChip {
+                    AvatarStack(users: task.assignees, size: 20)
+                    Text(task.assignees.count == 1
+                         ? task.assignees[0].name
+                         : "\(task.assignees.count) assignees")
+                }
+            }
+        }
+        .id(task.assignees)
+    }
+
+    private var estimateChip: some View {
+        Menu {
+            Picker("Estimate", selection: $task.estimate) {
+                ForEach(EstimateOptions.all, id: \.minutes) { option in
+                    Text(option.label).tag(option.minutes)
+                }
+            }
+        } label: {
+            if let estimate = task.estimate {
+                PropertyChip {
+                    Text("Est")
+                        .foregroundStyle(Color(.secondaryLabel))
+                    Text(estimate.minutesFormatted)
+                        .monospaced()
+                }
+            } else {
+                PropertyChip(style: .empty) {
+                    Text("Estimate")
+                }
+            }
+        }
+        .id(task.estimate)
+    }
+
     private var properties: some View {
         VStack(spacing: 0) {
-            propertyRow("Assignees") {
-                Menu {
-                    ForEach(model?.assignableUsers ?? TaskItem.sampleUsers, id: \.self) { user in
-                        Toggle(user.name, isOn: Binding(
-                            get: { task.assignees.contains(user) },
-                            set: { isOn in
-                                if isOn {
-                                    task.assignees.append(user)
-                                } else {
-                                    task.assignees.removeAll { $0 == user }
-                                }
-                            }
-                        ))
-                    }
-                } label: {
-                    if task.assignees.isEmpty {
-                        Text("Unassigned")
-                            .foregroundStyle(Color(.tertiaryLabel))
-                    } else {
-                        HStack(spacing: 6) {
-                            AvatarStack(users: task.assignees, size: 20)
-                            Text(task.assignees.count == 1
-                                 ? task.assignees[0].name
-                                 : "\(task.assignees.count) assignees")
-                                .foregroundStyle(Color.primary)
-                        }
-                    }
-                }
-                .id(task.assignees)
-            }
-            divider
-            propertyRow("Due") {
-                dateValue($task.due, countdown: task.dueCountdown)
-            }
-            divider
-            propertyRow("Planned") {
-                dateValue($task.plannedFor)
-            }
-            divider
-            propertyRow("Estimate") {
-                Menu {
-                    Picker("Estimate", selection: $task.estimate) {
-                        ForEach(EstimateOptions.all, id: \.minutes) { option in
-                            Text(option.label).tag(option.minutes)
-                        }
-                    }
-                } label: {
-                    Text(task.estimate.map(\.minutesFormatted) ?? "Add estimate")
-                        .monospaced()
-                        .foregroundStyle(
-                            task.estimate == nil ? Color(.tertiaryLabel) : Color.primary
-                        )
-                }
-                .id(task.estimate)
-            }
-            divider
             propertyRow("Logged") {
                 Text(task.loggedMinutes > 0 ? task.loggedMinutes.minutesFormatted : "—")
                     .monospaced()
@@ -466,20 +475,22 @@ struct TaskDetailView: View {
         }
     }
 
-    /// Editable date value: custom compact text with an invisible native
-    /// DatePicker overlaid, so tapping opens the system calendar popover.
+    /// Editable date chip: mono date with an invisible native DatePicker
+    /// overlaid so tapping opens the system calendar popover; empty state
+    /// is a dashed ghost chip that seeds today. `accented` renders the
+    /// set state web-planned-style (accent tint) instead of neutral.
     @ViewBuilder
-    private func dateValue(
+    private func dateChip(
         _ date: Binding<Date?>,
-        countdown: (label: String, tone: DueTone)? = nil
+        icon: String,
+        emptyLabel: String,
+        accented: Bool = false
     ) -> some View {
         if let value = date.wrappedValue {
-            HStack(spacing: 8) {
-                if let countdown {
-                    Text(countdown.label)
-                        .fontWeight(.medium)
-                        .foregroundStyle(countdown.tone.color ?? .secondary)
-                }
+            PropertyChip(style: accented ? .accent : .filled) {
+                Image(systemName: icon)
+                    .font(.system(size: 12))
+                    .foregroundStyle(accented ? Color.accentColor : Color(.secondaryLabel))
                 Text(value.formatted(.dateTime.day().month(.abbreviated).year()))
                     .monospaced()
                     .overlay {
@@ -498,14 +509,23 @@ struct TaskDetailView: View {
                     date.wrappedValue = nil
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(Color(.tertiaryLabel))
+                        .foregroundStyle(
+                            accented ? Color.accentColor.opacity(0.6) : Color(.tertiaryLabel)
+                        )
                 }
                 .buttonStyle(.plain)
             }
         } else {
-            Button("Add date") { date.wrappedValue = .now }
-                .foregroundStyle(Color(.tertiaryLabel))
-                .monospaced()
+            Button {
+                date.wrappedValue = .now
+            } label: {
+                PropertyChip(style: .empty) {
+                    Image(systemName: icon)
+                        .font(.system(size: 12))
+                    Text(emptyLabel)
+                }
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -522,21 +542,6 @@ struct TaskDetailView: View {
         .padding(.vertical, 11)
     }
 
-    /// Tinted capsule chip in the TypeBadge recipe: colored content on a
-    /// slightly lighter background of the same color, with a colored border.
-    private func chip(_ color: Color, @ViewBuilder content: () -> some View) -> some View {
-        HStack(spacing: 6, content: content)
-            .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(color)
-            .padding(.horizontal, 10)
-            .frame(height: 28)
-            .background(color.opacity(0.10), in: .capsule)
-            .overlay(Capsule().strokeBorder(color.opacity(0.30), lineWidth: 1))
-    }
-
-    private var divider: some View {
-        Divider().padding(.leading, 14)
-    }
 }
 
 /// Shared elevated-card look, same recipe as TaskCard.

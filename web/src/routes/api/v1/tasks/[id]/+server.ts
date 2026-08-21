@@ -51,7 +51,9 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		apiError(404, m.tasks_err_task_not_found());
 	}
 
-	const tasks = await loadTasks({ projectId: row.projectId });
+	// plannerUserId populates plannedFor/inMyPlan for the caller's own week —
+	// without it the detail payload nulls out what the list already delivered.
+	const tasks = await loadTasks({ projectId: row.projectId, plannerUserId: user.id });
 	const detail = tasks.find((t) => t.uuid === params.id);
 	if (!detail) apiError(404, m.tasks_err_task_not_found());
 
