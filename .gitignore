@@ -37,3 +37,6 @@ data/
 # Go build artifacts
 *.exe
 services/*/bin/
+
+# Xcode per-user state (window layout, schemes, breakpoints)
+xcuserdata/
