@@ -64,7 +64,7 @@ struct NoteDetailView: View {
             .padding(16)
             .padding(.bottom, 16)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.webBackground)
         .onAppear {
             // The list payload has no body — fetch it when the note opens.
             Task { await model.sync?.loadNoteBody(id: note.id) }

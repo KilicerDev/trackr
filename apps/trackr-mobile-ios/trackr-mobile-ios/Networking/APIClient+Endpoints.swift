@@ -90,6 +90,10 @@ extension APIClient {
         let _: API.OkResponse = try await self.patch("/api/v1/tasks/\(uuid)", body: patch)
     }
 
+    func deleteTask(uuid: String) async throws {
+        let _: API.OkResponse = try await self.delete("/api/v1/tasks/\(uuid)")
+    }
+
     struct CreateTaskBody: Encodable {
         let title: String
         let projectKey: String
@@ -146,6 +150,10 @@ extension APIClient {
     func updateTicket(uuid: String, patch: TicketPatch) async throws {
         struct Response: Decodable { let ok: Bool }
         let _: Response = try await self.patch("/api/v1/tickets/\(uuid)", body: patch)
+    }
+
+    func deleteTicket(uuid: String) async throws {
+        let _: API.OkResponse = try await self.delete("/api/v1/tickets/\(uuid)")
     }
 
     struct CreateTicketBody: Encodable {

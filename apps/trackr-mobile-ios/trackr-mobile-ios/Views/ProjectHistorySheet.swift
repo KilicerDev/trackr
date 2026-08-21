@@ -62,7 +62,7 @@ struct ProjectHistorySheet: View {
             }
             .defaultScrollAnchor(events.isEmpty ? .top : .bottom)
             .scrollDismissesKeyboard(.interactively)
-            .background(Color(.systemGroupedBackground))
+            .background(Color.webBackground)
             .navigationTitle("History")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom) {

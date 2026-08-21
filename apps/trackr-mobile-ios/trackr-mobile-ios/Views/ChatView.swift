@@ -62,7 +62,7 @@ struct ChatView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.webBackground)
         .refreshable { await model.sync?.refreshChat() }
         .navigationTitle("Chat")
         .toolbar {

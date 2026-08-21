@@ -52,7 +52,7 @@ struct ChatThreadView: View {
                 }
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.webBackground)
         .navigationTitle(thread.org.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -134,7 +134,7 @@ struct ChatThreadView: View {
             }
         }
         .padding(.bottom, 4)
-        .background(Color(.systemGroupedBackground))
+        .background(Color.webBackground)
     }
 
     @ViewBuilder

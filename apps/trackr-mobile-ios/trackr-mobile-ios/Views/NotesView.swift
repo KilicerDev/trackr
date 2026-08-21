@@ -50,7 +50,7 @@ struct NotesView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.webBackground)
         .refreshable { await model.sync?.refreshNotes() }
         .navigationTitle("Notes")
         .toolbar {

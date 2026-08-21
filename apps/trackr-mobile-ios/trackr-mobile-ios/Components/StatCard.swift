@@ -43,5 +43,5 @@ struct StatCard: View {
         StatCard(label: "Logged Today", value: "2h 15m", icon: "clock", color: Color(hex: 0x7FC8A9))
     }
     .padding()
-    .background(Color(.systemGroupedBackground))
+    .background(Color.webBackground)
 }

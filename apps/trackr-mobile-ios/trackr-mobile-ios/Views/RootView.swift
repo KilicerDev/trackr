@@ -22,7 +22,7 @@ struct RootView: View {
             case .launching:
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color(.systemGroupedBackground))
+                    .background(Color.webBackground)
             case .signedOut:
                 ServerSetupView(auth: auth)
             case .ready:

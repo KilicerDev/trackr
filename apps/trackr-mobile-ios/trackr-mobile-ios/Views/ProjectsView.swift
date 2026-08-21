@@ -51,7 +51,7 @@ struct ProjectsView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 16)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.webBackground)
         .navigationTitle("Projects")
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {

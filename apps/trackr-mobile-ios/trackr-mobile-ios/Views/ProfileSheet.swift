@@ -48,7 +48,7 @@ struct ProfileSheet: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.webBackground)
             // Header lives in the nav bar (Apple Music style) — keeping the
             // bar visible on the root means pushed pages don't reflow when
             // their bar would otherwise animate back in.

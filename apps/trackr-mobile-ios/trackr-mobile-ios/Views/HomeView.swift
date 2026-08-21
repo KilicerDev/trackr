@@ -54,15 +54,33 @@ struct HomeView: View {
                                     openTasks: openTasks(in: project.ref),
                                     isActive: model.session.isRunning
                                         && model.session.project == project.ref
-                                ) {
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            // Long-press quick actions replaced the play
+                            // button on the card face.
+                            .contextMenu {
+                                Button {
                                     if model.session.isRunning {
                                         model.showingPlayer = true
                                     } else {
                                         model.startSession(for: project.ref)
                                     }
+                                } label: {
+                                    Label(
+                                        model.session.isRunning
+                                            ? "Open Session" : "Start Session",
+                                        systemImage: model.session.isRunning
+                                            ? "waveform" : "play.fill"
+                                    )
+                                }
+                                Divider()
+                                Button(role: .destructive) {
+                                    model.toggleFavorite(projectKey: project.key)
+                                } label: {
+                                    Label("Remove Favorite", systemImage: "star.slash")
                                 }
                             }
-                            .buttonStyle(.plain)
                         }
                     }
 
@@ -71,7 +89,7 @@ struct HomeView: View {
                 }
                 .padding(16)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.webBackground)
             .refreshable { await model.sync?.refreshAll() }
             // All Home-stack destinations live here at the stack root —
             // registering them inside pushed views scrambles push order.
@@ -178,7 +196,6 @@ private struct ProjectCard: View {
     let project: ProjectRef
     let openTasks: Int
     let isActive: Bool
-    let onPlay: () -> Void
 
     var body: some View {
         LinearGradient(
@@ -186,7 +203,7 @@ private struct ProjectCard: View {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
-        .frame(height: 140)
+        .frame(height: 108)
         .clipShape(.rect(cornerRadius: 18))
         .overlay(alignment: .topLeading) {
             VStack(alignment: .leading, spacing: 3) {
@@ -199,17 +216,16 @@ private struct ProjectCard: View {
             }
             .padding(13)
         }
+        // Passive running indicator only — starting/opening the session
+        // moved into the long-press menu.
         .overlay(alignment: .bottomTrailing) {
-            Button(action: onPlay) {
-                Image(systemName: isActive ? "waveform" : "play.fill")
-                    .font(.system(size: 16, weight: .bold))
+            if isActive {
+                Image(systemName: "waveform")
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(.white)
-                    .symbolEffect(.variableColor.iterative, isActive: isActive)
-                    .frame(width: 42, height: 42)
-                    .background(.white.opacity(0.22), in: .circle)
+                    .symbolEffect(.variableColor.iterative, isActive: true)
+                    .padding(12)
             }
-            .buttonStyle(.plain)
-            .padding(10)
         }
     }
 }

@@ -4,8 +4,27 @@
 //
 
 import SwiftUI
+import UIKit
 
 extension Color {
+    /// Web theme tokens (web/src/app.css `--bg` / `--surface` / `--border`),
+    /// oklch converted to sRGB once, switching with the appearance like the
+    /// web's dark/light themes.
+    static let webBackground = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0x0C / 255, green: 0x0D / 255, blue: 0x0F / 255, alpha: 1)
+            : UIColor(red: 0xFB / 255, green: 0xFA / 255, blue: 0xF8 / 255, alpha: 1)
+    })
+    static let webSurface = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0x18 / 255, green: 0x19 / 255, blue: 0x1D / 255, alpha: 1)
+            : UIColor(red: 0xF1 / 255, green: 0xF0 / 255, blue: 0xEE / 255, alpha: 1)
+    })
+    static let webBorder = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0x28 / 255, green: 0x2A / 255, blue: 0x2E / 255, alpha: 1)
+            : UIColor(red: 0xDC / 255, green: 0xDA / 255, blue: 0xD8 / 255, alpha: 1)
+    })
     /// Colors come from the web app's taxonomy.ts as hex strings — keep them
     /// byte-identical across platforms by constructing from the same hex.
     init(hex: UInt32) {

@@ -70,7 +70,7 @@ struct TaskCommentsView: View {
                 }
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.webBackground)
         .navigationTitle("Comments")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {

@@ -15,25 +15,49 @@ struct TasksView: View {
     @State private var showingFilters = false
     @State private var showingViews = false
     @State private var showingCreate = false
+    @State private var collapsedGroups: Set<String> = []
 
     private var groups: [TaskGroup] { model.taskFilters.grouped(model.tasks) }
 
     var body: some View {
         NavigationStack(path: $model.taskPath) {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 10) {
+                LazyVStack(alignment: .leading, spacing: 14) {
+                    // Web ListView parity: one section container per group —
+                    // header band on top, rows joined by hairline dividers.
                     ForEach(groups) { group in
-                        if !group.label.isEmpty {
-                            GroupHeader(group: group)
-                                .padding(.top, 14)
-                                .padding(.leading, 4)
-                        }
-                        ForEach(group.tasks) { task in
-                            NavigationLink(value: task) {
-                                TaskCard(task: task)
+                        VStack(spacing: 0) {
+                            if !group.label.isEmpty {
+                                GroupHeader(
+                                    label: group.label,
+                                    color: group.color,
+                                    count: group.tasks.count,
+                                    collapsed: collapsedGroups.contains(group.id)
+                                ) {
+                                    withAnimation(.snappy(duration: 0.25)) {
+                                        if !collapsedGroups.insert(group.id).inserted {
+                                            collapsedGroups.remove(group.id)
+                                        }
+                                    }
+                                }
                             }
-                            .buttonStyle(.plain)
+                            if group.label.isEmpty || !collapsedGroups.contains(group.id) {
+                                ForEach(Array(group.tasks.enumerated()), id: \.element.id) {
+                                    index, task in
+                                    if index > 0 {
+                                        Divider()
+                                            .overlay(Color.webBorder.opacity(0.6))
+                                            .padding(.leading, 14)
+                                    }
+                                    NavigationLink(value: task) {
+                                        TaskCard(task: task, embedded: true)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .taskContextMenu(for: task, model: model)
+                                }
+                            }
                         }
+                        .sectionStyle()
                     }
                     if groups.allSatisfy(\.tasks.isEmpty) {
                         ContentUnavailableView(
@@ -47,7 +71,7 @@ struct TasksView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.webBackground)
             .refreshable { await model.sync?.refreshTasks() }
             .navigationDestination(for: TaskItem.self) { task in
                 TaskDetailView(task: task, model: model)
@@ -118,25 +142,6 @@ struct TasksView: View {
                     }
                 }
             }
-        }
-    }
-}
-
-private struct GroupHeader: View {
-    let group: TaskGroup
-
-    var body: some View {
-        HStack(spacing: 7) {
-            if let color = group.color {
-                Circle()
-                    .fill(color)
-                    .frame(width: 8, height: 8)
-            }
-            Text(group.label)
-                .font(.system(size: 13, weight: .semibold))
-            Text("\(group.tasks.count)")
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(.tertiary)
         }
     }
 }

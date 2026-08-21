@@ -69,7 +69,7 @@ struct TicketConversationView: View {
                 }
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.webBackground)
         .navigationTitle("Conversation")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {

@@ -62,5 +62,5 @@ struct MessageComposer: View {
         Spacer()
         MessageComposer(text: $text, onAttach: {}) {}
     }
-    .background(Color(.systemGroupedBackground))
+    .background(Color.webBackground)
 }

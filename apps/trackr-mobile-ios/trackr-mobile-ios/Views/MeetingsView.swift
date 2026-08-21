@@ -65,7 +65,7 @@ struct MeetingsView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.webBackground)
         .navigationTitle("Meetings")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

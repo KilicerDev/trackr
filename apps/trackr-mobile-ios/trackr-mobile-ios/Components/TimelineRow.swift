@@ -53,7 +53,7 @@ struct TimelineRow<Content: View>: View {
         case .avatar(let user):
             AvatarView(user: user, size: Self.nodeSize)
                 .overlay(
-                    Circle().strokeBorder(Color(.systemGroupedBackground), lineWidth: 2)
+                    Circle().strokeBorder(Color.webBackground, lineWidth: 2)
                 )
         case .icon(let systemImage):
             Image(systemName: systemImage)
@@ -86,5 +86,5 @@ extension TimelineRow where Content == EmptyView {
         )
     }
     .padding()
-    .background(Color(.systemGroupedBackground))
+    .background(Color.webBackground)
 }

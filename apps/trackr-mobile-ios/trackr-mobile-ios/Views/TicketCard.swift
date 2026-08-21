@@ -10,29 +10,49 @@ import SwiftUI
 
 struct TicketCard: View {
     let ticket: TicketItem
+    /// Row inside a group-section container: the section owns background
+    /// and border, the card renders content only.
+    var embedded = false
 
     var body: some View {
+        if embedded {
+            content
+        } else {
+            content
+                .background(
+                    Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 16)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .strokeBorder(Color(.separator).opacity(0.4), lineWidth: 0.5)
+                )
+        }
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 10) {
+            // Line 1: identity — subject truncates, it never wraps.
             HStack(spacing: 10) {
                 Circle()
                     .fill(ticket.status.color)
                     .frame(width: 10, height: 10)
                 Text(ticket.subject)
                     .font(.system(size: 15, weight: .medium))
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 Spacer(minLength: 8)
                 if !ticket.assignees.isEmpty {
                     AvatarStack(users: ticket.assignees, size: 24)
                 }
             }
 
+            // Line 2: meta — id, priority, org, messages, SLA/last activity.
             HStack(spacing: 10) {
                 Text(ticket.id)
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundStyle(.tertiary)
 
-                if ticket.priority == .high || ticket.priority == .urgent {
+                if ticket.priority != .none {
                     PriorityBars(priority: ticket.priority)
                 }
 
@@ -60,13 +80,24 @@ struct TicketCard: View {
 
                 trailingSignal
             }
+            .lineLimit(1)
+
+            // Line 3 (only when there is something to show): tags.
+            if !ticket.tags.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(ticket.tags.prefix(3), id: \.self) { tag in
+                        TagChip(tag: tag)
+                    }
+                    if ticket.tags.count > 3 {
+                        Text("+\(ticket.tags.count - 3)")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .lineLimit(1)
+            }
         }
         .padding(14)
-        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 16))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Color(.separator).opacity(0.4), lineWidth: 0.5)
-        )
     }
 
     /// SLA signal when there is one, last-activity time otherwise — the
@@ -98,5 +129,5 @@ struct TicketCard: View {
         }
         .padding(16)
     }
-    .background(Color(.systemGroupedBackground))
+    .background(Color.webBackground)
 }

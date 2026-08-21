@@ -4,6 +4,10 @@
 //   PATCH { status?, priority?, category?, assigneeIds?, tags? } — the
 //   property-pill and tag edits the app offers. Checklist/subject stay a
 //   desktop concern.
+import { and, eq } from 'drizzle-orm';
+import { db } from '$lib/server/db';
+import { message, thread } from '$lib/server/db/app.schema';
+import { deleteAttachmentsFor } from '$lib/server/attachments';
 import { canViewTicket, can, isTrackrTeam } from '$lib/server/permissions';
 import {
 	addTicketSystemEvents,
@@ -11,6 +15,7 @@ import {
 	loadAssignableUsers,
 	loadTicketDisplayUsers,
 	loadTicketMessages,
+	softDeleteTicket,
 	updateTicket,
 	TICKET_CATEGORY_SET,
 	TICKET_PRIORITY_SET,
@@ -196,4 +201,40 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 
 	const fresh = await getTicket(ticket.id);
 	return json({ ok: true, ticket: fresh });
+};
+
+// Soft delete, mirroring the web `delete` action: org.tickets.delete.any
+// (internal admin roles only), deletedAt stamp via softDeleteTicket, then
+// attachment cleanup and an audit entry.
+export const DELETE: RequestHandler = async ({ locals, params }) => {
+	const user = requireUser(locals);
+	const ticket = await getTicket(params.id);
+	if (!ticket) apiError(404, m.tickets_not_found());
+	// Non-viewers get the same 404 as unknown ids so nothing leaks.
+	if (!(await canViewTicket(locals, ticket))) apiError(404, m.tickets_not_found());
+	if (!(await can(locals, 'org.tickets.delete.any', { orgId: ticket.orgId }))) {
+		apiError(403, m.tickets_no_access());
+	}
+
+	await softDeleteTicket(ticket.id);
+	void recordAudit({
+		type: 'ticket.delete',
+		actorId: user.id,
+		targetType: 'ticket',
+		targetId: ticket.id,
+		targetLabel: `${ticket.displayId} · ${ticket.subject}`,
+		orgId: ticket.orgId,
+		meta: { via: 'api.v1' }
+	});
+	// Read paths are closed now; reclaim the attachment files (ticket-level
+	// + per-message), same cleanup as the web action.
+	await deleteAttachmentsFor('ticket', ticket.id);
+	const msgs = await db
+		.select({ id: message.id })
+		.from(message)
+		.innerJoin(thread, eq(thread.id, message.threadId))
+		.where(and(eq(thread.subjectType, 'ticket'), eq(thread.subjectId, ticket.id)));
+	for (const msg of msgs) await deleteAttachmentsFor('message', msg.id);
+
+	return json({ ok: true });
 };

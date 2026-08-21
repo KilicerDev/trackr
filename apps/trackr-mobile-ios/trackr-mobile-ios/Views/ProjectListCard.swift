@@ -105,5 +105,5 @@ struct ProjectListCard: View {
         }
         .padding(16)
     }
-    .background(Color(.systemGroupedBackground))
+    .background(Color.webBackground)
 }

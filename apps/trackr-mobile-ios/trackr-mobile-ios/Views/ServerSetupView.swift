@@ -85,7 +85,7 @@ struct ServerSetupView: View {
                 .padding(.bottom, 18)
         }
         .padding(.horizontal, 28)
-        .background(Color(.systemGroupedBackground))
+        .background(Color.webBackground)
     }
 
     private func signIn() {

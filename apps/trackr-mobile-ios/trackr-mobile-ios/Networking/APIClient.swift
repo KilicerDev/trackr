@@ -97,6 +97,11 @@ actor APIClient {
         try await send("DELETE", path, query: [], body: body, authenticated: true)
     }
 
+    @discardableResult
+    func delete<T: Decodable>(_ path: String) async throws -> T {
+        try await send("DELETE", path, query: [], body: NoBody?.none, authenticated: true)
+    }
+
     /// Raw variant for endpoints with irregular bodies (get-session's literal
     /// `null`). Returns the data + response after the shared header/rotation
     /// handling, without JSON-decoding.

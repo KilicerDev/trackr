@@ -75,6 +75,7 @@ struct ProjectDetailView: View {
                                     TaskCard(task: task)
                                 }
                                 .buttonStyle(.plain)
+                                .taskContextMenu(for: task, model: model)
                             }
                         }
                     }
@@ -83,7 +84,7 @@ struct ProjectDetailView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 24)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.webBackground)
         .navigationTitle(project.key)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

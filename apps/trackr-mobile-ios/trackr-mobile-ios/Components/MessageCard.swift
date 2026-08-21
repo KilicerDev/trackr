@@ -37,5 +37,5 @@ struct MessageCard: View {
 #Preview {
     MessageCard(text: "Root cause: Outlook inverts any background darker than #333.")
         .padding()
-        .background(Color(.systemGroupedBackground))
+        .background(Color.webBackground)
 }

@@ -132,10 +132,9 @@ struct MyWeekView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                // Pinned day headers on a solid background — web parity with
-                // the sticky border-y day bars; that's what keeps the days
-                // apart while cards scroll underneath.
-                LazyVStack(alignment: .leading, spacing: 10, pinnedViews: [.sectionHeaders]) {
+                // Same sectioned-list system as the Tasks tab: every day is
+                // one bordered container with a surface header band.
+                LazyVStack(alignment: .leading, spacing: 14) {
                     weekHeader
                         .padding(.bottom, 4)
 
@@ -149,7 +148,7 @@ struct MyWeekView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.webBackground)
             .refreshable { await model.sync?.refreshTasks() }
             .onAppear {
                 // Screen-appear revalidation, same as the Tasks tab.
@@ -219,12 +218,22 @@ struct MyWeekView: View {
         .padding(.horizontal, 4)
     }
 
+    /// One bordered section container per day: surface header band on top,
+    /// project sub-headers and task rows joined by hairline dividers. An
+    /// empty day is just its band, so the week grid stays visible.
     @ViewBuilder
     private func daySection(index: Int, day: Date) -> some View {
         let tasks = planned(on: day)
 
-        Section {
-            ForEach(projectGroups(in: tasks), id: \.name) { group in
+        VStack(spacing: 0) {
+            dayHeader(index: index, day: day, tasks: tasks)
+            ForEach(Array(projectGroups(in: tasks).enumerated()), id: \.element.name) {
+                groupIndex, group in
+                if groupIndex > 0 {
+                    Divider()
+                        .overlay(Color.webBorder.opacity(0.6))
+                        .padding(.leading, 14)
+                }
                 HStack(spacing: 7) {
                     Circle()
                         .fill(group.color)
@@ -237,17 +246,23 @@ struct MyWeekView: View {
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(.tertiary)
                 }
-                .padding(.horizontal, 4)
-                ForEach(group.tasks) { task in
+                .padding(.horizontal, 14)
+                .padding(.top, 12)
+                ForEach(Array(group.tasks.enumerated()), id: \.element.id) { taskIndex, task in
+                    if taskIndex > 0 {
+                        Divider()
+                            .overlay(Color.webBorder.opacity(0.6))
+                            .padding(.leading, 14)
+                    }
                     NavigationLink(value: task) {
-                        TaskCard(task: task)
+                        TaskCard(task: task, showPlanned: false, embedded: true)
                     }
                     .buttonStyle(.plain)
+                    .taskContextMenu(for: task, model: model)
                 }
             }
-        } header: {
-            dayHeader(index: index, day: day, tasks: tasks)
         }
+        .sectionStyle()
     }
 
     private func dayHeader(index: Int, day: Date, tasks: [TaskItem]) -> some View {
@@ -258,7 +273,7 @@ struct MyWeekView: View {
 
         return HStack(spacing: 7) {
             Text(day.formatted(.dateTime.weekday(.wide)))
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(isToday ? Color.accentColor : isWeekend ? Color(.secondaryLabel) : Color(.label))
             Text("\(Calendar.current.component(.day, from: day))")
                 .font(.system(size: 12, design: .monospaced))
@@ -279,15 +294,10 @@ struct MyWeekView: View {
                 .foregroundStyle(.secondary)
                 .frame(width: 52, alignment: .trailing)
         }
-        .padding(.horizontal, 4)
-        .padding(.top, 16)
-        .padding(.bottom, 8)
-        // Solid bar so cards visibly slide under the pinned header, with a
-        // hairline marking where the day starts.
-        .background(Color(.systemGroupedBackground))
-        .overlay(alignment: .top) {
-            Divider()
-        }
+        .padding(.horizontal, 14)
+        .frame(height: 38)
+        .frame(maxWidth: .infinity)
+        .background(Color.webSurface)
     }
 
     private var unscheduledSection: some View {
@@ -308,12 +318,6 @@ struct MyWeekView: View {
             }
             .pickerStyle(.segmented)
 
-            ForEach(unscheduled) { task in
-                NavigationLink(value: task) {
-                    TaskCard(task: task)
-                }
-                .buttonStyle(.plain)
-            }
             if unscheduled.isEmpty {
                 HStack(spacing: 7) {
                     Image(systemName: "checkmark.circle")
@@ -324,6 +328,22 @@ struct MyWeekView: View {
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 4)
                 .padding(.vertical, 6)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(unscheduled.enumerated()), id: \.element.id) { index, task in
+                        if index > 0 {
+                            Divider()
+                                .overlay(Color.webBorder.opacity(0.6))
+                                .padding(.leading, 14)
+                        }
+                        NavigationLink(value: task) {
+                            TaskCard(task: task, embedded: true)
+                        }
+                        .buttonStyle(.plain)
+                        .taskContextMenu(for: task, model: model)
+                    }
+                }
+                .sectionStyle()
             }
         }
     }

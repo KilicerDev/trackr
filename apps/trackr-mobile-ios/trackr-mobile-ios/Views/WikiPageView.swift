@@ -34,7 +34,7 @@ struct WikiPageView: View {
             .padding(16)
             .padding(.bottom, 16)
         }
-        .background(Color(.systemGroupedBackground))
+        .background(Color.webBackground)
         .onAppear {
             // The tree payload has no bodies — fetch this page's on open.
             Task { await model?.sync?.loadWikiBody(id: page.id) }

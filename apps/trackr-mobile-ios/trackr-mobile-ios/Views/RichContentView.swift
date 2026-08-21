@@ -177,5 +177,5 @@ struct RichContentView: View {
         RichContentView(html: WikiPageItem.samples[3].bodyHtml)
             .padding(16)
     }
-    .background(Color(.systemGroupedBackground))
+    .background(Color.webBackground)
 }

@@ -22,7 +22,6 @@ struct TaskDetailView: View {
     @State private var showingTimeLog = false
     @State private var showingAddTag = false
     @State private var showingAttachments = false
-    @State private var newChecklistItem = ""
 
     var body: some View {
         ScrollView {
@@ -65,7 +64,7 @@ struct TaskDetailView: View {
             .padding(.bottom, 24)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(Color(.systemGroupedBackground))
+        .background(Color.webBackground)
         // One snapshot-typed trigger instead of a per-field onChange stack:
         // keeps the modifier chain type-checkable and excludes the free-text
         // fields (title/description persist on disappear, not per keystroke).
@@ -320,71 +319,7 @@ struct TaskDetailView: View {
     }
 
     private var checklistCard: some View {
-        VStack(spacing: 0) {
-            if task.checklistTotal > 0 {
-                // Embedded non-scrolling List purely for the native swipe
-                // actions — invisible inside the card.
-                List {
-                    ForEach($task.checklist) { $item in
-                        Button {
-                            item.done.toggle()
-                        } label: {
-                            HStack(spacing: 10) {
-                                Image(systemName: item.done ? "checkmark.square.fill" : "square")
-                                    .foregroundStyle(
-                                        item.done ? Color.accentColor : Color(.tertiaryLabel)
-                                    )
-                                Text(item.text)
-                                    .font(.system(size: 15))
-                                    .strikethrough(item.done)
-                                    .foregroundStyle(
-                                        item.done ? Color(.tertiaryLabel) : Color.primary
-                                    )
-                                Spacer()
-                            }
-                            .contentShape(.rect)
-                        }
-                        .buttonStyle(.plain)
-                        .listRowBackground(Color(.secondarySystemGroupedBackground))
-                        .listRowInsets(EdgeInsets(top: 0, leading: 14, bottom: 0, trailing: 14))
-                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                            Button {
-                                item.done.toggle()
-                            } label: {
-                                Label(
-                                    item.done ? "Uncheck" : "Done",
-                                    systemImage: item.done ? "arrow.uturn.backward" : "checkmark"
-                                )
-                            }
-                            .tint(item.done ? .gray : Color(hex: 0x7FC8A9))
-                        }
-                    }
-                    .onDelete { offsets in
-                        task.checklist.remove(atOffsets: offsets)
-                    }
-                }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .scrollDisabled(true)
-                .environment(\.defaultMinListRowHeight, 42)
-                .frame(height: CGFloat(task.checklist.count) * 42)
-            }
-            HStack(spacing: 10) {
-                Image(systemName: "plus")
-                    .foregroundStyle(.tertiary)
-                TextField("Add an item…", text: $newChecklistItem)
-                    .font(.system(size: 15))
-                    .onSubmit {
-                        let text = newChecklistItem.trimmingCharacters(in: .whitespaces)
-                        guard !text.isEmpty else { return }
-                        task.checklist.append(ChecklistItem(text: text))
-                        newChecklistItem = ""
-                    }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-        }
-        .cardStyle(padded: false)
+        ChecklistCard(items: $task.checklist)
     }
 
     private var tagsRow: some View {

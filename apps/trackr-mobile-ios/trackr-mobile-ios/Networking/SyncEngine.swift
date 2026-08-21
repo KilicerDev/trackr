@@ -296,6 +296,27 @@ final class SyncEngine {
         }
     }
 
+    /// Optimistic delete: the card disappears immediately, the server soft
+    /// delete follows; the refetch confirms it (or resurrects the row when
+    /// the server refused, e.g. missing the delete grant).
+    func deleteTask(_ task: TaskItem) {
+        model.tasks.removeAll { $0.id == task.id }
+        guard let uuid = task.uuid else { return }
+        Task {
+            try? await client.deleteTask(uuid: uuid)
+            await refreshTasks()
+        }
+    }
+
+    func deleteTicket(_ ticket: TicketItem) {
+        model.tickets.removeAll { $0.id == ticket.id }
+        guard let uuid = ticket.uuid else { return }
+        Task {
+            try? await client.deleteTicket(uuid: uuid)
+            await refreshTickets()
+        }
+    }
+
     func sendTaskComment(taskUUID: String, text: String) {
         Task {
             try? await client.addTaskComment(uuid: taskUUID, text: text)

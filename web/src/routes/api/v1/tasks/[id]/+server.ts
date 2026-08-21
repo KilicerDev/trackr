@@ -9,13 +9,16 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import {
+	message,
 	organization,
 	organizationMember,
 	project,
 	task,
 	taskAssignee,
-	taskPlanning
+	taskPlanning,
+	thread
 } from '$lib/server/db/app.schema';
+import { deleteAttachmentsFor } from '$lib/server/attachments';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import { can } from '$lib/server/permissions';
 import {
@@ -82,6 +85,66 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		: [];
 
 	return json({ task: detail, authors, assignableUsers, canEdit, canComment });
+};
+
+// Soft delete, mirroring the web `delete` action: project.tasks.delete.any
+// only, deletedAt stamp, attachment cleanup, activity + audit entries.
+export const DELETE: RequestHandler = async ({ locals, params }) => {
+	const user = requireUser(locals);
+	const [target] = await db
+		.select({
+			id: task.id,
+			number: task.number,
+			title: task.title,
+			projectId: project.id,
+			projectKey: project.key,
+			projectOrgId: project.orgId
+		})
+		.from(task)
+		.innerJoin(project, eq(project.id, task.projectId))
+		.where(and(eq(task.id, params.id), isNull(task.deletedAt)))
+		.limit(1);
+	if (!target) apiError(404, m.tasks_err_task_not_found());
+	// Unknown ids and no-read both answer 404 so the endpoint doesn't leak
+	// which task uuids exist; a reader without the grant gets the 403.
+	if (!(await can(locals, 'project.tasks.read', { projectId: target.projectId }))) {
+		apiError(404, m.tasks_err_task_not_found());
+	}
+	if (!(await can(locals, 'project.tasks.delete.any', { projectId: target.projectId }))) {
+		apiError(403, m.tasks_err_cannot_edit());
+	}
+
+	const displayId = `${target.projectKey}-${target.number}`;
+	await db.update(task).set({ deletedAt: new Date() }).where(eq(task.id, target.id));
+	// The task's read paths are now closed, so its attachments are already
+	// unreachable; remove their files (task-level + per-comment) to reclaim
+	// disk — same cleanup as the web action.
+	await deleteAttachmentsFor('task', target.id);
+	const comments = await db
+		.select({ id: message.id })
+		.from(message)
+		.innerJoin(thread, eq(thread.id, message.threadId))
+		.where(and(eq(thread.subjectType, 'task'), eq(thread.subjectId, target.id)));
+	for (const c of comments) await deleteAttachmentsFor('message', c.id);
+
+	logActivityFF({
+		projectId: target.projectId,
+		taskId: target.id,
+		actorId: user.id,
+		type: 'task.deleted',
+		meta: { taskRef: displayId, taskTitle: target.title }
+	});
+	void recordAudit({
+		type: 'task.delete',
+		actorId: user.id,
+		targetType: 'task',
+		targetId: target.id,
+		targetLabel: `${displayId} · ${target.title}`,
+		orgId: target.projectOrgId,
+		meta: { projectId: target.projectId, via: 'api.v1' }
+	});
+
+	return json({ ok: true });
 };
 
 export const PATCH: RequestHandler = async ({ locals, params, request, url }) => {
