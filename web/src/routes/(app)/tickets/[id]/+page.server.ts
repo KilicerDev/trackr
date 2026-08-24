@@ -20,7 +20,7 @@ import {
 import { createTask } from '$lib/server/tasks';
 import { recordAudit } from '$lib/server/audit';
 import { notifyTaskAssigned } from '$lib/server/notify/events/task';
-import { listAttachments, listAttachmentsForMany } from '$lib/server/attachments';
+import { copyAttachments, listAttachments, listAttachmentsForMany } from '$lib/server/attachments';
 import { m } from '$lib/paraglide/messages';
 
 const ALLOWED_TASK_TYPE = new Set(['task', 'bug', 'improvement', 'feature', 'chore']);
@@ -272,6 +272,21 @@ export const actions: Actions = {
 		} catch (err) {
 			console.error('ticket→task create failed', err);
 			return fail(500, { message: m.tickets_create_task_failed() });
+		}
+
+		// Carry the ticket's attachments over to the new task, scoped like a
+		// direct task upload (project, no org). The stored bytes are shared, not
+		// duplicated — see copyAttachments. Best-effort: the task already exists,
+		// so a failure is logged, not surfaced as a failed conversion.
+		try {
+			await copyAttachments({
+				from: { entityType: 'ticket', entityId: ticketId },
+				to: { entityType: 'task', entityId: created.id },
+				orgId: null,
+				projectId: p.id
+			});
+		} catch (err) {
+			console.error('ticket→task attachment copy failed', err);
 		}
 
 		// Leave an agents-only breadcrumb linking the new task. Best-effort: the

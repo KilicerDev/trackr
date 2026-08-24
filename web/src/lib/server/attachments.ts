@@ -256,6 +256,62 @@ export async function attachFormFiles(opts: {
 	return { ok, failed };
 }
 
+/**
+ * Attach every non-deleted attachment of one entity to another (ticket → task
+ * conversion). The stored bytes are NOT duplicated: the new row references the
+ * same `storageKey`, so the file exists once on disk/S3 no matter how many
+ * rows point at it. `deleteAttachment` only removes the blobs once no live row
+ * references the key anymore, so either side can be deleted safely. Image
+ * metadata (dimensions, thumbnail, thumbhash) and the original uploader are
+ * carried over. Best-effort per file: a failed copy is logged and skipped,
+ * never fatal. Returns the number of attachments linked.
+ */
+export async function copyAttachments(opts: {
+	from: { entityType: AttachmentEntityType; entityId: string };
+	to: { entityType: AttachmentEntityType; entityId: string };
+	/** Denormalized scope of the destination entity (same values an upload to it would get). */
+	orgId: string | null;
+	projectId: string | null;
+}): Promise<number> {
+	const rows = await db
+		.select()
+		.from(attachment)
+		.where(
+			and(
+				eq(attachment.entityType, opts.from.entityType),
+				eq(attachment.entityId, opts.from.entityId),
+				isNull(attachment.deletedAt)
+			)
+		)
+		.orderBy(desc(attachment.createdAt));
+
+	let copied = 0;
+	for (const row of rows) {
+		try {
+			await db.insert(attachment).values({
+				id: randomUUID(),
+				entityType: opts.to.entityType,
+				entityId: opts.to.entityId,
+				orgId: opts.orgId,
+				projectId: opts.projectId,
+				uploadedBy: row.uploadedBy,
+				storageKey: row.storageKey,
+				filename: row.filename,
+				mimeType: row.mimeType,
+				sizeBytes: row.sizeBytes,
+				width: row.width,
+				height: row.height,
+				hasThumbnail: row.hasThumbnail,
+				thumbhash: row.thumbhash
+			});
+			copied++;
+		} catch (err) {
+			console.error('[attachments] failed to copy attachment', row.id, err);
+		}
+	}
+	return copied;
+}
+
 // ─── Read ────────────────────────────────────────────────────────────────────
 
 /** List non-deleted attachments for one entity, newest first. */
@@ -318,12 +374,20 @@ export async function getAttachment(id: string): Promise<Attachment | null> {
 /**
  * Soft-delete one attachment and remove its files. The row is marked deleted
  * first (it stops being served immediately); files go after (an orphaned file
- * is harmless). Idempotent.
+ * is harmless). A storage key can be shared by several rows (copyAttachments —
+ * e.g. a ticket and the task it was converted into), so the blobs are only
+ * removed once no live row references them anymore. Idempotent.
  */
 export async function deleteAttachment(
 	row: Pick<Attachment, 'id' | 'storageKey' | 'hasThumbnail'>
 ) {
 	await db.update(attachment).set({ deletedAt: new Date() }).where(eq(attachment.id, row.id));
+	const [stillReferenced] = await db
+		.select({ id: attachment.id })
+		.from(attachment)
+		.where(and(eq(attachment.storageKey, row.storageKey), isNull(attachment.deletedAt)))
+		.limit(1);
+	if (stillReferenced) return;
 	await storage.delete(originalKey(row));
 	if (row.hasThumbnail) await storage.delete(thumbKey(row));
 }
