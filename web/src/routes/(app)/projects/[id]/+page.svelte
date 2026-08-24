@@ -415,6 +415,15 @@
 								<Icon name="download" size={13} />
 								{m.projects_import_tasks()}
 							</button>
+							<a
+								href="/projects/{p.id}/tasks/export"
+								download
+								onclick={() => (settingsOpen = false)}
+								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
+							>
+								<Icon name="upload" size={13} />
+								{m.projects_export_tasks()}
+							</a>
 							<div class="my-1 border-t border-border/60"></div>
 							<button
 								type="button"

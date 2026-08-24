@@ -104,6 +104,15 @@
 		if (file) void readFile(file);
 	}
 
+	// Items carrying an `id` update existing tasks instead of creating new ones
+	// (the round-trip flow: export → edit → upload).
+	const updateCount = $derived(
+		tasks.filter((t) => {
+			const id = (t as { id?: unknown } | null)?.id;
+			return id != null && String(id).trim() !== '';
+		}).length
+	);
+
 	async function doImport() {
 		if (tasks.length === 0 || importing) return;
 		importing = true;
@@ -117,17 +126,25 @@
 			const data = (await res.json()) as {
 				message?: string;
 				created?: { index: number }[];
+				updated?: { index: number }[];
 				failed?: { index: number; message: string }[];
 			};
 			if (!res.ok) {
 				showToast('err', data.message ?? m.import_err_failed());
 				return;
 			}
-			const ok = data.created?.length ?? 0;
+			const created = data.created?.length ?? 0;
+			const updated = data.updated?.length ?? 0;
+			const ok = created + updated;
 			failures = data.failed ?? [];
 			if (ok > 0) await invalidateAll();
 			if (failures.length === 0) {
-				showToast('ok', m.import_tasks_success({ n: ok }));
+				showToast(
+					'ok',
+					updated > 0
+						? m.import_tasks_success_upsert({ created, updated })
+						: m.import_tasks_success({ n: ok })
+				);
 				onclose();
 			} else {
 				showToast(ok > 0 ? 'ok' : 'err', m.import_tasks_partial({ ok, failed: failures.length }));
@@ -147,6 +164,10 @@
 	// Trackr task import — upload this file on the project you want the tasks in.
 	// The project is taken from where you upload, so no project id is needed here.
 	// Only "title" is required per task. Comments are allowed. Max 500 tasks.
+	//
+	// Updating instead of creating: an entry with an "id" (as found in a task
+	// export from this project) updates that task — only the fields present in
+	// the entry are changed. Entries without an "id" create new tasks.
 	//
 	// Allowed values:
 	//   type:      "task" | "bug" | "improvement" | "feature" | "chore"                  (default "task")
@@ -244,7 +265,15 @@
 			<p class="mt-3 text-[13px] text-accent">{parseError}</p>
 		{:else if tasks.length > 0}
 			<p class="mt-3 text-[13px] text-text-2">
-				{m.import_tasks_found({ n: tasks.length, file: fileName })}
+				{#if updateCount > 0}
+					{m.import_tasks_found_upsert({
+						file: fileName,
+						created: tasks.length - updateCount,
+						updated: updateCount
+					})}
+				{:else}
+					{m.import_tasks_found({ n: tasks.length, file: fileName })}
+				{/if}
 			</p>
 		{/if}
 
