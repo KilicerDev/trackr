@@ -268,7 +268,7 @@ struct TicketDetailView: View {
             showingConversation = true
         } label: {
             VStack(alignment: .leading, spacing: 8) {
-                if let last = ticket.messages.last(where: { !$0.internalNote }) {
+                if let last = ticket.messages.last(where: { !$0.internalNote }) ?? ticket.openingMessage {
                     HStack(spacing: 6) {
                         AvatarView(user: last.user, size: 20)
                         Text(last.user.name)

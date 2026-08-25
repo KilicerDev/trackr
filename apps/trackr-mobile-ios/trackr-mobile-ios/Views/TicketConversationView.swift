@@ -19,27 +19,32 @@ struct TicketConversationView: View {
     private let internalColor = Color(hex: 0xE9C46A)
 
     private enum Event: Identifiable {
+        case opening(TicketMessage)
         case message(TicketMessage)
         case activity(ActivityEvent)
 
         var id: String {
             switch self {
-            case .message(let m): m.id
+            case .opening(let m), .message(let m): m.id
             case .activity(let a): a.id.uuidString
             }
         }
 
         var date: Date {
             switch self {
-            case .message(let m): m.date
+            case .opening(let m), .message(let m): m.date
             case .activity(let a): a.date
             }
         }
     }
 
+    /// The description leads the timeline as the opening message (web
+    /// parity), followed by real messages and activity in time order.
     private var events: [Event] {
-        (ticket.messages.map(Event.message) + ticket.activity.map(Event.activity))
-            .sorted { $0.date < $1.date }
+        let opening = ticket.openingMessage.map { [Event.opening($0)] } ?? []
+        return opening
+            + (ticket.messages.map(Event.message) + ticket.activity.map(Event.activity))
+                .sorted { $0.date < $1.date }
     }
 
     var body: some View {
@@ -121,6 +126,15 @@ struct TicketConversationView: View {
     @ViewBuilder
     private func row(for event: Event) -> some View {
         switch event {
+        case .opening(let message):
+            TimelineRow(
+                node: .avatar(message.user),
+                name: message.user.name,
+                action: "opened the ticket",
+                date: message.date
+            ) {
+                MessageCard(text: message.text)
+            }
         case .message(let message):
             TimelineRow(
                 node: .avatar(message.user),

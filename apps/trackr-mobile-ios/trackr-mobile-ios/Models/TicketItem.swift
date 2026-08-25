@@ -30,12 +30,18 @@ struct TicketItem: Identifiable, Hashable {
     /// sample/preview data.
     var uuid: String? = nil
     var subject: String
+    /// Server `description` — read-only on mobile (desktop-only edit). The
+    /// UI shows it as the opening message of the conversation (web parity).
+    var details = ""
     var status: TicketStatus
     var priority: TaskPriority
     var category: TicketCategory
     var channel: TicketChannel
     var org: OrgRef
     var customer: UserRef?
+    /// Who opened the ticket (server createdBy) — author of the opening
+    /// message when there's no customer.
+    var createdBy: UserRef? = nil
     var assignees: [UserRef] = []
     var tags: [String] = []
     var checklist: [ChecklistItem] = []
@@ -48,6 +54,15 @@ struct TicketItem: Identifiable, Hashable {
     /// until the detail fetch loads the real conversation.
     var serverMessageCount: Int? = nil
     var serverLastMessageAt: Date? = nil
+
+    /// The description rendered as the conversation's first message — UI
+    /// only, never sent to the server. Nil when there's no description.
+    var openingMessage: TicketMessage? {
+        guard !details.isEmpty else { return nil }
+        let author = customer ?? createdBy
+            ?? UserRef(name: "Customer", initials: "?", color: Color(.systemGray))
+        return TicketMessage(id: "opening-\(id)", user: author, date: createdAt, text: details)
+    }
 
     var checklistDone: Int { checklist.count { $0.done } }
     var checklistTotal: Int { checklist.count }
