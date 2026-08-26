@@ -13,6 +13,8 @@ struct TicketCard: View {
     /// Row inside a group-section container: the section owns background
     /// and border, the card renders content only.
     var embedded = false
+    /// Hide the org chip when the list is already grouped by organization.
+    var showOrg = true
 
     var body: some View {
         if embedded {
@@ -46,24 +48,32 @@ struct TicketCard: View {
                 }
             }
 
-            // Line 2: meta — id, priority, org, messages, SLA/last activity.
-            HStack(spacing: 10) {
+            // Line 2: compact mono stats — id, priority, checklist, messages —
+            // and the SLA / last-activity signal. Nothing here truncates:
+            // the stats are fixed-size and the signal is short.
+            HStack(spacing: 8) {
                 Text(ticket.id)
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundStyle(.tertiary)
+                    .fixedSize()
 
                 if ticket.priority != .none {
                     PriorityBars(priority: ticket.priority)
                 }
 
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(ticket.org.color)
-                        .frame(width: 6, height: 6)
-                    Text(ticket.org.name)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                if ticket.checklistTotal > 0 {
+                    HStack(spacing: 3) {
+                        Image(systemName: "checklist")
+                            .font(.system(size: 10))
+                        Text("\(ticket.checklistDone)/\(ticket.checklistTotal)")
+                            .font(.system(size: 12, design: .monospaced))
+                    }
+                    .foregroundStyle(
+                        ticket.checklistDone == ticket.checklistTotal
+                            ? Color(hex: 0x7FC8A9)
+                            : Color(.tertiaryLabel)
+                    )
+                    .fixedSize()
                 }
 
                 if ticket.messageCount > 0 {
@@ -74,17 +84,23 @@ struct TicketCard: View {
                             .font(.system(size: 12, design: .monospaced))
                     }
                     .foregroundStyle(Color(.tertiaryLabel))
+                    .fixedSize()
                 }
 
-                Spacer()
+                Spacer(minLength: 8)
 
                 trailingSignal
+                    .fixedSize()
             }
             .lineLimit(1)
 
-            // Line 3 (only when there is something to show): tags.
-            if !ticket.tags.isEmpty {
+            // Line 3 (only when there is something to show): org + tags —
+            // the wide, text-heavy bits get their own line.
+            if hasChipsLine {
                 HStack(spacing: 6) {
+                    if showOrg {
+                        orgChip
+                    }
                     ForEach(ticket.tags.prefix(3), id: \.self) { tag in
                         TagChip(tag: tag)
                     }
@@ -98,6 +114,24 @@ struct TicketCard: View {
             }
         }
         .padding(14)
+    }
+
+    private var hasChipsLine: Bool { showOrg || !ticket.tags.isEmpty }
+
+    /// Org as a soft chip, tinted with the org color (web TicketRow parity).
+    private var orgChip: some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(ticket.org.color)
+                .frame(width: 6, height: 6)
+            Text(ticket.org.name)
+                .font(.system(size: 12, weight: .medium))
+                .lineLimit(1)
+        }
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(ticket.org.color.opacity(0.12), in: .rect(cornerRadius: 6))
     }
 
     /// SLA signal when there is one, last-activity time otherwise — the

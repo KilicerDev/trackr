@@ -18,6 +18,9 @@ struct TicketsView: View {
 
     private var groups: [TicketGroup] { model.ticketFilters.grouped(model.tickets) }
 
+    /// Grouped by org → the org chip on every row is redundant.
+    private var showOrg: Bool { model.ticketFilters.group != .org }
+
     var body: some View {
         NavigationStack(path: $model.ticketPath) {
             ScrollView {
@@ -49,7 +52,7 @@ struct TicketsView: View {
                                             .padding(.leading, 14)
                                     }
                                     NavigationLink(value: ticket) {
-                                        TicketCard(ticket: ticket, embedded: true)
+                                        TicketCard(ticket: ticket, embedded: true, showOrg: showOrg)
                                     }
                                     .buttonStyle(.plain)
                                     .ticketContextMenu(for: ticket, model: model)

@@ -19,6 +19,9 @@ struct TaskCard: View {
     /// Row inside a group-section container: the section owns background
     /// and border, the card renders content only.
     var embedded = false
+    /// Project chip on the third line; pass nil when the list is already
+    /// grouped by project (or the context is a single project).
+    var projectColor: Color? = nil
 
     var body: some View {
         if embedded {
@@ -36,7 +39,23 @@ struct TaskCard: View {
     }
 
     private var hasChipsLine: Bool {
-        (showPlanned && task.plannedFor != nil) || !task.tags.isEmpty
+        projectColor != nil || (showPlanned && task.plannedFor != nil) || !task.tags.isEmpty
+    }
+
+    /// Project as a soft chip tinted with its color (TicketCard org parity).
+    private func projectChip(_ color: Color) -> some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(color)
+                .frame(width: 6, height: 6)
+            Text(task.project)
+                .font(.system(size: 12, weight: .medium))
+                .lineLimit(1)
+        }
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(color.opacity(0.12), in: .rect(cornerRadius: 6))
     }
 
     private var content: some View {
@@ -55,11 +74,13 @@ struct TaskCard: View {
                 }
             }
 
-            // Line 2: meta — key, priority, checklist, due.
+            // Line 2: compact mono stats — key, priority, checklist,
+            // comments — and the due signal. Nothing here truncates.
             HStack(spacing: 8) {
                 Text(task.id)
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundStyle(.tertiary)
+                    .fixedSize()
 
                 if task.priority != .none {
                     PriorityBars(priority: task.priority)
@@ -77,17 +98,34 @@ struct TaskCard: View {
                             ? Color(hex: 0x7FC8A9)
                             : Color(.tertiaryLabel)
                     )
+                    .fixedSize()
                 }
 
-                Spacer()
+                if !task.comments.isEmpty {
+                    HStack(spacing: 3) {
+                        Image(systemName: "bubble.left")
+                            .font(.system(size: 10))
+                        Text("\(task.comments.count)")
+                            .font(.system(size: 12, design: .monospaced))
+                    }
+                    .foregroundStyle(Color(.tertiaryLabel))
+                    .fixedSize()
+                }
+
+                Spacer(minLength: 8)
 
                 dueLabel
+                    .fixedSize()
             }
             .lineLimit(1)
 
-            // Line 3 (only when there is something to show): planned + tags.
+            // Line 3 (only when there is something to show): project,
+            // planned date, tags — the wide bits get their own line.
             if hasChipsLine {
                 HStack(spacing: 6) {
+                    if let projectColor {
+                        projectChip(projectColor)
+                    }
                     if showPlanned, let planned = task.plannedFor {
                         plannedChip(planned)
                     }

@@ -19,6 +19,12 @@ struct TasksView: View {
 
     private var groups: [TaskGroup] { model.taskFilters.grouped(model.tasks) }
 
+    /// Grouped by project → the project chip on every row is redundant.
+    private func projectColor(for task: TaskItem) -> Color? {
+        guard model.taskFilters.group != .project else { return nil }
+        return model.projects.first { $0.name == task.project }?.color ?? .secondary
+    }
+
     var body: some View {
         NavigationStack(path: $model.taskPath) {
             ScrollView {
@@ -50,7 +56,7 @@ struct TasksView: View {
                                             .padding(.leading, 14)
                                     }
                                     NavigationLink(value: task) {
-                                        TaskCard(task: task, embedded: true)
+                                        TaskCard(task: task, embedded: true, projectColor: projectColor(for: task))
                                     }
                                     .buttonStyle(.plain)
                                     .taskContextMenu(for: task, model: model)
