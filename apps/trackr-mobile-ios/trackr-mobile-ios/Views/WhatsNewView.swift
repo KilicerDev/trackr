@@ -25,6 +25,18 @@ struct WhatsNewView: View {
     }
 
     private let releases: [Release] = [
+        Release(version: "1.0.1", name: "Projects Polish", date: "August 2026", features: [
+            Feature(icon: "plus.circle.fill", title: "New Task from a Project",
+                    detail: "Create tasks straight from a project's page — the project is preselected, and the empty state offers it too."),
+            Feature(icon: "star.fill", title: "Swipe on Projects",
+                    detail: "Swipe a project card to favorite it or open its history. Favorites show a star on the card."),
+            Feature(icon: "clock.arrow.circlepath", title: "Live Project History",
+                    detail: "The history sheet now shows the real activity feed from your server, and comments you write are posted to it."),
+            Feature(icon: "hand.tap.fill", title: "Tap Anywhere on a Card",
+                    detail: "Ticket and task cards open from any point, not only from their text — and empty conversations no longer draw a stray timeline bar."),
+            Feature(icon: "person.badge.key.fill", title: "Sign-in Refresh",
+                    detail: "A tidier sign-in screen with the button where your thumb is."),
+        ]),
         Release(version: "1.0", name: "Design Preview", date: "August 2026", features: [
             Feature(icon: "play.circle.fill", title: "Work Sessions",
                     detail: "Start a session from a favorite project — the timer lives in the tab bar like a now-playing bar and becomes a logged task when you're done."),
