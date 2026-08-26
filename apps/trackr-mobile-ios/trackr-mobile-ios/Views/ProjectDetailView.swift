@@ -13,6 +13,7 @@ struct ProjectDetailView: View {
     let project: ProjectItem
 
     @State private var showingHistory = false
+    @State private var showingCreate = false
 
     private var tasks: [TaskItem] {
         model.tasks.filter { $0.project == project.name }
@@ -63,11 +64,20 @@ struct ProjectDetailView: View {
 
                 section("Tasks") {
                     if tasks.isEmpty {
-                        Text("No tasks in this project yet.")
-                            .font(.system(size: 14))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .cardStyle()
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("No tasks in this project yet.")
+                                .font(.system(size: 14))
+                                .foregroundStyle(.secondary)
+                            Button {
+                                showingCreate = true
+                            } label: {
+                                Label("New task", systemImage: "plus")
+                                    .font(.system(size: 14, weight: .medium))
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .cardStyle()
                     } else {
                         LazyVStack(spacing: 10) {
                             ForEach(tasks) { task in
@@ -89,6 +99,11 @@ struct ProjectDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    showingCreate = true
+                } label: {
+                    Image(systemName: "plus")
+                }
                 Button {
                     model.toggleFavorite(projectKey: project.key)
                 } label: {
@@ -116,6 +131,11 @@ struct ProjectDetailView: View {
         }
         .sheet(isPresented: $showingHistory) {
             ProjectHistorySheet(model: model, projectKey: project.key)
+        }
+        .sheet(isPresented: $showingCreate) {
+            CreateTaskSheet(tasks: model.tasks, model: model, initialProject: project.name) { task in
+                model.addTask(task)
+            }
         }
     }
 

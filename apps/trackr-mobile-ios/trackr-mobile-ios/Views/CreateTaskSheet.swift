@@ -13,6 +13,8 @@ struct CreateTaskSheet: View {
     /// Existing tasks — source for project options and the next task id.
     let tasks: [TaskItem]
     var model: AppModel? = nil
+    /// Preselected project name (e.g. when opened from a project's page).
+    var initialProject: String? = nil
     let onCreate: (TaskItem) -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -114,7 +116,9 @@ struct CreateTaskSheet: View {
                 }
             }
             .onAppear {
-                if project.isEmpty { project = projectOptions.first ?? "" }
+                if project.isEmpty {
+                    project = initialProject ?? projectOptions.first ?? ""
+                }
                 // Web parity: the creator is the default assignee (the server
                 // falls back to them anyway — preselect so the UI matches).
                 if assignees.isEmpty, let me = model?.currentUser {

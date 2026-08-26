@@ -115,6 +115,26 @@ final class AppModel {
         sync?.setFavorite(projectKey: projectKey, favorite: projects[index].isFavorite)
     }
 
+    /// Optimistically insert a locally-built task and push it to the server.
+    /// Shared by the Tasks list and the project detail page so both create
+    /// paths stay identical.
+    func addTask(_ task: TaskItem) {
+        tasks.insert(task, at: 0)
+        guard let key = projects.first(where: { $0.name == task.project })?.key else { return }
+        sync?.createTask(
+            title: task.title,
+            projectKey: key,
+            description: task.details.isEmpty ? nil : task.details,
+            status: task.status,
+            priority: task.priority,
+            type: task.type,
+            due: task.due,
+            estimate: task.estimate,
+            assignees: task.assignees,
+            checklist: task.checklist
+        )
+    }
+
     func addProjectComment(projectKey: String, text: String) {
         guard let index = projects.firstIndex(where: { $0.key == projectKey }) else { return }
         projects[index].history.append(

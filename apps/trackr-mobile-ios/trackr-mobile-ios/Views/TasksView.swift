@@ -131,21 +131,7 @@ struct TasksView: View {
             }
             .sheet(isPresented: $showingCreate) {
                 CreateTaskSheet(tasks: model.tasks, model: model) { task in
-                    model.tasks.insert(task, at: 0)
-                    if let key = model.projects.first(where: { $0.name == task.project })?.key {
-                        model.sync?.createTask(
-                            title: task.title,
-                            projectKey: key,
-                            description: task.details.isEmpty ? nil : task.details,
-                            status: task.status,
-                            priority: task.priority,
-                            type: task.type,
-                            due: task.due,
-                            estimate: task.estimate,
-                            assignees: task.assignees,
-                            checklist: task.checklist
-                        )
-                    }
+                    model.addTask(task)
                 }
             }
         }
