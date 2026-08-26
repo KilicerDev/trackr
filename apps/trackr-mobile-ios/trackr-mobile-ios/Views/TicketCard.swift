@@ -17,18 +17,24 @@ struct TicketCard: View {
     var showOrg = true
 
     var body: some View {
-        if embedded {
-            content
-        } else {
-            content
-                .background(
-                    Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 16)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .strokeBorder(Color(.separator).opacity(0.4), lineWidth: 0.5)
-                )
+        Group {
+            if embedded {
+                content
+            } else {
+                content
+                    .background(
+                        Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 16)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .strokeBorder(Color(.separator).opacity(0.4), lineWidth: 0.5)
+                    )
+            }
         }
+        // Make the whole card tappable. Embedded cards have no background, and
+        // a plain-style NavigationLink only hit-tests opaque pixels — so the
+        // gaps between text/avatars would otherwise swallow the tap.
+        .contentShape(.rect)
     }
 
     private var content: some View {
