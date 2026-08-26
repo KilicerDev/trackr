@@ -320,15 +320,24 @@ extension APIClient {
 
     // MARK: - Push tokens
 
-    func registerPushToken(_ token: String, deviceName: String?) async throws {
+    /// Server `platform` values — the device token for alert pushes, or a
+    /// Live Activity's own token (different APNs topic, never alerted).
+    enum PushPlatform: String, Encodable {
+        case ios
+        case liveActivity = "ios-live-activity"
+    }
+
+    func registerPushToken(
+        _ token: String, platform: PushPlatform = .ios, deviceName: String?
+    ) async throws {
         struct Body: Encodable {
             let token: String
-            let platform: String
+            let platform: PushPlatform
             let deviceName: String?
         }
         let _: API.OkResponse = try await post(
             "/api/v1/push/tokens",
-            body: Body(token: token, platform: "ios", deviceName: deviceName)
+            body: Body(token: token, platform: platform, deviceName: deviceName)
         )
     }
 

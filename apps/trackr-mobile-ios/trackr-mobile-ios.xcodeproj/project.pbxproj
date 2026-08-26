@@ -6,20 +6,89 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4FD0A009303628D000C85783 /* trackr-mobile-ios-live.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4FD0A001303628D000C85783 /* trackr-mobile-ios-live.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		4FD0A00B303628D000C85783 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4FD09000303628D000C85783 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4FD0A002303628D000C85783;
+			remoteInfo = "trackr-mobile-ios-live";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		4FD0A008303628D000C85783 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				4FD0A009303628D000C85783 /* trackr-mobile-ios-live.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		4FD0A001303628D000C85783 /* trackr-mobile-ios-live.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "trackr-mobile-ios-live.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4FD09008303628D000C85783 /* trackr-mobile-ios.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "trackr-mobile-ios.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		4FD0A010303628D000C85783 /* Exceptions for "trackr-mobile-ios" folder in "trackr-mobile-ios" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 4FD09007303628D000C85783 /* trackr-mobile-ios */;
+		};
+		4FD0A011303628D000C85783 /* Exceptions for "trackr-mobile-ios-live" folder in "trackr-mobile-ios-live" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 4FD0A002303628D000C85783 /* trackr-mobile-ios-live */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		4FD0900A303628D000C85783 /* trackr-mobile-ios */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4FD0A010303628D000C85783 /* Exceptions for "trackr-mobile-ios" folder in "trackr-mobile-ios" target */,
+			);
 			path = "trackr-mobile-ios";
+			sourceTree = "<group>";
+		};
+		4FD0A006303628D000C85783 /* trackr-mobile-ios-live */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4FD0A011303628D000C85783 /* Exceptions for "trackr-mobile-ios-live" folder in "trackr-mobile-ios-live" target */,
+			);
+			path = "trackr-mobile-ios-live";
+			sourceTree = "<group>";
+		};
+		4FD0A007303628D000C85783 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		4FD09005303628D000C85783 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4FD0A004303628D000C85783 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +102,8 @@
 			isa = PBXGroup;
 			children = (
 				4FD0900A303628D000C85783 /* trackr-mobile-ios */,
+				4FD0A006303628D000C85783 /* trackr-mobile-ios-live */,
+				4FD0A007303628D000C85783 /* Shared */,
 				4FD09009303628D000C85783 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +112,7 @@
 			isa = PBXGroup;
 			children = (
 				4FD09008303628D000C85783 /* trackr-mobile-ios.app */,
+				4FD0A001303628D000C85783 /* trackr-mobile-ios-live.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,13 +127,16 @@
 				4FD09004303628D000C85783 /* Sources */,
 				4FD09005303628D000C85783 /* Frameworks */,
 				4FD09006303628D000C85783 /* Resources */,
+				4FD0A008303628D000C85783 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				4FD0A00A303628D000C85783 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				4FD0900A303628D000C85783 /* trackr-mobile-ios */,
+				4FD0A007303628D000C85783 /* Shared */,
 			);
 			name = "trackr-mobile-ios";
 			packageProductDependencies = (
@@ -69,6 +144,29 @@
 			productName = "trackr-mobile-ios";
 			productReference = 4FD09008303628D000C85783 /* trackr-mobile-ios.app */;
 			productType = "com.apple.product-type.application";
+		};
+		4FD0A002303628D000C85783 /* trackr-mobile-ios-live */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4FD0A00C303628D000C85783 /* Build configuration list for PBXNativeTarget "trackr-mobile-ios-live" */;
+			buildPhases = (
+				4FD0A003303628D000C85783 /* Sources */,
+				4FD0A004303628D000C85783 /* Frameworks */,
+				4FD0A005303628D000C85783 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4FD0A006303628D000C85783 /* trackr-mobile-ios-live */,
+				4FD0A007303628D000C85783 /* Shared */,
+			);
+			name = "trackr-mobile-ios-live";
+			packageProductDependencies = (
+			);
+			productName = "trackr-mobile-ios-live";
+			productReference = 4FD0A001303628D000C85783 /* trackr-mobile-ios-live.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -81,6 +179,9 @@
 				LastUpgradeCheck = 2660;
 				TargetAttributes = {
 					4FD09007303628D000C85783 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					4FD0A002303628D000C85783 = {
 						CreatedOnToolsVersion = 26.6;
 					};
 				};
@@ -100,12 +201,20 @@
 			projectRoot = "";
 			targets = (
 				4FD09007303628D000C85783 /* trackr-mobile-ios */,
+				4FD0A002303628D000C85783 /* trackr-mobile-ios-live */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		4FD09006303628D000C85783 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4FD0A005303628D000C85783 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +231,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4FD0A003303628D000C85783 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		4FD0A00A303628D000C85783 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4FD0A002303628D000C85783 /* trackr-mobile-ios-live */;
+			targetProxy = 4FD0A00B303628D000C85783 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		4FD09011303628D100C85783 /* Debug */ = {
@@ -257,6 +381,7 @@
 				DEVELOPMENT_TEAM = J3VZ2P29VG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "trackr-mobile-ios/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Trackr;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -291,6 +416,7 @@
 				DEVELOPMENT_TEAM = J3VZ2P29VG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "trackr-mobile-ios/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Trackr;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -304,6 +430,66 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.kilicer.trackr-mobile-ios";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		4FD0A00D303628D000C85783 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = J3VZ2P29VG;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "trackr-mobile-ios-live/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Trackr Session";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.kilicer.trackr-mobile-ios.live";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4FD0A00E303628D000C85783 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = J3VZ2P29VG;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "trackr-mobile-ios-live/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Trackr Session";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.kilicer.trackr-mobile-ios.live";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -331,6 +517,15 @@
 			buildConfigurations = (
 				4FD09014303628D100C85783 /* Debug */,
 				4FD09015303628D100C85783 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4FD0A00C303628D000C85783 /* Build configuration list for PBXNativeTarget "trackr-mobile-ios-live" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4FD0A00D303628D000C85783 /* Debug */,
+				4FD0A00E303628D000C85783 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

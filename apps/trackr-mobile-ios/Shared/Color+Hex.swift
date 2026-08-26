@@ -46,6 +46,16 @@ extension Color {
 
     /// Colors come from the web app's taxonomy.ts as hex strings — keep them
     /// byte-identical across platforms by constructing from the same hex.
+    /// Inverse of `init(hex:)` — sRGB 0xRRGGBB for Codable payloads such
+    /// as Live Activity attributes.
+    var hexValue: UInt32 {
+        let ui = UIColor(self)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        ui.getRed(&r, green: &g, blue: &b, alpha: &a)
+        func byte(_ c: CGFloat) -> UInt32 { UInt32((max(0, min(1, c)) * 255).rounded()) }
+        return byte(r) << 16 | byte(g) << 8 | byte(b)
+    }
+
     init(hex: UInt32) {
         self.init(
             .sRGB,

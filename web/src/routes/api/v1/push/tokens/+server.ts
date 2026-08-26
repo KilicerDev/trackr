@@ -1,6 +1,9 @@
 // Device push-token registration (groundwork for native push — see
 // $lib/server/jobs/services/push.ts for the delivery story).
-//   POST   { token, platform: 'ios'|'android', deviceName? } — upsert; a token
+//   POST   { token, platform, deviceName? } — upsert; a token
+//          platform: 'ios' | 'android' for device tokens, 'ios-live-activity'
+//          for a Live Activity's per-activity token (own APNs topic — the
+//          alert sender must skip these; used to end a session remotely).
 //          already registered re-homes to the current user (device changed
 //          hands) and bumps lastSeenAt. Call on every app launch.
 //   DELETE { token } — unregister (sign-out).
@@ -10,7 +13,7 @@ import { pushToken } from '$lib/server/db/app.schema';
 import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
 import type { RequestHandler } from './$types';
 
-const PLATFORMS = new Set(['ios', 'android']);
+const PLATFORMS = new Set(['ios', 'android', 'ios-live-activity']);
 
 export const POST: RequestHandler = async ({ locals, request }) => {
 	const user = requireUser(locals);
@@ -18,7 +21,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 	const token = body.token?.trim();
 	if (!token || token.length > 4096) apiError(400, 'token is required.');
 	if (!body.platform || !PLATFORMS.has(body.platform)) {
-		apiError(400, "platform must be 'ios' or 'android'.");
+		apiError(400, "platform must be 'ios', 'android' or 'ios-live-activity'.");
 	}
 
 	await db
