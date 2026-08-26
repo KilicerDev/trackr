@@ -211,8 +211,7 @@ export async function loadTasks(opts?: {
 			.select({
 				id: ticket.id,
 				number: ticket.number,
-				slug: organization.slug,
-				isInternal: organization.isInternal
+				key: organization.key
 			})
 			.from(ticket)
 			.innerJoin(organization, eq(organization.id, ticket.orgId))
@@ -220,7 +219,7 @@ export async function loadTasks(opts?: {
 		for (const r of ticketRows) {
 			sourceTicketById.set(r.id, {
 				id: r.id,
-				displayId: ticketDisplayId(r.slug, r.isInternal, r.number)
+				displayId: ticketDisplayId(r.key, r.number)
 			});
 		}
 	}

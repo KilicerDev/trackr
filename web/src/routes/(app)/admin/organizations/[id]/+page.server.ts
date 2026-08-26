@@ -6,6 +6,7 @@ import { user as userTable } from '$lib/server/db/auth.schema';
 import { allowedOrgRoles } from '$lib/roles';
 import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
+import { isValidOrgKey, normalizeOrgKey } from '$lib/org-key';
 import type { PageServerLoad } from './$types';
 
 // Display labels for the audit log. Best-effort; fall back to the id.
@@ -115,6 +116,10 @@ export const load: PageServerLoad = async ({ params }) => {
 		org: {
 			id: org.id,
 			slug: org.slug,
+			key: org.key,
+			// Highest ticket number issued so far — lets the edit form preview
+			// what a key change does to a real ticket id.
+			lastTicketNumber: org.nextTicketNumber - 1,
 			name: org.name,
 			description: org.description,
 			color: org.color,
@@ -187,6 +192,21 @@ export const actions: Actions = {
 				return fail(409, { message: m.admin_err_slug_in_use({ slug: v }) });
 			}
 			patch.slug = v;
+		}
+		if (form.has('key')) {
+			const v = normalizeOrgKey(String(form.get('key')));
+			if (!v) return fail(400, { message: m.admin_err_key_required() });
+			if (!isValidOrgKey(v)) return fail(400, { message: m.admin_err_key_invalid() });
+			const [clash] = await db
+				.select({ id: organization.id })
+				.from(organization)
+				.where(eq(organization.key, v))
+				.limit(1);
+			if (clash && clash.id !== params.id) {
+				return fail(409, { message: m.admin_err_key_in_use({ key: v }) });
+			}
+			// Nothing to backfill: ticket ids are rendered from org.key at read time.
+			patch.key = v;
 		}
 
 		if (Object.keys(patch).length === 0) {

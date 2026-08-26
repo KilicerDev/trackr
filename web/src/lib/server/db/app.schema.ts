@@ -60,6 +60,10 @@ export const organization = pgTable(
 	{
 		id: text('id').primaryKey(),
 		slug: text('slug').notNull(),
+		// Short uppercase prefix used for ticket numbering (SGP-22). Never stored on
+		// the ticket itself — display ids are rendered from key + ticket.number, so
+		// changing the key re-labels every existing ticket at once.
+		key: text('key').notNull(),
 		name: text('name').notNull(),
 		description: text('description'),
 		color: text('color').notNull().default('#7a9cf0'),
@@ -78,6 +82,7 @@ export const organization = pgTable(
 	},
 	(t) => [
 		uniqueIndex('organization_slug_idx').on(t.slug),
+		uniqueIndex('organization_key_idx').on(t.key),
 		uniqueIndex('organization_internal_unique')
 			.on(t.isInternal)
 			.where(sql`${t.isInternal} = true`)

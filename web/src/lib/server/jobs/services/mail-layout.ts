@@ -73,7 +73,7 @@ export type EmailLayoutOptions = {
 	/** html lang attribute — matches the recipient's locale. */
 	lang?: string;
 	/** Kind label above the heading (small caps), with an optional monospace
-	 *  entity ref chip on the right (e.g. "SGRP-T-31"). Values are escaped. */
+	 *  entity ref chip on the right (e.g. "SGRP-31"). Values are escaped. */
 	eyebrow?: { label: string; ref?: string };
 	heading: string;
 	/** Label/value detail rows under the heading (Von / Status / …).

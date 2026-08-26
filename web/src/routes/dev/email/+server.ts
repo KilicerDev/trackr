@@ -35,7 +35,7 @@ function sample(t: string, locale: Locale): { subject: string; html?: string } {
 				content: {
 					subjectLabel: m.email_ev_message(undefined, { locale }),
 					eyebrow: `${m.email_kind_ticket(undefined, { locale })} · ${m.email_ev_message(undefined, { locale })}`,
-					ref: 'SCHENIDERGROUP-T-31',
+					ref: 'SGP-31',
 					heading: 'Spezial Offer Update',
 					meta: meta(commonMeta),
 					quote: de
@@ -53,7 +53,7 @@ function sample(t: string, locale: Locale): { subject: string; html?: string } {
 				content: {
 					subjectLabel: m.email_ev_mentioned(undefined, { locale }),
 					eyebrow: m.email_ev_mentioned(undefined, { locale }),
-					ref: 'SCHENIDERGROUP-T-31',
+					ref: 'SGP-31',
 					heading: 'Spezial Offer Update',
 					meta: meta(commonMeta),
 					quote: de
@@ -71,7 +71,7 @@ function sample(t: string, locale: Locale): { subject: string; html?: string } {
 				content: {
 					subjectLabel: m.email_ev_new_ticket(undefined, { locale }),
 					eyebrow: m.email_ev_new_ticket(undefined, { locale }),
-					ref: 'SCHENIDERGROUP-T-32',
+					ref: 'SGP-32',
 					heading: de ? 'Drucker offline in Büro 2' : 'Printer offline in office 2',
 					meta: meta(commonMeta),
 					quote: de

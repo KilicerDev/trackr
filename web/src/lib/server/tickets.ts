@@ -102,10 +102,10 @@ function toIso(v: unknown): string | null {
 	return null;
 }
 
-export function ticketDisplayId(slug: string | null, isInternal: boolean, n: number): string {
-	if (isInternal) return `T-${n}`;
-	const upper = (slug ?? 'ORG').toUpperCase().replace(/[^A-Z0-9]/g, '');
-	return `${upper}-T-${n}`;
+// Rendered at read time from organization.key + ticket.number — never stored —
+// so renaming an org key re-labels all of its tickets at once.
+export function ticketDisplayId(orgKey: string, n: number): string {
+	return `${orgKey}-${n}`;
 }
 // Local alias kept so existing call sites in this module read unchanged.
 const displayId = ticketDisplayId;
@@ -149,9 +149,9 @@ export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 		.select({
 			t: ticket,
 			orgSlug: organization.slug,
+			orgKey: organization.key,
 			orgName: organization.name,
-			orgColor: organization.color,
-			orgInternal: organization.isInternal
+			orgColor: organization.color
 		})
 		.from(ticket)
 		.innerJoin(organization, eq(organization.id, ticket.orgId))
@@ -215,7 +215,7 @@ export async function loadTickets(opts: AccessOpts = {}): Promise<TicketRow[]> {
 			orgName: r.orgName,
 			orgColor: r.orgColor,
 			number: t.number,
-			displayId: displayId(r.orgSlug, r.orgInternal, t.number),
+			displayId: displayId(r.orgKey, t.number),
 			subject: t.subject,
 			description: t.description,
 			status: t.status as TicketStatus,
@@ -320,12 +320,11 @@ export async function createTicket(input: CreateTicketInput): Promise<{
 			.where(eq(organization.id, input.orgId))
 			.returning({
 				next: organization.nextTicketNumber,
-				slug: organization.slug,
-				isInternal: organization.isInternal
+				key: organization.key
 			});
 		if (!bumped) throw new Error('Organization not found');
 		number = bumped.next - 1;
-		display = displayId(bumped.slug, bumped.isInternal, number);
+		display = displayId(bumped.key, number);
 
 		await tx.insert(ticket).values({
 			id,
@@ -583,9 +582,9 @@ export async function getTicket(ticketId: string): Promise<TicketRow | null> {
 		.select({
 			t: ticket,
 			orgSlug: organization.slug,
+			orgKey: organization.key,
 			orgName: organization.name,
-			orgColor: organization.color,
-			orgInternal: organization.isInternal
+			orgColor: organization.color
 		})
 		.from(ticket)
 		.innerJoin(organization, eq(organization.id, ticket.orgId))
@@ -621,7 +620,7 @@ export async function getTicket(ticketId: string): Promise<TicketRow | null> {
 		orgName: row.orgName,
 		orgColor: row.orgColor,
 		number: t.number,
-		displayId: displayId(row.orgSlug, row.orgInternal, t.number),
+		displayId: displayId(row.orgKey, t.number),
 		subject: t.subject,
 		description: t.description,
 		status: t.status as TicketStatus,

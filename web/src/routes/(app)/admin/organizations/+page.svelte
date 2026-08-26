@@ -23,7 +23,10 @@
 		if (!search) return data.orgs;
 		const q = search.toLowerCase();
 		return data.orgs.filter(
-			(o) => o.name.toLowerCase().includes(q) || o.slug.toLowerCase().includes(q)
+			(o) =>
+				o.name.toLowerCase().includes(q) ||
+				o.slug.toLowerCase().includes(q) ||
+				o.key.toLowerCase().includes(q)
 		);
 	});
 
@@ -90,9 +93,10 @@
 			<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
 				<div
 					class="grid h-9 items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
-					style:grid-template-columns="1.6fr 1fr 80px 1fr 36px"
+					style:grid-template-columns="1.6fr 90px 1fr 80px 1fr 36px"
 				>
 					<span>{m.admin_organization()}</span>
+					<span>{m.admin_key()}</span>
 					<span>{m.admin_slug()}</span>
 					<span class="text-right">{m.admin_projects()}</span>
 					<span>{m.admin_created()}</span>
@@ -109,7 +113,7 @@
 						class="grid items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[14px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)] {o.archivedAt
 							? 'opacity-55 hover:opacity-100'
 							: ''}"
-						style:grid-template-columns="1.6fr 1fr 80px 1fr 36px"
+						style:grid-template-columns="1.6fr 90px 1fr 80px 1fr 36px"
 					>
 						<span class="flex min-w-0 items-center gap-2.5">
 							<span
@@ -124,6 +128,7 @@
 								{/if}
 							</span>
 						</span>
+						<span class="truncate font-mono text-[13px] font-medium text-text-2">{o.key}</span>
 						<span class="truncate font-mono text-[13px] text-text-3">{o.slug}</span>
 						<span class="text-right font-mono text-[13px] text-text">{o.projectCount}</span>
 						<span class="font-mono text-[13px] text-text-3">{fmtDate(o.createdAt)}</span>

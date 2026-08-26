@@ -119,7 +119,7 @@ export function invitationEmail(opts: {
 // Structured content for a notification email, built per-locale by the
 // notify/events modules. `heading` and `quote` carry user content (escaped at
 // render time); `subjectLabel`/`eyebrow`/`meta`/`ctaLabel` are localized app
-// strings; `ref` is the entity display id ("SGRP-T-31") — subjects contain
+// strings; `ref` is the entity display id ("SGRP-31") — subjects contain
 // only ref + label, never user-typed text (user content in a subject line is
 // a spam signal).
 export type NotificationEmailContent = {

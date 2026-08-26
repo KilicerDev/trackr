@@ -9,19 +9,8 @@
 
 import { and, eq, inArray, isNull, ne, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import {
-	note,
-	organization,
-	project,
-	task,
-	ticket,
-	wikiPage
-} from '$lib/server/db/app.schema';
-import {
-	accessibleProjectIds,
-	can,
-	isTrackrTeam
-} from '$lib/server/permissions';
+import { note, organization, project, task, ticket, wikiPage } from '$lib/server/db/app.schema';
+import { accessibleProjectIds, can, isTrackrTeam } from '$lib/server/permissions';
 import { ticketDisplayId } from '$lib/server/tickets';
 import type { Memberships } from '$lib/permissions';
 
@@ -88,8 +77,7 @@ export async function searchAll(locals: Locals, rawQuery: string): Promise<Searc
 					number: ticket.number,
 					status: ticket.status,
 					orgName: organization.name,
-					orgSlug: organization.slug,
-					orgInternal: organization.isInternal
+					orgKey: organization.key
 				})
 				.from(ticket)
 				.innerJoin(organization, eq(organization.id, ticket.orgId))
@@ -182,7 +170,7 @@ export async function searchAll(locals: Locals, rawQuery: string): Promise<Searc
 			type: 'ticket' as const,
 			id: t.id,
 			title: t.subject,
-			subtitle: `${ticketDisplayId(t.orgSlug, t.orgInternal, t.number)} · ${t.orgName}`,
+			subtitle: `${ticketDisplayId(t.orgKey, t.number)} · ${t.orgName}`,
 			url: `/tickets/${t.id}`
 		})),
 		...taskRows.map((t) => ({

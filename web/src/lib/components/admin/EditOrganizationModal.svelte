@@ -7,15 +7,27 @@
 	import Button from '../Button.svelte';
 	import Kbd from '../Kbd.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import { ORG_KEY_MAX, deriveOrgKey, normalizeOrgKey } from '$lib/org-key';
+	import { ORG_KEY_MAX, normalizeOrgKey } from '$lib/org-key';
+
+	type Org = {
+		id: string;
+		name: string;
+		slug: string;
+		key: string;
+		description: string | null;
+		color: string;
+		// Highest ticket number issued so far — used to preview a key rename
+		// against a real ticket id.
+		lastTicketNumber: number;
+	};
 
 	interface Props {
 		open: boolean;
+		org: Org;
 		onclose: () => void;
-		oncreated?: (name: string) => void;
-		onerror?: (msg: string) => void;
+		onsaved?: () => void;
 	}
-	let { open, onclose, oncreated, onerror }: Props = $props();
+	let { open, org, onclose, onsaved }: Props = $props();
 
 	const PALETTE = [
 		'#ef7a6d',
@@ -32,42 +44,28 @@
 
 	let name = $state('');
 	let slug = $state('');
-	let slugTouched = $state(false);
 	let key = $state('');
-	let keyTouched = $state(false);
 	let description = $state('');
-	let color = $state(PALETTE[6]); // periwinkle is a nice "neutral" default
-	let submitting = $state(false);
+	let color = $state(PALETTE[6]);
+	let saving = $state(false);
 	let serverError = $state<string | null>(null);
 	let formEl = $state<HTMLFormElement>();
 
-	function deriveSlug(n: string): string {
-		return n
-			.toLowerCase()
-			.normalize('NFKD')
-			.replace(/[̀-ͯ]/g, '')
-			.replace(/[^a-z0-9]+/g, '-')
-			.replace(/^-+|-+$/g, '')
-			.slice(0, 48);
-	}
-	const autoSlug = $derived(deriveSlug(name));
-	const effectiveSlug = $derived(slugTouched ? slug : autoSlug);
-	const autoKey = $derived(deriveOrgKey(name));
-	const effectiveKey = $derived(keyTouched ? key : autoKey);
-
+	// Snap fields to the current org every time the modal opens.
 	$effect(() => {
 		if (open) {
-			name = '';
-			slug = '';
-			slugTouched = false;
-			key = '';
-			keyTouched = false;
-			description = '';
-			color = PALETTE[6];
-			submitting = false;
+			name = org.name;
+			slug = org.slug;
+			key = org.key;
+			description = org.description ?? '';
+			color = org.color;
+			saving = false;
 			serverError = null;
 		}
 	});
+
+	const exampleNumber = $derived(Math.max(org.lastTicketNumber, 1));
+	const keyChanged = $derived(key !== '' && key !== org.key);
 
 	function onKey(e: KeyboardEvent) {
 		if (!open) return;
@@ -96,26 +94,21 @@
 	<form
 		bind:this={formEl}
 		method="POST"
-		action="/admin/organizations?/create"
+		action="/admin/organizations/{org.id}?/update"
 		use:enhance={() => {
-			submitting = true;
+			saving = true;
 			serverError = null;
 			return async ({ result }: { result: ActionResult }) => {
-				submitting = false;
+				saving = false;
 				if (result.type === 'success') {
-					oncreated?.(name.trim());
 					await invalidateAll();
+					onsaved?.();
 					onclose();
 				} else if (result.type === 'failure') {
-					const msg =
-						(result.data as { message?: string } | undefined)?.message ??
-						m.admin_org_create_failed();
-					serverError = msg;
-					onerror?.(msg);
+					serverError =
+						(result.data as { message?: string } | undefined)?.message ?? m.admin_save_failed();
 				} else if (result.type === 'error') {
-					const msg = result.error?.message ?? m.admin_org_create_failed();
-					serverError = msg;
-					onerror?.(msg);
+					serverError = result.error?.message ?? m.admin_save_failed();
 				}
 			};
 		}}
@@ -123,7 +116,7 @@
 		<div class="flex items-center border-b border-border px-5 pt-4 pb-3">
 			<div>
 				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">{m.admin_workspace()}</div>
-				<div class="text-[15px] font-semibold">{m.admin_org_new()}</div>
+				<div class="text-[15px] font-semibold">{m.admin_org_edit()}</div>
 			</div>
 			<button
 				type="button"
@@ -163,11 +156,8 @@
 							<input
 								type="text"
 								name="key"
-								value={effectiveKey}
-								oninput={(e) => {
-									keyTouched = true;
-									key = normalizeOrgKey((e.target as HTMLInputElement).value);
-								}}
+								value={key}
+								oninput={(e) => (key = normalizeOrgKey((e.target as HTMLInputElement).value))}
 								maxlength={ORG_KEY_MAX}
 								placeholder="SGP"
 								autocapitalize="characters"
@@ -182,9 +172,8 @@
 							<input
 								type="text"
 								name="slug"
-								value={effectiveSlug}
+								value={slug}
 								oninput={(e) => {
-									slugTouched = true;
 									slug = (e.target as HTMLInputElement).value
 										.toLowerCase()
 										.replace(/[^a-z0-9-]/g, '')
@@ -196,8 +185,15 @@
 							/>
 						</span>
 					</div>
-					<div class="mt-1.5 text-[12px] text-text-3">
-						{m.admin_key_hint({ example: `${effectiveKey || 'SGP'}-1` })}
+					<div class="mt-1.5 text-[12px] {keyChanged ? 'text-accent' : 'text-text-3'}">
+						{#if keyChanged}
+							{m.admin_key_rename_hint({
+								from: `${org.key}-${exampleNumber}`,
+								to: `${key}-${exampleNumber}`
+							})}
+						{:else}
+							{m.admin_key_hint({ example: `${key || org.key}-${exampleNumber}` })}
+						{/if}
 					</div>
 				</div>
 			</div>
@@ -260,16 +256,16 @@
 		<div class="flex items-center gap-2 rounded-b-2xl border-t border-border bg-bg/40 px-5 py-3">
 			<span class="text-[12px] text-text-3">
 				<Kbd>⌘↵</Kbd>
-				{m.admin_to_create()}
+				{m.admin_to_save()}
 			</span>
 			<div class="ml-auto flex items-center gap-2">
 				<Button variant="default" onclick={onclose}>{m.common_cancel()}</Button>
 				<button
 					type="submit"
-					disabled={submitting || !name.trim() || !effectiveSlug || !effectiveKey}
+					disabled={saving || !name.trim() || !slug || !key}
 					class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[12px] py-[8px] text-[14px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					{submitting ? m.common_creating() : m.admin_org_create()}
+					{saving ? m.common_saving() : m.common_save_changes()}
 				</button>
 			</div>
 		</div>

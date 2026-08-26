@@ -4,6 +4,7 @@ import { db } from '$lib/server/db';
 import { organization, project } from '$lib/server/db/app.schema';
 import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
+import { deriveOrgKey, isValidOrgKey, normalizeOrgKey } from '$lib/org-key';
 import type { PageServerLoad } from './$types';
 
 function slugify(input: string): string {
@@ -19,6 +20,7 @@ function slugify(input: string): string {
 export interface OrgRow {
 	id: string;
 	slug: string;
+	key: string;
 	name: string;
 	description: string | null;
 	color: string;
@@ -33,6 +35,7 @@ export const load: PageServerLoad = async () => {
 		.select({
 			id: organization.id,
 			slug: organization.slug,
+			key: organization.key,
 			name: organization.name,
 			description: organization.description,
 			color: organization.color,
@@ -71,12 +74,16 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const name = String(form.get('name') ?? '').trim();
 		let slug = String(form.get('slug') ?? '').trim();
+		let key = normalizeOrgKey(String(form.get('key') ?? ''));
 		const description = String(form.get('description') ?? '').trim() || null;
 		const color = String(form.get('color') ?? '#7a9cf0');
 
 		if (!name) return fail(400, { message: m.admin_err_name_required() });
 		if (!slug) slug = slugify(name);
 		if (!slug) return fail(400, { message: m.admin_err_slug_underivable() });
+		if (!key) key = deriveOrgKey(name);
+		if (!key) return fail(400, { message: m.admin_err_key_required() });
+		if (!isValidOrgKey(key)) return fail(400, { message: m.admin_err_key_invalid() });
 
 		const [existing] = await db
 			.select({ id: organization.id })
@@ -84,11 +91,18 @@ export const actions: Actions = {
 			.where(eq(organization.slug, slug))
 			.limit(1);
 		if (existing) return fail(409, { message: m.admin_err_slug_in_use({ slug }) });
+		const [keyClash] = await db
+			.select({ id: organization.id })
+			.from(organization)
+			.where(eq(organization.key, key))
+			.limit(1);
+		if (keyClash) return fail(409, { message: m.admin_err_key_in_use({ key }) });
 
 		const id = crypto.randomUUID();
 		await db.insert(organization).values({
 			id,
 			slug,
+			key,
 			name,
 			description,
 			color,
@@ -102,9 +116,9 @@ export const actions: Actions = {
 			targetId: id,
 			targetLabel: name,
 			orgId: id,
-			meta: { action: 'org.create', slug }
+			meta: { action: 'org.create', slug, key }
 		});
 
-		return { success: true, id, slug };
+		return { success: true, id, slug, key };
 	}
 };

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import type { ActionResult } from '@sveltejs/kit';
@@ -9,6 +8,7 @@
 	import IconButton from '$lib/components/IconButton.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import EditOrganizationModal from '$lib/components/admin/EditOrganizationModal.svelte';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { autoPlace } from '$lib/actions/autoPlace';
@@ -41,34 +41,7 @@
 	const ROLES = $derived(data.allowedRoles as OrgRole[]);
 	// Default role for newly-added members: lowest available for the org type.
 	const DEFAULT_ROLE = $derived(data.org.isInternal ? 'org.staff' : 'org.member');
-	const PALETTE = [
-		'#ef7a6d',
-		'#e07a5f',
-		'#f0a85c',
-		'#e9c46a',
-		'#7fc8a9',
-		'#5fb3c2',
-		'#7a9cf0',
-		'#9b8cf0',
-		'#c08bd6',
-		'#d97cae'
-	];
-
 	let editing = $state(false);
-	let name = $state('');
-	let slug = $state('');
-	let description = $state('');
-	let color = $state('#7a9cf0');
-	let saving = $state(false);
-	let serverError = $state<string | null>(null);
-
-	$effect(() => {
-		// Snap form fields to server values (re-runs whenever load refreshes).
-		name = data.org.name;
-		slug = data.org.slug;
-		description = data.org.description ?? '';
-		color = data.org.color;
-	});
 
 	function initials(n: string): string {
 		return (
@@ -224,15 +197,19 @@
 						</span>
 					{/if}
 				</div>
-				<div class="mt-1 font-mono text-[14px] text-text-3">{data.org.slug}</div>
+				<div class="mt-1 flex items-center gap-2 font-mono text-[14px] text-text-3">
+					<span
+						class="rounded-md border border-border bg-surface px-1.5 py-0.5 text-[12px] font-medium text-text-2"
+						>{data.org.key}</span
+					>
+					<span>{data.org.slug}</span>
+				</div>
 			</div>
 			<div class="flex items-center gap-2">
-				{#if !editing}
-					<Button variant="default" size="sm" onclick={() => (editing = true)}>
-						<Icon name="settings" size={14} />
-						{m.common_edit()}
-					</Button>
-				{/if}
+				<Button variant="default" size="sm" onclick={() => (editing = true)}>
+					<Icon name="settings" size={14} />
+					{m.common_edit()}
+				</Button>
 				<Button variant="default" size="sm" onclick={onArchive}>
 					<Icon name={data.org.archivedAt ? 'refresh' : 'x'} size={14} />
 					{data.org.archivedAt ? m.admin_org_unarchive_confirm() : m.common_archive()}
@@ -240,119 +217,7 @@
 			</div>
 		</div>
 
-		{#if editing}
-			<form
-				method="POST"
-				action="?/update"
-				use:enhance={() => {
-					saving = true;
-					serverError = null;
-					return async ({ result, update }) => {
-						saving = false;
-						if (result.type === 'success') {
-							editing = false;
-							await update();
-						} else if (result.type === 'failure') {
-							serverError =
-								(result.data as { message?: string } | undefined)?.message ?? m.admin_save_failed();
-						} else if (result.type === 'error') {
-							serverError = result.error?.message ?? m.admin_save_failed();
-						}
-					};
-				}}
-				class="mb-6 space-y-4 rounded-2xl border border-border bg-bg-elev p-5"
-			>
-				<div>
-					<label
-						for="o-name"
-						class="mb-1.5 block text-[12px] tracking-[0.08em] text-text-4 uppercase"
-					>
-						{m.admin_name()}
-					</label>
-					<input
-						id="o-name"
-						name="name"
-						bind:value={name}
-						required
-						class="w-full rounded-lg border border-border bg-surface px-3 py-2 text-[14px] outline-none focus:border-border-strong"
-					/>
-				</div>
-				<div>
-					<label
-						for="o-slug"
-						class="mb-1.5 block text-[12px] tracking-[0.08em] text-text-4 uppercase"
-					>
-						{m.admin_slug()}
-					</label>
-					<input
-						id="o-slug"
-						name="slug"
-						bind:value={slug}
-						class="w-full rounded-lg border border-border bg-surface px-3 py-2 font-mono text-[14px] outline-none focus:border-border-strong"
-					/>
-				</div>
-				<div>
-					<label
-						for="o-desc"
-						class="mb-1.5 block text-[12px] tracking-[0.08em] text-text-4 uppercase"
-					>
-						{m.admin_org_description_label()}
-					</label>
-					<textarea
-						id="o-desc"
-						name="description"
-						bind:value={description}
-						rows="3"
-						class="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-[14px] outline-none focus:border-border-strong"
-					></textarea>
-				</div>
-				<div>
-					<div class="mb-2 text-[12px] tracking-[0.08em] text-text-4 uppercase">
-						{m.admin_color()}
-					</div>
-					<div class="flex flex-wrap gap-1.5">
-						{#each PALETTE as c (c)}
-							<button
-								type="button"
-								onclick={() => (color = c)}
-								aria-label={m.admin_pick_color({ color: c })}
-								class="relative h-7 w-7 rounded-lg"
-								style:background="linear-gradient(140deg, {c}, color-mix(in oklch, {c} 70%, #000) 85%)"
-								style:box-shadow={color === c
-									? `0 0 0 2px var(--bg-elev), 0 0 0 4px ${c}`
-									: 'var(--shadow-edge)'}
-							></button>
-						{/each}
-					</div>
-					<input type="hidden" name="color" value={color} />
-				</div>
-				{#if serverError}
-					<div
-						class="rounded-lg border border-prio-urgent/35 bg-prio-urgent/8 px-3 py-2 text-[14px] text-accent"
-					>
-						{serverError}
-					</div>
-				{/if}
-				<div class="flex items-center justify-end gap-2 pt-1">
-					<Button
-						variant="default"
-						onclick={() => {
-							editing = false;
-							serverError = null;
-						}}
-					>
-						{m.common_cancel()}
-					</Button>
-					<button
-						type="submit"
-						disabled={saving || !name.trim()}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[12px] py-[8px] text-[14px] font-medium text-white hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						{saving ? m.common_saving() : m.common_save_changes()}
-					</button>
-				</div>
-			</form>
-		{:else if data.org.description}
+		{#if data.org.description}
 			<div class="mb-6 rounded-2xl border border-border bg-bg-elev p-4">
 				<div class="mb-1.5 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 					{m.admin_org_about()}
@@ -530,3 +395,5 @@
 		</div>
 	</div>
 </div>
+
+<EditOrganizationModal open={editing} org={data.org} onclose={() => (editing = false)} />
