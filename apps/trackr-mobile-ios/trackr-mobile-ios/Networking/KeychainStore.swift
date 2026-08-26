@@ -8,11 +8,13 @@
 //
 
 import Foundation
+import OSLog
 import Security
 
 enum KeychainStore {
     private static let service = "dev.kilicer.trackr.session"
     private static let account = "bearer-token"
+    private static let log = Logger(subsystem: "dev.kilicer.trackr", category: "keychain")
 
     static var token: String? {
         get {
@@ -24,10 +26,16 @@ enum KeychainStore {
                 kSecMatchLimit as String: kSecMatchLimitOne,
             ]
             var result: AnyObject?
-            guard
-                SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-                let data = result as? Data
-            else { return nil }
+            let status = SecItemCopyMatching(query as CFDictionary, &result)
+            guard status == errSecSuccess, let data = result as? Data else {
+                // Not-found is the normal signed-out case; anything else
+                // (e.g. -34018 on a build without an application-identifier
+                // entitlement) means the session silently can't persist.
+                if status != errSecItemNotFound {
+                    log.error("token read failed: \(status)")
+                }
+                return nil
+            }
             return String(data: data, encoding: .utf8)
         }
         set {
@@ -36,12 +44,18 @@ enum KeychainStore {
                 kSecAttrService as String: service,
                 kSecAttrAccount as String: account,
             ]
-            SecItemDelete(base as CFDictionary)
+            let deleted = SecItemDelete(base as CFDictionary)
+            if deleted != errSecSuccess, deleted != errSecItemNotFound {
+                log.error("token delete failed: \(deleted)")
+            }
             guard let newValue, let data = newValue.data(using: .utf8) else { return }
             var add = base
             add[kSecValueData as String] = data
             add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-            SecItemAdd(add as CFDictionary, nil)
+            let added = SecItemAdd(add as CFDictionary, nil)
+            if added != errSecSuccess {
+                log.error("token write failed: \(added)")
+            }
         }
     }
 }
