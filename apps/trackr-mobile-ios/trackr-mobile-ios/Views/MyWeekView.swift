@@ -231,7 +231,7 @@ struct MyWeekView: View {
                 groupIndex, group in
                 if groupIndex > 0 {
                     Divider()
-                        .overlay(Color.webBorder.opacity(0.6))
+                        .overlay(Color.webBorderStrong)
                         .padding(.leading, 14)
                 }
                 HStack(spacing: 7) {
@@ -251,7 +251,7 @@ struct MyWeekView: View {
                 ForEach(Array(group.tasks.enumerated()), id: \.element.id) { taskIndex, task in
                     if taskIndex > 0 {
                         Divider()
-                            .overlay(Color.webBorder.opacity(0.6))
+                            .overlay(Color.webBorderStrong)
                             .padding(.leading, 14)
                     }
                     NavigationLink(value: task) {
@@ -333,7 +333,7 @@ struct MyWeekView: View {
                     ForEach(Array(unscheduled.enumerated()), id: \.element.id) { index, task in
                         if index > 0 {
                             Divider()
-                                .overlay(Color.webBorder.opacity(0.6))
+                                .overlay(Color.webBorderStrong)
                                 .padding(.leading, 14)
                         }
                         NavigationLink(value: task) {

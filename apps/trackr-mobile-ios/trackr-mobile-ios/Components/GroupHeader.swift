@@ -43,23 +43,27 @@ struct GroupHeader: View {
             .padding(.horizontal, 14)
             .frame(height: 38)
             .frame(maxWidth: .infinity)
-            .background(Color.webSurface)
+            .background(Color.webSurface2)
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
     }
 }
 
-/// Group-section container, web ListView look: transparent body sitting
-/// flat on the page background, outlined with the web border color — only
-/// the header band carries a fill.
+/// Group-section container, web ListView look: elevated body on the page
+/// background, outlined with the strong border, header band one step
+/// lighter still.
 extension View {
     func sectionStyle() -> some View {
         self
+            // Elevated body so rows read as a card in dark mode too — the
+            // page (`--bg`) → body (`--bg-elev`) → header (`--surface-2`)
+            // stack from the web's dark theme.
+            .background(Color.webBackgroundElevated, in: .rect(cornerRadius: 16))
             .clipShape(.rect(cornerRadius: 16))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(Color.webBorder, lineWidth: 1)
+                    .strokeBorder(Color.webBorderStrong, lineWidth: 1)
             )
     }
 }

@@ -15,16 +15,35 @@ extension Color {
             ? UIColor(red: 0x0C / 255, green: 0x0D / 255, blue: 0x0F / 255, alpha: 1)
             : UIColor(red: 0xFB / 255, green: 0xFA / 255, blue: 0xF8 / 255, alpha: 1)
     })
+    /// `--bg-elev`: section/card bodies sitting on the page.
+    static let webBackgroundElevated = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0x14 / 255, green: 0x15 / 255, blue: 0x18 / 255, alpha: 1)
+            : UIColor(red: 0xF6 / 255, green: 0xF5 / 255, blue: 0xF3 / 255, alpha: 1)
+    })
     static let webSurface = Color(uiColor: UIColor { traits in
         traits.userInterfaceStyle == .dark
             ? UIColor(red: 0x18 / 255, green: 0x19 / 255, blue: 0x1D / 255, alpha: 1)
             : UIColor(red: 0xF1 / 255, green: 0xF0 / 255, blue: 0xEE / 255, alpha: 1)
+    })
+    /// `--surface-2`: header bands on top of an elevated body.
+    static let webSurface2 = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0x1F / 255, green: 0x20 / 255, blue: 0x24 / 255, alpha: 1)
+            : UIColor(red: 0xE9 / 255, green: 0xE8 / 255, blue: 0xE6 / 255, alpha: 1)
     })
     static let webBorder = Color(uiColor: UIColor { traits in
         traits.userInterfaceStyle == .dark
             ? UIColor(red: 0x28 / 255, green: 0x2A / 255, blue: 0x2E / 255, alpha: 1)
             : UIColor(red: 0xDC / 255, green: 0xDA / 255, blue: 0xD8 / 255, alpha: 1)
     })
+    /// `--border-strong`: outlines that must read on dark surfaces.
+    static let webBorderStrong = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0x36 / 255, green: 0x38 / 255, blue: 0x3D / 255, alpha: 1)
+            : UIColor(red: 0xC6 / 255, green: 0xC4 / 255, blue: 0xC0 / 255, alpha: 1)
+    })
+
     /// Colors come from the web app's taxonomy.ts as hex strings — keep them
     /// byte-identical across platforms by constructing from the same hex.
     init(hex: UInt32) {

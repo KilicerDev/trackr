@@ -45,7 +45,7 @@ struct TicketsView: View {
                                     index, ticket in
                                     if index > 0 {
                                         Divider()
-                                            .overlay(Color.webBorder.opacity(0.6))
+                                            .overlay(Color.webBorderStrong)
                                             .padding(.leading, 14)
                                     }
                                     NavigationLink(value: ticket) {
