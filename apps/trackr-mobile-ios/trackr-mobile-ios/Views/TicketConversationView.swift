@@ -54,19 +54,32 @@ struct TicketConversationView: View {
                     ForEach(events) { event in
                         row(for: event).id(event.id)
                     }
+                    if events.isEmpty {
+                        Text("No messages yet.")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.tertiary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 40)
+                    }
                 }
-                // The rail: a hairline behind the node column.
+                // Span the full width so short rows don't get centred as a
+                // content-sized column.
+                .frame(maxWidth: .infinity, alignment: .leading)
+                // The rail: a hairline behind the node column — only once
+                // there is a column to sit behind.
                 .background(alignment: .leading) {
-                    Rectangle()
-                        .fill(Color(.separator).opacity(0.5))
-                        .frame(width: 1)
-                        .offset(x: TimelineRow<EmptyView>.nodeSize / 2)
-                        .padding(.vertical, 10)
+                    if !events.isEmpty {
+                        Rectangle()
+                            .fill(Color(.separator).opacity(0.5))
+                            .frame(width: 1)
+                            .offset(x: TimelineRow<EmptyView>.nodeSize / 2)
+                            .padding(.vertical, 10)
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 16)
             }
-            .defaultScrollAnchor(.bottom)
+            .defaultScrollAnchor(events.isEmpty ? .top : .bottom)
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: ticket.messages.count) {
                 if let last = events.last {

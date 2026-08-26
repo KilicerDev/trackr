@@ -14,6 +14,7 @@ struct ProjectHistorySheet: View {
     let projectKey: String
 
     @State private var draft = ""
+    @State private var loaded = false
 
     private var events: [ProjectEvent] {
         (model.projects.first { $0.key == projectKey }?.history ?? [])
@@ -24,7 +25,11 @@ struct ProjectHistorySheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    if events.isEmpty {
+                    if events.isEmpty, !loaded {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 40)
+                    } else if events.isEmpty {
                         Text("No activity yet.")
                             .font(.system(size: 14))
                             .foregroundStyle(.tertiary)
@@ -51,16 +56,23 @@ struct ProjectHistorySheet: View {
                         }
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .background(alignment: .leading) {
-                    Rectangle()
-                        .fill(Color(.separator).opacity(0.5))
-                        .frame(width: 1)
-                        .offset(x: TimelineRow<EmptyView>.nodeSize / 2)
-                        .padding(.vertical, 10)
+                    if !events.isEmpty {
+                        Rectangle()
+                            .fill(Color(.separator).opacity(0.5))
+                            .frame(width: 1)
+                            .offset(x: TimelineRow<EmptyView>.nodeSize / 2)
+                            .padding(.vertical, 10)
+                    }
                 }
                 .padding(16)
             }
             .defaultScrollAnchor(events.isEmpty ? .top : .bottom)
+            .task {
+                await model.sync?.loadProjectHistory(projectKey: projectKey)
+                loaded = true
+            }
             .scrollDismissesKeyboard(.interactively)
             .background(Color.webBackground)
             .navigationTitle("History")

@@ -141,6 +141,7 @@ final class AppModel {
             ProjectEvent(user: me, date: .now, text: text)
         )
         projects[index].updatedAt = .now
+        sync?.addProjectComment(projectKey: projectKey, text: text)
     }
 
     /// Deep-link from a tapped push notification: `url` is the server's

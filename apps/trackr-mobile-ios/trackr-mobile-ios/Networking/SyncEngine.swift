@@ -842,6 +842,29 @@ final class SyncEngine {
 
     // MARK: - Favorites (device-local)
 
+    /// Load the project's history feed into `model.projects[…].history`.
+    /// Called when the history sheet opens; the list itself only carries
+    /// the project summary.
+    func loadProjectHistory(projectKey: String) async {
+        guard let index = model.projects.firstIndex(where: { $0.key == projectKey }),
+              let uuid = model.projects[index].serverId,
+              let response = try? await client.projectActivity(uuid: uuid)
+        else { return }
+        // Re-resolve the index — the list may have been refreshed meanwhile.
+        guard let fresh = model.projects.firstIndex(where: { $0.key == projectKey }) else { return }
+        model.projects[fresh].history = response.items.map(Mapper.projectEvent)
+    }
+
+    /// Post a project-level comment, then reload so the optimistic row is
+    /// replaced by the server's copy.
+    func addProjectComment(projectKey: String, text: String) {
+        guard let uuid = model.projects.first(where: { $0.key == projectKey })?.serverId else { return }
+        Task {
+            guard (try? await client.addProjectComment(uuid: uuid, text: text)) != nil else { return }
+            await loadProjectHistory(projectKey: projectKey)
+        }
+    }
+
     func setFavorite(projectKey: String, favorite: Bool) {
         var keys = favoriteKeys
         if favorite { keys.insert(projectKey) } else { keys.remove(projectKey) }

@@ -262,6 +262,51 @@ enum Mapper {
         )
     }
 
+    /// SF Symbol per activity type (web TYPE_STYLE parity). Comments have
+    /// no icon — that's what ProjectEvent.isComment keys on.
+    private static let activityIcons: [String: String] = [
+        "task.created": "plus.circle",
+        "task.deleted": "trash",
+        "task.status": "arrow.triangle.2.circlepath",
+        "task.priority": "arrow.up",
+        "task.type": "square",
+        "task.assignee": "person.2",
+        "time.logged": "clock",
+        "project.name": "gearshape",
+        "project.description": "gearshape",
+        "project.status": "arrow.triangle.2.circlepath",
+        "project.color": "paintpalette",
+        "member.added": "person.2",
+        "member.removed": "person.2",
+        "member.role": "person.2",
+        "lead.set": "star",
+        "lead.cleared": "person.2",
+    ]
+
+    static func projectEvent(_ dto: API.ProjectActivityItem) -> ProjectEvent {
+        let actor = dto.actor.map {
+            UserRef(
+                name: $0.name,
+                initials: initials(for: $0.name),
+                color: Color(css: $0.color, default: derivedColor(forUserId: $0.id)),
+                serverId: $0.id
+            )
+        } ?? UserRef(name: "System", initials: "•", color: .gray)
+        let isComment = dto.type == "comment"
+        // A comment left on a task (not the project itself) keeps its
+        // context in the line: web shows "commented on TRK-12".
+        let text = isComment && dto.taskId != nil
+            ? "commented on \(dto.taskRef ?? "a task"): \(dto.text)"
+            : dto.text
+        return ProjectEvent(
+            user: actor,
+            date: APIDate.parse(dto.createdAt) ?? .now,
+            text: text,
+            icon: isComment ? nil : (activityIcons[dto.type] ?? "circle"),
+            serverId: dto.id
+        )
+    }
+
     static func ticket(
         _ dto: API.Ticket,
         users: [String: API.DisplayUser],

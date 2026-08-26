@@ -36,6 +36,8 @@ struct ProjectEvent: Identifiable, Hashable {
     var date: Date
     var text: String
     var icon: String?
+    /// Server activity id — nil for sample data and optimistic local rows.
+    var serverId: String? = nil
 
     var isComment: Bool { icon == nil }
 }

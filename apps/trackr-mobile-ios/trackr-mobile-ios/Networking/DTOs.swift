@@ -138,6 +138,30 @@ enum API {
         let ok: Bool
     }
 
+    // MARK: - Project activity
+
+    struct ProjectActivityActor: Codable {
+        let id: String
+        let name: String
+        let color: String
+    }
+
+    /// One history line. `text` is pre-rendered by the server for typed
+    /// events; for `type == "comment"` it is the comment body.
+    struct ProjectActivityItem: Codable {
+        let id: String
+        let type: String
+        let taskId: String?
+        let taskRef: String?
+        let text: String
+        let createdAt: String
+        let actor: ProjectActivityActor?
+    }
+
+    struct ProjectActivityResponse: Codable {
+        let items: [ProjectActivityItem]
+    }
+
     // MARK: - Tickets
 
     struct Ticket: Codable {

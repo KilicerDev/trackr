@@ -236,6 +236,17 @@ extension APIClient {
         try await get("/api/v1/projects")
     }
 
+    func projectActivity(uuid: String) async throws -> API.ProjectActivityResponse {
+        try await get("/api/v1/projects/\(uuid)/activity")
+    }
+
+    func addProjectComment(uuid: String, text: String) async throws {
+        struct Body: Encodable { let body: String }
+        let _: API.CreatedResponse = try await post(
+            "/api/v1/projects/\(uuid)/activity", body: Body(body: text)
+        )
+    }
+
     // MARK: - Inbox
 
     func inbox(cursor: String? = nil, limit: Int = 30) async throws -> API.InboxResponse {
