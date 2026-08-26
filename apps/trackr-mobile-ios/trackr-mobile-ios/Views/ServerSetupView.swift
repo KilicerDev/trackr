@@ -44,8 +44,8 @@ struct ServerSetupView: View {
                     .submitLabel(.go)
                     .onSubmit { signIn() }
                     .padding(.horizontal, 16)
-                    .frame(height: 52)
-                    .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 16))
+                    .frame(height: 48)
+                    .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14))
 
                 if let errorMessage {
                     Text(errorMessage)
@@ -56,6 +56,11 @@ struct ServerSetupView: View {
             }
             .padding(.top, 36)
 
+            Spacer()
+            Spacer()
+
+            // Sign-in pinned to the bottom, sized like a standard iOS primary
+            // action (50pt, compact radius) rather than a full-height slab.
             Button {
                 signIn()
             } label: {
@@ -64,28 +69,31 @@ struct ServerSetupView: View {
                         ProgressView().tint(.white)
                     } else {
                         Text("Sign In")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(size: 16, weight: .semibold))
                     }
                 }
+                .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
-                .frame(height: 52)
+                .frame(height: 48)
+                .background(Color.accentColor, in: .rect(cornerRadius: 14))
+                .opacity(canSignIn ? 1 : 0.45)
             }
-            .buttonStyle(.borderedProminent)
-            .buttonBorderShape(.roundedRectangle(radius: 16))
-            .disabled(isWorking || auth.hostText.trimmingCharacters(in: .whitespaces).isEmpty)
-            .padding(.top, 12)
-
-            Spacer()
-            Spacer()
+            .buttonStyle(.plain)
+            .disabled(!canSignIn)
 
             Text("Your credentials are entered in the browser and never stored in the app.")
                 .font(.system(size: 12))
                 .foregroundStyle(.tertiary)
                 .multilineTextAlignment(.center)
-                .padding(.bottom, 18)
+                .padding(.top, 14)
+                .padding(.bottom, 12)
         }
-        .padding(.horizontal, 28)
+        .padding(.horizontal, 24)
         .background(Color.webBackground)
+    }
+
+    private var canSignIn: Bool {
+        !isWorking && !auth.hostText.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     private func signIn() {

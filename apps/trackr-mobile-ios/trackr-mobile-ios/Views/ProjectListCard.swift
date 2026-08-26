@@ -32,9 +32,16 @@ struct ProjectListCard: View {
                             .foregroundStyle(.white)
                     )
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(project.name)
-                        .font(.system(size: 15, weight: .semibold))
-                        .lineLimit(1)
+                    HStack(spacing: 5) {
+                        Text(project.name)
+                            .font(.system(size: 15, weight: .semibold))
+                            .lineLimit(1)
+                        if project.isFavorite {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.yellow)
+                        }
+                    }
                     Text("\(project.key) · \(openTasks) open")
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(.tertiary)

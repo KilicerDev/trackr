@@ -27,30 +27,57 @@ struct ProjectsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(spacing: 10) {
-                ForEach(visible) { project in
-                    NavigationLink(value: project) {
-                        ProjectListCard(
-                            project: project,
-                            openTasks: openTasks(in: project),
-                            onHistory: { historyProject = project }
+        // A List (not a ScrollView) so rows get native swipe actions; the
+        // chrome is stripped so it still reads as the same card stack.
+        List {
+            ForEach(visible) { project in
+                ProjectListCard(
+                    project: project,
+                    openTasks: openTasks(in: project),
+                    onHistory: { historyProject = project }
+                )
+                .overlay {
+                    // Hidden link keeps the tap-to-open behaviour without the
+                    // List's disclosure chevron.
+                    NavigationLink(value: project) { EmptyView() }.opacity(0)
+                }
+                .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+                // Both on the trailing edge: a leading swipe collides with the
+                // NavigationStack's edge-swipe-to-go-back on this pushed screen.
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button {
+                        model.toggleFavorite(projectKey: project.key)
+                    } label: {
+                        Label(
+                            project.isFavorite ? "Unfavorite" : "Favorite",
+                            systemImage: project.isFavorite ? "star.slash.fill" : "star.fill"
                         )
                     }
-                    .buttonStyle(.plain)
-                }
-                if visible.isEmpty {
-                    ContentUnavailableView(
-                        "No matching projects",
-                        systemImage: "line.3.horizontal.decrease",
-                        description: Text("Try removing some filters.")
-                    )
-                    .padding(.top, 60)
+                    .tint(.yellow)
+                    Button {
+                        historyProject = project
+                    } label: {
+                        Label("History", systemImage: "clock.arrow.circlepath")
+                    }
+                    .tint(.gray)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 16)
+            if visible.isEmpty {
+                ContentUnavailableView(
+                    "No matching projects",
+                    systemImage: "line.3.horizontal.decrease",
+                    description: Text("Try removing some filters.")
+                )
+                .padding(.top, 60)
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+            }
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .contentMargins(.vertical, 11, for: .scrollContent)
         .background(Color.webBackground)
         .navigationTitle("Projects")
         .toolbar {
