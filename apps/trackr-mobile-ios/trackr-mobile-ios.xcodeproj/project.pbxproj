@@ -35,8 +35,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		4FD0A001303628D000C85783 /* trackr-mobile-ios-live.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "trackr-mobile-ios-live.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4FD09008303628D000C85783 /* trackr-mobile-ios.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "trackr-mobile-ios.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4FD0A001303628D000C85783 /* trackr-mobile-ios-live.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "trackr-mobile-ios-live.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */

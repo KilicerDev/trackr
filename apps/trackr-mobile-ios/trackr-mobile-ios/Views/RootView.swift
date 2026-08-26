@@ -15,6 +15,9 @@ struct RootView: View {
     @State private var model = AppModel(sampleData: false)
     @State private var engine: SyncEngine?
     @State private var sessionActivity: SessionActivityController?
+    /// Live Activity tap that cold-started the app — honored once the
+    /// session has been restored.
+    @State private var openPlayerWhenReady = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -42,9 +45,14 @@ struct RootView: View {
                     Task { await auth?.signOut() }
                 }
                 push?.enable(client: client)
+                model.restoreSession()
                 let activity = SessionActivityController(client: client)
-                activity.endOrphans()
+                activity.reconcile(with: model.session)
                 sessionActivity = activity
+                if openPlayerWhenReady {
+                    openPlayerWhenReady = false
+                    model.showingPlayer = model.session.isRunning
+                }
                 // Notification taps deep-link into the entity; a tap that
                 // cold-started the app is queued and consumed here.
                 let model = self.model
@@ -82,8 +90,12 @@ struct RootView: View {
         }
         // trackr://session — the Live Activity tap lands in the player.
         .onOpenURL { url in
-            guard url == WorkSessionAttributes.openURL, model.session.isRunning else { return }
-            model.showingPlayer = true
+            guard url == WorkSessionAttributes.openURL else { return }
+            if auth.phase == .ready {
+                model.showingPlayer = model.session.isRunning
+            } else {
+                openPlayerWhenReady = true
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             guard auth.phase == .ready else { return }

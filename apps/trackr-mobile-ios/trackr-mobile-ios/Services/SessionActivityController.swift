@@ -26,14 +26,19 @@ final class SessionActivityController {
         ActivityAuthorizationInfo().areActivitiesEnabled
     }
 
-    /// App launch: an activity without a running session is a leftover
-    /// from a killed process — take it down instead of letting it linger
-    /// for hours on the lock screen.
-    func endOrphans() {
-        for stale in Activity<WorkSessionAttributes>.activities {
+    /// App launch: reconnect to the activity the previous process started
+    /// for the (restored) running session; anything else still showing is
+    /// an orphan and comes down instead of lingering for hours.
+    func reconcile(with session: WorkSession) {
+        let existing = Activity<WorkSessionAttributes>.activities
+        let match = session.isRunning
+            ? existing.first { $0.content.state.startedAt == session.startedAt }
+            : nil
+        for stale in existing where stale.id != match?.id {
             Task { await stale.end(nil, dismissalPolicy: .immediate) }
         }
-        activity = nil
+        activity = match
+        if let match { observePushToken(of: match) }
     }
 
     func start(_ session: WorkSession) {

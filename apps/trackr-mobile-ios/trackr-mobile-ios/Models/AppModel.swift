@@ -48,7 +48,11 @@ final class AppModel {
     var taskPath: [TaskItem] = []
     var ticketPath: [TicketItem] = []
     var homePath = NavigationPath()
-    var session = WorkSession()
+    /// Mirrored to disk on every change so a killed process can resume it
+    /// (SessionStore) — the Live Activity keeps counting meanwhile.
+    var session = WorkSession() {
+        didSet { SessionStore.save(session) }
+    }
     var showingPlayer = false
     /// A chat thread is on top of the home stack — HomeView hides the tab
     /// bar while set; cleared when the path pops (see HomeView).
@@ -172,6 +176,12 @@ final class AppModel {
         default:
             selectedTab = .home
         }
+    }
+
+    /// App launch: pick up a session the previous process left running.
+    func restoreSession() {
+        guard !session.isRunning, let saved = SessionStore.restore(author: me) else { return }
+        session = saved
     }
 
     func startSession(for project: ProjectRef) {

@@ -33,9 +33,13 @@ struct WorkSessionLiveActivity: Widget {
                             .lineLimit(1)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .layoutPriority(-1)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Timer(startedAt: context.state.startedAt, size: 22)
+                    // Claims its full width so the center text can't squeeze
+                    // the digits onto two lines.
+                    Timer(startedAt: context.state.startedAt, size: 20)
+                        .fixedSize()
                         .padding(.trailing, 4)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
@@ -126,6 +130,7 @@ private struct Timer: View {
         Text(timerInterval: startedAt...Date.distantFuture, countsDown: false)
             .font(.system(size: size, weight: .semibold, design: .rounded))
             .monospacedDigit()
+            .lineLimit(1)
             .multilineTextAlignment(.trailing)
     }
 }
