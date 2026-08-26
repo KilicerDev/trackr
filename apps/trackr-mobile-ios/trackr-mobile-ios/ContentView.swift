@@ -37,7 +37,7 @@ struct ContentView: View {
         }
         // Full screen like Apple Music's player — a sheet leaves a black
         // strip above the top edge.
-        .fullScreenCover(isPresented: $model.showingPlayer) {
+        .fullScreenCover(isPresented: $model.showingPlayer, onDismiss: model.clearSessionAfterDismiss) {
             SessionPlayerView(model: model)
         }
     }

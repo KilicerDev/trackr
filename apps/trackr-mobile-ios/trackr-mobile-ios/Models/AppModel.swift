@@ -29,7 +29,11 @@ struct WorkSession {
     var title = ""
     var startedAt: Date?
     var notes: [TaskComment] = []
+    /// Local id of the task this session was started from (nil = free
+    /// session that materializes into a new task on Done).
+    var taskId: String?
     var isRunning: Bool { startedAt != nil }
+    var isTaskBound: Bool { taskId != nil }
 }
 
 @Observable @MainActor
@@ -172,16 +176,65 @@ final class AppModel {
         session = WorkSession(project: project, startedAt: .now)
     }
 
-    func discardSession() {
-        session = WorkSession()
+    /// Session bound to an existing task: Done logs the elapsed time and
+    /// notes onto that task instead of creating a new one.
+    func startSession(for task: TaskItem) {
+        guard !session.isRunning else { return }
+        let project = projects.first(where: { $0.name == task.project })?.ref
+            ?? ProjectRef(name: task.project, color: .accentColor)
+        session = WorkSession(project: project, title: task.title, startedAt: .now, taskId: task.id)
+        showingPlayer = true
+    }
+
+    /// Bound-session outcome: log time + notes on the task; `status` nil
+    /// keeps the task's current status.
+    private func finishBoundSession(taskId: String, status: TaskStatus?, minutes: Int) {
+        guard let index = tasks.firstIndex(where: { $0.id == taskId }) else { return }
+        let log = TimeLog(user: me, minutes: minutes, date: .now)
+        tasks[index].timeLogs.append(log)
+        tasks[index].comments.append(contentsOf: session.notes)
+        let statusChanged = status.map { $0 != tasks[index].status } ?? false
+        if let status { tasks[index].status = status }
+        let task = tasks[index]
+        sessionEnding = true
         showingPlayer = false
+        selectedTab = .tasks
+        taskPath = [task]
+        guard let uuid = task.uuid, let sync else { return }
+        for note in session.notes {
+            sync.sendTaskComment(taskUUID: uuid, text: note.text)
+        }
+        if statusChanged { sync.pushTask(task) }
+        sync.logTime(taskUUID: uuid, minutes: minutes, date: log.date, note: nil)
+    }
+
+    /// Closes the player; the session itself is cleared in
+    /// `clearSessionAfterDismiss` once the cover has slid away, so the
+    /// content doesn't blank out mid-animation.
+    func discardSession() {
+        sessionEnding = true
+        showingPlayer = false
+    }
+
+    /// Set while the player is dismissing after Done/Discard — the
+    /// fullScreenCover's onDismiss resets the session then.
+    var sessionEnding = false
+
+    func clearSessionAfterDismiss() {
+        guard sessionEnding else { return }
+        sessionEnding = false
+        session = WorkSession()
     }
 
     /// Materialize the session into a task — elapsed time becomes a time
     /// log, session notes become comments — and open its detail page.
-    func finishSession(as status: TaskStatus) {
+    func finishSession(as status: TaskStatus?) {
         guard let startedAt = session.startedAt, let project = session.project else { return }
         let minutes = max(1, Int(Date.now.timeIntervalSince(startedAt) / 60))
+        if let taskId = session.taskId {
+            finishBoundSession(taskId: taskId, status: status, minutes: minutes)
+            return
+        }
         let nextNumber = tasks
             .compactMap { Int($0.id.split(separator: "-").last ?? "") }
             .max()
@@ -190,7 +243,7 @@ final class AppModel {
         let task = TaskItem(
             id: "TRK-\(nextNumber)",
             title: title.isEmpty ? "Work session" : title,
-            status: status,
+            status: status ?? .inProgress,
             priority: .none,
             type: .task,
             project: project.name,
@@ -199,7 +252,7 @@ final class AppModel {
             comments: session.notes
         )
         tasks.insert(task, at: 0)
-        session = WorkSession()
+        sessionEnding = true
         showingPlayer = false
         selectedTab = .tasks
         taskPath = [task]

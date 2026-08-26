@@ -18,6 +18,11 @@ struct TaskDetailView: View {
     var model: AppModel? = nil
 
     @State private var baseline: TaskItem?
+
+    /// The shared model's copy of this task — nil in previews.
+    private var modelCopy: TaskItem? {
+        model?.tasks.first { $0.id == task.id }
+    }
     @State private var showingComments = false
     @State private var showingTimeLog = false
     @State private var showingAddTag = false
@@ -95,6 +100,13 @@ struct TaskDetailView: View {
                     }
                 }
             }
+        }
+        // Adopt model-side changes (session finish logs time/status/notes,
+        // sync refetches) as long as there are no unsaved local edits.
+        .onChange(of: modelCopy) { _, fresh in
+            guard let fresh, fresh != task, task == baseline else { return }
+            task = fresh
+            baseline = fresh
         }
         .onDisappear { persist() }
         .navigationTitle(task.id)
@@ -306,8 +318,51 @@ struct TaskDetailView: View {
                     .monospaced()
                     .foregroundStyle(task.loggedMinutes > 0 ? .primary : .tertiary)
             }
+            if let model {
+                Divider().padding(.leading, 14)
+                sessionRow(model)
+            }
         }
         .cardStyle(padded: false)
+    }
+
+    /// Start a work session bound to this task — Done logs time + notes
+    /// here. While another session runs, shows which one instead.
+    @ViewBuilder
+    private func sessionRow(_ model: AppModel) -> some View {
+        let running = model.session.isRunning
+        let thisTask = model.session.taskId == task.id
+        Button {
+            if thisTask {
+                model.showingPlayer = true
+            } else if !running {
+                model.startSession(for: task)
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: thisTask ? "waveform" : "play.circle.fill")
+                    .font(.system(size: 18))
+                    .symbolEffect(.variableColor.iterative, isActive: thisTask)
+                Text(thisTask ? "Session running" : running ? "Another session is running" : "Start work session")
+                    .font(.system(size: 14, weight: .medium))
+                Spacer()
+                if thisTask, let startedAt = model.session.startedAt {
+                    Text(startedAt, style: .timer)
+                        .font(.system(size: 14, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                } else if !running {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .foregroundStyle(running && !thisTask ? Color(.tertiaryLabel) : Color.accentColor)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
+        .disabled(running && !thisTask)
     }
 
     private var descriptionCard: some View {

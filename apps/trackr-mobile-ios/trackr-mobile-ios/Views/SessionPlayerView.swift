@@ -16,6 +16,29 @@ struct SessionPlayerView: View {
     @State private var confirmingDone = false
     @State private var confirmingDiscard = false
     @State private var dragOffset: CGFloat = 0
+    /// Chosen in the confirm sheet, played (overlay → slide down) once that
+    /// sheet has dismissed.
+    @State private var pendingOutcome: Outcome?
+    @State private var showingOutcome: Outcome?
+
+    private enum Outcome {
+        case finished(TaskStatus?, minutes: Int)
+        case discarded
+
+        var icon: String {
+            switch self {
+            case .finished: "checkmark"
+            case .discarded: "xmark"
+            }
+        }
+
+        var label: String {
+            switch self {
+            case .finished(_, let minutes): "Logged \(minutes.minutesFormatted)"
+            case .discarded: "Session discarded"
+            }
+        }
+    }
 
     private var me: UserRef { TaskItem.sampleUsers[0] }  // current user later
 
@@ -43,33 +66,83 @@ struct SessionPlayerView: View {
         .offset(y: max(0, dragOffset))
         .animation(.spring(duration: 0.3), value: dragOffset)
         .background(background)
+        .overlay { outcomeOverlay }
+        .disabled(showingOutcome != nil)
         .safeAreaInset(edge: .bottom) {
             MessageComposer(text: $draft, placeholder: "Add a note…", onSend: addNote)
         }
-        .sheet(isPresented: $confirmingDone) {
+        .sheet(isPresented: $confirmingDone, onDismiss: playPendingOutcome) {
             ConfirmSheet(
                 title: "Are you done with this task?",
                 cancelLabel: "Keep working",
                 actions: [
                     .init(label: "Mark as Done", style: .prominent) {
-                        model.finishSession(as: .done)
+                        pendingOutcome = .finished(.done, minutes: elapsedMinutes)
                     },
-                    .init(label: "Keep In Progress") {
-                        model.finishSession(as: .inProgress)
+                    .init(label: model.session.isTaskBound ? "Keep current status" : "Keep In Progress") {
+                        pendingOutcome = .finished(
+                            model.session.isTaskBound ? nil : .inProgress, minutes: elapsedMinutes
+                        )
                     },
                 ]
             )
         }
-        .sheet(isPresented: $confirmingDiscard) {
+        .sheet(isPresented: $confirmingDiscard, onDismiss: playPendingOutcome) {
             ConfirmSheet(
                 title: "Discard this session?",
                 cancelLabel: "Keep working",
                 actions: [
                     .init(label: "Discard session", style: .destructive) {
-                        model.discardSession()
+                        pendingOutcome = .discarded
                     },
                 ]
             )
+        }
+    }
+
+    private var elapsedMinutes: Int {
+        guard let startedAt = model.session.startedAt else { return 1 }
+        return max(1, Int(Date.now.timeIntervalSince(startedAt) / 60))
+    }
+
+    /// Confirmation beat: show the outcome badge over the still-populated
+    /// player, then slide the cover down; the model clears the session only
+    /// after the cover is gone (AppModel.clearSessionAfterDismiss).
+    private func playPendingOutcome() {
+        guard let outcome = pendingOutcome else { return }
+        pendingOutcome = nil
+        withAnimation(.spring(duration: 0.35, bounce: 0.3)) {
+            showingOutcome = outcome
+        }
+        Task {
+            try? await Task.sleep(for: .seconds(0.9))
+            switch outcome {
+            case .finished(let status, _): model.finishSession(as: status)
+            case .discarded: model.discardSession()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var outcomeOverlay: some View {
+        if let outcome = showingOutcome {
+            let destructive = if case .discarded = outcome { true } else { false }
+            ZStack {
+                Color.black.opacity(0.12).ignoresSafeArea()
+                VStack(spacing: 12) {
+                    Image(systemName: outcome.icon)
+                        .font(.system(size: 34, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 84, height: 84)
+                        .background(destructive ? Color(.systemGray) : Color.accentColor, in: .circle)
+                    Text(outcome.label)
+                        .font(.system(size: 15, weight: .semibold))
+                }
+                .padding(28)
+                .background(.regularMaterial, in: .rect(cornerRadius: 24))
+                .transition(.scale(scale: 0.7).combined(with: .opacity))
+            }
+            .transition(.opacity)
         }
     }
 
@@ -133,11 +206,28 @@ struct SessionPlayerView: View {
                     )
             }
             VStack(alignment: .leading, spacing: 3) {
-                Text(model.session.project?.name ?? "")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
-                TextField("What are you working on?", text: $model.session.title)
-                    .font(.system(size: 18, weight: .semibold))
+                HStack(spacing: 6) {
+                    if let taskId = model.session.taskId {
+                        Text(taskId)
+                            .font(.system(size: 12, weight: .medium, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.ultraThinMaterial, in: .rect(cornerRadius: 6))
+                    }
+                    Text(model.session.project?.name ?? "")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                }
+                if model.session.isTaskBound {
+                    // Bound to an existing task — its title stays as is.
+                    Text(model.session.title)
+                        .font(.system(size: 18, weight: .semibold))
+                        .lineLimit(2)
+                } else {
+                    TextField("What are you working on?", text: $model.session.title)
+                        .font(.system(size: 18, weight: .semibold))
+                }
             }
         }
         .padding(.horizontal, 16)
