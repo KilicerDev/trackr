@@ -72,6 +72,18 @@ enum Mentions {
         return out
     }
 
+    /// Serialize composer text: every `@Name` of a picked user becomes the
+    /// `@[Name](id)` token the server resolves (longest names first so
+    /// "Anna Brandt" isn't clipped by "Anna").
+    static func tokenized(_ text: String, users: [UserRef]) -> String {
+        var out = text
+        for user in users.sorted(by: { $0.name.count > $1.name.count }) {
+            let id = user.serverId ?? user.name
+            out = out.replacingOccurrences(of: "@\(user.name)", with: "@[\(user.name)](\(id))")
+        }
+        return out
+    }
+
     /// Plain form for one-line previews: `@[Name](id)` → `@Name`
     /// (web plainifyMentions parity).
     static func flattened(_ text: String) -> String {

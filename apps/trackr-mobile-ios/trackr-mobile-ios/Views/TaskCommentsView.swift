@@ -74,7 +74,9 @@ struct TaskCommentsView: View {
         .navigationTitle("Comments")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
-            MessageComposer(text: $draft, onAttach: {
+            MessageComposer(text: $draft,
+                            mentionCandidates: (model?.assignableUsers ?? []) + task.comments.map(\.user),
+                            onAttach: {
                 // Attachments — wired up later
             }, onSend: send)
         }

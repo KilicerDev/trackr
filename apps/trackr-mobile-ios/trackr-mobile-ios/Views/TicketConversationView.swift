@@ -114,6 +114,7 @@ struct TicketConversationView: View {
                 MessageComposer(
                     text: $draft,
                     placeholder: internalNote ? "Internal note…" : "Reply to customer…",
+                    mentionCandidates: (model?.assignableUsers ?? []) + ticket.messages.map(\.user),
                     onAttach: {
                         // Attachments — wired up later
                     },

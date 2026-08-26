@@ -77,7 +77,9 @@ struct ChatThreadView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            MessageComposer(text: $draft, placeholder: "Reply…", onAttach: {
+            MessageComposer(text: $draft, placeholder: "Reply…",
+                            mentionCandidates: model.assignableUsers + thread.messages.map(\.user),
+                            onAttach: {
                 // Attachments — wired up later
             }, onSend: send)
         }
