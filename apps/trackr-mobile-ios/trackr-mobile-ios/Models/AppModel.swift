@@ -50,6 +50,9 @@ final class AppModel {
     var homePath = NavigationPath()
     var session = WorkSession()
     var showingPlayer = false
+    /// A chat thread is on top of the home stack — HomeView hides the tab
+    /// bar while set; cleared when the path pops (see HomeView).
+    var chatThreadOpen = false
 
     // Per-page view state, shared across tab switches and synced with the
     // web's view_state (SyncEngine persists it locally + server-side).

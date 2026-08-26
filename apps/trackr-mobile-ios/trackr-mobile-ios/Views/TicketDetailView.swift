@@ -89,6 +89,9 @@ struct TicketDetailView: View {
                 }
             }
         }
+        // Conversation hides the tab bar; keyed here (not on the child) so
+        // the bar animates back with the pop instead of after it.
+        .toolbarVisibility(showingConversation ? .hidden : .visible, for: .tabBar)
         .navigationDestination(isPresented: $showingConversation) {
             TicketConversationView(ticket: $ticket, model: model)
         }

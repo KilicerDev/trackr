@@ -140,6 +140,9 @@ struct TaskDetailView: View {
                 }
             }
         }
+        // Comments hide the tab bar; keyed here (not on the child) so the
+        // bar animates back with the pop instead of after it.
+        .toolbarVisibility(showingComments ? .hidden : .visible, for: .tabBar)
         .navigationDestination(isPresented: $showingComments) {
             TaskCommentsView(task: $task, model: model)
         }

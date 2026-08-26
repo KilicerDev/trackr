@@ -84,6 +84,7 @@ struct ChatThreadView: View {
             }, onSend: send)
         }
         .onAppear {
+            model.chatThreadOpen = true
             markRead()
             // Screen-appear revalidation + server-side read cursor (the
             // thread GET marks it read).

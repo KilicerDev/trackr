@@ -118,6 +118,11 @@ struct HomeView: View {
             .navigationDestination(for: ChatThread.self) { thread in
                 ChatThreadView(model: model, threadId: thread.id)
             }
+            // Keyed on the parent so the bar animates back with the pop.
+            .toolbarVisibility(model.chatThreadOpen ? .hidden : .visible, for: .tabBar)
+            .onChange(of: model.homePath.count) { old, new in
+                if new < old { model.chatThreadOpen = false }
+            }
             .navigationDestination(for: TicketItem.self) { ticket in
                 TicketDetailView(ticket: ticket, model: model)
             }
