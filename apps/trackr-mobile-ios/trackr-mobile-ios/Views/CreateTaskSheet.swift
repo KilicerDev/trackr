@@ -45,6 +45,27 @@ struct CreateTaskSheet: View {
         }
         return Set(tasks.map(\.project)).sorted()
     }
+    /// Rich picker rows (color + favorite) when a model backs the sheet;
+    /// bare names for previews/sample data.
+    private var projectChoices: [ProjectChoice] {
+        if let model, !model.projects.isEmpty {
+            return model.projects
+                .filter { $0.status != .archived }
+                .map { ProjectChoice(name: $0.name, color: $0.color, isFavorite: $0.isFavorite) }
+        }
+        return projectOptions.map { ProjectChoice(name: $0) }
+    }
+    /// Projects with the most recent task activity — the list arrives
+    /// server-ordered by recency, so first-seen distinct names suffice.
+    private var recentProjectNames: [String] {
+        var seen = Set<String>()
+        var out: [String] = []
+        for item in tasks where !item.project.isEmpty && seen.insert(item.project).inserted {
+            out.append(item.project)
+            if out.count == 5 { break }
+        }
+        return out
+    }
     private var userOptions: [UserRef] {
         if let model, !model.assignableUsers.isEmpty { return model.assignableUsers }
         return Array(Set(tasks.flatMap(\.assignees))).sorted { $0.name < $1.name }
@@ -64,8 +85,22 @@ struct CreateTaskSheet: View {
                 }
 
                 Section("Details") {
-                    Picker("Project", selection: $project) {
-                        ForEach(projectOptions, id: \.self) { Text($0).tag($0) }
+                    // 50+ projects in production: a pushed, searchable list
+                    // (favorites + recents first) instead of an endless Menu.
+                    NavigationLink {
+                        ProjectPickerScreen(
+                            choices: projectChoices,
+                            recents: recentProjectNames,
+                            selection: $project
+                        )
+                    } label: {
+                        HStack {
+                            Text("Project")
+                            Spacer()
+                            Text(project.isEmpty ? "Choose" : project)
+                                .foregroundStyle(Color(.secondaryLabel))
+                                .lineLimit(1)
+                        }
                     }
                     Picker("Type", selection: $type) {
                         ForEach(TaskType.allCases) { type in
