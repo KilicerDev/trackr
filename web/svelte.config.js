@@ -8,6 +8,12 @@ const config = {
 	},
 	kit: {
 		adapter: adapter(),
+		// The built-in origin check runs before hooks and rejects every form
+		// POST without an Origin header — which is what the native iOS app
+		// (URLSession) and CLI send for multipart uploads. The same check is
+		// re-implemented in hooks.server.ts (handleCsrf), minus requests that
+		// carry an Authorization header. Keep this false; don't drop the hook.
+		csrf: { checkOrigin: false },
 		// Load $env/dynamic/* from the repo-root .env (shared with docker compose
 		// and the Go services). vite.config.ts sets the matching `envDir`.
 		env: { dir: '../' },

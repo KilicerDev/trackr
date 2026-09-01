@@ -1,5 +1,6 @@
-import { error, redirect, type Handle } from '@sveltejs/kit';
+import { error, json, redirect, text, type Handle } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
+import { env } from '$env/dynamic/private';
 import { building } from '$app/environment';
 import { auth } from '$lib/server/auth';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
@@ -8,6 +9,44 @@ import { isSuperadmin } from '$lib/roles';
 import { getPreferences, PREF_DEFAULTS } from '$lib/server/preferences';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { cookieName, isLocale } from '$lib/paraglide/runtime';
+
+// Content types a plain HTML <form> can submit cross-site — the ones a browser
+// sends along with our session cookie without a CORS preflight. Mirrors
+// SvelteKit's own is_form_content_type list.
+const FORM_CONTENT_TYPES = new Set([
+	'application/x-www-form-urlencoded',
+	'multipart/form-data',
+	'text/plain',
+	'application/x-sveltekit-formdata'
+]);
+const CSRF_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+// Replacement for SvelteKit's `csrf.checkOrigin` (disabled in svelte.config.js).
+// Same rule — form-content mutations must carry an Origin header matching the
+// request origin (or ORIGIN) — with one exemption: requests that carry an
+// `Authorization` header. A cross-site form submission can't set custom
+// headers, and a cross-site fetch that does triggers a CORS preflight we never
+// answer, so such a request is by construction not a CSRF. This is how the
+// native iOS app uploads attachments: URLSession sends no Origin header at
+// all, which the stock check treats as cross-site.
+const handleCsrf: Handle = async ({ event, resolve }) => {
+	const { request, url } = event;
+	if (CSRF_METHODS.has(request.method) && !request.headers.has('authorization')) {
+		const type = request.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase() ?? '';
+		if (FORM_CONTENT_TYPES.has(type)) {
+			const origin = request.headers.get('origin');
+			const trusted = env.ORIGIN ? [env.ORIGIN] : [];
+			if (origin !== url.origin && (!origin || !trusted.includes(origin))) {
+				const message = `Cross-site ${request.method} form submissions are forbidden`;
+				if (request.headers.get('accept') === 'application/json') {
+					return json({ message }, { status: 403 });
+				}
+				return text(message, { status: 403 });
+			}
+		}
+	}
+	return resolve(event);
+};
 
 const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	const session = await auth.api.getSession({ headers: event.request.headers });
@@ -32,7 +71,10 @@ const handleAdminGuard: Handle = async ({ event, resolve }) => {
 	if (path === '/admin' || path.startsWith('/admin/')) {
 		if (!event.locals.user) redirect(302, `/login?next=${encodeURIComponent(path)}`);
 		if (!event.locals.isAdmin) error(403, 'Admin access required.');
-		if ((path === '/admin/system' || path.startsWith('/admin/system/')) && !isSuperadmin(event.locals.user.role)) {
+		if (
+			(path === '/admin/system' || path.startsWith('/admin/system/')) &&
+			!isSuperadmin(event.locals.user.role)
+		) {
 			error(403, 'Superadmin access required.');
 		}
 	}
@@ -93,4 +135,10 @@ const handleParaglide: Handle = ({ event, resolve }) =>
 		});
 	});
 
-export const handle: Handle = sequence(handleBetterAuth, handleAdminGuard, handleLocale, handleParaglide);
+export const handle: Handle = sequence(
+	handleCsrf,
+	handleBetterAuth,
+	handleAdminGuard,
+	handleLocale,
+	handleParaglide
+);
