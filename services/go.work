@@ -5,3 +5,5 @@ use ./shared
 use ./worker
 
 use ./scheduler
+
+use ../cli

@@ -72,6 +72,13 @@
 					     app's deep-link scheme instead of the web app. -->
 					<input type="hidden" name="client" value="native" />
 				{/if}
+				{#if data.cli}
+					<!-- CLI sign-in: the action redirects the token to the loopback
+					     listener `trackr login` runs; state is the CLI's CSRF nonce. -->
+					<input type="hidden" name="client" value="cli" />
+					<input type="hidden" name="port" value={data.cliPort} />
+					<input type="hidden" name="state" value={data.cliState} />
+				{/if}
 
 				<label class="flex flex-col gap-1.5">
 					<span class="text-[14px] font-medium text-text-2">{m.auth_email_label()}</span>
