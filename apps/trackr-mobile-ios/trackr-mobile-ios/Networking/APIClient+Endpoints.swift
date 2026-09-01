@@ -112,6 +112,33 @@ extension APIClient {
         try await post("/api/v1/tasks", body: body)
     }
 
+    struct ConvertTicketBody: Encodable {
+        let title: String
+        let projectKey: String
+        var description: String? = nil
+        var status: String? = nil
+        var priority: String? = nil
+        var type: String? = nil
+        var due: String? = nil
+        var estimate: Int? = nil
+        var assigneeIds: [String]? = nil
+    }
+
+    /// Replace a ticket's checklist (whole array — participant-editable).
+    func updateTicketChecklist(uuid: String, items: [API.ChecklistEntry]) async throws {
+        struct Body: Encodable { let checklist: [API.ChecklistEntry] }
+        let _: API.OkResponse = try await put(
+            "/api/v1/tickets/\(uuid)/checklist", body: Body(checklist: items))
+    }
+
+    /// Convert a ticket into a linked project task (staff-only). The server
+    /// carries the open checklist + attachments and leaves an internal note.
+    func convertTicketToTask(uuid: String, body: ConvertTicketBody) async throws
+        -> API.CreatedResponse
+    {
+        try await post("/api/v1/tickets/\(uuid)/tasks", body: body)
+    }
+
     func addTaskComment(uuid: String, text: String) async throws {
         struct Body: Encodable { let body: String }
         let _: API.CreatedResponse = try await post("/api/v1/tasks/\(uuid)/comments", body: Body(body: text))

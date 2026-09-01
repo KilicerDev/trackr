@@ -41,6 +41,29 @@ export const ALLOWED_TASK_TYPE = new Set(['task', 'bug', 'improvement', 'feature
  * components (ListView, BoardView, Inspector) consume them unchanged.
  * Optionally filtered by project id.
  */
+/** Tasks converted from this ticket — the ticket detail's back-links. */
+export async function listLinkedTasks(
+	ticketId: string
+): Promise<{ id: string; displayId: string; title: string; status: string }[]> {
+	const rows = await db
+		.select({
+			id: task.id,
+			number: task.number,
+			title: task.title,
+			status: task.status,
+			projectKey: project.key
+		})
+		.from(task)
+		.innerJoin(project, eq(project.id, task.projectId))
+		.where(and(eq(task.sourceTicketId, ticketId), isNull(task.deletedAt)));
+	return rows.map((r) => ({
+		id: r.id,
+		displayId: `${r.projectKey}-${r.number}`,
+		title: r.title,
+		status: r.status
+	}));
+}
+
 export async function loadTasks(opts?: {
 	projectId?: string;
 	projectIds?: string[];

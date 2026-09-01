@@ -54,6 +54,8 @@ struct TicketItem: Identifiable, Hashable {
     /// until the detail fetch loads the real conversation.
     var serverMessageCount: Int? = nil
     var serverLastMessageAt: Date? = nil
+    /// Tasks converted out of this ticket (detail fetch only, staff-only).
+    var linkedTasks: [ConversionLink] = []
 
     /// The description rendered as the conversation's first message — UI
     /// only, never sent to the server. Nil when there's no description.

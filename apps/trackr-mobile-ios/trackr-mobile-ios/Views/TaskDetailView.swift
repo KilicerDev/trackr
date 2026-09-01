@@ -325,8 +325,43 @@ struct TaskDetailView: View {
                 Divider().padding(.leading, 14)
                 sessionRow(model)
             }
+            if let source = task.sourceTicket {
+                Divider().padding(.leading, 14)
+                sourceTicketRow(source)
+            }
         }
         .cardStyle(padded: false)
+    }
+
+    /// Back-link to the ticket this task was converted from — jumps to the
+    /// Tickets tab and pushes the ticket's detail.
+    private func sourceTicketRow(_ source: ConversionLink) -> some View {
+        Button {
+            guard let model,
+                  let ticket = model.tickets.first(where: { $0.uuid == source.uuid })
+            else { return }
+            model.selectedTab = .tickets
+            model.ticketPath = [ticket]
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "ticket")
+                    .font(.system(size: 15))
+                    .foregroundStyle(Color.accentColor)
+                Text("Created from")
+                    .font(.system(size: 14, weight: .medium))
+                Text(source.displayId)
+                    .font(.system(size: 14, design: .monospaced))
+                    .foregroundStyle(Color(.secondaryLabel))
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.plain)
     }
 
     /// Start a work session bound to this task — Done logs time + notes

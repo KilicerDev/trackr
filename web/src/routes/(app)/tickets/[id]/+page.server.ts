@@ -1,38 +1,19 @@
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import {
-	project,
-	task,
-	ticketFavorite,
-	ticket as ticketTable,
-	thread
-} from '$lib/server/db/app.schema';
+import { ticketFavorite, ticket as ticketTable, thread } from '$lib/server/db/app.schema';
 import { user as userTable } from '$lib/server/db/auth.schema';
-import { assertCan, can, canViewTicket, isPortalUser, isTrackrTeam } from '$lib/server/permissions';
+import { can, canViewTicket, isPortalUser, isTrackrTeam } from '$lib/server/permissions';
 import {
-	addTicketMessage,
 	getTicket,
 	loadAssignableUsers,
 	loadTicketMentionUsers,
 	loadTicketMessages
 } from '$lib/server/tickets';
-import { createTask } from '$lib/server/tasks';
-import { recordAudit } from '$lib/server/audit';
-import { notifyTaskAssigned } from '$lib/server/notify/events/task';
-import { copyAttachments, listAttachments, listAttachmentsForMany } from '$lib/server/attachments';
+import { convertTicketToTask, TicketConvertError } from '$lib/server/ticket-convert';
+import { listLinkedTasks } from '$lib/server/tasks';
+import { listAttachments, listAttachmentsForMany } from '$lib/server/attachments';
 import { m } from '$lib/paraglide/messages';
-
-const ALLOWED_TASK_TYPE = new Set(['task', 'bug', 'improvement', 'feature', 'chore']);
-const ALLOWED_TASK_STATUS = new Set([
-	'backlog',
-	'todo',
-	'in_progress',
-	'paused',
-	'in_review',
-	'done'
-]);
-const ALLOWED_TASK_PRIORITY = new Set(['none', 'low', 'medium', 'high', 'urgent']);
 
 function initials(name: string): string {
 	return name
@@ -136,23 +117,7 @@ export const load: ServerLoad = async ({ params, locals }) => {
 	// (and don't blindly create duplicates). Team-only feature, so only query
 	// when the user can actually convert.
 	const canCreateTask = isTrackrTeam(locals);
-	const linkedTaskRows = await db
-		.select({
-			id: task.id,
-			number: task.number,
-			title: task.title,
-			status: task.status,
-			projectKey: project.key
-		})
-		.from(task)
-		.innerJoin(project, eq(project.id, task.projectId))
-		.where(and(eq(task.sourceTicketId, id), isNull(task.deletedAt)));
-	const linkedTasks = linkedTaskRows.map((r) => ({
-		id: r.id,
-		displayId: `${r.projectKey}-${r.number}`,
-		title: r.title,
-		status: r.status
-	}));
+	const linkedTasks = await listLinkedTasks(id);
 
 	// Source chat thread this ticket was created from (create-ticket-from-thread
 	// flow). Surfaced as a "Created from chat" back-link. Only shown when the
@@ -202,127 +167,40 @@ export const actions: Actions = {
 	// Convert a ticket into a linked project task. Team-only: org members and
 	// portal clients never see the entry point and are rejected here too. The
 	// ticket is never deleted — it's flipped out of triage and linked.
+	// Convert a ticket into a linked project task — shared flow, see
+	// $lib/server/ticket-convert.ts (also used by POST /api/v1/tickets/[id]/tasks).
 	createTask: async ({ request, params, locals, url }) => {
-		if (!locals.user) throw error(401, m.tickets_not_authenticated());
-		const me = locals.user;
 		const ticketId = params.id;
 		if (!ticketId) return fail(404, { message: m.tickets_not_found() });
-		if (!isTrackrTeam(locals)) throw error(403, m.tickets_no_access());
-
-		const t = await getTicket(ticketId);
-		if (!t) return fail(404, { message: m.tickets_not_found() });
 
 		const form = await request.formData();
-		const title = String(form.get('title') ?? '').trim();
-		const description = String(form.get('description') ?? '').trim() || null;
-		const projectKey = String(form.get('project') ?? '').trim();
-		const typeRaw = String(form.get('type') ?? 'task');
-		const statusRaw = String(form.get('status') ?? 'todo');
-		const priorityRaw = String(form.get('priority') ?? 'medium');
 		const due = String(form.get('due') ?? '').trim();
 		const estimateRaw = String(form.get('estimate') ?? '').trim();
-		const assigneeIds = form
-			.getAll('assignees')
-			.map((v) => String(v))
-			.filter(Boolean);
 
-		if (!title) return fail(400, { message: m.tasks_err_title_required() });
-		if (!projectKey) return fail(400, { message: m.tasks_err_project_required() });
-
-		// Clamp enums to defaults rather than failing — the modal sends valid
-		// values, this just guards against tampering / drift.
-		const type = ALLOWED_TASK_TYPE.has(typeRaw) ? typeRaw : 'task';
-		const status = ALLOWED_TASK_STATUS.has(statusRaw) ? statusRaw : 'todo';
-		const priority = ALLOWED_TASK_PRIORITY.has(priorityRaw) ? priorityRaw : 'medium';
-
-		const [p] = await db
-			.select({ id: project.id, key: project.key, orgId: project.orgId })
-			.from(project)
-			.where(eq(project.key, projectKey))
-			.limit(1);
-		if (!p) return fail(400, { message: m.tasks_err_project_not_found({ key: projectKey }) });
-
-		await assertCan(locals, 'project.tasks.create', { projectId: p.id });
-
-		// Carry the ticket's open checklist items into the new task. Item ids are
-		// preserved so the two stay linked: completing one on the task mirrors back
-		// onto the ticket (see syncTicketChecklistFromTask). Already-done items are
-		// left behind — the task tracks the remaining work.
-		const carriedChecklist = (t.checklist ?? [])
-			.filter((it) => !it.done)
-			.map((it) => ({ id: it.id, text: it.text, done: false }));
-
-		let created: Awaited<ReturnType<typeof createTask>>;
 		try {
-			created = await createTask({
-				projectId: p.id,
-				projectKey: p.key,
-				title,
-				description,
-				status,
-				priority,
-				type,
+			const created = await convertTicketToTask(locals, {
+				ticketId,
+				title: String(form.get('title') ?? ''),
+				description: String(form.get('description') ?? ''),
+				projectKey: String(form.get('project') ?? '').trim() || undefined,
+				type: String(form.get('type') ?? 'task'),
+				status: String(form.get('status') ?? 'todo'),
+				priority: String(form.get('priority') ?? 'medium'),
 				dueDate: due ? new Date(due) : null,
 				estimateMinutes: estimateRaw ? Number(estimateRaw) : null,
-				checklist: carriedChecklist,
-				assigneeIds,
-				createdBy: me.id,
-				sourceTicketId: ticketId
+				assigneeIds: form
+					.getAll('assignees')
+					.map((v) => String(v))
+					.filter(Boolean),
+				origin: url.origin
 			});
+			return { ok: true, displayId: created.displayId };
 		} catch (err) {
-			console.error('ticket→task create failed', err);
-			return fail(500, { message: m.tickets_create_task_failed() });
+			if (err instanceof TicketConvertError) {
+				if (err.status === 401 || err.status === 403) throw error(err.status, err.message);
+				return fail(err.status, { message: err.message });
+			}
+			throw err;
 		}
-
-		// Carry the ticket's attachments over to the new task, scoped like a
-		// direct task upload (project, no org). The stored bytes are shared, not
-		// duplicated — see copyAttachments. Best-effort: the task already exists,
-		// so a failure is logged, not surfaced as a failed conversion.
-		try {
-			await copyAttachments({
-				from: { entityType: 'ticket', entityId: ticketId },
-				to: { entityType: 'task', entityId: created.id },
-				orgId: null,
-				projectId: p.id
-			});
-		} catch (err) {
-			console.error('ticket→task attachment copy failed', err);
-		}
-
-		// Leave an agents-only breadcrumb linking the new task. Best-effort: the
-		// task already exists, so a failure here is logged, not surfaced as a
-		// failed conversion. (The ticket's status is left untouched — agents move
-		// it manually.)
-		try {
-			await addTicketMessage({
-				ticketId,
-				authorId: me.id,
-				body: m.tickets_note_linked_task({ ref: created.displayId }),
-				isInternalNote: true,
-				authorIsAgent: true
-			});
-		} catch (err) {
-			console.error('ticket post-convert update failed', err);
-		}
-
-		// Notify newly-assigned users (mirrors the /tasks create action).
-		void notifyTaskAssigned({
-			task: { id: created.id, displayId: created.displayId, title, orgId: p.orgId },
-			assigneeIds: created.assignedIds,
-			actor: { id: me.id, name: me.name },
-			origin: url.origin
-		}).catch((err) => console.error('ticket→task notify failed', err));
-
-		void recordAudit({
-			type: 'ticket.convert',
-			actorId: me.id,
-			targetType: 'ticket',
-			targetId: ticketId,
-			targetLabel: `${t.displayId} · ${t.subject}`,
-			orgId: t.orgId,
-			meta: { taskRef: created.displayId, taskId: created.id, projectId: p.id }
-		});
-
-		return { ok: true, displayId: created.displayId };
 	}
 };

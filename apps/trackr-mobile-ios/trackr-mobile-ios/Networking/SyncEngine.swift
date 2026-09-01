@@ -202,6 +202,14 @@ final class SyncEngine {
         guard let detail = try? await client.ticket(uuid: uuid) else { return }
         var mapped = Mapper.ticket(detail.ticket, users: detail.authors, messages: detail.messages)
         mapped.serverMessageCount = nil
+        mapped.linkedTasks = (detail.linkedTasks ?? []).map {
+            ConversionLink(
+                uuid: $0.id,
+                displayId: $0.displayId,
+                title: $0.title,
+                status: TaskStatus(api: $0.status) ?? .todo
+            )
+        }
         if let index = model.tickets.firstIndex(where: { $0.uuid == uuid }) {
             model.tickets[index] = mapped
         } else {
@@ -278,6 +286,22 @@ final class SyncEngine {
         Task {
             try? await client.updateTask(uuid: uuid, patch: patch)
             await refreshTasks()
+        }
+    }
+
+    /// Ticket checklist edits have their own endpoint (participant-editable,
+    /// unlike the agent-only property PATCH). Whole-array replace.
+    func pushTicketChecklist(_ ticket: TicketItem) {
+        guard let uuid = ticket.uuid else { return }
+        let items = ticket.checklist.map {
+            API.ChecklistEntry(id: $0.id, text: $0.text, done: $0.done)
+        }
+        Task {
+            do {
+                try await client.updateTicketChecklist(uuid: uuid, items: items)
+            } catch {
+                print("[sync] ticket checklist push failed:", error)
+            }
         }
     }
 
@@ -383,6 +407,47 @@ final class SyncEngine {
                 try? await client.updateTask(uuid: created.id, patch: patch)
             }
             await refreshTasks()
+        }
+    }
+
+    /// Convert a ticket into a linked project task (staff-only server-side).
+    /// The server carries the open checklist + attachments and drops an
+    /// internal breadcrumb note on the ticket, so refresh both sides.
+    func convertTicketToTask(
+        ticketUUID: String,
+        title: String,
+        projectKey: String,
+        description: String?,
+        status: TaskStatus,
+        priority: TaskPriority,
+        type: TaskType,
+        due: Date?,
+        estimate: Int?,
+        assignees: [UserRef]
+    ) {
+        Task {
+            do {
+                let created = try await client.convertTicketToTask(
+                    uuid: ticketUUID,
+                    body: .init(
+                        title: title,
+                        projectKey: projectKey,
+                        description: description,
+                        status: status.apiValue,
+                        priority: priority.apiValue,
+                        type: type.apiValue,
+                        due: due.map { APIDate.dayString($0) },
+                        estimate: estimate,
+                        assigneeIds: assignees.compactMap(\.serverId)
+                    )
+                )
+                print("[sync] ticket→task created \(created.displayId ?? created.id)")
+            } catch {
+                print("[sync] ticket→task convert failed:", error)
+                return
+            }
+            await refreshTasks()
+            await loadTicketDetail(uuid: ticketUUID)
         }
     }
 

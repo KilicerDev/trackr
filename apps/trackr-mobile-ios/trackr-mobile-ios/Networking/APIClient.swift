@@ -93,6 +93,11 @@ actor APIClient {
     }
 
     @discardableResult
+    func put<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
+        try await send("PUT", path, query: [], body: body, authenticated: true)
+    }
+
+    @discardableResult
     func delete<T: Decodable, B: Encodable>(_ path: String, body: B) async throws -> T {
         try await send("DELETE", path, query: [], body: body, authenticated: true)
     }

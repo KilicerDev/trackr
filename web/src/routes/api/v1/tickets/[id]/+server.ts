@@ -25,6 +25,7 @@ import {
 	type TicketPriority,
 	type TicketStatus
 } from '$lib/server/tickets';
+import { listLinkedTasks } from '$lib/server/tasks';
 import { notifyTicketUpdated } from '$lib/server/notify/events/ticket';
 import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
@@ -61,6 +62,9 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 				color: u.color
 			}))
 		: [];
+	// Tasks converted from this ticket — internal back-links, staff-only.
+	const linkedTasks = staff ? await listLinkedTasks(ticket.id) : [];
+
 	return json({
 		ticket,
 		messages,
@@ -68,7 +72,8 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		assignableUsers,
 		canEdit,
 		canComment,
-		canInternalNote: staff
+		canInternalNote: staff,
+		linkedTasks
 	});
 };
 

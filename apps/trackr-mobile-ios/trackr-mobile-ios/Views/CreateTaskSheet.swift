@@ -15,8 +15,16 @@ struct CreateTaskSheet: View {
     var model: AppModel? = nil
     /// Preselected project name (e.g. when opened from a project's page).
     var initialProject: String? = nil
+    /// Seeds for flows that prefill the sheet (ticket → task conversion).
+    var initialTitle: String? = nil
+    var initialPriority: TaskPriority? = nil
+    /// Footer under the title section (the conversion hint); nil hides it.
+    var footer: String? = nil
+    var navTitle: String = "New Task"
     let onCreate: (TaskItem) -> Void
     @Environment(\.dismiss) private var dismiss
+
+    @State private var seeded = false
 
     @State private var title = ""
     @State private var details = ""
@@ -51,6 +59,8 @@ struct CreateTaskSheet: View {
                     TextField("Add description…", text: $details, axis: .vertical)
                         .lineLimit(3...8)
                         .font(.system(size: 15))
+                } footer: {
+                    if let footer { Text(footer) }
                 }
 
                 Section("Details") {
@@ -100,7 +110,7 @@ struct CreateTaskSheet: View {
                 }
             }
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle("New Task")
+            .navigationTitle(navTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -116,6 +126,11 @@ struct CreateTaskSheet: View {
                 }
             }
             .onAppear {
+                if !seeded {
+                    seeded = true
+                    if let initialTitle { title = initialTitle }
+                    if let initialPriority { priority = initialPriority }
+                }
                 if project.isEmpty {
                     project = initialProject ?? projectOptions.first ?? ""
                 }
@@ -142,6 +157,7 @@ struct CreateTaskSheet: View {
             priority: priority,
             type: type,
             project: project,
+            details: details.trimmingCharacters(in: .whitespacesAndNewlines),
             due: hasDue ? due : nil,
             estimate: estimate,
             assignees: assignees.sorted { $0.name < $1.name }

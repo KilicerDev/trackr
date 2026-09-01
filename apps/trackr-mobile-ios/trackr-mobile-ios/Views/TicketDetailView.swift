@@ -20,6 +20,7 @@ struct TicketDetailView: View {
     @State private var baseline: TicketItem?
     @State private var showingConversation = false
     @State private var showingAddTag = false
+    @State private var showingConvert = false
 
     var body: some View {
         ScrollView {
@@ -27,6 +28,9 @@ struct TicketDetailView: View {
                 header
                 properties
                 section(checklistTitle) { checklistCard }
+                if !ticket.linkedTasks.isEmpty {
+                    section("Linked tasks") { linkedTasksCard }
+                }
                 if !ticket.tags.isEmpty {
                     section("Tags") { tagsRow }
                 }
@@ -53,6 +57,7 @@ struct TicketDetailView: View {
         }
         .onChange(of: ticket.assignees) { persist() }
         .onChange(of: ticket.tags) { persist() }
+        .onChange(of: ticket.checklist) { persistChecklist() }
         .onAppear {
             baseline = ticket
             // Screen-appear revalidation: the list payload has no messages,
@@ -73,6 +78,17 @@ struct TicketDetailView: View {
         .navigationTitle(ticket.id)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            // Ticket → task conversion is a staff feature (web parity).
+            if model?.isStaff ?? false {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingConvert = true
+                    } label: {
+                        Image(systemName: "checkmark.circle")
+                    }
+                }
+                ToolbarSpacer(.fixed, placement: .topBarTrailing)
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     showingAddTag = true
@@ -94,6 +110,38 @@ struct TicketDetailView: View {
         .toolbarVisibility(showingConversation ? .hidden : .visible, for: .tabBar)
         .navigationDestination(isPresented: $showingConversation) {
             TicketConversationView(ticket: $ticket, model: model)
+        }
+        .sheet(isPresented: $showingConvert) {
+            // The regular task-creation sheet, seeded from the ticket — only
+            // the submit path differs (convert endpoint links the two).
+            CreateTaskSheet(
+                tasks: model?.tasks ?? [],
+                model: model,
+                initialTitle: ticket.subject,
+                initialPriority: ticket.priority,
+                footer:
+                    "Open checklist items and attachments carry over; an internal note links the task on the ticket.",
+                navTitle: "Create Task"
+            ) { task in
+                guard let uuid = ticket.uuid,
+                      let key = model?.projects.first(where: { $0.name == task.project })?.key
+                else {
+                    print("[convert] no ticket uuid or unresolved project '\(task.project)'")
+                    return
+                }
+                model?.sync?.convertTicketToTask(
+                    ticketUUID: uuid,
+                    title: task.title,
+                    projectKey: key,
+                    description: task.details.isEmpty ? nil : task.details,
+                    status: task.status,
+                    priority: task.priority,
+                    type: task.type,
+                    due: task.due,
+                    estimate: task.estimate,
+                    assignees: task.assignees
+                )
+            }
         }
         .sheet(isPresented: $showingAddTag) {
             AddTagSheet(
@@ -247,6 +295,42 @@ struct TicketDetailView: View {
         ChecklistCard(items: $ticket.checklist)
     }
 
+    /// Tasks converted out of this ticket — each row jumps to the Tasks tab
+    /// and pushes the task's detail.
+    private var linkedTasksCard: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(ticket.linkedTasks.enumerated()), id: \.element.uuid) { index, link in
+                if index > 0 { Divider().padding(.leading, 14) }
+                Button {
+                    guard let model,
+                          let task = model.tasks.first(where: { $0.uuid == link.uuid })
+                    else { return }
+                    model.selectedTab = .tasks
+                    model.taskPath = [task]
+                } label: {
+                    HStack(spacing: 10) {
+                        StatusDot(status: link.status, size: 15)
+                        Text(link.displayId)
+                            .font(.system(size: 13, design: .monospaced))
+                            .foregroundStyle(Color(.secondaryLabel))
+                        Text(link.title)
+                            .font(.system(size: 14, weight: .medium))
+                            .lineLimit(1)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Color(.tertiaryLabel))
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 11)
+                    .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .cardStyle(padded: false)
+    }
+
     private var tagsRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
@@ -320,6 +404,18 @@ struct TicketDetailView: View {
     /// Write back into the shared model and push the API-editable fields
     /// (status/priority/category/assignees/tags — checklist/subject are
     /// desktop-only on the server and stay local).
+    /// Checklist edits go to their own participant-editable endpoint, not the
+    /// agent-only property PATCH — and keep `baseline` in sync so a later
+    /// persist() doesn't re-push properties for a checklist-only change.
+    private func persistChecklist() {
+        guard let model else { return }
+        if let index = model.tickets.firstIndex(where: { $0.id == ticket.id }) {
+            model.tickets[index].checklist = ticket.checklist
+        }
+        baseline?.checklist = ticket.checklist
+        model.sync?.pushTicketChecklist(ticket)
+    }
+
     private func persist() {
         guard ticket != baseline else { return }
         baseline = ticket

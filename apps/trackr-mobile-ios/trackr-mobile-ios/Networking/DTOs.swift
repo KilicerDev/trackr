@@ -114,6 +114,21 @@ enum API {
         let timeLogs: [TaskTimeLog]?
         let plannedFor: String?
         let updated: String?
+        let sourceTicket: SourceTicket?
+    }
+
+    /// Back-link from a converted task to its source ticket.
+    struct SourceTicket: Codable {
+        let id: String
+        let displayId: String
+    }
+
+    /// Back-link from a ticket to a task converted out of it.
+    struct LinkedTask: Codable {
+        let id: String
+        let displayId: String
+        let title: String
+        let status: String
     }
 
     struct TasksResponse: Codable {
@@ -213,6 +228,7 @@ enum API {
         let canEdit: Bool
         let canComment: Bool
         let canInternalNote: Bool
+        let linkedTasks: [LinkedTask]?
     }
 
     // MARK: - Chat

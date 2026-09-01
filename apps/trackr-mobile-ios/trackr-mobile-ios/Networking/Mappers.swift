@@ -244,6 +244,9 @@ enum Mapper {
                     date: APIDate.parse(comment.createdAt) ?? APIDate.parse(comment.date) ?? .now,
                     text: comment.text
                 )
+            },
+            sourceTicket: dto.sourceTicket.map {
+                ConversionLink(uuid: $0.id, displayId: $0.displayId)
             }
         )
     }

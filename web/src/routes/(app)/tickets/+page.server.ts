@@ -20,6 +20,7 @@ import {
 	loadAssignableUsers,
 	loadTicketDisplayUsers,
 	loadTickets,
+	sanitizeTicketChecklist,
 	softDeleteTicket,
 	updateTicket,
 	type TicketEventMeta,
@@ -681,23 +682,13 @@ export const actions: Actions = {
 		if (!t) return fail(404, { message: m.tickets_not_found() });
 		if (!(await canViewTicket(locals, t))) return fail(403, { message: m.tickets_no_access() });
 
-		let checklist: { id: string; text: string; done: boolean }[];
+		let checklist: { id: string; text: string; done: boolean }[] | null;
 		try {
-			const raw = JSON.parse(String(form.get('checklist') ?? '[]'));
-			if (!Array.isArray(raw)) return fail(400, { message: m.tasks_err_invalid_checklist() });
-			checklist = raw
-				.slice(0, 100)
-				.map((it) => ({
-					id: typeof it?.id === 'string' && it.id ? it.id : crypto.randomUUID(),
-					text: String(it?.text ?? '')
-						.trim()
-						.slice(0, 500),
-					done: !!it?.done
-				}))
-				.filter((it) => it.text.length > 0);
+			checklist = sanitizeTicketChecklist(JSON.parse(String(form.get('checklist') ?? '[]')));
 		} catch {
-			return fail(400, { message: m.tasks_err_invalid_checklist() });
+			checklist = null;
 		}
+		if (!checklist) return fail(400, { message: m.tasks_err_invalid_checklist() });
 
 		await updateTicket(id, { checklist });
 		return { ok: true };

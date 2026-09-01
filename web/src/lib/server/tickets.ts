@@ -377,6 +377,28 @@ type UpdateTicketInput = {
 	firstResponseAt?: Date;
 };
 
+/**
+ * Sanitize a client-posted checklist array (whole-array replace semantics):
+ * cap at 100 items / 500 chars, drop empties, fill missing ids. Returns null
+ * for a payload that isn't an array at all. Shared by the web `checklist`
+ * action and PUT /api/v1/tickets/[id]/checklist.
+ */
+export function sanitizeTicketChecklist(
+	raw: unknown
+): { id: string; text: string; done: boolean }[] | null {
+	if (!Array.isArray(raw)) return null;
+	return raw
+		.slice(0, 100)
+		.map((it) => ({
+			id: typeof it?.id === 'string' && it.id ? it.id : crypto.randomUUID(),
+			text: String(it?.text ?? '')
+				.trim()
+				.slice(0, 500),
+			done: !!it?.done
+		}))
+		.filter((it) => it.text.length > 0);
+}
+
 // Centralizes the resolved/closed timestamp bookkeeping that the auto-
 // transition helper also depends on.
 export async function updateTicket(ticketId: string, patch: UpdateTicketInput): Promise<void> {

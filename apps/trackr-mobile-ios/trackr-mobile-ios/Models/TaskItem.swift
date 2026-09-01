@@ -23,6 +23,18 @@ struct ChecklistItem: Identifiable, Hashable {
     var done = false
 }
 
+/// Cross-link between a converted ticket and its task (either direction):
+/// TaskItem.sourceTicket points back at the ticket, TicketItem.linkedTasks
+/// forward at the tasks. Navigation resolves the full item by uuid.
+struct ConversionLink: Hashable {
+    var uuid: String
+    var displayId: String
+    var title: String = ""
+    /// Task status for linked-task rows (web parity: StatusDot per row);
+    /// unused on the sourceTicket direction.
+    var status: TaskStatus = .todo
+}
+
 struct TaskComment: Identifiable, Hashable {
     var id: String = UUID().uuidString
     var user: UserRef
@@ -69,6 +81,8 @@ struct TaskItem: Identifiable, Hashable {
     var timeLogs: [TimeLog] = []
     var comments: [TaskComment] = []
     var activity: [ActivityEvent] = []
+    /// Set when this task was converted out of a ticket — the back-link.
+    var sourceTicket: ConversionLink? = nil
 
     var checklistDone: Int { checklist.count { $0.done } }
     var checklistTotal: Int { checklist.count }

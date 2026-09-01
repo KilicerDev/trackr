@@ -37,6 +37,11 @@ export default defineConfig({
 			strategy: ['cookie', 'preferredLanguage', 'baseLocale']
 		})
 	],
+	// Bind the dev server to all interfaces so the iOS simulator / devices on
+	// the LAN can reach it at the Mac's IP (192.168.x.x:5173) — a plain
+	// localhost bind makes every app request fail with "Could not connect".
+	// Keep ORIGIN unset in dev, or /api/auth 404s when accessed via LAN IP.
+	server: { host: true },
 	// Yjs and its bindings MUST be single instances in the browser bundle —
 	// duplicate copies silently break the CRDT (the editor connects but never
 	// syncs and remote cursors never appear). Dedupe + pre-bundle them together.
