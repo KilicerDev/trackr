@@ -57,6 +57,9 @@
 
 	function onKeydown(e: KeyboardEvent) {
 		if (!open || e.key !== 'Escape') return;
+		// A layer below already consumed this Escape (e.g. a composer's
+		// suggestion dropdown closing itself) — the drawer keeps out of it.
+		if (e.defaultPrevented) return;
 		// Defer to any dialog/confirm/command-palette layered on top — they own
 		// Escape and set their own role; closing the drawer too would be a
 		// double-close. The drawer's own <aside> has no dialog role, so it won't

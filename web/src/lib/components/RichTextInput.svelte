@@ -226,6 +226,15 @@
 		menu = null;
 	}
 
+	// The menu owns a key it handles: mark the event consumed so outer layers
+	// (the Drawer's window-level Escape, host shortcuts) don't also act on it —
+	// Escape must close just the menu first, and only a second press the drawer.
+	function consume(e: KeyboardEvent): true {
+		e.preventDefault();
+		e.stopPropagation();
+		return true;
+	}
+
 	function menuKey(e: KeyboardEvent): boolean {
 		if (!menu || !optionCount || e.metaKey || e.ctrlKey) return false;
 		if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
@@ -233,15 +242,15 @@
 			menuEl
 				?.querySelector<HTMLElement>(`[data-option-index="${activeIndex}"]`)
 				?.scrollIntoView({ block: 'nearest' });
-			return true;
+			return consume(e);
 		}
 		if (e.key === 'Enter' || e.key === 'Tab') {
 			pick(activeIndex);
-			return true;
+			return consume(e);
 		}
 		if (e.key === 'Escape') {
 			menu = null;
-			return true;
+			return consume(e);
 		}
 		return false;
 	}
