@@ -6,7 +6,11 @@ import {
 	AttachmentError,
 	listAttachments
 } from '$lib/server/attachments';
-import { ATTACHMENT_ENTITY_TYPES, type AttachmentEntityType } from '$lib/config/attachments';
+import {
+	ATTACHMENT_ENTITY_TYPES,
+	isAllowedNoteFile,
+	type AttachmentEntityType
+} from '$lib/config/attachments';
 import type { RequestHandler } from './$types';
 
 const ENTITY_TYPES = new Set<string>(ATTACHMENT_ENTITY_TYPES);
@@ -40,6 +44,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 	if (!(file instanceof File)) {
 		return json({ message: 'Missing file' }, { status: 400 });
+	}
+	// Notes take embeddable images (the editor's image node) plus downloadable
+	// document formats — see NOTE_FILE_EXTENSIONS.
+	if (entityType === 'note' && !file.type.startsWith('image/') && !isAllowedNoteFile(file.name)) {
+		return json(
+			{ message: 'Only PDF, XML, Excel, ZIP and TXT files can be attached to notes.' },
+			{ status: 400 }
+		);
 	}
 
 	const ctx = await resolveEntityContext(entityType as AttachmentEntityType, entityId);

@@ -10,8 +10,10 @@
 	import { collabSchemaExtensions, COLLAB_FIELD } from '$lib/editor/extensions';
 	import { SlashCommand } from './slash-command.svelte';
 	import { WikiImageUpload } from './image-upload';
+	import { WikiFileUpload } from './file-upload';
+	import { FileAttachmentWithControls, WikiImageWithControls } from './media-node-views';
 	import { MarkdownPaste } from './markdown-paste';
-	import type { AttachmentEntityType } from '$lib/config/attachments';
+	import { NOTE_FILE_EXTENSIONS, type AttachmentEntityType } from '$lib/config/attachments';
 	import { m } from '$lib/paraglide/messages';
 	import './wiki-editor.css';
 
@@ -121,12 +123,24 @@
 				}
 			},
 			extensions: [
-				...collabSchemaExtensions,
+				// The media nodes are swapped for versions with hover-control node
+				// views (same schema — addNodeView is view-only, so the server-side
+				// Yjs transformer stays in lockstep).
+				...collabSchemaExtensions.filter((e) => e.name !== 'image' && e.name !== 'fileAttachment'),
+				WikiImageWithControls,
+				FileAttachmentWithControls,
 				Collaboration.configure({ document: ydoc, field: COLLAB_FIELD }),
 				CollaborationCaret.configure({ provider, user }),
 				Placeholder.configure({ placeholder }),
 				SlashCommand,
 				WikiImageUpload.configure({ entityId: pageId, entityType }),
+				WikiFileUpload.configure({
+					entityId: pageId,
+					entityType,
+					// Notes restrict document formats (server enforces the same list);
+					// wiki pages accept any file type, like ticket/task attachments.
+					allowedExtensions: entityType === 'note' ? NOTE_FILE_EXTENSIONS : undefined
+				}),
 				MarkdownPaste
 			],
 			onUpdate: ({ editor }) => onUpdate?.(editor),

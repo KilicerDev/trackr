@@ -24,6 +24,25 @@ export type ThumbnailFormat = (typeof THUMBNAIL_FORMATS)[number];
 export const THUMBNAIL_WIDTH = 480;
 
 /**
+ * File types a note accepts — document formats meant to be downloaded, not
+ * previewed: PDF, XML, Excel, ZIP, plain text. Matched by extension (browsers
+ * report inconsistent MIME values for these formats); the upload endpoint
+ * enforces the same list server-side.
+ */
+export const NOTE_FILE_EXTENSIONS = ['pdf', 'xml', 'xls', 'xlsx', 'zip', 'txt'] as const;
+
+/** `accept` attribute value for note file pickers. */
+export const NOTE_FILE_ACCEPT = NOTE_FILE_EXTENSIONS.map((e) => `.${e}`).join(',');
+
+/** Whether `filename` is one of the formats notes accept. */
+export function isAllowedNoteFile(filename: string): boolean {
+	const dot = filename.lastIndexOf('.');
+	if (dot < 0) return false;
+	const ext = filename.slice(dot + 1).toLowerCase();
+	return (NOTE_FILE_EXTENSIONS as readonly string[]).includes(ext);
+}
+
+/**
  * The kinds of entity an attachment can hang off. Mirrors the column strings
  * stored in `attachment.entity_type`. Heterogeneous parents (org-scoped
  * tickets, project-scoped tasks, team-only wiki pages, two comment tables) is

@@ -14,9 +14,17 @@
 		currentUserId?: string | null;
 		/** Called after a successful delete; if omitted, falls back to invalidateAll. */
 		ondeleted?: (id: string) => void;
+		/** The row's main link downloads the file instead of opening it inline. */
+		downloadOnly?: boolean;
 	}
 
-	let { attachments, canDelete = false, currentUserId = null, ondeleted }: Props = $props();
+	let {
+		attachments,
+		canDelete = false,
+		currentUserId = null,
+		ondeleted,
+		downloadOnly = false
+	}: Props = $props();
 
 	let deleting = $state<string | null>(null);
 
@@ -74,10 +82,14 @@
 					     file, while keeping a single link in the accessibility tree. The
 					     action buttons below sit above it via `relative`. -->
 					<a
-						href={`/api/attachments/${att.id}`}
-						target="_blank"
+						href={downloadOnly
+							? `/api/attachments/${att.id}/download`
+							: `/api/attachments/${att.id}`}
+						target={downloadOnly ? undefined : '_blank'}
 						rel="noopener"
-						title={m.attach_open({ filename: att.filename })}
+						title={downloadOnly
+							? m.attach_download({ filename: att.filename })
+							: m.attach_open({ filename: att.filename })}
 						class="block truncate text-[14px] text-text group-hover:underline after:absolute after:inset-0 after:rounded-lg"
 					>
 						{att.filename}

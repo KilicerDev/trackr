@@ -113,7 +113,11 @@ export const WikiImageUpload = Extension.create<WikiImageUploadOptions>({
 						for (const file of files) void uploadAndInsert(editor, entityType, entityId, file);
 						return true;
 					},
-					handleDrop: (_view, event) => {
+					handleDrop: (_view, event, _slice, moved) => {
+						// An internal node move is never an upload — Chrome puts the
+						// dragged image's FILE into the dataTransfer, so without this
+						// guard moving an embedded image would re-upload a duplicate.
+						if (moved) return false;
 						const dt = (event as DragEvent).dataTransfer;
 						const files = imageFiles(dt?.files);
 						if (!files.length) return false;

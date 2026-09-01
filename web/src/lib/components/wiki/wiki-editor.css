@@ -212,3 +212,118 @@
 	outline: 2px solid var(--color-accent, #ef7a6d);
 	outline-offset: 2px;
 }
+
+/* ─── Embedded media node views (media-node-views.ts) ──────────────────────
+   Images and file chips share the wrapper + hover-controls pattern: the
+   download/delete buttons fade in on hover; delete is hidden in read-only
+   editors via the contenteditable attribute PM keeps on the root. */
+
+.wiki-editor .wiki-media {
+	position: relative;
+}
+.wiki-editor .wiki-media.ProseMirror-selectednode {
+	outline: 2px solid var(--color-accent, #ef7a6d);
+	outline-offset: 2px;
+	border-radius: 10px;
+}
+/* Clicking outside blurs the editor — the selection ring goes with the focus. */
+.wiki-editor .ProseMirror:not(.ProseMirror-focused) .ProseMirror-selectednode {
+	outline: none;
+}
+
+.wiki-editor .wiki-image-wrap {
+	display: block;
+	margin: 0.5rem 0;
+	max-width: 100%;
+	width: fit-content;
+	cursor: grab;
+}
+.wiki-editor .wiki-image-wrap .wiki-image {
+	margin: 0;
+}
+
+/* Inline file chip (fileAttachment node): a card in the document flow. */
+.wiki-editor .wiki-file {
+	display: flex;
+	align-items: baseline;
+	gap: 0.5rem;
+	margin: 0.5rem 0;
+	padding: 0.5rem 0.75rem;
+	border: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+	border-radius: 10px;
+	background: var(--color-surface, rgba(127, 127, 127, 0.06));
+	cursor: grab;
+	transition:
+		border-color 120ms ease,
+		background-color 120ms ease;
+}
+.wiki-editor .wiki-file:hover {
+	border-color: var(--color-border-strong, var(--color-border));
+	background: var(--color-surface-2, rgba(127, 127, 127, 0.12));
+}
+.wiki-editor .wiki-file__clip {
+	font-size: 0.85em;
+	align-self: center;
+}
+.wiki-editor .wiki-file__name {
+	color: var(--color-text, inherit);
+	font-size: 14px;
+	font-weight: 500;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.wiki-editor .wiki-file__size {
+	color: var(--color-text-3, #888);
+	font-size: 12px;
+	flex-shrink: 0;
+}
+
+/* Hover controls: download + delete. */
+.wiki-editor .wiki-media-actions {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	display: flex;
+	gap: 4px;
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 120ms ease;
+}
+.wiki-editor .wiki-file .wiki-media-actions {
+	top: 50%;
+	transform: translateY(-50%);
+}
+.wiki-editor .wiki-media:hover .wiki-media-actions {
+	opacity: 1;
+	pointer-events: auto;
+}
+/* The `a.` variants outrank the generic `.ProseMirror a` link styling. */
+.wiki-editor .ProseMirror a.wiki-media-btn,
+.wiki-editor .wiki-media-btn {
+	display: grid;
+	place-items: center;
+	width: 28px;
+	height: 28px;
+	border-radius: 8px;
+	border: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+	background: var(--color-bg-elev, var(--color-surface, #fff));
+	color: var(--color-text-3, #888);
+	text-decoration: none;
+	cursor: pointer;
+	transition:
+		color 120ms ease,
+		border-color 120ms ease;
+}
+.wiki-editor .ProseMirror a.wiki-media-btn:hover,
+.wiki-editor .wiki-media-btn:hover {
+	color: var(--color-text, inherit);
+	border-color: var(--color-border-strong, var(--color-border));
+}
+.wiki-editor .wiki-media-btn.wiki-media-delete:hover {
+	color: #ef4444;
+}
+/* Read-only editors keep the download but never offer delete. */
+.wiki-editor .ProseMirror[contenteditable='false'] .wiki-media-delete {
+	display: none;
+}

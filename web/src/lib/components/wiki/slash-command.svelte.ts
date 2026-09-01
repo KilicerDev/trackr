@@ -137,6 +137,20 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 			editor.chain().focus().deleteRange(range).run();
 			editor.commands.openWikiImagePicker();
 		}
+	},
+	{
+		id: 'file',
+		get label() {
+			return m.wiki_slash_file_label();
+		},
+		get hint() {
+			return m.wiki_slash_file_hint();
+		},
+		icon: '📎',
+		run: ({ editor, range }) => {
+			editor.chain().focus().deleteRange(range).run();
+			editor.commands.openWikiFilePicker();
+		}
 	}
 ];
 

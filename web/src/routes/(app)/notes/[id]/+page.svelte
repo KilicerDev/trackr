@@ -495,6 +495,20 @@
 
 <svelte:head><title>{note.title || m.notes_untitled()}</title></svelte:head>
 
+<!-- A FILE drop that misses the editor must not navigate the browser to the
+     file (drops ON the editor are handled by WikiFileUpload/WikiImageUpload).
+     Scoped to drags carrying Files: blanket preventDefault on dragover forces
+     a "copy" drop effect, which breaks the editor's own drag-to-move (nodes
+     duplicate instead of moving). -->
+<svelte:window
+	ondragover={(e) => {
+		if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
+	}}
+	ondrop={(e) => {
+		if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
+	}}
+/>
+
 <div class="relative min-h-full">
 	<header
 		class="sticky top-0 z-20 flex h-[57px] items-center gap-3 border-b border-border/70 bg-bg/80 px-8 backdrop-blur-md"

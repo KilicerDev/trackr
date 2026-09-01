@@ -18,6 +18,12 @@
 		label?: string;
 		/** Disable the button-sized drop target when a parent owns a larger one. */
 		dropzone?: boolean;
+		/**
+		 * Restrict picks to these extensions (e.g. ".pdf,.zip"). Also filters
+		 * dropped files, which the input's accept attribute can't catch; the
+		 * server re-validates regardless.
+		 */
+		accept?: string;
 	}
 
 	let {
@@ -25,7 +31,8 @@
 		entityId,
 		onuploaded,
 		label = m.attach_attach_files(),
-		dropzone = true
+		dropzone = true,
+		accept
 	}: Props = $props();
 
 	let uploading = $state(false);
@@ -49,6 +56,15 @@
 
 	export async function upload(incoming: File[]) {
 		if (uploading) return;
+		if (accept) {
+			const exts = accept.split(',').map((s) => s.trim().toLowerCase());
+			const allowed = (f: File) => exts.some((e) => f.name.toLowerCase().endsWith(e));
+			for (const f of incoming.filter((f) => !allowed(f))) {
+				showToast('err', m.attach_type_not_allowed({ filename: f.name }));
+			}
+			incoming = incoming.filter(allowed);
+			if (!incoming.length) return;
+		}
 		const { accepted, errors } = selectStageable(incoming, 0);
 		for (const err of errors) showToast('err', err);
 		if (!accepted.length) return;
@@ -86,7 +102,7 @@
 		/>
 		<span>{uploading ? m.attach_uploading() : label}</span>
 	</button>
-	<input bind:this={input} type="file" multiple hidden onchange={onPick} />
+	<input bind:this={input} type="file" multiple hidden {accept} onchange={onPick} />
 {/snippet}
 
 {#if dropzone}
