@@ -21,6 +21,9 @@ struct ChatMessageItem: Identifiable, Hashable {
     var text: String
     /// System marker (kind='system'), e.g. a ticket created from the thread.
     var systemTicketId: String?
+    var attachments: [AttachmentItem] = []
+    /// Optimistic-only: files still uploading for a just-sent message.
+    var pendingFiles: [PickedFile] = []
 
     var isSystem: Bool { systemTicketId != nil }
 }

@@ -40,6 +40,9 @@ struct TaskComment: Identifiable, Hashable {
     var user: UserRef
     var date: Date
     var text: String
+    var attachments: [AttachmentItem] = []
+    /// Optimistic-only: files still uploading for a just-sent comment.
+    var pendingFiles: [PickedFile] = []
 }
 
 /// A system event on the activity timeline ("changed status to Done") —
@@ -81,6 +84,9 @@ struct TaskItem: Identifiable, Hashable {
     var timeLogs: [TimeLog] = []
     var comments: [TaskComment] = []
     var activity: [ActivityEvent] = []
+    /// Detail-fetch only — list rows arrive without attachments and the
+    /// refresh merge preserves loaded ones (like ticket messages).
+    var attachments: [AttachmentItem] = []
     /// Set when this task was converted out of a ticket — the back-link.
     var sourceTicket: ConversionLink? = nil
 

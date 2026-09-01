@@ -203,6 +203,22 @@ enum Mapper {
         }
     }
 
+    // MARK: Attachments
+
+    static func attachment(_ dto: API.Attachment) -> AttachmentItem {
+        AttachmentItem(
+            id: dto.id,
+            filename: dto.filename,
+            mimeType: dto.mimeType,
+            sizeBytes: dto.sizeBytes,
+            width: dto.width,
+            height: dto.height,
+            hasThumbnail: dto.hasThumbnail,
+            uploadedById: dto.uploadedBy,
+            createdAt: APIDate.parse(dto.createdAt) ?? .now
+        )
+    }
+
     // MARK: Tasks
 
     static func task(
@@ -242,7 +258,8 @@ enum Mapper {
                     user: user(id: comment.user, in: users)
                         ?? UserRef(name: "Unknown", initials: "?", color: .gray),
                     date: APIDate.parse(comment.createdAt) ?? APIDate.parse(comment.date) ?? .now,
-                    text: comment.text
+                    text: comment.text,
+                    attachments: (comment.files ?? []).map { attachment($0) }
                 )
             },
             sourceTicket: dto.sourceTicket.map {
@@ -332,7 +349,8 @@ enum Mapper {
                         user: author,
                         date: date,
                         text: message.body,
-                        internalNote: message.isInternalNote
+                        internalNote: message.isInternalNote,
+                        attachments: (message.attachments ?? []).map { attachment($0) }
                     )
                 )
             }
@@ -406,7 +424,8 @@ enum Mapper {
             user: author,
             date: APIDate.parse(dto.createdAt) ?? .now,
             text: dto.body,
-            systemTicketId: ticketRef
+            systemTicketId: ticketRef,
+            attachments: (dto.files ?? []).map { attachment($0) }
         )
     }
 

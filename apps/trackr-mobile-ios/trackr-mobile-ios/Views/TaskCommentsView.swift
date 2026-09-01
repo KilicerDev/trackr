@@ -82,6 +82,13 @@ struct TaskCommentsView: View {
                     withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                 }
             }
+            // Adopt the server's comments as soon as a refetch lands (sent
+            // comment + its uploads, SSE) — the optimistic row with pending
+            // previews is replaced by the real comment with attachments.
+            .onChange(of: model?.tasks.first { $0.id == task.id }?.comments) { _, fresh in
+                guard let fresh, fresh != task.comments else { return }
+                task.comments = fresh
+            }
         }
         .background(Color.webBackground)
         .navigationTitle("Comments")
@@ -89,9 +96,7 @@ struct TaskCommentsView: View {
         .safeAreaInset(edge: .bottom) {
             MessageComposer(text: $draft,
                             mentionCandidates: (model?.assignableUsers ?? []) + task.comments.map(\.user),
-                            onAttach: {
-                // Attachments — wired up later
-            }, onSend: send)
+                            onSendFiles: send)
         }
     }
 
@@ -105,7 +110,10 @@ struct TaskCommentsView: View {
                 action: "commented",
                 date: comment.date
             ) {
-                MessageCard(text: comment.text)
+                MessageCard(
+                    text: comment.text, attachments: comment.attachments,
+                    pendingFiles: comment.pendingFiles
+                )
             }
         case .time(let log):
             TimelineRow(
@@ -131,15 +139,18 @@ struct TaskCommentsView: View {
         }
     }
 
-    private func send() {
+    private func send(files: [PickedFile]) {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         task.comments.append(
-            TaskComment(user: model?.me ?? TaskItem.sampleUsers[0], date: .now, text: text)
+            TaskComment(
+                user: model?.me ?? TaskItem.sampleUsers[0], date: .now, text: text,
+                pendingFiles: files
+            )
         )
         draft = ""
         if let uuid = task.uuid {
-            model?.sync?.sendTaskComment(taskUUID: uuid, text: text)
+            model?.sync?.sendTaskComment(taskUUID: uuid, text: text, files: files)
         }
     }
 }

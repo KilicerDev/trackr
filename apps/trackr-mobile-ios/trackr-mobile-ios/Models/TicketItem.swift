@@ -22,6 +22,10 @@ struct TicketMessage: Identifiable, Hashable {
     var date: Date
     var text: String
     var internalNote = false
+    var attachments: [AttachmentItem] = []
+    /// Optimistic-only: files still uploading for a just-sent message. The
+    /// server copy that replaces the row carries real `attachments` instead.
+    var pendingFiles: [PickedFile] = []
 }
 
 struct TicketItem: Identifiable, Hashable {
@@ -47,6 +51,8 @@ struct TicketItem: Identifiable, Hashable {
     var checklist: [ChecklistItem] = []
     var messages: [TicketMessage] = []
     var activity: [ActivityEvent] = []
+    /// Detail-fetch only, like messages — preserved across list refreshes.
+    var attachments: [AttachmentItem] = []
     var createdAt: Date
     var firstResponseAt: Date?
     var resolvedAt: Date?

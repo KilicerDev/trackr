@@ -84,7 +84,17 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		? (await loadAssignableUsers([])).map((u) => ({ id: u.id, name: u.name, color: u.color }))
 		: [];
 
-	return json({ task: detail, authors, assignableUsers, canEdit, canComment });
+	// Task-level attachments, surfaced top-level so the app doesn't have to dig
+	// them out of the task view model (loadTasks already batch-loads them; the
+	// per-comment ones ride along as `comments[].files`).
+	return json({
+		task: detail,
+		attachments: detail.files ?? [],
+		authors,
+		assignableUsers,
+		canEdit,
+		canComment
+	});
 };
 
 // Soft delete, mirroring the web `delete` action: project.tasks.delete.any

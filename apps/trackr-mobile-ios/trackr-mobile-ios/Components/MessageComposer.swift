@@ -3,7 +3,8 @@
 //  trackr-mobile-ios
 //
 //  Bottom composer: growing text field with attach + send. Reusable for
-//  task comments, ticket replies, and chat.
+//  task comments, ticket replies, and chat. Attachment staging is opt-in
+//  per call site via `onSendFiles`.
 //
 
 import SwiftUI
@@ -15,12 +16,21 @@ struct MessageComposer: View {
     var placeholder = "Write a comment…"
     /// People offered when the user types `@…`; empty disables mentions.
     var mentionCandidates: [UserRef] = []
-    var onAttach: (() -> Void)?
-    let onSend: () -> Void
+    /// Plain send — call sites without attachment support.
+    var onSend: (() -> Void)? = nil
+    /// Files-aware send; providing it enables the paperclip + staging strip
+    /// and takes precedence over `onSend`. Staged files clear on send.
+    var onSendFiles: (([PickedFile]) -> Void)? = nil
 
     /// What the user sees and edits — plain `@Name` runs.
     @State private var display = ""
     @State private var picked: [UserRef] = []
+
+    @State private var staged: [PickedFile] = []
+    @State private var showPhotoPicker = false
+    @State private var showFileImporter = false
+    @State private var showCamera = false
+    @State private var showSizeAlert = false
 
     private static let queryRegex = try! NSRegularExpression(pattern: "(?:^|\\s)@([^@\\s]*)$")
 
@@ -53,6 +63,9 @@ struct MessageComposer: View {
             if !suggestions.isEmpty {
                 suggestionStrip
             }
+            if !staged.isEmpty {
+                stagedStrip
+            }
             field
         }
         // Match the tab bar cluster's horizontal inset below it.
@@ -69,7 +82,16 @@ struct MessageComposer: View {
                 picked = []
             }
         }
+        .attachmentPickers(
+            photos: $showPhotoPicker, files: $showFileImporter, camera: $showCamera
+        ) { files in
+            for file in files { stage(file) }
+        }
+        .alert("Files can be at most 25 MB.", isPresented: $showSizeAlert) {
+            Button("OK") {}
+        }
         .animation(.easeOut(duration: 0.15), value: suggestions.map(\.name))
+        .animation(.easeOut(duration: 0.15), value: staged)
     }
 
     private var suggestionStrip: some View {
@@ -99,6 +121,61 @@ struct MessageComposer: View {
         .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
+    private var stagedStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(staged) { file in
+                    stagedChip(file)
+                }
+            }
+            .padding(.horizontal, 2)
+        }
+        .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    private func stagedChip(_ file: PickedFile) -> some View {
+        HStack(spacing: 8) {
+            if file.isImage, let image = UIImage(data: file.data) {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 32, height: 32)
+                    .clipShape(.rect(cornerRadius: 7))
+            } else {
+                Image(systemName: "doc")
+                    .font(.system(size: 15))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 32, height: 32)
+                    .background(Color(.systemGray6), in: .rect(cornerRadius: 7))
+            }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(file.filename)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: 120, alignment: .leading)
+                Text(file.sizeFormatted)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            Button {
+                staged.removeAll { $0.id == file.id }
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 15))
+                    .foregroundStyle(Color(.tertiaryLabel))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(6)
+        .background(.ultraThinMaterial, in: .rect(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(Color(.separator).opacity(0.4), lineWidth: 0.5)
+        )
+    }
+
     private func insert(_ user: UserRef) {
         guard let range = mentionQuery?.range else { return }
         let ns = display as NSString
@@ -106,10 +183,46 @@ struct MessageComposer: View {
         if !picked.contains(user) { picked.append(user) }
     }
 
+    private func stage(_ file: PickedFile) {
+        guard !file.exceedsSizeLimit else {
+            showSizeAlert = true
+            return
+        }
+        guard staged.count < AttachmentRules.maxFilesPerBatch else { return }
+        staged.append(file)
+    }
+
+    private func send() {
+        if let onSendFiles {
+            onSendFiles(staged)
+            staged = []
+        } else {
+            onSend?()
+        }
+    }
+
     private var field: some View {
         HStack(alignment: .bottom, spacing: 10) {
-            if let onAttach {
-                Button(action: onAttach) {
+            if onSendFiles != nil {
+                Menu {
+                    if AttachmentCameraView.isAvailable {
+                        Button {
+                            showCamera = true
+                        } label: {
+                            Label("Take Photo", systemImage: "camera")
+                        }
+                    }
+                    Button {
+                        showPhotoPicker = true
+                    } label: {
+                        Label("Photo Library", systemImage: "photo.on.rectangle")
+                    }
+                    Button {
+                        showFileImporter = true
+                    } label: {
+                        Label("Choose Files", systemImage: "folder")
+                    }
+                } label: {
                     Image(systemName: "paperclip")
                         .font(.system(size: 17))
                         .foregroundStyle(Color(.secondaryLabel))
@@ -123,7 +236,7 @@ struct MessageComposer: View {
                 .padding(.horizontal, 4)
                 .padding(.vertical, 7)
 
-            Button(action: onSend) {
+            Button(action: send) {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 28))
                     .foregroundStyle(isEmpty ? Color(.tertiaryLabel) : Color.accentColor)
@@ -145,7 +258,7 @@ struct MessageComposer: View {
     @Previewable @State var text = ""
     VStack {
         Spacer()
-        MessageComposer(text: $text, onAttach: {}) {}
+        MessageComposer(text: $text, onSendFiles: { _ in })
     }
     .background(Color.webBackground)
 }

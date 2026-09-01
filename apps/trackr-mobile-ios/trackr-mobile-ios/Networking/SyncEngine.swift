@@ -202,6 +202,7 @@ final class SyncEngine {
         guard let detail = try? await client.ticket(uuid: uuid) else { return }
         var mapped = Mapper.ticket(detail.ticket, users: detail.authors, messages: detail.messages)
         mapped.serverMessageCount = nil
+        mapped.attachments = (detail.attachments ?? []).map(Mapper.attachment)
         mapped.linkedTasks = (detail.linkedTasks ?? []).map {
             ConversionLink(
                 uuid: $0.id,
@@ -222,7 +223,8 @@ final class SyncEngine {
 
     func loadTaskDetail(uuid: String) async {
         guard let detail = try? await client.task(uuid: uuid) else { return }
-        let mapped = Mapper.task(detail.task, users: detail.authors, projectName: projectName)
+        var mapped = Mapper.task(detail.task, users: detail.authors, projectName: projectName)
+        mapped.attachments = (detail.attachments ?? []).map(Mapper.attachment)
         if let index = model.tasks.firstIndex(where: { $0.uuid == uuid }) {
             model.tasks[index] = mapped
         }
@@ -341,9 +343,11 @@ final class SyncEngine {
         }
     }
 
-    func sendTaskComment(taskUUID: String, text: String) {
+    func sendTaskComment(taskUUID: String, text: String, files: [PickedFile] = []) {
         Task {
-            try? await client.addTaskComment(uuid: taskUUID, text: text)
+            guard let created = try? await client.addTaskComment(uuid: taskUUID, text: text)
+            else { return }
+            await uploadFiles(files, entityType: .message, entityId: created.id)
             await loadTaskDetail(uuid: taskUUID)
         }
     }
@@ -355,17 +359,41 @@ final class SyncEngine {
         }
     }
 
-    func sendTicketMessage(ticketUUID: String, text: String, internalNote: Bool) {
+    func sendTicketMessage(
+        ticketUUID: String, text: String, internalNote: Bool, files: [PickedFile] = []
+    ) {
         Task {
-            try? await client.addTicketMessage(uuid: ticketUUID, text: text, internalNote: internalNote)
+            guard let created = try? await client.addTicketMessage(
+                uuid: ticketUUID, text: text, internalNote: internalNote
+            ) else { return }
+            await uploadFiles(files, entityType: .message, entityId: created.id)
             await loadTicketDetail(uuid: ticketUUID)
         }
     }
 
-    func sendChatMessage(threadId: String, text: String) {
+    func sendChatMessage(threadId: String, text: String, files: [PickedFile] = []) {
         Task {
-            try? await client.addChatMessage(threadId: threadId, text: text)
+            guard let created = try? await client.addChatMessage(threadId: threadId, text: text)
+            else { return }
+            await uploadFiles(files, entityType: .message, entityId: created.id)
             await loadChatThread(id: threadId)
+        }
+    }
+
+    /// Best-effort sequential upload of staged files onto a just-created
+    /// entity (web parity: attachFormFiles — a failed file never fails the
+    /// message it rides on).
+    private func uploadFiles(
+        _ files: [PickedFile], entityType: AttachmentEntityType, entityId: String
+    ) async {
+        for file in files {
+            _ = try? await uploadAttachment(
+                entityType: entityType,
+                entityId: entityId,
+                data: file.data,
+                filename: file.filename,
+                mimeType: file.mimeType
+            )
         }
     }
 
@@ -383,7 +411,8 @@ final class SyncEngine {
         due: Date?,
         estimate: Int?,
         assignees: [UserRef],
-        checklist: [ChecklistItem]
+        checklist: [ChecklistItem],
+        files: [PickedFile] = []
     ) {
         Task {
             guard let created = try? await client.createTask(
@@ -406,6 +435,7 @@ final class SyncEngine {
                 }
                 try? await client.updateTask(uuid: created.id, patch: patch)
             }
+            await uploadFiles(files, entityType: .task, entityId: created.id)
             await refreshTasks()
         }
     }
@@ -502,7 +532,7 @@ final class SyncEngine {
                 )
             }
             for comment in task.comments {
-                try? await client.addTaskComment(uuid: created.id, text: comment.text)
+                _ = try? await client.addTaskComment(uuid: created.id, text: comment.text)
             }
             await refreshTasks()
             // Swap the local placeholder in the open navigation path for the
@@ -512,6 +542,76 @@ final class SyncEngine {
             {
                 model.taskPath = [real]
             }
+        }
+    }
+
+    // MARK: - Attachments
+
+    /// List an entity's attachments directly — used where no detail response
+    /// carries them (notes, wiki, older servers).
+    func loadAttachments(entityType: AttachmentEntityType, entityId: String) async -> [AttachmentItem] {
+        guard let response = try? await client.attachments(
+            entityType: entityType.rawValue, entityId: entityId
+        ) else { return [] }
+        return response.attachments.map(Mapper.attachment)
+    }
+
+    /// Upload one file and merge the result into the entity's model row.
+    /// Throws so pickers can surface size/type rejections to the user.
+    func uploadAttachment(
+        entityType: AttachmentEntityType,
+        entityId: String,
+        data: Data,
+        filename: String,
+        mimeType: String
+    ) async throws -> AttachmentItem {
+        guard data.count <= AttachmentRules.maxUploadBytes else {
+            throw APIError.server(status: 413, message: "Files can be at most 25 MB.")
+        }
+        let dto = try await client.uploadAttachment(
+            entityType: entityType.rawValue,
+            entityId: entityId,
+            data: data,
+            filename: filename,
+            mimeType: mimeType
+        )
+        let item = Mapper.attachment(dto)
+        updateAttachments(entityType: entityType, entityId: entityId) { list in
+            list.insert(item, at: 0)
+        }
+        return item
+    }
+
+    /// Optimistic delete, mirroring the entity delete pattern: the row
+    /// disappears immediately, a failed server call resurfaces it on the
+    /// next detail load.
+    func deleteAttachment(_ attachment: AttachmentItem, entityType: AttachmentEntityType, entityId: String) {
+        updateAttachments(entityType: entityType, entityId: entityId) { list in
+            list.removeAll { $0.id == attachment.id }
+        }
+        Task {
+            try? await client.deleteAttachment(id: attachment.id)
+        }
+    }
+
+    private func updateAttachments(
+        entityType: AttachmentEntityType,
+        entityId: String,
+        _ mutate: (inout [AttachmentItem]) -> Void
+    ) {
+        switch entityType {
+        case .task:
+            if let index = model.tasks.firstIndex(where: { $0.uuid == entityId }) {
+                mutate(&model.tasks[index].attachments)
+            }
+        case .ticket:
+            if let index = model.tickets.firstIndex(where: { $0.uuid == entityId }) {
+                mutate(&model.tickets[index].attachments)
+            }
+        default:
+            // Message/note/wiki attachments live in view-local state or the
+            // next detail reload — nothing to merge here.
+            break
         }
     }
 
@@ -827,8 +927,18 @@ final class SyncEngine {
     }
 
     private func apply(tasks fresh: API.TasksResponse) {
-        model.tasks = fresh.tasks.map {
-            Mapper.task($0, users: fresh.users, projectName: projectName)
+        // List rows carry no attachments — keep ones a detail fetch loaded.
+        let loadedAttachments = Dictionary(
+            uniqueKeysWithValues: model.tasks.compactMap { task in
+                task.uuid.map { ($0, task.attachments) }
+            }
+        )
+        model.tasks = fresh.tasks.map { dto in
+            var mapped = Mapper.task(dto, users: fresh.users, projectName: projectName)
+            if let uuid = dto.uuid, let kept = loadedAttachments[uuid], !kept.isEmpty {
+                mapped.attachments = kept
+            }
+            return mapped
         }
         // The tasks directory doubles as the internal-team picker fallback
         // until a detail response provides the exact assignable set.
@@ -844,7 +954,7 @@ final class SyncEngine {
         // merge them over the fresh row instead of wiping the detail state.
         let loadedMessages = Dictionary(
             uniqueKeysWithValues: model.tickets.compactMap { ticket in
-                ticket.uuid.map { ($0, (ticket.messages, ticket.activity)) }
+                ticket.uuid.map { ($0, (ticket.messages, ticket.activity, ticket.attachments)) }
             }
         )
         model.tickets = fresh.tickets.map { dto in
@@ -852,6 +962,7 @@ final class SyncEngine {
             if let existing = loadedMessages[dto.id], !existing.0.isEmpty {
                 mapped.messages = existing.0
                 mapped.activity = existing.1
+                mapped.attachments = existing.2
                 mapped.serverMessageCount = nil
             }
             return mapped

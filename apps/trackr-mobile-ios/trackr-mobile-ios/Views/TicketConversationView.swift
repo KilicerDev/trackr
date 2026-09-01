@@ -88,6 +88,13 @@ struct TicketConversationView: View {
             }
         }
         .background(Color.webBackground)
+        // Adopt the server's conversation as soon as a refetch lands (sent
+        // message + its uploads, SSE) — the optimistic row with its pending
+        // previews is replaced by the real message with attachments.
+        .onChange(of: model?.tickets.first { $0.id == ticket.id }?.messages) { _, fresh in
+            guard let fresh, fresh != ticket.messages else { return }
+            ticket.messages = fresh
+        }
         .navigationTitle("Conversation")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
@@ -128,10 +135,7 @@ struct TicketConversationView: View {
                     text: $draft,
                     placeholder: internalNote ? "Internal note…" : "Reply to customer…",
                     mentionCandidates: (model?.assignableUsers ?? []) + ticket.messages.map(\.user),
-                    onAttach: {
-                        // Attachments — wired up later
-                    },
-                    onSend: send
+                    onSendFiles: send
                 )
             }
         }
@@ -147,7 +151,7 @@ struct TicketConversationView: View {
                 action: "opened the ticket",
                 date: message.date
             ) {
-                MessageCard(text: message.text)
+                MessageCard(text: message.text, attachments: message.attachments)
             }
         case .message(let message):
             TimelineRow(
@@ -158,7 +162,9 @@ struct TicketConversationView: View {
             ) {
                 MessageCard(
                     text: message.text,
-                    accent: message.internalNote ? internalColor : nil
+                    accent: message.internalNote ? internalColor : nil,
+                    attachments: message.attachments,
+                    pendingFiles: message.pendingFiles
                 )
             }
         case .activity(let activity):
@@ -171,18 +177,23 @@ struct TicketConversationView: View {
         }
     }
 
-    private func send() {
+    private func send(files: [PickedFile]) {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         let me = model?.me ?? TaskItem.sampleUsers[0]
         ticket.messages.append(
-            TicketMessage(user: me, date: .now, text: text, internalNote: internalNote)
+            TicketMessage(
+                user: me, date: .now, text: text, internalNote: internalNote,
+                pendingFiles: files
+            )
         )
         if ticket.firstResponseAt == nil && !internalNote {
             ticket.firstResponseAt = .now
         }
         if let uuid = ticket.uuid {
-            model?.sync?.sendTicketMessage(ticketUUID: uuid, text: text, internalNote: internalNote)
+            model?.sync?.sendTicketMessage(
+                ticketUUID: uuid, text: text, internalNote: internalNote, files: files
+            )
         }
         draft = ""
         internalNote = false

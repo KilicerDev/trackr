@@ -133,8 +133,8 @@ struct ProjectDetailView: View {
             ProjectHistorySheet(model: model, projectKey: project.key)
         }
         .sheet(isPresented: $showingCreate) {
-            CreateTaskSheet(tasks: model.tasks, model: model, initialProject: project.name) { task in
-                model.addTask(task)
+            CreateTaskSheet(tasks: model.tasks, model: model, initialProject: project.name) { task, files in
+                model.addTask(task, files: files)
             }
         }
     }

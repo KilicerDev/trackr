@@ -25,6 +25,20 @@ struct WhatsNewView: View {
     }
 
     private let releases: [Release] = [
+        Release(version: "1.0.2", name: "Attachments", date: "September 2026", features: [
+            Feature(icon: "paperclip", title: "Files on Tasks & Tickets",
+                    detail: "Attach photos and documents from the paperclip — from your library, the Files app or straight from the camera — and see everything that's already attached."),
+            Feature(icon: "photo.on.rectangle.angled", title: "Attachments in Conversations",
+                    detail: "Send images and files with ticket replies, task comments and chat messages. Photos show up in the bubble immediately while they upload."),
+            Feature(icon: "eye.fill", title: "Preview & Share",
+                    detail: "Tap any attachment to open it in Quick Look — PDFs, images, spreadsheets, archives — or share it to another app."),
+            Feature(icon: "doc.richtext.fill", title: "Notes & Wiki Media",
+                    detail: "Images embedded in notes and wiki pages now render, and attached files appear as tappable chips."),
+            Feature(icon: "arrow.triangle.2.circlepath", title: "Ticket → Task",
+                    detail: "Convert a ticket into a linked project task; checklist and attachments carry over, and both sides link back to each other."),
+            Feature(icon: "magnifyingglass", title: "Project Picker with Search",
+                    detail: "Choosing a project when creating a task is a searchable list with favorites and recents — built for long project lists."),
+        ]),
         Release(version: "1.0.1", name: "Projects Polish", date: "August 2026", features: [
             Feature(icon: "plus.circle.fill", title: "New Task from a Project",
                     detail: "Create tasks straight from a project's page — the project is preselected, and the empty state offers it too."),

@@ -21,6 +21,7 @@ struct TicketDetailView: View {
     @State private var showingConversation = false
     @State private var showingAddTag = false
     @State private var showingConvert = false
+    @State private var showingAttachments = false
 
     var body: some View {
         ScrollView {
@@ -34,6 +35,7 @@ struct TicketDetailView: View {
                 if !ticket.tags.isEmpty {
                     section("Tags") { tagsRow }
                 }
+                section("Attachments") { attachmentsCard }
                 section("Conversation") { conversationCard }
             }
             .padding(.horizontal, 16)
@@ -58,6 +60,23 @@ struct TicketDetailView: View {
         .onChange(of: ticket.assignees) { persist() }
         .onChange(of: ticket.tags) { persist() }
         .onChange(of: ticket.checklist) { persistChecklist() }
+        // Adopt model-side changes (sync refetches after a sent message or
+        // upload). Server-owned collections land even while property edits
+        // are pending — the conversation view appends optimistically and
+        // waits for the real message (with its attachments) to replace it.
+        .onChange(of: model?.tickets.first { $0.id == ticket.id }) { _, fresh in
+            guard let fresh, fresh != ticket else { return }
+            if ticket == baseline {
+                ticket = fresh
+                baseline = fresh
+            } else {
+                adoptServerCollections(from: fresh, into: &ticket)
+                if var pending = baseline {
+                    adoptServerCollections(from: fresh, into: &pending)
+                    baseline = pending
+                }
+            }
+        }
         .onAppear {
             baseline = ticket
             // Screen-appear revalidation: the list payload has no messages,
@@ -89,7 +108,12 @@ struct TicketDetailView: View {
                 }
                 ToolbarSpacer(.fixed, placement: .topBarTrailing)
             }
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
+                    showingAttachments = true
+                } label: {
+                    Image(systemName: "paperclip")
+                }
                 Button {
                     showingAddTag = true
                 } label: {
@@ -121,8 +145,9 @@ struct TicketDetailView: View {
                 initialPriority: ticket.priority,
                 footer:
                     "Open checklist items and attachments carry over; an internal note links the task on the ticket.",
-                navTitle: "Create Task"
-            ) { task in
+                navTitle: "Create Task",
+                allowsAttachments: false
+            ) { task, _ in
                 guard let uuid = ticket.uuid,
                       let key = model?.projects.first(where: { $0.name == task.project })?.key
                 else {
@@ -142,6 +167,17 @@ struct TicketDetailView: View {
                     assignees: task.assignees
                 )
             }
+        }
+        .sheet(isPresented: $showingAttachments) {
+            // Sample rows have no server id — the sheet falls back to its
+            // disabled/empty state without a model. Anyone may upload to a
+            // ticket; the server refuses non-staff deletes.
+            AttachmentsSheet(
+                entityType: .ticket,
+                entityId: ticket.uuid ?? "",
+                model: ticket.uuid == nil ? nil : model,
+                canDelete: model?.isStaff ?? false
+            )
         }
         .sheet(isPresented: $showingAddTag) {
             AddTagSheet(
@@ -331,6 +367,48 @@ struct TicketDetailView: View {
         .cardStyle(padded: false)
     }
 
+    @ViewBuilder
+    private var attachmentsCard: some View {
+        // The model row is the live copy — uploads from the sheet merge in
+        // there, not into the local edit buffer. Delete stays staff-only:
+        // the server refuses external-user deletes and our removal is
+        // optimistic.
+        let attachments = model?.tickets.first { $0.id == ticket.id }?.attachments
+            ?? ticket.attachments
+        VStack(alignment: .leading, spacing: 10) {
+            if attachments.isEmpty {
+                Text("No files attached.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
+            } else {
+                AttachmentListView(
+                    attachments: attachments,
+                    onDelete: (model?.isStaff ?? false)
+                        ? ticket.uuid.map { uuid in
+                            { attachment in
+                                model?.sync?.deleteAttachment(
+                                    attachment, entityType: .ticket, entityId: uuid
+                                )
+                            }
+                        }
+                        : nil
+                )
+            }
+            if ticket.uuid != nil {
+                Button {
+                    showingAttachments = true
+                } label: {
+                    Label("Add files", systemImage: "paperclip")
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardStyle()
+    }
+
     private var tagsRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
@@ -414,6 +492,17 @@ struct TicketDetailView: View {
         }
         baseline?.checklist = ticket.checklist
         model.sync?.pushTicketChecklist(ticket)
+    }
+
+    /// The fields only the server writes (never edited locally, only
+    /// appended optimistically) — safe to take wholesale.
+    private func adoptServerCollections(from fresh: TicketItem, into target: inout TicketItem) {
+        target.messages = fresh.messages
+        target.activity = fresh.activity
+        target.attachments = fresh.attachments
+        target.linkedTasks = fresh.linkedTasks
+        target.firstResponseAt = fresh.firstResponseAt
+        target.serverMessageCount = fresh.serverMessageCount
     }
 
     private func persist() {

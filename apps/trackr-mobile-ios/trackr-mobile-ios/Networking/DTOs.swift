@@ -84,6 +84,7 @@ enum API {
         let date: String
         let text: String
         let createdAt: String?
+        let files: [Attachment]?
     }
 
     struct TaskTimeLog: Codable {
@@ -138,6 +139,7 @@ enum API {
 
     struct TaskDetailResponse: Codable {
         let task: Task
+        let attachments: [Attachment]?
         let authors: [String: DisplayUser]
         let assignableUsers: [PickerUser]
         let canEdit: Bool
@@ -147,6 +149,33 @@ enum API {
     struct CreatedResponse: Codable {
         let id: String
         let displayId: String?
+    }
+
+    // MARK: - Attachments
+
+    /// AttachmentPublic from web/src/lib/server/attachments.ts — served by
+    /// /api/attachments (cookie or bearer) and embedded in v1 detail
+    /// responses.
+    struct Attachment: Codable {
+        let id: String
+        let entityType: String
+        let entityId: String
+        let filename: String
+        let mimeType: String
+        let sizeBytes: Int
+        let width: Int?
+        let height: Int?
+        let hasThumbnail: Bool
+        let uploadedBy: String?
+        let createdAt: String
+    }
+
+    struct AttachmentsResponse: Codable {
+        let attachments: [Attachment]
+    }
+
+    struct AttachmentUploadResponse: Codable {
+        let attachment: Attachment
     }
 
     struct OkResponse: Codable {
@@ -218,10 +247,12 @@ enum API {
         let kind: String
         let isInternalNote: Bool
         let createdAt: String
+        let attachments: [Attachment]?
     }
 
     struct TicketDetailResponse: Codable {
         let ticket: Ticket
+        let attachments: [Attachment]?
         let messages: [TicketMessage]
         let authors: [String: DisplayUser]
         let assignableUsers: [PickerUser]
@@ -253,6 +284,7 @@ enum API {
         let kind: String
         let meta: Meta?
         let createdAt: String
+        let files: [Attachment]?
     }
 
     struct ChatThread: Codable {

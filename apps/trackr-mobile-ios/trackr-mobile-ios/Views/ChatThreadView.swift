@@ -79,9 +79,7 @@ struct ChatThreadView: View {
         .safeAreaInset(edge: .bottom) {
             MessageComposer(text: $draft, placeholder: "Reply…",
                             mentionCandidates: model.assignableUsers + thread.messages.map(\.user),
-                            onAttach: {
-                // Attachments — wired up later
-            }, onSend: send)
+                            onSendFiles: send)
         }
         .onAppear {
             model.chatThreadOpen = true
@@ -133,7 +131,7 @@ struct ChatThreadView: View {
                         .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(.tertiary)
                 }
-                MessageCard(text: root.text)
+                MessageCard(text: root.text, attachments: root.attachments)
             }
         }
         .padding(.bottom, 4)
@@ -182,7 +180,10 @@ struct ChatThreadView: View {
                 action: "replied",
                 date: message.date
             ) {
-                MessageCard(text: message.text)
+                MessageCard(
+                    text: message.text, attachments: message.attachments,
+                    pendingFiles: message.pendingFiles
+                )
             }
         }
     }
@@ -202,12 +203,14 @@ struct ChatThreadView: View {
         withThread { $0.resolved = resolved }
     }
 
-    private func send() {
+    private func send(files: [PickedFile]) {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        withThread { $0.messages.append(ChatMessageItem(user: me, date: .now, text: text)) }
+        withThread {
+            $0.messages.append(ChatMessageItem(user: me, date: .now, text: text, pendingFiles: files))
+        }
         draft = ""
-        model.sync?.sendChatMessage(threadId: threadId, text: text)
+        model.sync?.sendChatMessage(threadId: threadId, text: text, files: files)
     }
 
     /// Web parity (CreateTicketFromThreadModal): materialize the thread into

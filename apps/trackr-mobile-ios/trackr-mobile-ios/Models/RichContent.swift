@@ -28,7 +28,10 @@ struct NoteBlock: Identifiable, Hashable {
         case quote(AttributedString)
         case code(String)
         case divider
-        case image(src: String)
+        // `alt` carries the original filename (set by the web image upload)
+        // so the full-size QuickLook temp file can keep its real name.
+        case image(src: String, alt: String?)
+        case file(id: String, filename: String, sizeBytes: Int?)
     }
 
     let id = UUID()
@@ -114,7 +117,21 @@ enum RichContentParser {
             case "hr":
                 out.append(NoteBlock(kind: .divider))
             case "img":
-                if let src = child.attrs["src"] { out.append(NoteBlock(kind: .image(src: src))) }
+                if let src = child.attrs["src"] {
+                    out.append(NoteBlock(kind: .image(src: src, alt: child.attrs["alt"])))
+                }
+            case "a" where child.attrs["data-file-attachment"] != nil:
+                // Block-level file chip from the web editor (extensions.ts
+                // FileAttachment atom) — must not degrade into a plain link.
+                if let id = child.attrs["data-file-attachment"] {
+                    var filename = child.attrs["data-filename"]
+                        ?? rawText(child).trimmingCharacters(in: .whitespacesAndNewlines)
+                    if filename.isEmpty { filename = "file" }
+                    out.append(NoteBlock(kind: .file(
+                        id: id, filename: filename,
+                        sizeBytes: child.attrs["data-size"].flatMap(Int.init)
+                    )))
+                }
             default:
                 // Unknown wrapper: keep its content rather than dropping it.
                 out.append(contentsOf: blocks(in: child))

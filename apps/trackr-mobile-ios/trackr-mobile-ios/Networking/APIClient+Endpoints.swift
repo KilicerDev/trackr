@@ -139,9 +139,10 @@ extension APIClient {
         try await post("/api/v1/tickets/\(uuid)/tasks", body: body)
     }
 
-    func addTaskComment(uuid: String, text: String) async throws {
+    @discardableResult
+    func addTaskComment(uuid: String, text: String) async throws -> API.CreatedResponse {
         struct Body: Encodable { let body: String }
-        let _: API.CreatedResponse = try await post("/api/v1/tasks/\(uuid)/comments", body: Body(body: text))
+        return try await post("/api/v1/tasks/\(uuid)/comments", body: Body(body: text))
     }
 
     func logTaskTime(uuid: String, minutes: Int, date: Date, note: String?) async throws {
@@ -193,12 +194,15 @@ extension APIClient {
         try await post("/api/v1/tickets", body: body)
     }
 
-    func addTicketMessage(uuid: String, text: String, internalNote: Bool) async throws {
+    @discardableResult
+    func addTicketMessage(uuid: String, text: String, internalNote: Bool) async throws
+        -> API.CreatedResponse
+    {
         struct Body: Encodable {
             let body: String
             let `internal`: Bool
         }
-        let _: API.CreatedResponse = try await post(
+        return try await post(
             "/api/v1/tickets/\(uuid)/messages",
             body: Body(body: text, internal: internalNote)
         )
@@ -223,9 +227,10 @@ extension APIClient {
         return try await post("/api/v1/chat/threads", body: Body(orgId: orgId, title: title, body: body))
     }
 
-    func addChatMessage(threadId: String, text: String) async throws {
+    @discardableResult
+    func addChatMessage(threadId: String, text: String) async throws -> API.CreatedResponse {
         struct Body: Encodable { let body: String }
-        let _: API.CreatedResponse = try await post(
+        return try await post(
             "/api/v1/chat/threads/\(threadId)/messages",
             body: Body(body: text)
         )

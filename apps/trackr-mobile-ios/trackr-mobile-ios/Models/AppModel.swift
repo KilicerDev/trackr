@@ -118,7 +118,7 @@ final class AppModel {
     /// Optimistically insert a locally-built task and push it to the server.
     /// Shared by the Tasks list and the project detail page so both create
     /// paths stay identical.
-    func addTask(_ task: TaskItem) {
+    func addTask(_ task: TaskItem, files: [PickedFile] = []) {
         tasks.insert(task, at: 0)
         guard let key = projects.first(where: { $0.name == task.project })?.key else { return }
         sync?.createTask(
@@ -131,7 +131,8 @@ final class AppModel {
             due: task.due,
             estimate: task.estimate,
             assignees: task.assignees,
-            checklist: task.checklist
+            checklist: task.checklist,
+            files: files
         )
     }
 

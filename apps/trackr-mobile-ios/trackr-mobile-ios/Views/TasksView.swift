@@ -130,8 +130,8 @@ struct TasksView: View {
                 )
             }
             .sheet(isPresented: $showingCreate) {
-                CreateTaskSheet(tasks: model.tasks, model: model) { task in
-                    model.addTask(task)
+                CreateTaskSheet(tasks: model.tasks, model: model) { task, files in
+                    model.addTask(task, files: files)
                 }
             }
         }

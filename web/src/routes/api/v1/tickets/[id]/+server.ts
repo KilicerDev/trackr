@@ -1,5 +1,6 @@
 // Ticket detail for the app.
-//   GET   — ticket + full message timeline (internal notes only for staff);
+//   GET   — ticket + full message timeline (internal notes only for staff),
+//           with ticket-level `attachments` and per-message `attachments`;
 //           agents also get the assignable-users picker directory.
 //   PATCH { status?, priority?, category?, assigneeIds?, tags? } — the
 //   property-pill and tag edits the app offers. Checklist/subject stay a
@@ -7,7 +8,11 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { message, thread } from '$lib/server/db/app.schema';
-import { deleteAttachmentsFor } from '$lib/server/attachments';
+import {
+	deleteAttachmentsFor,
+	listAttachments,
+	listAttachmentsForMany
+} from '$lib/server/attachments';
 import { canViewTicket, can, isTrackrTeam } from '$lib/server/permissions';
 import {
 	addTicketSystemEvents,
@@ -39,7 +44,22 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 	if (!(await canViewTicket(locals, ticket))) apiError(403, m.tickets_no_access());
 
 	const staff = isTrackrTeam(locals);
-	const messages = await loadTicketMessages(ticket.id, { includeInternal: staff });
+	const rawMessages = await loadTicketMessages(ticket.id, { includeInternal: staff });
+	// Attachments: ticket-level plus per-message in two batched queries, so the
+	// app can render them without an N+1 round-trip. Ticket messages live in the
+	// shared `message` table (thread subjectType 'ticket'), so their attachments
+	// are keyed by entity type 'message' — same as the web detail page.
+	const [attachments, messageAttachments] = await Promise.all([
+		listAttachments('ticket', ticket.id),
+		listAttachmentsForMany(
+			'message',
+			rawMessages.map((msg) => msg.id)
+		)
+	]);
+	const messages = rawMessages.map((msg) => ({
+		...msg,
+		attachments: messageAttachments.get(msg.id) ?? []
+	}));
 	// Same grant as PATCH below and the web update action — plain org.staff
 	// reads everything but must not be offered status/assignee controls.
 	const canEdit = await can(locals, 'org.tickets.edit.any', { orgId: ticket.orgId });
@@ -67,6 +87,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 	return json({
 		ticket,
+		attachments,
 		messages,
 		authors,
 		assignableUsers,

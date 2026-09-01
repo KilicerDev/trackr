@@ -107,17 +107,52 @@ actor APIClient {
         try await send("DELETE", path, query: [], body: NoBody?.none, authenticated: true)
     }
 
-    /// Raw variant for endpoints with irregular bodies (get-session's literal
-    /// `null`). Returns the data + response after the shared header/rotation
+    /// Raw variant for endpoints with irregular bodies or non-JSON responses
+    /// (get-session's literal `null`, attachment bytes, 204 deletes).
+    /// Returns the data + response after the shared header/rotation
     /// handling, without JSON-decoding.
     func raw(
         _ method: String,
         _ path: String,
+        query: [URLQueryItem] = [],
         authenticated: Bool = true,
         allowUnauthorized: Bool = false
     ) async throws -> (Data, HTTPURLResponse) {
-        let request = try makeRequest(method, path, query: [], bodyData: nil, authenticated: authenticated)
+        let request = try makeRequest(method, path, query: query, bodyData: nil, authenticated: authenticated)
         return try await perform(request, authenticated: authenticated, allowUnauthorized: allowUnauthorized)
+    }
+
+    /// Multipart POST for file uploads — the attachment endpoint takes form
+    /// data, not JSON. Fields go first, then the single file part.
+    func upload<T: Decodable>(
+        _ path: String,
+        fields: [String: String],
+        fileData: Data,
+        filename: String,
+        mimeType: String,
+        fileField: String = "file"
+    ) async throws -> T {
+        let boundary = "trackr-\(UUID().uuidString)"
+        var body = Data()
+        func append(_ text: String) { body.append(Data(text.utf8)) }
+        for (name, value) in fields {
+            append("--\(boundary)\r\n")
+            append("Content-Disposition: form-data; name=\"\(name)\"\r\n\r\n")
+            append("\(value)\r\n")
+        }
+        // Quotes in a filename would break the part header — swap them out.
+        let safeName = filename.replacingOccurrences(of: "\"", with: "'")
+        append("--\(boundary)\r\n")
+        append("Content-Disposition: form-data; name=\"\(fileField)\"; filename=\"\(safeName)\"\r\n")
+        append("Content-Type: \(mimeType)\r\n\r\n")
+        body.append(fileData)
+        append("\r\n--\(boundary)--\r\n")
+
+        var request = try makeRequest("POST", path, query: [], bodyData: nil, authenticated: true)
+        request.httpBody = body
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        let (data, _) = try await perform(request, authenticated: true, allowUnauthorized: false)
+        return try JSONDecoder().decode(T.self, from: data)
     }
 
     private func send<T: Decodable, B: Encodable>(

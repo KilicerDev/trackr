@@ -14,6 +14,7 @@ struct RootView: View {
     @State private var auth = AuthSession()
     @State private var model = AppModel(sampleData: false)
     @State private var engine: SyncEngine?
+    @State private var attachmentStore: AttachmentStore?
     @State private var sessionActivity: SessionActivityController?
     /// Live Activity tap that cold-started the app — honored once the
     /// session has been restored.
@@ -33,6 +34,7 @@ struct RootView: View {
                 ContentView(model: model, auth: auth)
             }
         }
+        .environment(\.attachmentStore, attachmentStore)
         .task { await auth.restore() }
         .onChange(of: auth.phase, initial: true) { _, phase in
             switch phase {
@@ -40,6 +42,7 @@ struct RootView: View {
                 guard engine == nil, let client = auth.client, let host = auth.serverURL else { break }
                 let fresh = SyncEngine(client: client, model: model, host: host)
                 engine = fresh
+                attachmentStore = AttachmentStore(client: client)
                 model.onSignOut = { [weak auth, weak push] in
                     push?.disable()
                     Task { await auth?.signOut() }
@@ -66,6 +69,7 @@ struct RootView: View {
             case .signedOut:
                 engine?.stop()
                 engine = nil
+                attachmentStore = nil
                 sessionActivity?.end()
                 sessionActivity = nil
                 model = AppModel(sampleData: false)

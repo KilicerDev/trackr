@@ -104,9 +104,20 @@ struct TaskDetailView: View {
         // Adopt model-side changes (session finish logs time/status/notes,
         // sync refetches) as long as there are no unsaved local edits.
         .onChange(of: modelCopy) { _, fresh in
-            guard let fresh, fresh != task, task == baseline else { return }
-            task = fresh
-            baseline = fresh
+            guard let fresh, fresh != task else { return }
+            if task == baseline {
+                task = fresh
+                baseline = fresh
+            } else {
+                // Property edits pending — still take the server-owned
+                // collections so an optimistically appended comment is
+                // replaced by the real one (with its attachments).
+                adoptServerCollections(from: fresh, into: &task)
+                if var pending = baseline {
+                    adoptServerCollections(from: fresh, into: &pending)
+                    baseline = pending
+                }
+            }
         }
         .onDisappear { persist() }
         .navigationTitle(task.id)
@@ -165,7 +176,13 @@ struct TaskDetailView: View {
             }
         }
         .sheet(isPresented: $showingAttachments) {
-            AttachmentsSheet()
+            // Sample rows have no server id — the sheet falls back to its
+            // disabled/empty state without a model.
+            AttachmentsSheet(
+                entityType: .task,
+                entityId: task.uuid ?? "",
+                model: task.uuid == nil ? nil : model
+            )
         }
     }
 
@@ -432,12 +449,41 @@ struct TaskDetailView: View {
         }
     }
 
+    @ViewBuilder
     private var attachmentsCard: some View {
-        Text("No files attached.")
-            .font(.system(size: 14))
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .cardStyle()
+        // The model row is the live copy — uploads from the sheet merge in
+        // there, not into the local edit buffer.
+        let attachments = modelCopy?.attachments ?? task.attachments
+        VStack(alignment: .leading, spacing: 10) {
+            if attachments.isEmpty {
+                Text("No files attached.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
+            } else {
+                AttachmentListView(
+                    attachments: attachments,
+                    onDelete: task.uuid.map { uuid in
+                        { attachment in
+                            model?.sync?.deleteAttachment(
+                                attachment, entityType: .task, entityId: uuid
+                            )
+                        }
+                    }
+                )
+            }
+            if task.uuid != nil {
+                Button {
+                    showingAttachments = true
+                } label: {
+                    Label("Add files", systemImage: "paperclip")
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.accentColor)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardStyle()
     }
 
     private var activityCard: some View {
@@ -478,6 +524,16 @@ struct TaskDetailView: View {
             ActivityEvent(user: model?.me ?? TaskItem.sampleUsers[0], date: .now,
                           text: text, icon: icon)
         )
+    }
+
+    /// The fields only the server writes (never edited locally, only
+    /// appended optimistically) — safe to take wholesale.
+    private func adoptServerCollections(from fresh: TaskItem, into target: inout TaskItem) {
+        target.comments = fresh.comments
+        target.timeLogs = fresh.timeLogs
+        target.activity = fresh.activity
+        target.attachments = fresh.attachments
+        target.sourceTicket = fresh.sourceTicket
     }
 
     /// Write the edit back into the shared model and push it to the server.
