@@ -40,3 +40,6 @@ services/*/bin/
 
 # Xcode per-user state (window layout, schemes, breakpoints)
 xcuserdata/
+
+# trackr CLI binary built in-place (go build ./cli)
+/cli/trackr
