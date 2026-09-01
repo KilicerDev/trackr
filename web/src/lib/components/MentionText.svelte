@@ -12,6 +12,7 @@
 		type MarkdownFlavor
 	} from '$lib/utils/markdown';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
+	import { refUrl } from '$lib/utils/refs';
 
 	interface Props {
 		text: string | null | undefined;
@@ -37,9 +38,13 @@
 
 {#snippet mtext(
 	value: string
-)}{#each splitMentionParts(value, parsed.mentions) as part, i (i)}{#if part.type === 'mention'}<span
+)}{#each splitMentionParts(value, parsed.mentions, parsed.refs) as part, i (i)}{#if part.type === 'mention'}<span
 				class="-mx-0.5 inline-flex items-center rounded bg-accent/10 px-1 align-baseline font-medium text-accent"
 				>@{resolveUser(part.id)?.name ?? part.name}</span
+			>{:else if part.type === 'ref'}<a
+				href={refUrl(part.refType, part.id, part.display)}
+				class="refpill -mx-0.5 inline-flex items-center rounded bg-accent/10 px-1 align-baseline font-medium text-accent hover:bg-accent/20"
+				>{part.display}</a
 			>{:else}{part.value}{/if}{/each}{/snippet}
 
 {#snippet inline(
@@ -227,6 +232,10 @@
 	}
 	.mdtext a:hover {
 		color: var(--color-accent-strong, var(--color-accent));
+	}
+	/* Ref pills are links, but read as chips — no underline. */
+	.mdtext a.refpill {
+		text-decoration: none;
 	}
 	.mdtext .table-scroll {
 		overflow-x: auto;

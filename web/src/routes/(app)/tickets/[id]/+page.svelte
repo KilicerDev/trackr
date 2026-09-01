@@ -752,6 +752,8 @@
 						mentionUsers={internal
 							? data.mentionUsers?.filter((u) => u.internal)
 							: data.mentionUsers}
+						refTypes={['ticket']}
+						refOrgId={data.ticket.orgId}
 						{sending}
 						onsend={send}
 					>

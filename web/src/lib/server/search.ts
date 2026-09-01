@@ -27,6 +27,18 @@ export type SearchResult = {
 	subtitle: string | null;
 	/** In-app route on the web client; the mobile app maps types to its own routes. */
 	url: string;
+	/** Human-readable reference id (`SGP-22`, `SIWEB-15`, project key) — set for
+	 *  ticket/task/project so the `!` reference picker can build tokens. */
+	displayId?: string;
+};
+
+export type SearchOptions = {
+	/** Restrict result types (the `!` reference picker passes these). When set,
+	 *  an empty query is allowed and returns recently-updated items instead. */
+	types?: SearchResult['type'][];
+	/** Restrict tickets to one org — customer-visible surfaces (ticket threads,
+	 *  org chat) must not suggest another org's tickets. */
+	orgId?: string;
 };
 
 const PER_TYPE_LIMIT = 10;
@@ -36,15 +48,30 @@ function likePattern(q: string): string {
 	return `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
 }
 
-export async function searchAll(locals: Locals, rawQuery: string): Promise<SearchResult[]> {
+export async function searchAll(
+	locals: Locals,
+	rawQuery: string,
+	opts: SearchOptions = {}
+): Promise<SearchResult[]> {
 	const q = rawQuery.trim();
-	if (!locals.user || q.length < 2) return [];
-	const pattern = likePattern(q);
+	const restricted = opts.types?.length ? new Set(opts.types) : null;
+	// Untyped callers (mobile search tab) keep the 2-char minimum; the typed
+	// reference picker may pass short/empty queries (empty = recent items).
+	if (!locals.user || (!restricted && q.length < 2)) return [];
+	const want = (t: SearchResult['type']) => !restricted || restricted.has(t);
+	const pattern = q ? likePattern(q) : null;
+	// `SIWEB-15`-shaped query → also match on key + number so typing a known
+	// display id surfaces the entity even though titles are what's indexed.
+	const idMatch = /^([A-Za-z][A-Za-z0-9]{0,11})-(\d{1,9})$/.exec(q);
+	const idKey = idMatch?.[1].toUpperCase();
+	const idNumPrefix = idMatch ? `${idMatch[2]}%` : null;
 	const team = isTrackrTeam(locals);
 
 	// ── Tickets: same org split as the tickets page (read.any vs read.own) ────
 	let ticketWhere: SQL | undefined;
-	if (team) {
+	if (!want('ticket')) {
+		ticketWhere = undefined;
+	} else if (team) {
 		ticketWhere = isNull(ticket.deletedAt);
 	} else {
 		const anyOrgIds: string[] = [];
@@ -69,6 +96,16 @@ export async function searchAll(locals: Locals, rawQuery: string): Promise<Searc
 		else ticketWhere = and(isNull(ticket.deletedAt), or(...parts));
 	}
 
+	const ticketTextParts: SQL[] = [];
+	if (pattern) ticketTextParts.push(sql`${ticket.subject} ILIKE ${pattern}`);
+	if (idKey && idNumPrefix) {
+		ticketTextParts.push(
+			and(
+				sql`upper(${organization.key}) = ${idKey}`,
+				sql`${ticket.number}::text LIKE ${idNumPrefix}`
+			)!
+		);
+	}
 	const ticketRows = ticketWhere
 		? await db
 				.select({
@@ -81,7 +118,13 @@ export async function searchAll(locals: Locals, rawQuery: string): Promise<Searc
 				})
 				.from(ticket)
 				.innerJoin(organization, eq(organization.id, ticket.orgId))
-				.where(and(ticketWhere, sql`${ticket.subject} ILIKE ${pattern}`))
+				.where(
+					and(
+						ticketWhere,
+						...(opts.orgId ? [eq(ticket.orgId, opts.orgId)] : []),
+						...(ticketTextParts.length ? [or(...ticketTextParts)!] : [])
+					)
+				)
 				.orderBy(sql`${ticket.updatedAt} DESC`)
 				.limit(PER_TYPE_LIMIT)
 		: [];
@@ -99,8 +142,15 @@ export async function searchAll(locals: Locals, rawQuery: string): Promise<Searc
 			? inArray(project.id, [...access.ids])
 			: null;
 
+	const taskTextParts: SQL[] = [];
+	if (pattern) taskTextParts.push(sql`${task.title} ILIKE ${pattern}`);
+	if (idKey && idNumPrefix) {
+		taskTextParts.push(
+			and(sql`upper(${project.key}) = ${idKey}`, sql`${task.number}::text LIKE ${idNumPrefix}`)!
+		);
+	}
 	const taskRows =
-		projectFilter !== null
+		want('task') && projectFilter !== null
 			? await db
 					.select({
 						id: task.id,
@@ -116,7 +166,7 @@ export async function searchAll(locals: Locals, rawQuery: string): Promise<Searc
 							isNull(task.deletedAt),
 							isNull(task.archivedAt),
 							ne(project.status, 'archived'),
-							sql`${task.title} ILIKE ${pattern}`,
+							...(taskTextParts.length ? [or(...taskTextParts)!] : []),
 							...(projectFilter ? [projectFilter] : [])
 						)
 					)
@@ -125,14 +175,16 @@ export async function searchAll(locals: Locals, rawQuery: string): Promise<Searc
 			: [];
 
 	const projectRows =
-		projectListFilter !== null
+		want('project') && projectListFilter !== null
 			? await db
 					.select({ id: project.id, key: project.key, name: project.name })
 					.from(project)
 					.where(
 						and(
 							ne(project.status, 'archived'),
-							sql`${project.name} ILIKE ${pattern}`,
+							...(pattern
+								? [or(sql`${project.name} ILIKE ${pattern}`, sql`${project.key} ILIKE ${pattern}`)!]
+								: []),
 							...(projectListFilter ? [projectListFilter] : [])
 						)
 					)
@@ -141,29 +193,31 @@ export async function searchAll(locals: Locals, rawQuery: string): Promise<Searc
 			: [];
 
 	// ── Wiki + notes: internal team only (mirrors the route guards) ────────────
-	const wikiRows = team
-		? await db
-				.select({ id: wikiPage.id, title: wikiPage.title, isFolder: wikiPage.isFolder })
-				.from(wikiPage)
-				.where(and(eq(wikiPage.isFolder, false), sql`${wikiPage.title} ILIKE ${pattern}`))
-				.orderBy(sql`${wikiPage.updatedAt} DESC`)
-				.limit(PER_TYPE_LIMIT)
-		: [];
+	const wikiRows =
+		team && want('wiki') && pattern
+			? await db
+					.select({ id: wikiPage.id, title: wikiPage.title, isFolder: wikiPage.isFolder })
+					.from(wikiPage)
+					.where(and(eq(wikiPage.isFolder, false), sql`${wikiPage.title} ILIKE ${pattern}`))
+					.orderBy(sql`${wikiPage.updatedAt} DESC`)
+					.limit(PER_TYPE_LIMIT)
+			: [];
 
 	// Notes: own quick notes + all meeting notes (meeting access is team-wide).
-	const noteRows = team
-		? await db
-				.select({ id: note.id, title: note.title, kind: note.kind, ownerId: note.ownerId })
-				.from(note)
-				.where(
-					and(
-						sql`${note.title} ILIKE ${pattern}`,
-						or(eq(note.kind, 'meeting'), eq(note.ownerId, locals.user.id))
+	const noteRows =
+		team && want('note') && pattern
+			? await db
+					.select({ id: note.id, title: note.title, kind: note.kind, ownerId: note.ownerId })
+					.from(note)
+					.where(
+						and(
+							sql`${note.title} ILIKE ${pattern}`,
+							or(eq(note.kind, 'meeting'), eq(note.ownerId, locals.user.id))
+						)
 					)
-				)
-				.orderBy(sql`${note.updatedAt} DESC`)
-				.limit(PER_TYPE_LIMIT)
-		: [];
+					.orderBy(sql`${note.updatedAt} DESC`)
+					.limit(PER_TYPE_LIMIT)
+			: [];
 
 	const results: SearchResult[] = [
 		...ticketRows.map((t) => ({
@@ -171,21 +225,24 @@ export async function searchAll(locals: Locals, rawQuery: string): Promise<Searc
 			id: t.id,
 			title: t.subject,
 			subtitle: `${ticketDisplayId(t.orgKey, t.number)} · ${t.orgName}`,
-			url: `/tickets/${t.id}`
+			url: `/tickets/${t.id}`,
+			displayId: ticketDisplayId(t.orgKey, t.number)
 		})),
 		...taskRows.map((t) => ({
 			type: 'task' as const,
 			id: t.id,
 			title: t.title,
 			subtitle: `${t.projectKey}-${t.number}`,
-			url: `/tasks?task=${t.projectKey}-${t.number}`
+			url: `/tasks?task=${t.projectKey}-${t.number}`,
+			displayId: `${t.projectKey}-${t.number}`
 		})),
 		...projectRows.map((p) => ({
 			type: 'project' as const,
 			id: p.id,
 			title: p.name,
 			subtitle: p.key,
-			url: `/projects/${p.id}`
+			url: `/projects/${p.id}`,
+			displayId: p.key
 		})),
 		...wikiRows.map((w) => ({
 			type: 'wiki' as const,

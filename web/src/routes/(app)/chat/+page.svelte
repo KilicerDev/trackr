@@ -655,6 +655,8 @@
 									sending={replySending}
 									hasAttachments={replyFiles.length > 0}
 									mentionUsers={data.mentionUsers}
+									refTypes={['ticket']}
+									refOrgId={data.activeOrgId}
 									placeholder={m.chat_reply_placeholder()}
 								>
 									{#snippet rightActions()}
@@ -711,6 +713,8 @@
 						users={data.mentionUsers}
 						tags={data.tags}
 						onTagAdd={handleInlineTag}
+						refTypes={['ticket']}
+						refOrgId={data.activeOrgId}
 						onkeydown={newKey}
 						placeholder={m.chat_message_placeholder()}
 						rows={2}

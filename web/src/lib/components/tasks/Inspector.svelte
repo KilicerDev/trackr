@@ -966,6 +966,7 @@
 					sending={commentSending}
 					onsend={sendComment}
 					projectId={taskProjectId}
+					refTypes={['task', 'ticket', 'project']}
 				>
 					{#snippet rightActions()}
 						<button

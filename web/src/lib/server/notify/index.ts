@@ -21,6 +21,7 @@ import {
 } from '$lib/server/jobs';
 import { baseLocale, isLocale, type Locale } from '$lib/paraglide/runtime';
 import { plainifyMentions } from '$lib/utils/mentions';
+import { plainifyRefs } from '$lib/utils/refs';
 import { publishEvent } from '../events';
 import { enqueueDigestItems, isWithinQuietHours } from './digest';
 
@@ -188,9 +189,13 @@ export async function notify(input: NotifyInput): Promise<void> {
 			const raw = input.render
 				? input.render(locale)
 				: { title: input.title ?? '', body: input.body ?? null };
-			// Bodies may carry raw @[Name](id) mention tokens — flatten them to plain
-			// `@Name` for the inbox row and the email (neither can render chips).
-			content = { ...raw, body: raw.body ? plainifyMentions(raw.body) : (raw.body ?? null) };
+			// Bodies may carry raw @[Name](id) mention and ~[ID](type:id) ref tokens —
+			// flatten to plain `@Name`/`SIWEB-15` for the inbox row and the email
+			// (neither can render chips).
+			content = {
+				...raw,
+				body: raw.body ? plainifyRefs(plainifyMentions(raw.body)) : (raw.body ?? null)
+			};
 			contentCache.set(locale, content);
 		}
 		return content;
@@ -287,7 +292,9 @@ export async function notify(input: NotifyInput): Promise<void> {
 						to: u.email,
 						content: {
 							...structured,
-							quote: structured.quote ? plainifyMentions(structured.quote) : structured.quote
+							quote: structured.quote
+								? plainifyRefs(plainifyMentions(structured.quote))
+								: structured.quote
 						},
 						url: fullUrl,
 						settingsUrl: settingsUrl.startsWith('http') ? settingsUrl : null,

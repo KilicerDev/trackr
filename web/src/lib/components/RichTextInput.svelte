@@ -1,11 +1,11 @@
 <script lang="ts">
 	// WYSIWYG input for messages, comments, and descriptions (Tiptap). The
-	// bound `value` is a markdown string with `@[Name](id)` mention tokens —
-	// the exact wire format the old plain composers produced — so hosts,
-	// server actions, and notifications are untouched. Typing markdown
-	// (`**bold**`, `- `, `> `, backticks) formats live via StarterKit's input
-	// rules; `@` mentions and `#` tags reuse the same dropdown UX the plain
-	// composer had.
+	// bound `value` is a markdown string with `@[Name](id)` mention tokens and
+	// `~[SIWEB-15](task:id)` entity-ref tokens — the exact wire format the old
+	// plain composers produced — so hosts, server actions, and notifications
+	// are untouched. Typing markdown (`**bold**`, `- `, `> `, backticks)
+	// formats live via StarterKit's input rules; `@` mentions, `#` tags and
+	// `!` entity refs share one dropdown UX.
 	import { onDestroy, onMount } from 'svelte';
 	import { Editor } from '@tiptap/core';
 	import Placeholder from '@tiptap/extension-placeholder';
@@ -22,6 +22,7 @@
 		markdownToEditorHtml
 	} from '$lib/editor/message';
 	import type { ChatTag } from '$lib/server/chat';
+	import { REF_TYPES, type RefCandidate, type RefType } from '$lib/utils/refs';
 
 	type MentionUser = {
 		id: string;
@@ -61,6 +62,15 @@
 		flavor?: 'chat' | 'document';
 		/** Disable @-mentions entirely (descriptions — the server doesn't parse them there). */
 		mentions?: boolean;
+		/**
+		 * Entity types the `!` reference picker offers; omit to disable it.
+		 * Customer-visible surfaces (ticket threads, org chat) pass ['ticket']
+		 * only — a task/project pill in shared content would leak internal
+		 * structure to portal users, regardless of who typed it.
+		 */
+		refTypes?: RefType[];
+		/** Scope `!` ticket suggestions to one org (customer-visible surfaces). */
+		refOrgId?: string | null;
 	}
 	let {
 		value = $bindable(''),
@@ -77,7 +87,9 @@
 		tags,
 		onTagAdd,
 		flavor = 'chat',
-		mentions = true
+		mentions = true,
+		refTypes,
+		refOrgId = null
 	}: Props = $props();
 
 	let host: HTMLDivElement | undefined = $state();
@@ -87,9 +99,9 @@
 	// change (clear-on-send, ticket switch) apart from our own edits.
 	let lastEmitted: string | null = null;
 
-	// ── Suggestion dropdown (one menu, '@' or '#' mode) ──────────────────────
+	// ── Suggestion dropdown (one menu, '@', '#' or '!' mode) ─────────────────
 	let menu = $state<{
-		kind: '@' | '#';
+		kind: '@' | '#' | '!';
 		query: string;
 		command: (props: unknown) => void;
 	} | null>(null);
@@ -135,8 +147,67 @@
 			menu.query.trim().length > 0 &&
 			!(tags ?? []).some((t) => t.label.toLowerCase() === menu!.query.trim().toLowerCase())
 	);
+	// ── `!` entity refs: debounced remote search (the entity lists are too big
+	// to preload, unlike the user directory). Empty query → recent items.
+	let refItems = $state<RefCandidate[]>([]);
+	let refTimer: ReturnType<typeof setTimeout> | undefined;
+	let refAbort: AbortController | undefined;
+
+	async function fetchRefs(query: string) {
+		refAbort?.abort();
+		const ctrl = new AbortController();
+		refAbort = ctrl;
+		let params = `q=${encodeURIComponent(query)}&types=${encodeURIComponent((refTypes ?? []).join(','))}`;
+		if (refOrgId) params += `&orgId=${encodeURIComponent(refOrgId)}`;
+		try {
+			const res = await fetch(`/api/v1/search?${params}`, { signal: ctrl.signal });
+			if (!res.ok || ctrl !== refAbort) return;
+			const data = (await res.json()) as { results: RefCandidate[] };
+			if (ctrl !== refAbort) return;
+			// The refTypes prop order doubles as display priority — task surfaces
+			// list tasks first, ticket surfaces tickets (stable within a type).
+			const order = refTypes ?? [];
+			refItems = data.results
+				.filter((r) => (REF_TYPES as readonly string[]).includes(r.type) && r.displayId)
+				.sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
+		} catch {
+			// Aborted or offline — keep whatever the menu currently shows.
+		}
+	}
+
+	$effect(() => {
+		if (menu?.kind !== '!') return;
+		const q = menu.query;
+		clearTimeout(refTimer);
+		// Recents (empty query) fetch immediately so the menu never opens blank.
+		refTimer = setTimeout(() => fetchRefs(q), q ? 180 : 0);
+	});
+
+	// Group ref candidates by type for section headers (mixed menus are hard to
+	// scan as one flat list). Items keep their flat refItems index so keyboard
+	// navigation and pick() stay untouched.
+	const refGroupLabels: Record<RefType, () => string> = {
+		ticket: m.shell_nav_tickets,
+		task: m.shell_nav_tasks,
+		project: m.shell_nav_projects
+	};
+	const refGroups = $derived.by(() => {
+		if (menu?.kind !== '!') return [];
+		const groups: { type: RefType; items: { r: RefCandidate; idx: number }[] }[] = [];
+		refItems.forEach((r, idx) => {
+			let g = groups.find((x) => x.type === r.type);
+			if (!g) groups.push((g = { type: r.type, items: [] }));
+			g.items.push({ r, idx });
+		});
+		return groups;
+	});
+
 	const optionCount = $derived(
-		menu?.kind === '@' ? candidates.length : tagMatches.length + (showCreateTag ? 1 : 0)
+		menu?.kind === '@'
+			? candidates.length
+			: menu?.kind === '!'
+				? refItems.length
+				: tagMatches.length + (showCreateTag ? 1 : 0)
 	);
 
 	function pick(index: number) {
@@ -144,6 +215,9 @@
 		if (menu.kind === '@') {
 			const u = candidates[index];
 			if (u) menu.command(u);
+		} else if (menu.kind === '!') {
+			const r = refItems[index];
+			if (r) menu.command({ id: r.id, type: r.type, display: r.displayId });
 		} else if (index < tagMatches.length) {
 			menu.command({ id: tagMatches[index].id, label: tagMatches[index].label });
 		} else if (showCreateTag) {
@@ -172,7 +246,7 @@
 		return false;
 	}
 
-	function suggestionRender(kind: '@' | '#') {
+	function suggestionRender(kind: '@' | '#' | '!') {
 		return () => ({
 			onStart: (p: SuggestionProps) => {
 				menu = { kind, query: p.query, command: p.command as (props: unknown) => void };
@@ -268,6 +342,31 @@
 				})
 			);
 		}
+		// `!` entity refs need the entityRef node, which rides the mentions gate.
+		if (mentions && refTypes?.length) {
+			editor.registerPlugin(
+				Suggestion<unknown, { id: string; type: RefType; display: string }>({
+					editor,
+					char: '!',
+					pluginKey: new PluginKey('rtRef'),
+					items: () => [],
+					command: ({ editor, range, props }) => {
+						editor
+							.chain()
+							.focus()
+							.insertContentAt(range, [
+								{
+									type: 'entityRef',
+									attrs: { id: props.id, type: props.type, display: props.display }
+								},
+								{ type: 'text', text: ' ' }
+							])
+							.run();
+					},
+					render: suggestionRender('!')
+				})
+			);
+		}
 		ready = true;
 	});
 
@@ -285,6 +384,8 @@
 	});
 
 	onDestroy(() => {
+		clearTimeout(refTimer);
+		refAbort?.abort();
 		editor?.destroy();
 		editor = undefined;
 	});
@@ -322,6 +423,37 @@
 						<Avatar user={u} size={22} />
 						<span class="truncate text-[14px]">{u.name}</span>
 					</button>
+				{/each}
+			{:else if menu.kind === '!'}
+				{#each refGroups as g (g.type)}
+					{#if refGroups.length > 1}
+						<div
+							class="px-2 pt-2 pb-1 text-[10.5px] font-semibold tracking-wider text-text-3 uppercase first:pt-1"
+						>
+							{refGroupLabels[g.type]()}
+						</div>
+					{/if}
+					{#each g.items as it (it.r.type + it.r.id)}
+						<button
+							type="button"
+							data-option-index={it.idx}
+							onmousedown={(e) => {
+								e.preventDefault();
+								pick(it.idx);
+							}}
+							onmouseenter={() => (activeIndex = it.idx)}
+							class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] {it.idx ===
+							activeIndex
+								? 'bg-surface-2 text-text'
+								: 'text-text-2'}"
+						>
+							<span
+								class="shrink-0 rounded bg-accent/10 px-1 font-mono text-[11px] font-medium text-accent"
+								>{it.r.displayId}</span
+							>
+							<span class="truncate">{it.r.title}</span>
+						</button>
+					{/each}
 				{/each}
 			{:else}
 				{#each tagMatches as t, i (t.id)}

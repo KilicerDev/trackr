@@ -19,7 +19,14 @@ import {
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { Marked } from 'marked';
 import { buildMentionToken } from '$lib/utils/mentions';
-import { guardMentions, MENTION_SENTINEL_RE, type MentionRef } from '$lib/utils/markdown';
+import { buildRefToken, type RefType } from '$lib/utils/refs';
+import {
+	guardMentions,
+	MENTION_SENTINEL_RE,
+	REF_SENTINEL_RE,
+	type EntityRef,
+	type MentionRef
+} from '$lib/utils/markdown';
 
 /** Pill styling shared with the read-side renderer (MentionText). */
 export const MENTION_PILL_CLASS =
@@ -69,6 +76,57 @@ export const MessageMention = Node.create({
 	}
 });
 
+/** Atomic inline entity ref: `~[SIWEB-15](task:id)` in markdown, a pill here. */
+export const MessageEntityRef = Node.create({
+	name: 'entityRef',
+	group: 'inline',
+	inline: true,
+	atom: true,
+	selectable: false,
+
+	addAttributes() {
+		return {
+			id: { default: '' },
+			type: { default: 'ticket' },
+			display: { default: '' }
+		};
+	},
+
+	parseHTML() {
+		return [
+			{
+				tag: 'span[data-ref-id]',
+				getAttrs: (el) => ({
+					id: (el as HTMLElement).getAttribute('data-ref-id') ?? '',
+					type: (el as HTMLElement).getAttribute('data-ref-type') ?? 'ticket',
+					display: (el as HTMLElement).getAttribute('data-ref-display') ?? ''
+				})
+			}
+		];
+	},
+
+	renderHTML({ node }) {
+		return [
+			'span',
+			{
+				'data-ref-id': node.attrs.id as string,
+				'data-ref-type': node.attrs.type as string,
+				'data-ref-display': node.attrs.display as string,
+				class: MENTION_PILL_CLASS
+			},
+			node.attrs.display as string
+		];
+	},
+
+	renderText({ node }) {
+		return buildRefToken(
+			node.attrs.display as string,
+			node.attrs.type as RefType,
+			node.attrs.id as string
+		);
+	}
+});
+
 export interface MessageSchemaOptions {
 	/** `document` allows headings (descriptions); chat has none. */
 	flavor?: 'chat' | 'document';
@@ -89,7 +147,9 @@ export function messageSchemaExtensions(opts: MessageSchemaOptions = {}): Extens
 				HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' }
 			}
 		}),
-		...(mentions ? [MessageMention] : [])
+		// Entity refs ride the same gate: surfaces without mentions (descriptions)
+		// don't parse either token server-side, so neither node belongs there.
+		...(mentions ? [MessageMention, MessageEntityRef] : [])
 	];
 }
 
@@ -131,6 +191,15 @@ const serializer = new MarkdownSerializer(
 		},
 		mention(state: MarkdownSerializerState, node: PMNode) {
 			state.write(buildMentionToken(node.attrs.name as string, node.attrs.id as string));
+		},
+		entityRef(state: MarkdownSerializerState, node: PMNode) {
+			state.write(
+				buildRefToken(
+					node.attrs.display as string,
+					node.attrs.type as RefType,
+					node.attrs.id as string
+				)
+			);
 		}
 	},
 	{
@@ -174,12 +243,17 @@ function escAttr(s: string): string {
  * Mentions become `span[data-mention-id]` for the Mention node's parse rule.
  */
 export function markdownToEditorHtml(text: string): string {
-	const { guarded, mentions } = guardMentions(text);
+	const { guarded, mentions, refs } = guardMentions(text);
 	let html = mdParser.parse(guarded, { async: false }) as string;
 	html = html.replace(MENTION_SENTINEL_RE, (_m, idx: string) => {
 		const ref: MentionRef | undefined = mentions[Number(idx)];
 		if (!ref) return '';
 		return `<span data-mention-id="${escAttr(ref.id)}" data-mention-name="${escAttr(ref.name)}">@${escAttr(ref.name)}</span>`;
+	});
+	html = html.replace(REF_SENTINEL_RE, (_m, idx: string) => {
+		const ref: EntityRef | undefined = refs[Number(idx)];
+		if (!ref) return '';
+		return `<span data-ref-id="${escAttr(ref.id)}" data-ref-type="${escAttr(ref.type)}" data-ref-display="${escAttr(ref.display)}">${escAttr(ref.display)}</span>`;
 	});
 	return html;
 }

@@ -6,10 +6,13 @@
 //
 // Mention tokens (`@[Name](id)`) are valid markdown *link* syntax, so they are
 // extracted into private-use-codepoint sentinels before lexing and resolved
-// again by the consumer — the lexer never sees them.
+// again by the consumer — the lexer never sees them. Entity-ref tokens
+// (`~[SIWEB-15](task:id)`, see utils/refs.ts) get the same treatment with
+// their own sentinel pair.
 
 import { Marked, type Token, type Tokens } from 'marked';
 import { MENTION_RE, plainifyMentions } from './mentions';
+import { REF_RE, plainifyRefs, type RefType } from './refs';
 
 /**
  * `chat`: message bubbles — no headings/tables (they render as plain text so a
@@ -20,6 +23,8 @@ export type MarkdownFlavor = 'chat' | 'document';
 
 export type MentionRef = { id: string; name: string };
 
+export type EntityRef = { type: RefType; id: string; display: string };
+
 // `breaks: true` — chat and descriptions both treat a single newline as a line
 // break, matching how the text was authored in a plain composer for years.
 const parser = new Marked({ gfm: true, breaks: true });
@@ -27,45 +32,70 @@ const parser = new Marked({ gfm: true, breaks: true });
 const M_OPEN = '\uE000';
 const M_CLOSE = '\uE001';
 export const MENTION_SENTINEL_RE = /\uE000(\d+)\uE001/g;
-const SENTINEL_RE = MENTION_SENTINEL_RE;
+const R_OPEN = '\uE002';
+const R_CLOSE = '\uE003';
+export const REF_SENTINEL_RE = /\uE002(\d+)\uE003/g;
+// Combined scan for the split step \u2014 group 1 = mention index, group 2 = ref.
+const SENTINEL_RE = /\uE000(\d+)\uE001|\uE002(\d+)\uE003/g;
 
 /**
- * Replace mention tokens with numeric sentinels so markdown parsing can't
- * mistake them for links. Consumers resolve sentinels via the returned refs.
+ * Replace mention and entity-ref tokens with numeric sentinels so markdown
+ * parsing can't mistake them for links/strikethrough. Consumers resolve
+ * sentinels via the returned refs.
  */
-export function guardMentions(text: string): { guarded: string; mentions: MentionRef[] } {
+export function guardMentions(text: string): {
+	guarded: string;
+	mentions: MentionRef[];
+	refs: EntityRef[];
+} {
 	const mentions: MentionRef[] = [];
-	const guarded = text.replace(MENTION_RE, (_full, name: string, id: string) => {
+	let guarded = text.replace(MENTION_RE, (_full, name: string, id: string) => {
 		mentions.push({ id, name });
 		return `${M_OPEN}${mentions.length - 1}${M_CLOSE}`;
 	});
-	return { guarded, mentions };
+	const refs: EntityRef[] = [];
+	guarded = guarded.replace(REF_RE, (_full, display: string, type: string, id: string) => {
+		refs.push({ type: type as RefType, id, display });
+		return `${R_OPEN}${refs.length - 1}${R_CLOSE}`;
+	});
+	return { guarded, mentions, refs };
 }
 
 export interface ParsedMarkdown {
 	tokens: Token[];
 	mentions: MentionRef[];
+	refs: EntityRef[];
 }
 
-/** Lex `text`, with mention tokens protected as sentinels (see module docs). */
+/** Lex `text`, with mention/ref tokens protected as sentinels (see module docs). */
 export function lexMarkdown(text: string): ParsedMarkdown {
-	const { guarded, mentions } = guardMentions(text);
-	return { tokens: parser.lexer(guarded), mentions };
+	const { guarded, mentions, refs } = guardMentions(text);
+	return { tokens: parser.lexer(guarded), mentions, refs };
 }
 
 export type TextPart =
 	| { type: 'text'; value: string }
-	| { type: 'mention'; id: string; name: string };
+	| { type: 'mention'; id: string; name: string }
+	| { type: 'ref'; refType: RefType; id: string; display: string };
 
-/** Split a token's text on mention sentinels back into text/mention parts. */
-export function splitMentionParts(value: string, mentions: MentionRef[]): TextPart[] {
+/** Split a token's text on mention/ref sentinels back into typed parts. */
+export function splitMentionParts(
+	value: string,
+	mentions: MentionRef[],
+	refs: EntityRef[] = []
+): TextPart[] {
 	const parts: TextPart[] = [];
 	let last = 0;
 	for (const match of value.matchAll(SENTINEL_RE)) {
 		const start = match.index ?? 0;
 		if (start > last) parts.push({ type: 'text', value: value.slice(last, start) });
-		const ref = mentions[Number(match[1])];
-		if (ref) parts.push({ type: 'mention', id: ref.id, name: ref.name });
+		if (match[1] !== undefined) {
+			const ref = mentions[Number(match[1])];
+			if (ref) parts.push({ type: 'mention', id: ref.id, name: ref.name });
+		} else {
+			const ref = refs[Number(match[2])];
+			if (ref) parts.push({ type: 'ref', refType: ref.type, id: ref.id, display: ref.display });
+		}
 		last = start + match[0].length;
 	}
 	if (last < value.length) parts.push({ type: 'text', value: value.slice(last) });
@@ -98,7 +128,9 @@ const PRE_STYLE =
 	'font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;background:#f2f2f4;border-radius:8px;padding:10px 12px;overflow-x:auto;margin:8px 0;white-space:pre-wrap;';
 const QUOTE_STYLE = 'border-left:3px solid #d9d9de;margin:8px 0;padding:2px 0 2px 12px;color:#666;';
 
-function inlineHtml(tokens: Token[] | undefined, mentions: MentionRef[]): string {
+type GuardCtx = { mentions: MentionRef[]; refs: EntityRef[] };
+
+function inlineHtml(tokens: Token[] | undefined, mentions: GuardCtx): string {
 	if (!tokens) return '';
 	let out = '';
 	for (const tok of tokens) {
@@ -144,13 +176,19 @@ function inlineHtml(tokens: Token[] | undefined, mentions: MentionRef[]): string
 	return out;
 }
 
-function textHtml(value: string, mentions: MentionRef[]): string {
-	return splitMentionParts(value, mentions)
-		.map((p) => (p.type === 'mention' ? `<strong>@${esc(p.name)}</strong>` : esc(p.value)))
+function textHtml(value: string, mentions: GuardCtx): string {
+	return splitMentionParts(value, mentions.mentions, mentions.refs)
+		.map((p) =>
+			p.type === 'mention'
+				? `<strong>@${esc(p.name)}</strong>`
+				: p.type === 'ref'
+					? `<strong>${esc(p.display)}</strong>`
+					: esc(p.value)
+		)
 		.join('');
 }
 
-function blockHtml(tokens: Token[], mentions: MentionRef[]): string {
+function blockHtml(tokens: Token[], mentions: GuardCtx): string {
 	let out = '';
 	for (const tok of tokens) {
 		switch (tok.type) {
@@ -182,7 +220,8 @@ function blockHtml(tokens: Token[], mentions: MentionRef[]): string {
 				break;
 			}
 			case 'hr':
-				out += '<hr class="em-md-hr" style="border:none;border-top:1px solid #e4e4e8;margin:10px 0;" />';
+				out +=
+					'<hr class="em-md-hr" style="border:none;border-top:1px solid #e4e4e8;margin:10px 0;" />';
 				break;
 			// Block-level text (tight list items) renders inline without a <p>.
 			case 'text': {
@@ -204,8 +243,8 @@ function blockHtml(tokens: Token[], mentions: MentionRef[]): string {
  * first; this is the safety net).
  */
 export function markdownToEmailHtml(text: string): string {
-	const { tokens, mentions } = lexMarkdown(text);
-	const html = blockHtml(tokens, mentions).trim();
+	const { tokens, mentions, refs } = lexMarkdown(text);
+	const html = blockHtml(tokens, { mentions, refs }).trim();
 	// A body with no markdown at all still comes back wrapped in <p> — fine.
-	return html || `<p style="margin:6px 0;">${esc(plainifyMentions(text))}</p>`;
+	return html || `<p style="margin:6px 0;">${esc(plainifyRefs(plainifyMentions(text)))}</p>`;
 }

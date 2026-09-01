@@ -412,6 +412,7 @@
 			placeholder={m.projects_comment_placeholder()}
 			{sending}
 			{projectId}
+			refTypes={['task', 'ticket', 'project']}
 			onsend={sendComment}
 		/>
 	</div>

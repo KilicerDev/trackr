@@ -30,6 +30,10 @@
 		// MentionTextarea; the tag lands as a chip via onTagAdd, not in the text.
 		tags?: import('$lib/server/chat').ChatTag[];
 		onTagAdd?: (id: string | null, label: string) => void;
+		// `!` entity-reference picker (see RichTextInput): entity types to offer,
+		// and an org scope for customer-visible surfaces. Omit to disable.
+		refTypes?: import('$lib/utils/refs').RefType[];
+		refOrgId?: string | null;
 		// Allow sending with an empty body (e.g. when files are staged).
 		hasAttachments?: boolean;
 	}
@@ -46,6 +50,8 @@
 		mentionUsers,
 		tags,
 		onTagAdd,
+		refTypes,
+		refOrgId = null,
 		hasAttachments = false
 	}: Props = $props();
 
@@ -71,6 +77,8 @@
 		users={mentionUsers}
 		{tags}
 		{onTagAdd}
+		{refTypes}
+		{refOrgId}
 		{placeholder}
 		rows={2}
 		disabled={disabled || sending}

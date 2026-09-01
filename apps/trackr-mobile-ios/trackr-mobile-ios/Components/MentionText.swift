@@ -4,7 +4,9 @@
 //
 //  @-mention rendering. Comment/message bodies store mentions as
 //  `@[Display Name](userId)` tokens (web utils/mentions.ts) — render them
-//  as accent-tinted `@Name` runs instead of showing the raw token.
+//  as accent-tinted `@Name` runs instead of showing the raw token. Entity
+//  refs (`~[SIWEB-15](task:id)`, web utils/refs.ts) render as accent-tinted
+//  display ids the same way.
 //
 
 import SwiftUI
@@ -12,6 +14,11 @@ import SwiftUI
 enum Mentions {
     /// `@[Name](id)` — capture 1 = display name, capture 2 = user id.
     static let regex = try! NSRegularExpression(pattern: "@\\[([^\\]]+)\\]\\(([^)]+)\\)")
+
+    /// `~[SIWEB-15](task:id)` — capture 1 = display id (web REF_RE parity).
+    static let refRegex = try! NSRegularExpression(
+        pattern: "~\\[([^\\]]+)\\]\\((?:ticket|task|project):([^)]+)\\)"
+    )
 
     /// Rich form for message bodies: mention tokens become accent-colored,
     /// medium-weight `@Name` runs.
@@ -25,18 +32,24 @@ enum Mentions {
             in: text, range: NSRange(location: 0, length: (text as NSString).length), withTemplate: "$1"
         )
         let ns = text as NSString
+        let full = NSRange(location: 0, length: ns.length)
+        // Interleave mention and ref tokens in document order.
+        let tokens: [(match: NSTextCheckingResult, isMention: Bool)] =
+            (regex.matches(in: text, range: full).map { ($0, true) }
+                + refRegex.matches(in: text, range: full).map { ($0, false) })
+            .sorted { $0.0.range.location < $1.0.range.location }
         var cursor = 0
-        for match in regex.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+        for (match, isMention) in tokens {
             if match.range.location > cursor {
                 out += linkified(
                     ns.substring(with: NSRange(location: cursor, length: match.range.location - cursor))
                 )
             }
-            let name = ns.substring(with: match.range(at: 1))
-            var mention = AttributedString("@\(name)")
-            mention.foregroundColor = .accentColor
-            mention.inlinePresentationIntent = .stronglyEmphasized
-            out += mention
+            let display = ns.substring(with: match.range(at: 1))
+            var run = AttributedString(isMention ? "@\(display)" : display)
+            run.foregroundColor = .accentColor
+            run.inlinePresentationIntent = .stronglyEmphasized
+            out += run
             cursor = match.range.location + match.range.length
         }
         if cursor < ns.length {
@@ -84,12 +97,16 @@ enum Mentions {
         return out
     }
 
-    /// Plain form for one-line previews: `@[Name](id)` → `@Name`
-    /// (web plainifyMentions parity).
+    /// Plain form for one-line previews: `@[Name](id)` → `@Name`,
+    /// `~[SIWEB-15](task:id)` → `SIWEB-15` (web plainifyMentions/plainifyRefs
+    /// parity).
     static func flattened(_ text: String) -> String {
-        let ns = text as NSString
-        return regex.stringByReplacingMatches(
-            in: text, range: NSRange(location: 0, length: ns.length), withTemplate: "@$1"
+        var out = regex.stringByReplacingMatches(
+            in: text, range: NSRange(location: 0, length: (text as NSString).length), withTemplate: "@$1"
         )
+        out = refRegex.stringByReplacingMatches(
+            in: out, range: NSRange(location: 0, length: (out as NSString).length), withTemplate: "$1"
+        )
+        return out
     }
 }
