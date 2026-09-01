@@ -17,6 +17,12 @@ import { recordAudit } from '$lib/server/audit';
 // tauri.conf.json (deep-link plugin config).
 export const NATIVE_AUTH_CALLBACK = 'dev.kilicer.trackr://auth';
 
+// Where the CLI's sign-in lands: a loopback HTTP server the CLI runs for the
+// duration of `trackr login`. Only the port is caller-controlled — the host
+// is pinned to 127.0.0.1, so the redirect can never leave the machine the
+// browser runs on (no open-redirect surface).
+export const cliAuthCallback = (port: number) => `http://127.0.0.1:${port}/callback`;
+
 function ipFromHeaders(headers: Headers | undefined): string | null {
 	if (!headers) return null;
 	const fwd = headers.get('x-forwarded-for');
