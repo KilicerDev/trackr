@@ -22,6 +22,7 @@ import {
 } from '$lib/server/tasks';
 import { normalizeTag } from '$lib/utils/label-meta';
 import { logActivityFF } from '$lib/server/activity';
+import { emitWebhookEvent, taskSnapshot } from '$lib/server/webhooks';
 import { recordAudit } from '$lib/server/audit';
 import { syncTicketChecklistFromTask } from '$lib/server/tickets';
 import {
@@ -170,8 +171,30 @@ export const actions: Actions = {
 		// Notify each newly-assigned user (notify() drops the actor itself, so
 		// self-assignment is silent). Fire-and-forget: a failed notification
 		// must never undo the create.
+		const createdCtx = {
+			id: newId,
+			displayId,
+			title,
+			orgId: p.orgId,
+			projectId: p.id,
+			status,
+			priority,
+			type
+		};
+		emitWebhookEvent({
+			type: 'task.created',
+			orgId: p.orgId,
+			projectId: p.id,
+			actor: { id: me.id, name: me.name },
+			assigneeIds: assignedIds,
+			origin: url.origin,
+			data: {
+				task: taskSnapshot({ ...createdCtx, assigneeIds: assignedIds, dueDate }, url.origin),
+				description
+			}
+		});
 		void notifyTaskAssigned({
-			task: { id: newId, displayId, title, orgId: p.orgId },
+			task: createdCtx,
 			assigneeIds: assignedIds,
 			actor: { id: me.id, name: me.name },
 			origin: url.origin
@@ -352,9 +375,81 @@ export const actions: Actions = {
 		const taskCtx = {
 			id: target.id,
 			displayId,
-			title: target.title,
-			orgId: target.projectOrgId
+			title: (patch.title as string | undefined) ?? target.title,
+			orgId: target.projectOrgId,
+			projectId,
+			status: (patch.status as string | undefined) ?? target.status,
+			priority: (patch.priority as string | undefined) ?? target.priority,
+			type: (patch.type as string | undefined) ?? target.type
 		};
+		const currentAssignees = assigneeOut.next ?? [...priorAssignees];
+		const webhookActor = { id: me.id, name: me.name };
+
+		// task.updated carries a from/to map of every changed scalar field.
+		{
+			const before: Record<string, unknown> = {
+				status: target.status,
+				priority: target.priority,
+				type: target.type,
+				title: target.title
+			};
+			const changes: Record<string, { from: unknown; to: unknown }> = {};
+			for (const key of [
+				'status',
+				'priority',
+				'type',
+				'title',
+				'description',
+				'dueDate',
+				'estimateMinutes',
+				'tags'
+			] as const) {
+				if (!(key in patch)) continue;
+				const to = patch[key];
+				const from = key in before ? before[key] : undefined;
+				if (from !== undefined && from === to) continue;
+				changes[key] = {
+					from: from ?? null,
+					to: to instanceof Date ? to.toISOString() : (to ?? null)
+				};
+			}
+			const nextAssignees = assigneeOut.next;
+			if (nextAssignees !== null) {
+				const added = nextAssignees.filter((id) => !priorAssignees.has(id));
+				const removed = [...priorAssignees].filter((id) => !nextAssignees.includes(id));
+				if (added.length || removed.length) {
+					changes.assigneeIds = { from: [...priorAssignees], to: nextAssignees };
+				}
+				if (removed.length) {
+					emitWebhookEvent({
+						type: 'task.unassigned',
+						orgId: target.projectOrgId,
+						projectId,
+						actor: webhookActor,
+						assigneeIds: removed,
+						origin: url.origin,
+						data: {
+							task: taskSnapshot({ ...taskCtx, assigneeIds: currentAssignees }, url.origin),
+							removedAssigneeIds: removed
+						}
+					});
+				}
+			}
+			if (Object.keys(changes).length > 0) {
+				emitWebhookEvent({
+					type: 'task.updated',
+					orgId: target.projectOrgId,
+					projectId,
+					actor: webhookActor,
+					assigneeIds: currentAssignees,
+					origin: url.origin,
+					data: {
+						task: taskSnapshot({ ...taskCtx, assigneeIds: currentAssignees }, url.origin),
+						changes
+					}
+				});
+			}
+		}
 
 		// Notify users newly added to the task.
 		const assigned = assigneeOut.next;
@@ -378,6 +473,7 @@ export const actions: Actions = {
 				creatorId: target.createdBy,
 				assigneeIds: assigneeOut.next ?? [...priorAssignees],
 				newStatus: patch.status,
+				previousStatus: priorStatus,
 				actor: { id: me.id, name: me.name },
 				origin: url.origin
 			}).catch((err) => console.error('task status notify failed', err));
@@ -643,6 +739,17 @@ export const actions: Actions = {
 			type: 'time.logged',
 			meta: { taskRef: displayId, taskTitle: target.title, minutes: total, note, loggedAt: date }
 		});
+		emitWebhookEvent({
+			type: 'task.time_logged',
+			orgId: target.projectOrgId,
+			projectId: target.projectId,
+			actor: { id: me.id, name: me.name },
+			assigneeIds: [me.id],
+			data: {
+				task: taskSnapshot({ ...target, displayId }, null),
+				timeLog: { minutes: total, note, loggedAt: date, userId: me.id }
+			}
+		});
 
 		return { success: true };
 	},
@@ -690,6 +797,13 @@ export const actions: Actions = {
 			targetLabel: `${displayId} · ${target.title}`,
 			orgId: target.projectOrgId,
 			meta: { projectId: target.projectId, taskRef: displayId }
+		});
+		emitWebhookEvent({
+			type: 'task.deleted',
+			orgId: target.projectOrgId,
+			projectId: target.projectId,
+			actor: { id: locals.user.id, name: locals.user.name },
+			data: { task: taskSnapshot({ ...target, displayId }, null) }
 		});
 
 		return { success: true };

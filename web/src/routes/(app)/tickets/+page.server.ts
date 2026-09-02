@@ -490,6 +490,7 @@ export const actions: Actions = {
 					},
 					addedAssigneeIds: added,
 					newStatus: statusChanged ? (patch.status as TicketStatus) : null,
+					previousStatus: before.status,
 					newPriority: priorityChanged ? (patch.priority as TicketPriority) : null,
 					actor: { id: actorId, name: locals.user.name },
 					origin: url.origin
@@ -614,6 +615,7 @@ export const actions: Actions = {
 					body,
 					internal,
 					actor: { id: me.id, name: me.name },
+					messageId,
 					origin: url.origin
 				});
 

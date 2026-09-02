@@ -34,6 +34,7 @@ import {
 } from '$lib/server/tickets';
 import { notifyTaskAssigned, notifyTaskStatusChanged } from '$lib/server/notify/events/task';
 import { logActivityFF } from '$lib/server/activity';
+import { emitWebhookEvent, taskSnapshot } from '$lib/server/webhooks';
 import { normalizeTag } from '$lib/utils/label-meta';
 import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
@@ -179,6 +180,8 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 			number: task.number,
 			title: task.title,
 			status: task.status,
+			priority: task.priority,
+			type: task.type,
 			createdBy: task.createdBy,
 			sourceTicketId: task.sourceTicketId,
 			projectId: project.id,
@@ -366,16 +369,76 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 	const taskCtx = {
 		id: target.id,
 		displayId,
-		title: target.title,
-		orgId: target.projectOrgId
+		title: (patch.title as string | undefined) ?? target.title,
+		orgId: target.projectOrgId,
+		projectId: target.projectId,
+		status: (patch.status as string | undefined) ?? target.status,
+		priority: (patch.priority as string | undefined) ?? target.priority,
+		type: (patch.type as string | undefined) ?? target.type
 	};
 	const statusChanged = patch.status !== undefined && patch.status !== target.status;
+	{
+		const before: Record<string, unknown> = {
+			status: target.status,
+			priority: target.priority,
+			type: target.type,
+			title: target.title
+		};
+		const changes: Record<string, { from: unknown; to: unknown }> = {};
+		for (const key of Object.keys(patch)) {
+			if (key === 'checklist') continue;
+			const to = patch[key];
+			const from = key in before ? before[key] : undefined;
+			if (from !== undefined && from === to) continue;
+			changes[key] = {
+				from: from ?? null,
+				to: to instanceof Date ? to.toISOString() : (to ?? null)
+			};
+		}
+		const nextAssignees = assigneeOut.next;
+		if (nextAssignees !== null) {
+			const added = nextAssignees.filter((id) => !priorAssignees.has(id));
+			const removed = [...priorAssignees].filter((id) => !nextAssignees.includes(id));
+			if (added.length || removed.length) {
+				changes.assigneeIds = { from: [...priorAssignees], to: nextAssignees };
+			}
+			if (removed.length) {
+				emitWebhookEvent({
+					type: 'task.unassigned',
+					orgId: target.projectOrgId,
+					projectId: target.projectId,
+					actor: { id: user.id, name: user.name },
+					assigneeIds: removed,
+					origin: url.origin,
+					data: {
+						task: taskSnapshot({ ...taskCtx, assigneeIds: currentAssignees }, url.origin),
+						removedAssigneeIds: removed
+					}
+				});
+			}
+		}
+		if (Object.keys(changes).length > 0) {
+			emitWebhookEvent({
+				type: 'task.updated',
+				orgId: target.projectOrgId,
+				projectId: target.projectId,
+				actor: { id: user.id, name: user.name },
+				assigneeIds: currentAssignees,
+				origin: url.origin,
+				data: {
+					task: taskSnapshot({ ...taskCtx, assigneeIds: currentAssignees }, url.origin),
+					changes
+				}
+			});
+		}
+	}
 	if (statusChanged) {
 		void notifyTaskStatusChanged({
 			task: taskCtx,
 			creatorId: target.createdBy,
 			assigneeIds: currentAssignees,
 			newStatus: String(patch.status),
+			previousStatus: target.status,
 			actor: { id: user.id, name: user.name },
 			origin: url.origin
 		}).catch((err) => console.error('task status notify failed', err));

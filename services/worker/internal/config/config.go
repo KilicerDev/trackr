@@ -72,6 +72,11 @@ type Config struct {
 	ApnsTeamID      string // APNS_TEAM_ID
 	ApnsBundleID    string // APNS_BUNDLE_ID
 	ApnsEnvironment string // APNS_ENV — production (default) | development
+
+	// Outbound webhooks — consumed by the webhook.deliver handler.
+	WebhookTimeout      time.Duration // WEBHOOK_TIMEOUT, default 10s (per attempt)
+	WebhookMaxBody      int           // WEBHOOK_MAX_BODY, default 2048 bytes kept from responses
+	WebhookAllowPrivate bool          // WEBHOOK_ALLOW_PRIVATE_URLS, default false — dev only
 }
 
 func Load() (Config, error) {
@@ -86,28 +91,31 @@ func Load() (Config, error) {
 	smtpPort := intEnv("SMTP_PORT", 587)
 
 	cfg := Config{
-		DSN:               dsn,
-		Concurrency:       intEnv("WORKER_CONCURRENCY", 4),
-		JobTimeout:        durationEnv("WORKER_JOB_TIMEOUT", 4*time.Minute),
-		PollInterval:      durationEnv("WORKER_POLL_INTERVAL", time.Second),
-		Notify:            boolEnv("WORKER_NOTIFY", true),
-		HeartbeatInterval: durationEnv("WORKER_HEARTBEAT", 30*time.Second),
-		ReapAfter:         durationEnv("WORKER_REAP_AFTER", 5*time.Minute),
-		BackoffBase:       durationEnv("WORKER_BACKOFF_BASE", 10*time.Second),
-		BackoffCap:        durationEnv("WORKER_BACKOFF_CAP", 10*time.Minute),
-		JobTypes:          listEnv("WORKER_JOB_TYPES"),
-		WorkerID:          os.Getenv("WORKER_ID"),
-		SmtpHost:          os.Getenv("SMTP_HOST"),
-		SmtpPort:          smtpPort,
-		SmtpSecure:        boolEnv("SMTP_SECURE", smtpPort == 465),
-		SmtpUser:          os.Getenv("SMTP_USER"),
-		SmtpPass:          os.Getenv("SMTP_PASS"),
-		EmailFrom:         os.Getenv("EMAIL_FROM"),
-		ApnsKey:           os.Getenv("APNS_KEY"),
-		ApnsKeyID:         os.Getenv("APNS_KEY_ID"),
-		ApnsTeamID:        os.Getenv("APNS_TEAM_ID"),
-		ApnsBundleID:      os.Getenv("APNS_BUNDLE_ID"),
-		ApnsEnvironment:   os.Getenv("APNS_ENV"),
+		DSN:                 dsn,
+		Concurrency:         intEnv("WORKER_CONCURRENCY", 4),
+		JobTimeout:          durationEnv("WORKER_JOB_TIMEOUT", 4*time.Minute),
+		PollInterval:        durationEnv("WORKER_POLL_INTERVAL", time.Second),
+		Notify:              boolEnv("WORKER_NOTIFY", true),
+		HeartbeatInterval:   durationEnv("WORKER_HEARTBEAT", 30*time.Second),
+		ReapAfter:           durationEnv("WORKER_REAP_AFTER", 5*time.Minute),
+		BackoffBase:         durationEnv("WORKER_BACKOFF_BASE", 10*time.Second),
+		BackoffCap:          durationEnv("WORKER_BACKOFF_CAP", 10*time.Minute),
+		JobTypes:            listEnv("WORKER_JOB_TYPES"),
+		WorkerID:            os.Getenv("WORKER_ID"),
+		SmtpHost:            os.Getenv("SMTP_HOST"),
+		SmtpPort:            smtpPort,
+		SmtpSecure:          boolEnv("SMTP_SECURE", smtpPort == 465),
+		SmtpUser:            os.Getenv("SMTP_USER"),
+		SmtpPass:            os.Getenv("SMTP_PASS"),
+		EmailFrom:           os.Getenv("EMAIL_FROM"),
+		ApnsKey:             os.Getenv("APNS_KEY"),
+		ApnsKeyID:           os.Getenv("APNS_KEY_ID"),
+		ApnsTeamID:          os.Getenv("APNS_TEAM_ID"),
+		ApnsBundleID:        os.Getenv("APNS_BUNDLE_ID"),
+		ApnsEnvironment:     os.Getenv("APNS_ENV"),
+		WebhookTimeout:      durationEnv("WEBHOOK_TIMEOUT", 10*time.Second),
+		WebhookMaxBody:      intEnv("WEBHOOK_MAX_BODY", 2048),
+		WebhookAllowPrivate: boolEnv("WEBHOOK_ALLOW_PRIVATE_URLS", false),
 	}
 
 	if cfg.WorkerID == "" {

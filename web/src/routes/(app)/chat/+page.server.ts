@@ -2,6 +2,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
+import { emitWebhookEvent, threadSnapshot } from '$lib/server/webhooks';
 import { organization, tag } from '$lib/server/db/app.schema';
 import { assertCan, can, isPortalUser, isTrackrTeam } from '$lib/server/permissions';
 import { getPreferences } from '$lib/server/preferences';
@@ -140,13 +141,25 @@ export const actions: Actions = {
 			uploadedBy: me.id
 		});
 		await markThreadRead(threadId, me.id);
+		emitWebhookEvent({
+			type: 'thread.created',
+			orgId,
+			actor: { id: me.id, name: me.name },
+			origin: url.origin,
+			data: {
+				thread: threadSnapshot({ id: threadId, orgId, title }, url.origin),
+				tagIds,
+				body: body || null
+			}
+		});
 		await notifyChatMessage({
 			threadId,
 			orgId,
 			threadTitle: title,
 			actor: { id: me.id, name: me.name },
 			body,
-			origin: url.origin
+			origin: url.origin,
+			messageId
 		});
 		return { success: true, threadId };
 	},
@@ -186,7 +199,8 @@ export const actions: Actions = {
 			threadTitle: ctx.title,
 			actor: { id: me.id, name: me.name },
 			body,
-			origin: url.origin
+			origin: url.origin,
+			messageId
 		});
 		return { success: true };
 	},
@@ -299,7 +313,7 @@ export const actions: Actions = {
 		return { success: true, tag: created };
 	},
 
-	setTags: async ({ request, locals }) => {
+	setTags: async ({ request, locals, url }) => {
 		if (!locals.user) throw error(401, m.chat_not_authenticated());
 		const form = await request.formData();
 		const threadId = String(form.get('threadId') ?? '').trim();
@@ -307,7 +321,24 @@ export const actions: Actions = {
 		const ctx = await getThreadContext(threadId);
 		if (!ctx) return fail(404, { message: m.chat_err_thread_not_found() });
 		await assertCan(locals, 'org.chat.post', { orgId: ctx.orgId });
-		await setThreadTags(threadId, parseTagIds(form.get('tags')));
+		const tagIds = parseTagIds(form.get('tags'));
+		await setThreadTags(threadId, tagIds);
+		{
+			const all = await listOrgTags(ctx.orgId);
+			const tags = all
+				.filter((t) => tagIds.includes(t.id))
+				.map((t) => ({ id: t.id, label: t.label }));
+			emitWebhookEvent({
+				type: 'thread.tagged',
+				orgId: ctx.orgId,
+				actor: { id: locals.user.id, name: locals.user.name },
+				origin: url.origin,
+				data: {
+					thread: threadSnapshot({ id: threadId, orgId: ctx.orgId, title: ctx.title }, url.origin),
+					tags
+				}
+			});
+		}
 		return { success: true };
 	},
 

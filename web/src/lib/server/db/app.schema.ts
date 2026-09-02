@@ -696,6 +696,8 @@ export type NotificationPrefs = Partial<{
 	// @-mention in a project discussion.
 	projectMentioned: NotificationChannelPrefs;
 	wikiUpdated: NotificationChannelPrefs;
+	// Admin-only: a webhook subscription was auto-disabled after sustained failures.
+	webhookDisabled: NotificationChannelPrefs;
 }>;
 
 export const userPreferences = pgTable('user_preferences', {
@@ -1405,7 +1407,8 @@ export const NOTIFICATION_KINDS = [
 	'chatMessage',
 	'chatMentioned',
 	'projectMentioned',
-	'wikiUpdated'
+	'wikiUpdated',
+	'webhookDisabled'
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
@@ -1576,3 +1579,157 @@ export const auditLog = pgTable(
 );
 
 export type AuditLog = typeof auditLog.$inferSelect;
+
+// ─── Webhooks ────────────────────────────────────────────────────────────────
+// Outbound webhooks are workspace-scoped: a subscription is owned by the
+// internal workspace (managed under /admin/settings/webhooks) and narrowed with
+// filters. One `webhook_event` row is written per emitted event (the payload is
+// built once, in TS), one `webhook_delivery` per (event × matching
+// subscription), and one `webhook_delivery_attempt` per HTTP attempt. Delivery
+// itself is done by the Go worker (`webhook.deliver` job), which owns the retry
+// schedule; see $lib/server/webhooks.
+
+export const WEBHOOK_DELIVERY_STATUSES = [
+	'pending',
+	'success',
+	'failed',
+	'exhausted',
+	'cancelled'
+] as const;
+export type WebhookDeliveryStatus = (typeof WEBHOOK_DELIVERY_STATUSES)[number];
+
+export const WEBHOOK_DISABLED_REASONS = ['manual', 'failures'] as const;
+export type WebhookDisabledReason = (typeof WEBHOOK_DISABLED_REASONS)[number];
+
+/** Sentinel accepted in `orgIds` meaning "internal work (project.org_id IS NULL)". */
+export const WEBHOOK_INTERNAL_ORG = 'internal';
+
+export const webhookSubscription = pgTable(
+	'webhook_subscription',
+	{
+		id: text('id').primaryKey(),
+		name: text('name').notNull(),
+		url: text('url').notNull(),
+		description: text('description'),
+		// Plaintext in v1 (same trust level as session.token). The Go worker reads
+		// it to sign deliveries. Shown once in the UI; "rotate" replaces it.
+		secret: text('secret').notNull(),
+		eventTypes: jsonb('event_types').$type<string[]>().notNull(),
+		// null = all. May contain WEBHOOK_INTERNAL_ORG for org-less (internal) events.
+		orgIds: jsonb('org_ids').$type<string[] | null>(),
+		projectIds: jsonb('project_ids').$type<string[] | null>(),
+		assigneeUserId: text('assignee_user_id').references(() => user.id, { onDelete: 'set null' }),
+		includeInternalMessages: boolean('include_internal_messages').notNull().default(false),
+		enabled: boolean('enabled').notNull().default(true),
+		disabledReason: text('disabled_reason').$type<WebhookDisabledReason>(),
+		// Exhausted deliveries in a row; reset on any 2xx. Drives auto-disable.
+		consecutiveFailures: integer('consecutive_failures').notNull().default(0),
+		lastSuccessAt: timestamp('last_success_at'),
+		lastFailureAt: timestamp('last_failure_at'),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at')
+			.defaultNow()
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull()
+	},
+	(t) => [index('webhook_subscription_enabled_idx').on(t.enabled)]
+);
+
+export type WebhookSubscription = typeof webhookSubscription.$inferSelect;
+
+export const webhookEvent = pgTable(
+	'webhook_event',
+	{
+		id: text('id').primaryKey(),
+		type: text('type').notNull(),
+		orgId: text('org_id'),
+		projectId: text('project_id'),
+		actorId: text('actor_id'),
+		// The exact JSON body sent to receivers. Stored serialised so the
+		// signature the worker computes matches byte-for-byte what it sends.
+		payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
+		createdAt: timestamp('created_at').defaultNow().notNull()
+	},
+	(t) => [index('webhook_event_created_idx').on(t.createdAt)]
+);
+
+export type WebhookEvent = typeof webhookEvent.$inferSelect;
+
+export const webhookDelivery = pgTable(
+	'webhook_delivery',
+	{
+		id: text('id').primaryKey(),
+		subscriptionId: text('subscription_id')
+			.notNull()
+			.references(() => webhookSubscription.id, { onDelete: 'cascade' }),
+		eventId: text('event_id')
+			.notNull()
+			.references(() => webhookEvent.id, { onDelete: 'cascade' }),
+		status: text('status').$type<WebhookDeliveryStatus>().notNull().default('pending'),
+		attempt: integer('attempt').notNull().default(0),
+		nextAttemptAt: timestamp('next_attempt_at'),
+		lastStatusCode: integer('last_status_code'),
+		lastError: text('last_error'),
+		lastDurationMs: integer('last_duration_ms'),
+		responseSnippet: text('response_snippet'),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at')
+			.defaultNow()
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull()
+	},
+	(t) => [
+		index('webhook_delivery_sub_created_idx').on(t.subscriptionId, t.createdAt),
+		index('webhook_delivery_status_next_idx').on(t.status, t.nextAttemptAt),
+		index('webhook_delivery_event_idx').on(t.eventId)
+	]
+);
+
+export type WebhookDelivery = typeof webhookDelivery.$inferSelect;
+
+export const webhookDeliveryAttempt = pgTable(
+	'webhook_delivery_attempt',
+	{
+		id: text('id').primaryKey(),
+		deliveryId: text('delivery_id')
+			.notNull()
+			.references(() => webhookDelivery.id, { onDelete: 'cascade' }),
+		attempt: integer('attempt').notNull(),
+		statusCode: integer('status_code'),
+		error: text('error'),
+		durationMs: integer('duration_ms').notNull().default(0),
+		requestHeaders: jsonb('request_headers').$type<Record<string, string>>(),
+		responseSnippet: text('response_snippet'),
+		at: timestamp('at').defaultNow().notNull()
+	},
+	(t) => [index('webhook_delivery_attempt_delivery_idx').on(t.deliveryId, t.attempt)]
+);
+
+export type WebhookDeliveryAttempt = typeof webhookDeliveryAttempt.$inferSelect;
+
+export const webhookSubscriptionRelations = relations(webhookSubscription, ({ one, many }) => ({
+	assignee: one(user, { fields: [webhookSubscription.assigneeUserId], references: [user.id] }),
+	creator: one(user, { fields: [webhookSubscription.createdBy], references: [user.id] }),
+	deliveries: many(webhookDelivery)
+}));
+
+export const webhookEventRelations = relations(webhookEvent, ({ many }) => ({
+	deliveries: many(webhookDelivery)
+}));
+
+export const webhookDeliveryRelations = relations(webhookDelivery, ({ one, many }) => ({
+	subscription: one(webhookSubscription, {
+		fields: [webhookDelivery.subscriptionId],
+		references: [webhookSubscription.id]
+	}),
+	event: one(webhookEvent, { fields: [webhookDelivery.eventId], references: [webhookEvent.id] }),
+	attempts: many(webhookDeliveryAttempt)
+}));
+
+export const webhookDeliveryAttemptRelations = relations(webhookDeliveryAttempt, ({ one }) => ({
+	delivery: one(webhookDelivery, {
+		fields: [webhookDeliveryAttempt.deliveryId],
+		references: [webhookDelivery.id]
+	})
+}));

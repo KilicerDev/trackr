@@ -45,7 +45,9 @@ export const NOTIFICATION_DEFAULTS: Required<NotificationPrefs> = {
 	chatMessage: { email: 'off', inApp: true },
 	chatMentioned: { email: 'instant', inApp: true },
 	projectMentioned: { email: 'instant', inApp: true },
-	wikiUpdated: { email: 'off', inApp: false }
+	wikiUpdated: { email: 'off', inApp: false },
+	// Admin-only system notice (a webhook was auto-disabled). Not user-configurable.
+	webhookDisabled: { email: 'instant', inApp: true }
 };
 
 // Stored prefs predate delivery modes and may carry `email: true|false`.

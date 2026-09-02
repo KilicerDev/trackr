@@ -13,6 +13,7 @@ import { notifyChatMessage } from '$lib/server/notify/events/chat';
 import { m } from '$lib/paraglide/messages';
 import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
 import type { RequestHandler } from './$types';
+import { emitWebhookEvent, threadSnapshot } from '$lib/server/webhooks';
 
 export const GET: RequestHandler = async ({ locals, url }) => {
 	const user = requireUser(locals);
@@ -63,15 +64,32 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 	if (!text) apiError(400, m.chat_err_message_required());
 	await assertCan(locals, 'org.chat.post', { orgId });
 
-	const { threadId } = await createThread({ orgId, title, body: text, createdBy: user.id });
+	const { threadId, messageId } = await createThread({
+		orgId,
+		title,
+		body: text,
+		createdBy: user.id
+	});
 	await markThreadRead(threadId, user.id);
+	emitWebhookEvent({
+		type: 'thread.created',
+		orgId,
+		actor: { id: user.id, name: user.name },
+		origin: url.origin,
+		data: {
+			thread: threadSnapshot({ id: threadId, orgId, title }, url.origin),
+			tagIds: [],
+			body: text
+		}
+	});
 	await notifyChatMessage({
 		threadId,
 		orgId,
 		threadTitle: title,
 		actor: { id: user.id, name: user.name },
 		body: text,
-		origin: url.origin
+		origin: url.origin,
+		messageId
 	});
 	return json({ threadId }, { status: 201 });
 };

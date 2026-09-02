@@ -19,6 +19,7 @@ import {
 import { loadTicketDisplayUsers } from '$lib/server/tickets';
 import { notifyTaskAssigned } from '$lib/server/notify/events/task';
 import { logActivityFF } from '$lib/server/activity';
+import { emitWebhookEvent, taskSnapshot } from '$lib/server/webhooks';
 import { normalizeTag } from '$lib/utils/label-meta';
 import { m } from '$lib/paraglide/messages';
 import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
@@ -38,9 +39,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	);
 	const mine =
 		scope === 'mine'
-			? tasks.filter(
-					(t) => (t.assignees ?? []).includes(user.id) || t.createdBy === user.id
-				)
+			? tasks.filter((t) => (t.assignees ?? []).includes(user.id) || t.createdBy === user.id)
 			: tasks;
 	// Display directory for assignee names (name + color only) so the app can
 	// render/filter by assignee without a users endpoint.
@@ -136,8 +135,30 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 	});
 	// Same contract as the web create action: notify assigned users (notify()
 	// drops the actor, so plain self-assignment stays silent).
+	const createdCtx = {
+		id: created.id,
+		displayId: created.displayId,
+		title,
+		orgId: proj.orgId,
+		projectId: proj.id,
+		status,
+		priority,
+		type
+	};
+	emitWebhookEvent({
+		type: 'task.created',
+		orgId: proj.orgId,
+		projectId: proj.id,
+		actor: { id: user.id, name: user.name },
+		assigneeIds: created.assignedIds,
+		origin: url.origin,
+		data: {
+			task: taskSnapshot({ ...createdCtx, assigneeIds: created.assignedIds, dueDate }, url.origin),
+			description: body.description?.trim() || null
+		}
+	});
 	void notifyTaskAssigned({
-		task: { id: created.id, displayId: created.displayId, title, orgId: proj.orgId },
+		task: createdCtx,
 		assigneeIds: created.assignedIds,
 		actor: { id: user.id, name: user.name },
 		origin: url.origin

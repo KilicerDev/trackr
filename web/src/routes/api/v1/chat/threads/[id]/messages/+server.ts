@@ -24,7 +24,8 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		threadTitle: ctx.title,
 		actor: { id: user.id, name: user.name },
 		body: text,
-		origin: url.origin
+		origin: url.origin,
+		messageId: id
 	});
 	return json({ id }, { status: 201 });
 };

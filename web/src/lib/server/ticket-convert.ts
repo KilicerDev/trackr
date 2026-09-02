@@ -10,6 +10,7 @@
 
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
+import { emitWebhookEvent, taskSnapshot } from '$lib/server/webhooks';
 import { project } from '$lib/server/db/app.schema';
 import { assertCan, isTrackrTeam } from '$lib/server/permissions';
 import { addTicketMessage, getTicket } from '$lib/server/tickets';
@@ -147,9 +148,35 @@ export async function convertTicketToTask(
 		console.error('ticket post-convert update failed', err);
 	}
 
+	emitWebhookEvent({
+		type: 'task.created',
+		orgId: p.orgId,
+		projectId: p.id,
+		actor: { id: me.id, name: me.name },
+		assigneeIds: created.assignedIds,
+		origin: input.origin,
+		data: {
+			task: taskSnapshot(
+				{
+					id: created.id,
+					displayId: created.displayId,
+					projectId: p.id,
+					title,
+					status,
+					priority,
+					type,
+					assigneeIds: created.assignedIds,
+					dueDate: input.dueDate ?? null
+				},
+				input.origin
+			),
+			description: input.description?.trim() || null,
+			sourceTicketId: input.ticketId
+		}
+	});
 	// Notify newly-assigned users (mirrors the /tasks create action).
 	void notifyTaskAssigned({
-		task: { id: created.id, displayId: created.displayId, title, orgId: p.orgId },
+		task: { id: created.id, displayId: created.displayId, title, orgId: p.orgId, projectId: p.id },
 		assigneeIds: created.assignedIds,
 		actor: { id: me.id, name: me.name },
 		origin: input.origin

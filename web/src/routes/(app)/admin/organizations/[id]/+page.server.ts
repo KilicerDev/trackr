@@ -1,6 +1,7 @@
 import { error, fail, type Actions } from '@sveltejs/kit';
 import { and, count, desc, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
+import { emitWebhookEvent } from '$lib/server/webhooks';
 import { organization, organizationMember, project } from '$lib/server/db/app.schema';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import { allowedOrgRoles } from '$lib/roles';
@@ -136,7 +137,12 @@ export const load: PageServerLoad = async ({ params }) => {
 
 async function loadOrgOrFail(orgId: string) {
 	const [row] = await db
-		.select({ id: organization.id, isInternal: organization.isInternal })
+		.select({
+			id: organization.id,
+			isInternal: organization.isInternal,
+			name: organization.name,
+			key: organization.key
+		})
 		.from(organization)
 		.where(eq(organization.id, orgId))
 		.limit(1);
@@ -292,6 +298,16 @@ export const actions: Actions = {
 			orgId: params.id,
 			meta: { action: 'org.member_add', orgId: params.id, role: requestedRole }
 		});
+		emitWebhookEvent({
+			type: 'organization.member_added',
+			orgId: org.isInternal ? null : params.id,
+			actor: locals.user ? { id: locals.user.id, name: locals.user.name } : null,
+			assigneeIds: [userId],
+			data: {
+				organization: { id: org.id, name: org.name, key: org.key, internal: org.isInternal },
+				member: { userId, role: requestedRole }
+			}
+		});
 		return { success: true };
 	},
 
@@ -345,6 +361,16 @@ export const actions: Actions = {
 			orgId: params.id,
 			meta: { action: 'org.member_role', orgId: params.id, role }
 		});
+		emitWebhookEvent({
+			type: 'organization.member_role_changed',
+			orgId: org.isInternal ? null : params.id,
+			actor: locals.user ? { id: locals.user.id, name: locals.user.name } : null,
+			assigneeIds: [userId],
+			data: {
+				organization: { id: org.id, name: org.name, key: org.key, internal: org.isInternal },
+				member: { userId, role }
+			}
+		});
 		return { success: true };
 	},
 
@@ -387,6 +413,16 @@ export const actions: Actions = {
 			targetLabel: await userLabel(userId),
 			orgId: params.id,
 			meta: { action: 'org.member_remove', orgId: params.id, role: current.role }
+		});
+		emitWebhookEvent({
+			type: 'organization.member_removed',
+			orgId: org.isInternal ? null : params.id,
+			actor: locals.user ? { id: locals.user.id, name: locals.user.name } : null,
+			assigneeIds: [userId],
+			data: {
+				organization: { id: org.id, name: org.name, key: org.key, internal: org.isInternal },
+				member: { userId, role: current.role }
+			}
 		});
 		return { success: true };
 	}

@@ -12,6 +12,7 @@ import { priorityLabel, ticketStatusLabel } from '$lib/utils/labels';
 import type { TicketPriority, TicketStatus } from '$lib/server/tickets';
 import type { Locale } from '$lib/paraglide/runtime';
 import { emailDate, type NotifyActor } from './shared';
+import { emitWebhookEvent, ticketSnapshot, messageSnapshot } from '$lib/server/webhooks';
 
 // The slice of a ticket row every event needs. Callers already hold the loaded
 // ticket (from getTicket()/createTicket()) — no re-querying here. `status` /
@@ -103,6 +104,24 @@ export async function notifyTicketCreated(opts: {
 	if (assignedToNotify.length) {
 		await notifyAssigned(t, assignedToNotify, actor, opts.origin);
 	}
+	emitWebhookEvent({
+		type: 'ticket.created',
+		orgId: t.orgId,
+		actor,
+		assigneeIds: t.assigneeIds,
+		origin: opts.origin,
+		data: { ticket: ticketSnapshot(t, opts.origin), description: opts.description }
+	});
+	if (t.assigneeIds.length) {
+		emitWebhookEvent({
+			type: 'ticket.assigned',
+			orgId: t.orgId,
+			actor,
+			assigneeIds: t.assigneeIds,
+			origin: opts.origin,
+			data: { ticket: ticketSnapshot(t, opts.origin), addedAssigneeIds: t.assigneeIds }
+		});
+	}
 }
 
 // `ticketAssigned` — shared by the create and update paths.
@@ -142,8 +161,27 @@ export async function notifyTicketMessage(opts: {
 	internal: boolean;
 	actor: NotifyActor;
 	origin: string;
+	/** Id of the stored message row, when the caller has it. */
+	messageId?: string | null;
 }): Promise<void> {
 	const { ticket: t, actor } = opts;
+	emitWebhookEvent({
+		type: 'ticket.message_created',
+		orgId: t.orgId,
+		actor,
+		assigneeIds: t.assigneeIds,
+		internal: opts.internal,
+		origin: opts.origin,
+		data: {
+			ticket: ticketSnapshot(t, opts.origin),
+			message: messageSnapshot({
+				id: opts.messageId ?? '',
+				body: opts.body,
+				internal: opts.internal,
+				authorId: actor.id
+			})
+		}
+	});
 	const recipients = await ticketRecipients(
 		{
 			orgId: t.orgId,
@@ -225,6 +263,7 @@ export async function notifyTicketUpdated(opts: {
 	ticket: TicketNotifyCtx;
 	addedAssigneeIds: string[];
 	newStatus?: TicketStatus | null;
+	previousStatus?: string | null;
 	newPriority?: TicketPriority | null;
 	actor: NotifyActor;
 	origin: string;
@@ -235,6 +274,37 @@ export async function notifyTicketUpdated(opts: {
 	const addedToNotify = opts.addedAssigneeIds.filter((aid) => aid !== actor.id);
 	if (addedToNotify.length) {
 		await notifyAssigned(t, addedToNotify, actor, opts.origin);
+	}
+	if (opts.addedAssigneeIds.length) {
+		emitWebhookEvent({
+			type: 'ticket.assigned',
+			orgId: t.orgId,
+			actor,
+			assigneeIds: t.assigneeIds,
+			origin: opts.origin,
+			data: { ticket: ticketSnapshot(t, opts.origin), addedAssigneeIds: opts.addedAssigneeIds }
+		});
+	}
+	if (opts.newStatus) {
+		const snap = ticketSnapshot({ ...t, status: opts.newStatus }, opts.origin);
+		emitWebhookEvent({
+			type: 'ticket.status_changed',
+			orgId: t.orgId,
+			actor,
+			assigneeIds: t.assigneeIds,
+			origin: opts.origin,
+			data: { ticket: snap, previousStatus: opts.previousStatus ?? null, status: opts.newStatus }
+		});
+		if (opts.newStatus === 'closed') {
+			emitWebhookEvent({
+				type: 'ticket.closed',
+				orgId: t.orgId,
+				actor,
+				assigneeIds: t.assigneeIds,
+				origin: opts.origin,
+				data: { ticket: snap }
+			});
+		}
 	}
 
 	const newStatus = opts.newStatus;

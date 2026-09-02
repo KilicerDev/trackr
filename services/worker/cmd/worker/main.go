@@ -18,6 +18,7 @@ import (
 	"github.com/KilicerDev/trackr/services/worker/internal/jobs"
 	"github.com/KilicerDev/trackr/services/worker/internal/mail"
 	"github.com/KilicerDev/trackr/services/worker/internal/push"
+	"github.com/KilicerDev/trackr/services/worker/internal/webhook"
 )
 
 func main() {
@@ -74,8 +75,19 @@ func main() {
 		logger.Info("apns push enabled", "bundle", cfg.ApnsBundleID, "env", cfg.ApnsEnvironment)
 	}
 
+	// Outbound HTTP for webhook.deliver. Strict by default (https, public
+	// addresses only); WEBHOOK_ALLOW_PRIVATE_URLS=true loosens it for local dev.
+	hooks := webhook.NewClient(webhook.Config{
+		Timeout:      cfg.WebhookTimeout,
+		MaxBody:      cfg.WebhookMaxBody,
+		AllowPrivate: cfg.WebhookAllowPrivate,
+	})
+	if cfg.WebhookAllowPrivate {
+		logger.Warn("webhooks: private/loopback destinations allowed (WEBHOOK_ALLOW_PRIVATE_URLS)")
+	}
+
 	// Inject deps into handlers (explicit DI — no package globals).
-	handlers := jobs.Register(jobs.Deps{DB: pool, Mailer: mailer, Push: apns})
+	handlers := jobs.Register(jobs.Deps{DB: pool, Mailer: mailer, Push: apns, Webhooks: hooks})
 
 	engine, err := jobworker.New(pool, jobworker.Config{
 		Concurrency:       cfg.Concurrency,

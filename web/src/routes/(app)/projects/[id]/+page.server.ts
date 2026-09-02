@@ -1,6 +1,7 @@
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
 import { and, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
+import { emitWebhookEvent, projectSnapshot } from '$lib/server/webhooks';
 import {
 	project,
 	projectActivity,
@@ -20,6 +21,21 @@ import { m } from '$lib/paraglide/messages';
 
 // "KEY · Name" for the audit log's target column. Best-effort; returns the id
 // if the project can't be read.
+async function projectForWebhook(id: string) {
+	const [p] = await db
+		.select({
+			id: project.id,
+			key: project.key,
+			name: project.name,
+			orgId: project.orgId,
+			status: project.status
+		})
+		.from(project)
+		.where(eq(project.id, id))
+		.limit(1);
+	return p ?? null;
+}
+
 async function projectLabel(id: string): Promise<string> {
 	const [p] = await db
 		.select({ name: project.name, key: project.key })
@@ -235,7 +251,7 @@ export const actions: Actions = {
 	// Archive is now a status value rather than a separate timestamp column.
 	// Until the project audit log lands (which will record the prior status),
 	// unarchive restores to 'active' as a sensible default.
-	archive: async ({ params, locals }) => {
+	archive: async ({ params, locals, url }) => {
 		if (!locals.user) throw error(401, m.projects_not_authenticated());
 		if (!params.id) return fail(400, { message: m.projects_missing_id() });
 		await assertCan(locals, 'project.archive', { projectId: params.id });
@@ -243,6 +259,19 @@ export const actions: Actions = {
 			.update(project)
 			.set({ status: 'archived', updatedAt: new Date() })
 			.where(eq(project.id, params.id));
+		{
+			const p = await projectForWebhook(params.id);
+			if (p) {
+				emitWebhookEvent({
+					type: 'project.archived',
+					orgId: p.orgId,
+					projectId: p.id,
+					actor: { id: locals.user.id, name: locals.user.name },
+					origin: url.origin,
+					data: { project: projectSnapshot(p, url.origin) }
+				});
+			}
+		}
 		logActivityFF({
 			projectId: params.id,
 			actorId: locals.user.id,
@@ -317,7 +346,7 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	memberAdd: async ({ request, params, locals }) => {
+	memberAdd: async ({ request, params, locals, url }) => {
 		if (!locals.user) throw error(401, m.projects_not_authenticated());
 		if (!params.id) return fail(400, { message: m.projects_missing_id() });
 		await assertCan(locals, 'project.members.manage', { projectId: params.id });
@@ -349,6 +378,20 @@ export const actions: Actions = {
 			type: 'member.added',
 			meta: { userId, role }
 		});
+		{
+			const p = await projectForWebhook(params.id);
+			if (p) {
+				emitWebhookEvent({
+					type: 'project.member_added',
+					orgId: p.orgId,
+					projectId: p.id,
+					actor: { id: locals.user.id, name: locals.user.name },
+					assigneeIds: [userId],
+					origin: url.origin,
+					data: { project: projectSnapshot(p, url.origin), member: { userId, role } }
+				});
+			}
+		}
 		void recordAudit({
 			type: 'project.member',
 			actorId: locals.user.id,
@@ -438,7 +481,7 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	memberRemove: async ({ request, params, locals }) => {
+	memberRemove: async ({ request, params, locals, url }) => {
 		if (!locals.user) throw error(401, m.projects_not_authenticated());
 		if (!params.id) return fail(400, { message: m.projects_missing_id() });
 		await assertCan(locals, 'project.members.manage', { projectId: params.id });
@@ -472,6 +515,20 @@ export const actions: Actions = {
 			type: 'member.removed',
 			meta: { userId }
 		});
+		{
+			const p = await projectForWebhook(params.id);
+			if (p) {
+				emitWebhookEvent({
+					type: 'project.member_removed',
+					orgId: p.orgId,
+					projectId: p.id,
+					actor: { id: locals.user.id, name: locals.user.name },
+					assigneeIds: [userId],
+					origin: url.origin,
+					data: { project: projectSnapshot(p, url.origin), member: { userId } }
+				});
+			}
+		}
 		void recordAudit({
 			type: 'project.member',
 			actorId: locals.user.id,

@@ -307,7 +307,24 @@ export const LOG_EVENT_TYPES: Record<
 		color: '#e9c46a',
 		kind: 'settings'
 	},
-	'api.token': { label: 'API token created', icon: 'shield', color: '#7a9cf0', kind: 'settings' }
+	'api.token': { label: 'API token created', icon: 'shield', color: '#7a9cf0', kind: 'settings' },
+	// webhooks
+	'webhook.create': { label: 'Webhook created', icon: 'plus', color: '#7fc8a9', kind: 'settings' },
+	'webhook.update': {
+		label: 'Webhook updated',
+		icon: 'pencil',
+		color: '#7a9cf0',
+		kind: 'settings'
+	},
+	'webhook.delete': { label: 'Webhook deleted', icon: 'trash', color: '#ef4f5e', kind: 'settings' },
+	'webhook.rotate_secret': {
+		label: 'Webhook secret rotated',
+		icon: 'refresh',
+		color: '#e9c46a',
+		kind: 'settings'
+	},
+	'webhook.enable': { label: 'Webhook enabled', icon: 'check', color: '#7fc8a9', kind: 'settings' },
+	'webhook.disable': { label: 'Webhook disabled', icon: 'x', color: '#e9c46a', kind: 'settings' }
 };
 
 export const LOG_KINDS = [

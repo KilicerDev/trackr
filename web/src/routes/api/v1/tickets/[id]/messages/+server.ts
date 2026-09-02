@@ -51,6 +51,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		body: text,
 		internal,
 		actor: { id: user.id, name: user.name },
+		messageId,
 		origin: url.origin
 	});
 	void recordAudit({

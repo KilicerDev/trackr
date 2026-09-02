@@ -2,8 +2,14 @@ import { and, desc, eq, isNull } from 'drizzle-orm';
 import { hashPassword } from 'better-auth/crypto';
 import { env } from '$env/dynamic/private';
 import { db } from '$lib/server/db';
+import { emitWebhookEvent } from '$lib/server/webhooks';
 import { account, user } from '$lib/server/db/auth.schema';
-import { invitation, organizationMember, type Invitation } from '$lib/server/db/app.schema';
+import {
+	invitation,
+	organization,
+	organizationMember,
+	type Invitation
+} from '$lib/server/db/app.schema';
 import type { Role } from '$lib/roles';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -172,6 +178,32 @@ export async function acceptInvitation(opts: {
 		}
 		await tx.update(invitation).set({ acceptedAt: now }).where(eq(invitation.id, inv.id));
 	});
+
+	{
+		let orgKey: string | null = null;
+		let internal = false;
+		if (inv.orgId) {
+			const [org] = await db
+				.select({ key: organization.key, isInternal: organization.isInternal })
+				.from(organization)
+				.where(eq(organization.id, inv.orgId))
+				.limit(1);
+			orgKey = org?.key ?? null;
+			internal = org?.isInternal ?? false;
+		}
+		emitWebhookEvent({
+			type: 'invitation.accepted',
+			orgId: internal ? null : inv.orgId,
+			actor: { id: userId, name: inv.name },
+			assigneeIds: [userId],
+			data: {
+				invitation: { id: inv.id, invitedBy: inv.invitedBy ?? null },
+				user: { id: userId, name: inv.name },
+				organization: inv.orgId ? { id: inv.orgId, key: orgKey, internal } : null,
+				role: inv.orgRole ?? null
+			}
+		});
+	}
 
 	return { ok: true, email: inv.email, invitationId: inv.id, userId, role: inv.role };
 }

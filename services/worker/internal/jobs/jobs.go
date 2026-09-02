@@ -12,6 +12,7 @@ import (
 	"github.com/KilicerDev/trackr/services/shared/jobworker"
 	"github.com/KilicerDev/trackr/services/worker/internal/mail"
 	"github.com/KilicerDev/trackr/services/worker/internal/push"
+	"github.com/KilicerDev/trackr/services/worker/internal/webhook"
 )
 
 // Deps are the shared clients handlers need, injected by main() at startup.
@@ -21,16 +22,20 @@ type Deps struct {
 	Mailer mail.Sender
 	// nil when APNs env vars are absent — push.send then acks as skipped.
 	Push *push.Client
+	// Outbound HTTP client for webhook.deliver (URL policy + signing).
+	Webhooks *webhook.Client
 }
 
 // Register builds the type → handler map for the engine.
 func Register(d Deps) map[string]jobworker.Handler {
 	return map[string]jobworker.Handler{
-		"mail.send":           sendMail(d.Mailer),
-		"prune.jobs":          pruneJobs(d.DB),
-		"prune.invitations":   pruneInvitations(d.DB),
-		"prune.notifications": pruneNotifications(d.DB),
-		"notify.digest":       notifyDigest(d.DB),
-		"push.send":           sendPush(d.DB, d.Push),
+		"mail.send":                sendMail(d.Mailer),
+		"prune.jobs":               pruneJobs(d.DB),
+		"prune.invitations":        pruneInvitations(d.DB),
+		"prune.notifications":      pruneNotifications(d.DB),
+		"notify.digest":            notifyDigest(d.DB),
+		"push.send":                sendPush(d.DB, d.Push),
+		"webhook.deliver":          deliverWebhook(d.DB, d.Webhooks),
+		"prune.webhook_deliveries": pruneWebhookDeliveries(d.DB),
 	}
 }

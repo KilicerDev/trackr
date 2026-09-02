@@ -9,6 +9,7 @@ import { parseMentionIds } from '$lib/utils/mentions';
 import { m } from '$lib/paraglide/messages';
 import type { Locale } from '$lib/paraglide/runtime';
 import { emailDate, type NotifyActor } from './shared';
+import { emitWebhookEvent, messageSnapshot, threadSnapshot } from '$lib/server/webhooks';
 
 function chatMeta(actor: NotifyActor, locale: Locale): { label: string; value: string }[] {
 	return [
@@ -24,9 +25,23 @@ export async function notifyChatMessage(opts: {
 	actor: NotifyActor;
 	body: string;
 	origin: string;
+	messageId?: string | null;
 }): Promise<void> {
 	const { actor } = opts;
 	const chatUrl = `/chat?org=${opts.orgId}&thread=${opts.threadId}`;
+	emitWebhookEvent({
+		type: 'message.created',
+		orgId: opts.orgId,
+		actor,
+		origin: opts.origin,
+		data: {
+			thread: threadSnapshot(
+				{ id: opts.threadId, orgId: opts.orgId, title: opts.threadTitle },
+				opts.origin
+			),
+			message: messageSnapshot({ id: opts.messageId ?? '', body: opts.body, authorId: actor.id })
+		}
+	});
 	const [audience, followers, muters, mentioned] = await Promise.all([
 		orgChatRecipients(opts.orgId),
 		tagFollowers(opts.threadId),

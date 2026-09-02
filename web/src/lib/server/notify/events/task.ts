@@ -11,6 +11,7 @@ import { m } from '$lib/paraglide/messages';
 import { statusLabel } from '$lib/utils/labels';
 import type { Locale } from '$lib/paraglide/runtime';
 import { emailDate, type NotifyActor } from './shared';
+import { emitWebhookEvent, taskSnapshot } from '$lib/server/webhooks';
 
 // The slice of a task every event needs. Callers already hold the loaded task
 // (from createTask()/resolveTaskByDisplayId()) — no re-querying here.
@@ -19,6 +20,11 @@ export type TaskNotifyCtx = {
 	displayId: string;
 	title: string;
 	orgId: string | null;
+	/** Needed for webhook filters/snapshots; optional for legacy callers. */
+	projectId?: string | null;
+	status?: string | null;
+	priority?: string | null;
+	type?: string | null;
 };
 
 function taskMeta(
@@ -49,6 +55,21 @@ export async function notifyTaskAssigned(opts: {
 }): Promise<void> {
 	const { task: t, actor } = opts;
 	if (opts.assigneeIds.length === 0) return;
+	emitWebhookEvent({
+		type: 'task.assigned',
+		orgId: t.orgId,
+		projectId: t.projectId ?? null,
+		actor,
+		assigneeIds: opts.assigneeIds,
+		origin: opts.origin,
+		data: {
+			task: taskSnapshot(
+				{ ...t, projectId: t.projectId ?? '', assigneeIds: opts.assigneeIds },
+				opts.origin
+			),
+			addedAssigneeIds: opts.assigneeIds
+		}
+	});
 	await notify({
 		kind: 'taskAssigned',
 		recipients: opts.assigneeIds,
@@ -77,6 +98,7 @@ export async function notifyTaskStatusChanged(opts: {
 	creatorId: string | null;
 	assigneeIds: string[];
 	newStatus: string;
+	previousStatus?: string | null;
 	actor: NotifyActor;
 	origin: string;
 }): Promise<void> {
@@ -84,6 +106,27 @@ export async function notifyTaskStatusChanged(opts: {
 	const recipients = taskRecipients({
 		creatorId: opts.creatorId,
 		assigneeIds: opts.assigneeIds
+	});
+	emitWebhookEvent({
+		type: 'task.status_changed',
+		orgId: t.orgId,
+		projectId: t.projectId ?? null,
+		actor,
+		assigneeIds: opts.assigneeIds,
+		origin: opts.origin,
+		data: {
+			task: taskSnapshot(
+				{
+					...t,
+					projectId: t.projectId ?? '',
+					status: opts.newStatus,
+					assigneeIds: opts.assigneeIds
+				},
+				opts.origin
+			),
+			previousStatus: opts.previousStatus ?? null,
+			status: opts.newStatus
+		}
 	});
 	await notify({
 		kind: 'taskStatusChanged',

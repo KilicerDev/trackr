@@ -1,6 +1,7 @@
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
 import { eq, desc, isNull, inArray, and } from 'drizzle-orm';
 import { db } from '$lib/server/db';
+import { emitWebhookEvent, projectSnapshot } from '$lib/server/webhooks';
 import { project, projectMember, organization, type Project } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
 import { accessibleProjectIds, assertCan } from '$lib/server/permissions';
@@ -174,7 +175,7 @@ export const load: ServerLoad = async ({ locals }) => {
 };
 
 export const actions: Actions = {
-	create: async ({ request, locals }) => {
+	create: async ({ request, locals, url }) => {
 		if (!locals.user) throw error(401, m.projects_not_authenticated());
 		await assertCan(locals, 'project.create');
 		const me = locals.user;
@@ -276,6 +277,14 @@ export const actions: Actions = {
 			meta: seed.result
 				? { key, templateId, templateName: seed.result.name, templateTasks: seed.result.created }
 				: { key }
+		});
+		emitWebhookEvent({
+			type: 'project.created',
+			orgId,
+			projectId: id,
+			actor: { id: me.id, name: me.name },
+			origin: url.origin,
+			data: { project: projectSnapshot({ id, key, name, orgId, status }, url.origin) }
 		});
 
 		return { success: true, id };

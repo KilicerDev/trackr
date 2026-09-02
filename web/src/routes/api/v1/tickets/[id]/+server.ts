@@ -211,6 +211,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 		},
 		addedAssigneeIds: (patch.assigneeIds ?? []).filter((id) => !ticket.assignees.includes(id)),
 		newStatus: (patch.status as TicketStatus | undefined) ?? null,
+		previousStatus: ticket.status,
 		newPriority: null,
 		actor: { id: user.id, name: user.name },
 		origin: url.origin

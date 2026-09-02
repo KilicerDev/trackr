@@ -6,11 +6,12 @@ import { db } from '$lib/server/db';
 import { project, task, taskTimeLog } from '$lib/server/db/app.schema';
 import { can } from '$lib/server/permissions';
 import { logActivityFF } from '$lib/server/activity';
+import { emitWebhookEvent, taskSnapshot } from '$lib/server/webhooks';
 import { m } from '$lib/paraglide/messages';
 import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ locals, params, request }) => {
+export const POST: RequestHandler = async ({ locals, params, request, url }) => {
 	const user = requireUser(locals);
 	const body = await readJson<{ minutes?: number; date?: string; note?: string }>(request);
 
@@ -25,7 +26,11 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			number: task.number,
 			title: task.title,
 			projectId: project.id,
-			projectKey: project.key
+			projectKey: project.key,
+			projectOrgId: project.orgId,
+			status: task.status,
+			priority: task.priority,
+			type: task.type
 		})
 		.from(task)
 		.innerJoin(project, eq(project.id, task.projectId))
@@ -59,6 +64,22 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 			minutes: total,
 			note,
 			loggedAt: date
+		}
+	});
+
+	emitWebhookEvent({
+		type: 'task.time_logged',
+		orgId: target.projectOrgId,
+		projectId: target.projectId,
+		actor: { id: user.id, name: user.name },
+		assigneeIds: [user.id],
+		origin: url.origin,
+		data: {
+			task: taskSnapshot(
+				{ ...target, displayId: `${target.projectKey}-${target.number}` },
+				url.origin
+			),
+			timeLog: { minutes: total, note, loggedAt: date, userId: user.id }
 		}
 	});
 
