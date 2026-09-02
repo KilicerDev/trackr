@@ -5,8 +5,15 @@
 
 	interface Props {
 		secret: string;
+		// Defaults are the webhook signing-secret copy; API keys pass their own.
+		title?: string;
+		description?: string;
 	}
-	let { secret }: Props = $props();
+	let {
+		secret,
+		title = m.webhooks_secret_shown_once(),
+		description = m.webhooks_secret_shown_once_desc()
+	}: Props = $props();
 	let copied = $state(false);
 
 	async function copy() {
@@ -24,9 +31,9 @@
 <div class="rounded-lg border border-[#e9c46a]/40 bg-[#e9c46a]/8 p-3">
 	<div class="mb-1 flex items-center gap-2 text-[13px] font-medium text-text">
 		<Icon name="shield" size={14} class="text-[#e9c46a]" />
-		{m.webhooks_secret_shown_once()}
+		{title}
 	</div>
-	<p class="mb-2 text-[12px] text-text-3">{m.webhooks_secret_shown_once_desc()}</p>
+	<p class="mb-2 text-[12px] text-text-3">{description}</p>
 	<div class="flex items-center gap-2">
 		<code
 			class="min-w-0 flex-1 truncate rounded-md border border-border bg-bg px-2.5 py-1.5 font-mono text-[12.5px] text-text select-all"

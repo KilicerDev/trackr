@@ -1733,3 +1733,35 @@ export const webhookDeliveryAttemptRelations = relations(webhookDeliveryAttempt,
 		references: [webhookDelivery.id]
 	})
 }));
+
+// ─── API keys ──────────────────────────────────────────────────────────────
+// Personal access tokens for the /api/v1 JSON surface. A key is bound to a
+// user and carries exactly that user's permissions — resolving it in
+// hooks.server.ts populates `locals.user` / `locals.memberships` the same way a
+// session would, so no route or `can()` check knows the difference. Only a
+// SHA-256 hash is stored; the plaintext (`trk_…`) is shown once at creation.
+// Keys are minted by admins for any user they may manage (see $lib/roles
+// `canManageTarget`) and never authenticate anything outside /api/v1.
+
+export const apiKey = pgTable(
+	'api_key',
+	{
+		id: text('id').primaryKey(),
+		// Whose permissions the key exercises. Deleting the user kills the key.
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		name: text('name').notNull(),
+		// "trk_ab12cd34" — enough to recognise a key in the UI, useless to auth with.
+		keyPrefix: text('key_prefix').notNull(),
+		keyHash: text('key_hash').notNull(),
+		expiresAt: timestamp('expires_at'),
+		lastUsedAt: timestamp('last_used_at'),
+		revokedAt: timestamp('revoked_at'),
+		createdAt: timestamp('created_at').defaultNow().notNull()
+	},
+	(t) => [uniqueIndex('api_key_hash_idx').on(t.keyHash), index('api_key_user_idx').on(t.userId)]
+);
+
+export type ApiKey = typeof apiKey.$inferSelect;

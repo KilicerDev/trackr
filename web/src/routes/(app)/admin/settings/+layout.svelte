@@ -9,7 +9,8 @@
 	// owns a subtree.
 	const tabs = [
 		{ href: '/admin/settings', label: m.settings_tab_general(), exact: true },
-		{ href: '/admin/settings/webhooks', label: m.settings_tab_webhooks(), exact: false }
+		{ href: '/admin/settings/webhooks', label: m.settings_tab_webhooks(), exact: false },
+		{ href: '/admin/settings/api-keys', label: m.settings_tab_api_keys(), exact: false }
 	];
 	const isActive = (t: { href: string; exact: boolean }) =>
 		t.exact ? page.url.pathname === t.href : page.url.pathname.startsWith(t.href);

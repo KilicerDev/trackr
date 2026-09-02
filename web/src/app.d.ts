@@ -12,6 +12,10 @@ declare global {
 			memberships?: Memberships;
 			isAdmin?: boolean;
 			preferences?: ResolvedPreferences;
+			// How `user` was authenticated. 'api_key' requests carry no session
+			// and are confined to /api/v1 (see hooks.server.ts).
+			authKind?: 'session' | 'api_key';
+			apiKeyId?: string;
 		}
 
 		// interface Error {}

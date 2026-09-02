@@ -3,6 +3,7 @@ import { sequence } from '@sveltejs/kit/hooks';
 import { env } from '$env/dynamic/private';
 import { building } from '$app/environment';
 import { auth } from '$lib/server/auth';
+import { looksLikeApiKey, resolveApiKey } from '$lib/server/api-keys';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { deriveIsAdmin, loadMemberships } from '$lib/server/permissions';
 import { isSuperadmin } from '$lib/roles';
@@ -48,12 +49,52 @@ const handleCsrf: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
+// `Authorization: Bearer trk_…` is a personal API key ($lib/server/api-keys),
+// not a better-auth session token. It is honoured ONLY where listed in
+// `apiKeyAllowed`: a key must never drive the HTML app, its form actions, or
+// /api/auth/* (password change, session listing…). Anywhere else the request
+// simply stays anonymous. Returns true when the key populated `locals`.
+function apiKeyAllowed(method: string, pathname: string): boolean {
+	// The JSON surface built for machine clients.
+	if (pathname.startsWith('/api/v1/')) return true;
+	// Read-only attachment fetches (inline + /download), so integrations can
+	// resolve the file URLs that API responses and webhook payloads carry. The
+	// handlers run the full per-file permission check themselves.
+	if (method === 'GET' && pathname.startsWith('/api/attachments/')) return true;
+	return false;
+}
+
+async function resolveApiKeyAuth(event: Parameters<Handle>[0]['event']): Promise<boolean> {
+	const header = event.request.headers.get('authorization');
+	if (!header?.startsWith('Bearer ')) return false;
+	const token = header.slice('Bearer '.length).trim();
+	if (!looksLikeApiKey(token)) return false;
+	if (!apiKeyAllowed(event.request.method, event.url.pathname)) return false;
+
+	const resolved = await resolveApiKey(token);
+	if (!resolved) return false;
+	// The DB row carries the same columns better-auth puts on `session.user`
+	// (admin plugin fields included), so downstream code sees an identical shape.
+	event.locals.user = resolved.user as unknown as NonNullable<App.Locals['user']>;
+	event.locals.authKind = 'api_key';
+	event.locals.apiKeyId = resolved.keyId;
+	const memberships = await loadMemberships(resolved.user.id);
+	event.locals.memberships = memberships;
+	event.locals.isAdmin = await deriveIsAdmin(memberships);
+	return true;
+}
+
 const handleBetterAuth: Handle = async ({ event, resolve }) => {
+	if (await resolveApiKeyAuth(event)) {
+		return svelteKitHandler({ event, resolve, auth, building });
+	}
+
 	const session = await auth.api.getSession({ headers: event.request.headers });
 
 	if (session) {
 		event.locals.session = session.session;
 		event.locals.user = session.user;
+		event.locals.authKind = 'session';
 		const memberships = await loadMemberships(session.user.id);
 		event.locals.memberships = memberships;
 		event.locals.isAdmin = await deriveIsAdmin(memberships);

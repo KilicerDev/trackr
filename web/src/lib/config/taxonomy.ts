@@ -324,7 +324,11 @@ export const LOG_EVENT_TYPES: Record<
 		kind: 'settings'
 	},
 	'webhook.enable': { label: 'Webhook enabled', icon: 'check', color: '#7fc8a9', kind: 'settings' },
-	'webhook.disable': { label: 'Webhook disabled', icon: 'x', color: '#e9c46a', kind: 'settings' }
+	'webhook.disable': { label: 'Webhook disabled', icon: 'x', color: '#e9c46a', kind: 'settings' },
+	// api keys
+	'api_key.create': { label: 'API key created', icon: 'plus', color: '#7fc8a9', kind: 'settings' },
+	'api_key.revoke': { label: 'API key revoked', icon: 'x', color: '#e9c46a', kind: 'settings' },
+	'api_key.delete': { label: 'API key deleted', icon: 'trash', color: '#ef4f5e', kind: 'settings' }
 };
 
 export const LOG_KINDS = [
