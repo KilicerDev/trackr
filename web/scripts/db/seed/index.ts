@@ -24,7 +24,6 @@
 import '../../load-root-env';
 import { openDb, die } from './client';
 import { seedRoot } from './root';
-import { seedDemo } from './demo';
 
 const args = new Set(process.argv.slice(2));
 const wantRoot = args.has('--root');
@@ -43,7 +42,12 @@ try {
 
 	// --all implies --root: demo data needs the internal org + a logged-in admin.
 	await seedRoot(conn.db);
-	if (wantAll) await seedDemo(conn.db);
+	if (wantAll) {
+		// Loaded on demand: the demo seeder pulls in sharp, the storage drivers
+		// and fixtures the root-only boot path (container CMD) must not need.
+		const { seedDemo } = await import('./demo');
+		await seedDemo(conn.db);
+	}
 } catch (err) {
 	const msg = err instanceof Error ? err.message : String(err);
 	if (/column .* does not exist|relation .* does not exist/i.test(msg)) {

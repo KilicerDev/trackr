@@ -42,9 +42,12 @@ COPY --from=prod-deps /app/node_modules         ./node_modules
 COPY --from=build     /app/build                ./build
 COPY --from=build     /app/drizzle              ./drizzle
 COPY --from=build     /app/scripts              ./scripts
-# Imported by the standalone scripts (schema, resolve-url). The SvelteKit
-# bundle in ./build does not depend on src/ at runtime.
-COPY --from=build     /app/src/lib/server/db    ./src/lib/server/db
+# Imported by the standalone scripts: schema + resolve-url (migrate, seed
+# --root) and the storage drivers + attachment config (seed --all). The
+# SvelteKit bundle in ./build does not depend on src/ at runtime.
+COPY --from=build     /app/src/lib/server/db      ./src/lib/server/db
+COPY --from=build     /app/src/lib/server/storage ./src/lib/server/storage
+COPY --from=build     /app/src/lib/config         ./src/lib/config
 COPY --from=build     /app/package.json         ./
 
 # Attachment storage root (STORAGE_LOCAL_DIR). Pre-create and hand it to the
