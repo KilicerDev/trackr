@@ -8,7 +8,8 @@
 	const tabs = [
 		{ href: '/admin/system/jobs', label: m.system_tab_jobs() },
 		{ href: '/admin/system/schedules', label: m.system_tab_schedules() },
-		{ href: '/admin/system/devices', label: m.system_tab_devices() }
+		{ href: '/admin/system/devices', label: m.system_tab_devices() },
+		{ href: '/admin/system/templates', label: m.system_tab_templates() }
 	];
 	const isActive = (href: string) => page.url.pathname.startsWith(href);
 </script>

@@ -211,6 +211,30 @@ export const LOG_EVENT_TYPES: Record<
 	},
 	// projects
 	'project.create': { label: 'Project created', icon: 'folder', color: '#7fc8a9', kind: 'project' },
+	'project_template.create': {
+		label: 'Template created',
+		icon: 'list',
+		color: '#7fc8a9',
+		kind: 'settings'
+	},
+	'project_template.publish': {
+		label: 'Template published',
+		icon: 'check',
+		color: '#7fc8a9',
+		kind: 'settings'
+	},
+	'project_template.unpublish': {
+		label: 'Template moved to draft',
+		icon: 'pencil',
+		color: '#e9c46a',
+		kind: 'settings'
+	},
+	'project_template.delete': {
+		label: 'Template deleted',
+		icon: 'trash',
+		color: '#ef4f5e',
+		kind: 'settings'
+	},
 	'project.update': {
 		label: 'Project updated',
 		icon: 'settings',

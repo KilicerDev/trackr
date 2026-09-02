@@ -18,6 +18,9 @@ import { ticketDisplayId } from './tickets';
 import type { Task } from '$lib/types';
 import { listAttachmentsForMany } from './attachments';
 
+// Drizzle's transaction callback parameter — structurally a subset of `db`.
+export type Tx = Parameters<Parameters<(typeof db)['transaction']>[0]>[0];
+
 function fmtDate(d: Date | null): string {
 	if (!d) return '';
 	return d.toISOString().slice(0, 10);
@@ -412,6 +415,12 @@ export async function createTasks(input: {
 	projectKey: string;
 	createdBy: string;
 	tasks: BulkTaskInput[];
+	/**
+	 * Enlist in an outer transaction instead of opening one. Used when the
+	 * project itself is created in the same transaction (template seeding), so
+	 * a failure rolls back the project too.
+	 */
+	tx?: Tx;
 }): Promise<{ id: string; number: number; displayId: string; assignedIds: string[] }[]> {
 	if (input.tasks.length === 0) return [];
 
@@ -421,7 +430,7 @@ export async function createTasks(input: {
 
 	const results: { id: string; number: number; displayId: string; assignedIds: string[] }[] = [];
 
-	await db.transaction(async (tx) => {
+	const run = async (tx: Tx) => {
 		const [bumped] = await tx
 			.update(project)
 			.set({ nextTaskNumber: sql`${project.nextTaskNumber} + ${input.tasks.length}` })
@@ -478,7 +487,9 @@ export async function createTasks(input: {
 				meta: { taskRef: results[i].displayId, taskTitle: input.tasks[i].title }
 			});
 		}
-	});
+	};
+	if (input.tx) await run(input.tx);
+	else await db.transaction(run);
 
 	return results;
 }

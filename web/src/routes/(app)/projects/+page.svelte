@@ -434,6 +434,7 @@
 	open={createOpen}
 	onclose={() => (createOpen = false)}
 	orgs={data.orgs}
+	templates={data.templates}
 	oncreated={(name) => showToast('ok', m.projects_created_toast({ name }))}
 	onerror={(msg) => showToast('err', msg)}
 />

@@ -6,6 +6,7 @@ import { user } from '$lib/server/db/auth.schema';
 import { accessibleProjectIds, assertCan } from '$lib/server/permissions';
 import { getPreferences } from '$lib/server/preferences';
 import { recordAudit } from '$lib/server/audit';
+import { applyTemplate, listPublishedTemplates } from '$lib/server/project-templates';
 import { m } from '$lib/paraglide/messages';
 
 interface MemberSummary {
@@ -65,7 +66,7 @@ export const load: ServerLoad = async ({ locals }) => {
 	const preferences = await getPreferences(locals.user.id);
 	const savedView = (preferences.viewState?.projects ?? {}) as Record<string, unknown>;
 	if (!access.all && access.ids.size === 0) {
-		return { projectsList: [], orgs: [], savedView };
+		return { projectsList: [], orgs: [], templates: [], savedView };
 	}
 	const accessFilter = access.all ? undefined : inArray(project.id, [...access.ids]);
 
@@ -159,7 +160,17 @@ export const load: ServerLoad = async ({ locals }) => {
 		.where(and(isNull(organization.archivedAt), eq(organization.isInternal, false)))
 		.orderBy(organization.name);
 
-	return { projectsList, orgs: orgsForPicker, savedView };
+	// Published project templates for the modal's template picker. Drafts are
+	// filtered server-side so an unfinished template can never seed a project.
+	const templates = (await listPublishedTemplates()).map((t) => ({
+		id: t.id,
+		name: t.name,
+		color: t.color,
+		icon: t.icon,
+		taskCount: t.taskCount
+	}));
+
+	return { projectsList, orgs: orgsForPicker, templates, savedView };
 };
 
 export const actions: Actions = {
@@ -177,6 +188,7 @@ export const actions: Actions = {
 		const status = String(form.get('status') ?? 'active') as Project['status'];
 		const leadId = String(form.get('lead') ?? '') || null;
 		const orgId = String(form.get('orgId') ?? '').trim() || null;
+		const templateId = String(form.get('templateId') ?? '').trim() || null;
 		const memberIds = form
 			.getAll('members')
 			.map((v) => String(v))
@@ -203,32 +215,56 @@ export const actions: Actions = {
 		}
 
 		const id = crypto.randomUUID();
-		await db.transaction(async (tx) => {
-			await tx.insert(project).values({
-				id,
-				key,
-				name,
-				description,
-				color,
-				icon,
-				status,
-				leadId,
-				orgId,
-				createdBy: me.id
+		// Holder object: TS can't see assignments made inside the transaction
+		// callback, so a plain `let` would narrow to `null` afterwards.
+		const seed: { result: { name: string; created: number } | null } = { result: null };
+		class TemplateUnavailable extends Error {}
+		try {
+			await db.transaction(async (tx) => {
+				await tx.insert(project).values({
+					id,
+					key,
+					name,
+					description,
+					color,
+					icon,
+					status,
+					leadId,
+					orgId,
+					createdBy: me.id
+				});
+
+				const memberSet = new Set<string>(memberIds);
+				memberSet.add(me.id);
+				if (leadId) memberSet.add(leadId);
+
+				await tx.insert(projectMember).values(
+					[...memberSet].map((userId) => ({
+						projectId: id,
+						userId,
+						role: userId === leadId ? 'project.manager' : 'project.member'
+					}))
+				);
+
+				// Seed the starter tasks inside the same transaction so a failure
+				// (or a template that was unpublished meanwhile) leaves no
+				// half-created project behind.
+				if (templateId) {
+					seed.result = await applyTemplate(tx, {
+						templateId,
+						projectId: id,
+						projectKey: key,
+						createdBy: me.id
+					});
+					if (!seed.result) throw new TemplateUnavailable();
+				}
 			});
-
-			const memberSet = new Set<string>(memberIds);
-			memberSet.add(me.id);
-			if (leadId) memberSet.add(leadId);
-
-			await tx.insert(projectMember).values(
-				[...memberSet].map((userId) => ({
-					projectId: id,
-					userId,
-					role: userId === leadId ? 'project.manager' : 'project.member'
-				}))
-			);
-		});
+		} catch (e) {
+			if (e instanceof TemplateUnavailable) {
+				return fail(400, { message: m.projects_template_invalid() });
+			}
+			throw e;
+		}
 
 		void recordAudit({
 			type: 'project.create',
@@ -237,7 +273,9 @@ export const actions: Actions = {
 			targetId: id,
 			targetLabel: name,
 			orgId,
-			meta: { key }
+			meta: seed.result
+				? { key, templateId, templateName: seed.result.name, templateTasks: seed.result.created }
+				: { key }
 		});
 
 		return { success: true, id };

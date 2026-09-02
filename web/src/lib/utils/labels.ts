@@ -173,7 +173,11 @@ export function logEventLabel(type: string): string {
 			'ticket.delete': m.log_event_ticket_delete,
 			'ticket.convert': m.log_event_ticket_convert,
 			'settings.update': m.log_event_settings_update,
-			'api.token': m.log_event_api_token
+			'api.token': m.log_event_api_token,
+			'project_template.create': m.log_event_project_template_create,
+			'project_template.publish': m.log_event_project_template_publish,
+			'project_template.unpublish': m.log_event_project_template_unpublish,
+			'project_template.delete': m.log_event_project_template_delete
 		},
 		type
 	);

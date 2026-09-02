@@ -16,6 +16,13 @@
 	import type { Project } from '$lib/types';
 
 	type OrgOption = { id: string; name: string; slug: string; color: string };
+	type TemplateOption = {
+		id: string;
+		name: string;
+		color: string;
+		icon: string;
+		taskCount: number;
+	};
 
 	interface Props {
 		open: boolean;
@@ -23,9 +30,10 @@
 		oncreated?: (name: string) => void;
 		onerror?: (msg: string) => void;
 		orgs?: OrgOption[];
+		templates?: TemplateOption[];
 	}
 
-	let { open, onclose, oncreated, onerror, orgs = [] }: Props = $props();
+	let { open, onclose, oncreated, onerror, orgs = [], templates = [] }: Props = $props();
 
 	const PALETTE = [
 		'#ef7a6d',
@@ -56,13 +64,15 @@
 	let color = $state(PALETTE[0]);
 	let status = $state<Project['status']>('active');
 	let orgId = $state<string>(''); // empty string = internal (no org)
+	let templateId = $state<string>(''); // empty string = start empty
 	let submitting = $state(false);
 
 	let formEl = $state<HTMLFormElement>();
-	let pop = $state<'status' | 'org' | null>(null);
+	let pop = $state<'status' | 'org' | 'template' | null>(null);
 
 	const statusMeta = $derived(PROJECT_STATUS[status]);
 	const selectedOrg = $derived(orgs.find((o) => o.id === orgId));
+	const selectedTemplate = $derived(templates.find((t) => t.id === templateId));
 
 	const icon = $derived(deriveIcon(name));
 	const autoKey = $derived(deriveKey(name));
@@ -97,6 +107,7 @@
 			color = PALETTE[0];
 			status = 'active';
 			orgId = '';
+			templateId = '';
 			submitting = false;
 			pop = null;
 		}
@@ -161,7 +172,7 @@
 		<div class="px-5 pt-5 pb-3">
 			<div class="mb-4 flex items-start gap-3.5">
 				<span
-					class="relative grid shrink-0 place-items-center font-semibold text-white transition-[background] duration-200 size-12"
+					class="relative grid size-12 shrink-0 place-items-center font-semibold text-white transition-[background] duration-200"
 					style:border-radius="13px"
 					style:font-size="22px"
 					style:background="linear-gradient(140deg, {color}, color-mix(in oklch, {color} 70%, #000) 85%)"
@@ -352,14 +363,103 @@
 						</div>
 					{/if}
 				</div>
+
+				<div class="relative">
+					<button
+						type="button"
+						onclick={() => (pop = pop === 'template' ? null : 'template')}
+						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
+					>
+						{#if selectedTemplate}
+							<span
+								class="grid h-4 w-4 place-items-center rounded-[5px] text-[10px] font-semibold text-white"
+								style:background="linear-gradient(140deg, {selectedTemplate.color}, color-mix(in
+								oklch, {selectedTemplate.color} 70%, #000) 85%)">{selectedTemplate.icon}</span
+							>
+							<span>{selectedTemplate.name}</span>
+						{:else}
+							<Icon name="list" size={14} class="text-text-3" />
+							<span class="text-text-3">{m.projects_template_label()}</span>
+						{/if}
+						<Icon name="chevron" size={12} class="text-text-3" />
+					</button>
+					{#if pop === 'template'}
+						<div
+							use:clickOutside={() => (pop = null)}
+							in:fly={POPOVER_IN}
+							class="absolute top-full z-50 mt-1.5 min-w-[262px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+						>
+							<button
+								type="button"
+								onclick={() => {
+									templateId = '';
+									pop = null;
+								}}
+								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
+							>
+								<span
+									class="grid h-4 w-4 place-items-center rounded-[5px] border border-dashed border-border-strong"
+								></span>
+								<span class="min-w-0">
+									<span class="block text-[14px]">{m.projects_template_none()}</span>
+									<span class="block text-[12px] text-text-4"
+										>{m.projects_template_none_hint()}</span
+									>
+								</span>
+								<span class="ml-auto text-accent {templateId === '' ? 'opacity-100' : 'opacity-0'}">
+									<Icon name="check" size={14} />
+								</span>
+							</button>
+							{#each templates as t (t.id)}
+								<button
+									type="button"
+									onclick={() => {
+										templateId = t.id;
+										pop = null;
+									}}
+									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
+								>
+									<span
+										class="grid h-4 w-4 shrink-0 place-items-center rounded-[5px] text-[10px] font-semibold text-white"
+										style:background="linear-gradient(140deg, {t.color}, color-mix(in oklch, {t.color}
+										70%, #000) 85%)">{t.icon}</span
+									>
+									<span class="min-w-0">
+										<span class="block truncate text-[14px]">{t.name}</span>
+										<span class="block text-[12px] text-text-4">
+											{t.taskCount === 1
+												? m.templates_tasks_count_one()
+												: m.templates_tasks_count_other({ count: t.taskCount })}
+										</span>
+									</span>
+									<span
+										class="ml-auto text-accent {templateId === t.id ? 'opacity-100' : 'opacity-0'}"
+									>
+										<Icon name="check" size={14} />
+									</span>
+								</button>
+							{/each}
+							{#if templates.length === 0}
+								<div class="px-2 py-2 text-[12px] text-text-3">{m.projects_template_empty()}</div>
+							{/if}
+						</div>
+					{/if}
+				</div>
 			</div>
 
 			<input type="hidden" name="color" value={color} />
 			<input type="hidden" name="icon" value={icon} />
 			<input type="hidden" name="status" value={status} />
 			<input type="hidden" name="orgId" value={orgId} />
+			<input type="hidden" name="templateId" value={templateId} />
 
 			<p class="mt-4 text-[12px] text-text-3">
+				{#if selectedTemplate}
+					{m.projects_template_seed_hint({
+						count: selectedTemplate.taskCount,
+						name: selectedTemplate.name
+					})}
+				{/if}
 				{m.projects_create_lead_hint()}
 			</p>
 		</div>

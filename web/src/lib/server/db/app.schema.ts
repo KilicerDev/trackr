@@ -256,6 +256,79 @@ export const projectFavoriteRelations = relations(projectFavorite, ({ one }) => 
 	})
 }));
 
+// ─── Project templates ─────────────────────────────────────────────────────
+// Reusable starting points for new projects: a named set of tasks that gets
+// copied into a project at creation time. Managed by superadmins under
+// /admin/system/templates. `status` gates visibility in the create-project
+// picker: only 'published' templates are offered; 'draft' rows are still being
+// authored. Task rows are ordered by `sort_order` and carry the same fields a
+// real task starts with (no assignees, no dates — those depend on the project).
+
+export const projectTemplate = pgTable(
+	'project_template',
+	{
+		id: text('id').primaryKey(),
+		name: text('name').notNull(),
+		description: text('description'),
+		color: text('color').notNull().default('#7a9cf0'),
+		icon: text('icon').notNull().default('T'),
+		status: text('status').notNull().default('draft'),
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at')
+			.defaultNow()
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull()
+	},
+	(t) => [index('project_template_status_idx').on(t.status)]
+);
+
+export type ProjectTemplate = typeof projectTemplate.$inferSelect;
+export type ProjectTemplateStatus = 'draft' | 'published';
+
+export const projectTemplateTask = pgTable(
+	'project_template_task',
+	{
+		id: text('id').primaryKey(),
+		templateId: text('template_id')
+			.notNull()
+			.references(() => projectTemplate.id, { onDelete: 'cascade' }),
+		title: text('title').notNull(),
+		description: text('description'),
+		status: text('status').notNull().default('todo'),
+		priority: text('priority').notNull().default('none'),
+		type: text('type').notNull().default('task'),
+		estimateMinutes: integer('estimate_minutes'),
+		tags: text('tags').array().notNull().default([]),
+		// Starter checklist copied onto the created task (items always start
+		// unticked, whatever the template author toggled while editing).
+		checklist: jsonb('checklist')
+			.$type<{ id: string; text: string; done: boolean }[]>()
+			.notNull()
+			.default([]),
+		sortOrder: integer('sort_order').notNull().default(0),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at')
+			.defaultNow()
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull()
+	},
+	(t) => [index('project_template_task_template_idx').on(t.templateId, t.sortOrder)]
+);
+
+export type ProjectTemplateTask = typeof projectTemplateTask.$inferSelect;
+
+export const projectTemplateRelations = relations(projectTemplate, ({ many }) => ({
+	tasks: many(projectTemplateTask)
+}));
+
+export const projectTemplateTaskRelations = relations(projectTemplateTask, ({ one }) => ({
+	template: one(projectTemplate, {
+		fields: [projectTemplateTask.templateId],
+		references: [projectTemplate.id]
+	})
+}));
+
 // ─── Tasks ─────────────────────────────────────────────────────────────────
 // Each task has a UUID id and a per-project sequential `number`. The user
 // facing identifier `SIWEB-15` is rendered from project.key + task.number.
