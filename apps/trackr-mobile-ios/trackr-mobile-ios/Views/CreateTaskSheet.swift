@@ -24,8 +24,8 @@ struct CreateTaskSheet: View {
     /// Conversion hides staging — the convert endpoint has no file leg
     /// (the server carries the ticket's own attachments over instead).
     var allowsAttachments: Bool = true
-    /// Staged files ride along — the task has no server id until the create
-    /// round-trip, so the caller (addTask) uploads them afterwards.
+    /// Staged files ride along in the same create request (multipart), so
+    /// the server can list them in the `task.created` webhook.
     let onCreate: (TaskItem, [PickedFile]) -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -41,10 +41,7 @@ struct CreateTaskSheet: View {
     @State private var hasDue = false
     @State private var due = Date.now
     @State private var estimate: Int?
-    @State private var staged: [PickedFile] = []
-    @State private var showingPhotos = false
-    @State private var showingFiles = false
-    @State private var stageError: String?
+    @State private var staging = FileStaging()
 
     private var projectOptions: [String] {
         if let model, !model.projects.isEmpty {
@@ -146,38 +143,10 @@ struct CreateTaskSheet: View {
                 }
 
                 if allowsAttachments {
-                    Section("Attachments") {
-                        Button {
-                            showingPhotos = true
-                        } label: {
-                            AttachmentSourceLabel(title: "Photo Library", systemImage: "photo.on.rectangle")
-                        }
-                        Button {
-                            showingFiles = true
-                        } label: {
-                            AttachmentSourceLabel(title: "Choose Files", systemImage: "folder")
-                        }
-                        if !staged.isEmpty {
-                            ChipFlow(spacing: 6) {
-                                ForEach(staged) { file in
-                                    stagedChip(file)
-                                }
-                            }
-                        }
-                    }
+                    StagedFilesSection(staging: $staging)
                 }
             }
-            .attachmentPickers(photos: $showingPhotos, files: $showingFiles) { files in
-                stage(files)
-            }
-            .alert("Couldn't attach", isPresented: Binding(
-                get: { stageError != nil },
-                set: { if !$0 { stageError = nil } }
-            )) {
-                Button("OK") { stageError = nil }
-            } message: {
-                Text(stageError ?? "")
-            }
+            .fileStaging($staging, noun: "task")
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle(navTitle)
             .navigationBarTitleDisplayMode(.inline)
@@ -187,7 +156,7 @@ struct CreateTaskSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Create") {
-                        onCreate(makeTask(), staged)
+                        onCreate(makeTask(), staging.files)
                         dismiss()
                     }
                     .fontWeight(.semibold)
@@ -212,50 +181,6 @@ struct CreateTaskSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
-    }
-
-    private func stagedChip(_ file: PickedFile) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: file.isImage ? "photo" : "doc")
-                .font(.system(size: 12))
-                .foregroundStyle(Color(.secondaryLabel))
-            Text(file.filename)
-                .font(.system(size: 13, weight: .medium))
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(maxWidth: 160, alignment: .leading)
-            Text(file.sizeFormatted)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-            Button {
-                staged.removeAll { $0.id == file.id }
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 14))
-                    .foregroundStyle(Color(.tertiaryLabel))
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Color(.tertiarySystemFill), in: .capsule)
-    }
-
-    /// Oversize files never stage — the create path uploads best-effort
-    /// after the round-trip, too late to surface a size error.
-    private func stage(_ files: [PickedFile]) {
-        let oversize = files.filter(\.exceedsSizeLimit)
-        if let first = oversize.first {
-            stageError = oversize.count == 1
-                ? "\(first.filename) is larger than 25 MB and was skipped."
-                : "\(oversize.count) files are larger than 25 MB and were skipped."
-        }
-        let room = AttachmentRules.maxFilesPerBatch - staged.count
-        let accepted = files.filter { !$0.exceedsSizeLimit }
-        if accepted.count > room {
-            stageError = "At most \(AttachmentRules.maxFilesPerBatch) files per task."
-        }
-        staged.append(contentsOf: accepted.prefix(max(0, room)))
     }
 
     private func makeTask() -> TaskItem {

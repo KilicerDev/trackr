@@ -251,6 +251,8 @@ struct ChatThreadView: View {
                 orgId: orgId,
                 subject: thread.title,
                 description: thread.root?.text,
+                priority: .medium,
+                category: .general,
                 assignees: [me]
             )
             model.sync?.sendChatMessage(

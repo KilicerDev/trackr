@@ -127,7 +127,7 @@ struct TicketsView: View {
                 )
             }
             .sheet(isPresented: $showingCreate) {
-                CreateTicketSheet(tickets: model.tickets, model: model) { ticket in
+                CreateTicketSheet(tickets: model.tickets, model: model) { ticket, files in
                     model.tickets.insert(ticket, at: 0)
                     if let orgId = ticket.org.serverId {
                         let text = ticket.messages.first?.text
@@ -135,7 +135,10 @@ struct TicketsView: View {
                             orgId: orgId,
                             subject: ticket.subject,
                             description: text,
-                            assignees: ticket.assignees
+                            priority: ticket.priority,
+                            category: ticket.category,
+                            assignees: ticket.assignees,
+                            files: files
                         )
                     }
                 }

@@ -2,8 +2,11 @@
 //   GET  ?segment=mine|watched|all&status=<status>  — segmented list (the app's
 //        "Für mich / Beobachtet / Alle" control). `mine` = customer, creator or
 //        assignee; `watched` = pinned; `all` = everything the role can read.
-//   POST { orgId, subject, description? }           — quick-create (one-field;
-//        details are edited on the desktop later).
+//   POST { orgId, subject, description?, priority?, category?, assigneeIds? }
+//        — create. Agents may set assignees; everyone else becomes the
+//        customer. Send `multipart/form-data` with the object in a `payload`
+//        field plus `attachments` file parts to attach files on create (they
+//        land before the `ticket.created` webhook fires, so it lists them).
 // Reuses loadTickets/createTicket and the exact org-split scoping of the
 // web tickets page.
 import { can, isTrackrTeam } from '$lib/server/permissions';
@@ -11,13 +14,18 @@ import {
 	createTicket,
 	loadTicketDisplayUsers,
 	loadTickets,
+	TICKET_CATEGORY_SET,
+	TICKET_PRIORITY_SET,
 	TICKET_STATUS_SET,
+	type TicketCategory,
+	type TicketPriority,
 	type TicketRow
 } from '$lib/server/tickets';
+import { attachFormFiles } from '$lib/server/attachments';
 import { notifyTicketCreated } from '$lib/server/notify/events/ticket';
 import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
-import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
+import { apiError, json, readBody, requireUser } from '$lib/server/api/guard';
 import type { RequestHandler } from './$types';
 
 // The read.any/read.own org split, shared by `all` scoping here and by the
@@ -84,29 +92,55 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 export const POST: RequestHandler = async ({ locals, request, url }) => {
 	const user = requireUser(locals);
-	const body = await readJson<{ orgId?: string; subject?: string; description?: string }>(request);
+	const { body, files } = await readBody<{
+		orgId?: string;
+		subject?: string;
+		description?: string;
+		priority?: string;
+		category?: string;
+		assigneeIds?: string[];
+	}>(request);
 	const orgId = body.orgId?.trim();
 	const subject = body.subject?.trim();
 	if (!orgId) apiError(400, m.tickets_org_required());
 	if (!subject) apiError(400, m.tickets_subject_required());
+	const priority = body.priority ?? 'medium';
+	const category = body.category ?? 'general';
+	if (!TICKET_PRIORITY_SET.has(priority)) apiError(400, m.tickets_invalid_priority());
+	if (!TICKET_CATEGORY_SET.has(category)) apiError(400, m.tickets_invalid_category());
 	if (!(await can(locals, 'org.tickets.create', { orgId }))) {
 		apiError(403, m.tickets_no_access());
 	}
 
-	// Mirrors the web create action: agents may leave the ticket unassigned;
-	// everyone else becomes the customer.
+	// Mirrors the web create action: agents may set assignees and leave the
+	// ticket unassigned; everyone else becomes the customer, never assigned.
 	const isAgent = await can(locals, 'org.tickets.edit.any', { orgId });
+	const assigneeIds =
+		isAgent && Array.isArray(body.assigneeIds)
+			? [...new Set(body.assigneeIds.filter((v): v is string => typeof v === 'string' && !!v))]
+			: [];
 	const created = await createTicket({
 		orgId,
 		subject,
 		description: body.description?.trim() || null,
-		priority: 'medium',
-		category: 'general',
+		priority: priority as TicketPriority,
+		category: category as TicketCategory,
 		channel: 'api',
 		customerId: isAgent ? null : user.id,
-		assigneeIds: [],
+		assigneeIds,
 		tags: [],
 		createdBy: user.id
+	});
+
+	// Files first (best-effort, the ticket already exists), so the fan-out
+	// below can list them in the `ticket.created` webhook payload.
+	const { attachments } = await attachFormFiles({
+		files,
+		entityType: 'ticket',
+		entityId: created.id,
+		orgId,
+		projectId: null,
+		uploadedBy: user.id
 	});
 
 	await notifyTicketCreated({
@@ -117,13 +151,15 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 			subject,
 			customerId: isAgent ? null : user.id,
 			creatorId: user.id,
-			assigneeIds: [],
+			assigneeIds: created.assignedIds,
 			status: 'open',
-			priority: 'medium'
+			priority,
+			category
 		},
 		description: body.description?.slice(0, 280) ?? null,
 		actor: { id: user.id, name: user.name },
-		origin: url.origin
+		origin: url.origin,
+		attachments
 	});
 	void recordAudit({
 		type: 'ticket.create',
@@ -131,7 +167,8 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		targetType: 'ticket',
 		targetId: created.id,
 		targetLabel: `${created.displayId} · ${subject}`,
-		orgId
+		orgId,
+		meta: { priority, category, channel: 'api', via: 'api.v1' }
 	});
 
 	return json({ id: created.id, displayId: created.displayId }, { status: 201 });

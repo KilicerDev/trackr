@@ -231,13 +231,15 @@ export async function attachFormFiles(opts: {
 	orgId: string | null;
 	projectId: string | null;
 	uploadedBy?: string | null;
-}): Promise<{ ok: number; failed: number }> {
+}): Promise<{ ok: number; failed: number; attachments: AttachmentPublic[] }> {
 	let ok = 0;
 	let failed = 0;
+	// Created rows in upload order — write paths list them in webhook payloads.
+	const attachments: AttachmentPublic[] = [];
 	for (const entry of opts.files) {
 		if (!(entry instanceof File) || entry.size === 0) continue;
 		try {
-			await createAttachment({
+			const created = await createAttachment({
 				entityType: opts.entityType,
 				entityId: opts.entityId,
 				orgId: opts.orgId,
@@ -247,13 +249,14 @@ export async function attachFormFiles(opts: {
 				mimeType: entry.type,
 				uploadedBy: opts.uploadedBy ?? null
 			});
+			attachments.push(created);
 			ok++;
 		} catch (err) {
 			console.error('[attachments] failed to attach staged file', entry.name, err);
 			failed++;
 		}
 	}
-	return { ok, failed };
+	return { ok, failed, attachments };
 }
 
 /**

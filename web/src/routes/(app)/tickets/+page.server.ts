@@ -230,6 +230,18 @@ export const actions: Actions = {
 				createdBy: me.id
 			});
 
+			// Attach any files dropped on the create modal. Best-effort: the
+			// ticket already exists, so a failed attachment is warned, not fatal.
+			// Runs before the fan-out so the `ticket.created` webhook lists them.
+			const { failed, attachments } = await attachFormFiles({
+				files: form.getAll('attachments'),
+				entityType: 'ticket',
+				entityId: id,
+				orgId,
+				projectId: null,
+				uploadedBy: me.id
+			});
+
 			// Fan out: a `ticketCreated` notification to everyone allowed to see
 			// the new ticket, and a separate `ticketAssigned` to each assignee set
 			// on create. Recipient scoping lives in the event helper — clients of
@@ -244,22 +256,13 @@ export const actions: Actions = {
 					creatorId: me.id,
 					assigneeIds: assignedIds,
 					status: 'open',
-					priority
+					priority,
+					category
 				},
 				description,
 				actor: { id: me.id, name: me.name },
-				origin: url.origin
-			});
-
-			// Attach any files dropped on the create modal. Best-effort: the
-			// ticket already exists, so a failed attachment is warned, not fatal.
-			const { failed } = await attachFormFiles({
-				files: form.getAll('attachments'),
-				entityType: 'ticket',
-				entityId: id,
-				orgId,
-				projectId: null,
-				uploadedBy: me.id
+				origin: url.origin,
+				attachments
 			});
 
 			void recordAudit({
@@ -587,7 +590,7 @@ export const actions: Actions = {
 			});
 
 			// Attach any files staged on the composer to the new message.
-			await attachFormFiles({
+			const { attachments } = await attachFormFiles({
 				files: form.getAll('attachments'),
 				entityType: 'message',
 				entityId: messageId,
@@ -616,7 +619,8 @@ export const actions: Actions = {
 					internal,
 					actor: { id: me.id, name: me.name },
 					messageId,
-					origin: url.origin
+					origin: url.origin,
+					attachments
 				});
 
 				void recordAudit({

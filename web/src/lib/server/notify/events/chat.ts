@@ -9,7 +9,12 @@ import { parseMentionIds } from '$lib/utils/mentions';
 import { m } from '$lib/paraglide/messages';
 import type { Locale } from '$lib/paraglide/runtime';
 import { emailDate, type NotifyActor } from './shared';
-import { emitWebhookEvent, messageSnapshot, threadSnapshot } from '$lib/server/webhooks';
+import {
+	emitWebhookEvent,
+	messageSnapshot,
+	threadSnapshot,
+	type AttachmentSnapshotInput
+} from '$lib/server/webhooks';
 
 function chatMeta(actor: NotifyActor, locale: Locale): { label: string; value: string }[] {
 	return [
@@ -26,6 +31,8 @@ export async function notifyChatMessage(opts: {
 	body: string;
 	origin: string;
 	messageId?: string | null;
+	/** Files attached to the message — listed in `data.message.attachments`. */
+	attachments?: readonly AttachmentSnapshotInput[];
 }): Promise<void> {
 	const { actor } = opts;
 	const chatUrl = `/chat?org=${opts.orgId}&thread=${opts.threadId}`;
@@ -39,7 +46,15 @@ export async function notifyChatMessage(opts: {
 				{ id: opts.threadId, orgId: opts.orgId, title: opts.threadTitle },
 				opts.origin
 			),
-			message: messageSnapshot({ id: opts.messageId ?? '', body: opts.body, authorId: actor.id })
+			message: messageSnapshot(
+				{
+					id: opts.messageId ?? '',
+					body: opts.body,
+					authorId: actor.id,
+					attachments: opts.attachments
+				},
+				opts.origin
+			)
 		}
 	});
 	const [audience, followers, muters, mentioned] = await Promise.all([

@@ -155,6 +155,43 @@ actor APIClient {
         return try JSONDecoder().decode(T.self, from: data)
     }
 
+    /// Multipart POST carrying a JSON object (`payload` field) plus staged
+    /// files (`attachments` parts) — the /api/v1 create/reply endpoints'
+    /// "attach in the same request" shape. Without files this is a plain
+    /// JSON POST so the server keeps its cheap path.
+    func postWithFiles<T: Decodable, B: Encodable>(
+        _ path: String,
+        payload: B,
+        files: [PickedFile]
+    ) async throws -> T {
+        if files.isEmpty {
+            return try await send("POST", path, query: [], body: payload, authenticated: true)
+        }
+        let boundary = "trackr-\(UUID().uuidString)"
+        var body = Data()
+        func append(_ text: String) { body.append(Data(text.utf8)) }
+        append("--\(boundary)\r\n")
+        append("Content-Disposition: form-data; name=\"payload\"\r\n")
+        append("Content-Type: application/json\r\n\r\n")
+        body.append(try JSONEncoder().encode(payload))
+        append("\r\n")
+        for file in files {
+            let safeName = file.filename.replacingOccurrences(of: "\"", with: "'")
+            append("--\(boundary)\r\n")
+            append("Content-Disposition: form-data; name=\"attachments\"; filename=\"\(safeName)\"\r\n")
+            append("Content-Type: \(file.mimeType)\r\n\r\n")
+            body.append(file.data)
+            append("\r\n")
+        }
+        append("--\(boundary)--\r\n")
+
+        var request = try makeRequest("POST", path, query: [], bodyData: nil, authenticated: true)
+        request.httpBody = body
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        let (data, _) = try await perform(request, authenticated: true, allowUnauthorized: false)
+        return try JSONDecoder().decode(T.self, from: data)
+    }
+
     private func send<T: Decodable, B: Encodable>(
         _ method: String,
         _ path: String,

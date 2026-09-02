@@ -1,20 +1,23 @@
 // Add a comment to a task's thread. `id` is the task UUID. Mirrors the web
-// comment action (project.tasks.comment) minus attachments — those stay a
-// desktop concern for now. Notification fan-out (incl. @-mentions) is shared
-// with the web action via notifyTaskComment.
+// comment action (project.tasks.comment); multipart (`payload` JSON field +
+// `attachments` parts) attaches files to the comment in the same request.
+// Notification fan-out (incl. @-mentions) is shared with the web action via
+// notifyTaskComment.
 import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { message, project, task, taskAssignee, thread } from '$lib/server/db/app.schema';
 import { assertCan } from '$lib/server/permissions';
+import { attachFormFiles } from '$lib/server/attachments';
 import { notifyTaskComment } from '$lib/server/notify/events/task';
 import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
-import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
+import { apiError, json, readBody, requireUser } from '$lib/server/api/guard';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ locals, params, request, url }) => {
 	const user = requireUser(locals);
-	const body = (await readJson<{ body?: string }>(request)).body?.trim();
+	const { body: raw, files } = await readBody<{ body?: string }>(request);
+	const body = raw.body?.trim();
 	if (!body) apiError(400, m.tasks_err_comment_empty());
 
 	const [target] = await db
@@ -56,6 +59,14 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 	});
 	// Bump the task's updatedAt so the activity flag is accurate.
 	await db.update(task).set({ updatedAt: new Date() }).where(eq(task.id, target.id));
+	await attachFormFiles({
+		files,
+		entityType: 'message',
+		entityId: commentId,
+		orgId: null,
+		projectId: target.projectId,
+		uploadedBy: user.id
+	});
 
 	const displayId = `${target.projectKey}-${target.number}`;
 	// Notify assignees + creator + prior commenters (the web action's audience).

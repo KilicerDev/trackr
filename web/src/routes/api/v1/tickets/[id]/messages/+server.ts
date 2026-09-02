@@ -1,17 +1,20 @@
 // Post a reply (or staff-only internal note) into a ticket — the app's
 // two-tap answer path. Mirrors the web `message` action: visibility check via
 // canViewTicket, comment grant for public replies, isTrackrTeam for internal.
+// Multipart (`payload` JSON field + `attachments` parts) attaches files to the
+// message in the same request, so the webhook can list them.
 import { assertCan, can, canViewTicket, isTrackrTeam } from '$lib/server/permissions';
 import { addTicketMessage, getTicket } from '$lib/server/tickets';
+import { attachFormFiles } from '$lib/server/attachments';
 import { notifyTicketMessage } from '$lib/server/notify/events/ticket';
 import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
-import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
+import { apiError, json, readBody, requireUser } from '$lib/server/api/guard';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ locals, params, request, url }) => {
 	const user = requireUser(locals);
-	const body = await readJson<{ body?: string; internal?: boolean }>(request);
+	const { body, files } = await readBody<{ body?: string; internal?: boolean }>(request);
 	const text = body.body?.trim();
 	if (!text) apiError(400, m.tickets_message_required());
 	const internal = body.internal === true;
@@ -33,6 +36,14 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		isInternalNote: internal,
 		authorIsAgent
 	});
+	const { attachments } = await attachFormFiles({
+		files,
+		entityType: 'message',
+		entityId: messageId,
+		orgId: t.orgId,
+		projectId: null,
+		uploadedBy: user.id
+	});
 
 	// Fan-out (incl. @-mentions, intersected with the scoped audience so an
 	// internal note's mention can never reach the customer) lives in the helper.
@@ -52,7 +63,8 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		internal,
 		actor: { id: user.id, name: user.name },
 		messageId,
-		origin: url.origin
+		origin: url.origin,
+		attachments
 	});
 	void recordAudit({
 		type: 'ticket.message',

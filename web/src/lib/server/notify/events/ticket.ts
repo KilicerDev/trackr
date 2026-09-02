@@ -12,7 +12,13 @@ import { priorityLabel, ticketStatusLabel } from '$lib/utils/labels';
 import type { TicketPriority, TicketStatus } from '$lib/server/tickets';
 import type { Locale } from '$lib/paraglide/runtime';
 import { emailDate, type NotifyActor } from './shared';
-import { emitWebhookEvent, ticketSnapshot, messageSnapshot } from '$lib/server/webhooks';
+import {
+	emitWebhookEvent,
+	ticketSnapshot,
+	messageSnapshot,
+	attachmentSnapshots,
+	type AttachmentSnapshotInput
+} from '$lib/server/webhooks';
 
 // The slice of a ticket row every event needs. Callers already hold the loaded
 // ticket (from getTicket()/createTicket()) — no re-querying here. `status` /
@@ -28,6 +34,8 @@ export type TicketNotifyCtx = {
 	assigneeIds: string[];
 	status?: string | null;
 	priority?: string | null;
+	/** Feeds the webhook snapshot only; optional for callers that don't hold it. */
+	category?: string | null;
 };
 
 const involved = (t: TicketNotifyCtx): string[] =>
@@ -65,6 +73,8 @@ export async function notifyTicketCreated(opts: {
 	description: string | null;
 	actor: NotifyActor;
 	origin: string;
+	/** Files attached on create — listed (with URLs) in the `ticket.created` payload. */
+	attachments?: readonly AttachmentSnapshotInput[];
 }): Promise<void> {
 	const { ticket: t, actor } = opts;
 	const recipients = await ticketRecipients({
@@ -110,7 +120,11 @@ export async function notifyTicketCreated(opts: {
 		actor,
 		assigneeIds: t.assigneeIds,
 		origin: opts.origin,
-		data: { ticket: ticketSnapshot(t, opts.origin), description: opts.description }
+		data: {
+			ticket: ticketSnapshot(t, opts.origin),
+			description: opts.description,
+			attachments: attachmentSnapshots(opts.attachments, opts.origin)
+		}
 	});
 	if (t.assigneeIds.length) {
 		emitWebhookEvent({
@@ -163,6 +177,8 @@ export async function notifyTicketMessage(opts: {
 	origin: string;
 	/** Id of the stored message row, when the caller has it. */
 	messageId?: string | null;
+	/** Files attached to the message — listed in `data.message.attachments`. */
+	attachments?: readonly AttachmentSnapshotInput[];
 }): Promise<void> {
 	const { ticket: t, actor } = opts;
 	emitWebhookEvent({
@@ -174,12 +190,16 @@ export async function notifyTicketMessage(opts: {
 		origin: opts.origin,
 		data: {
 			ticket: ticketSnapshot(t, opts.origin),
-			message: messageSnapshot({
-				id: opts.messageId ?? '',
-				body: opts.body,
-				internal: opts.internal,
-				authorId: actor.id
-			})
+			message: messageSnapshot(
+				{
+					id: opts.messageId ?? '',
+					body: opts.body,
+					internal: opts.internal,
+					authorId: actor.id,
+					attachments: opts.attachments
+				},
+				opts.origin
+			)
 		}
 	});
 	const recipients = await ticketRecipients(

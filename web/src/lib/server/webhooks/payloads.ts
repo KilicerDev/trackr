@@ -83,19 +83,64 @@ export function userRef(u: { id: string; name: string | null }) {
 	return { id: u.id, name: u.name ?? null };
 }
 
-export function messageSnapshot(msg: {
+/** The slice of an attachment row the snapshot needs (`AttachmentPublic` fits). */
+export type AttachmentSnapshotInput = {
 	id: string;
-	body: string;
-	internal?: boolean;
-	authorId?: string | null;
-	createdAt?: Date | null;
-}) {
+	filename: string;
+	mimeType: string;
+	sizeBytes: number;
+	width?: number | null;
+	height?: number | null;
+	hasThumbnail?: boolean;
+};
+
+/**
+ * A file attached to the entity/message the event is about. `url` serves the
+ * bytes inline, `downloadUrl` forces a download, `thumbnailUrl` is a 480px
+ * WebP for images that got one. All three sit behind the app's session/bearer
+ * auth — the receiver needs a Trackr credential to fetch them.
+ */
+export function attachmentSnapshot(a: AttachmentSnapshotInput, origin?: string | null) {
+	const base = `/api/attachments/${a.id}`;
+	return {
+		id: a.id,
+		filename: a.filename,
+		mimeType: a.mimeType,
+		sizeBytes: a.sizeBytes,
+		isImage: a.mimeType.startsWith('image/'),
+		width: a.width ?? null,
+		height: a.height ?? null,
+		url: absoluteUrl(base, origin),
+		downloadUrl: absoluteUrl(`${base}/download`, origin),
+		thumbnailUrl: a.hasThumbnail ? absoluteUrl(`${base}?thumb`, origin) : null
+	};
+}
+
+export function attachmentSnapshots(
+	list: readonly AttachmentSnapshotInput[] | null | undefined,
+	origin?: string | null
+) {
+	return (list ?? []).map((a) => attachmentSnapshot(a, origin));
+}
+
+export function messageSnapshot(
+	msg: {
+		id: string;
+		body: string;
+		internal?: boolean;
+		authorId?: string | null;
+		createdAt?: Date | null;
+		attachments?: readonly AttachmentSnapshotInput[] | null;
+	},
+	origin?: string | null
+) {
 	return {
 		id: msg.id,
 		body: truncateBody(msg.body),
 		internal: msg.internal ?? false,
 		authorId: msg.authorId ?? null,
-		createdAt: (msg.createdAt ?? new Date()).toISOString()
+		createdAt: (msg.createdAt ?? new Date()).toISOString(),
+		attachments: attachmentSnapshots(msg.attachments, origin)
 	};
 }
 

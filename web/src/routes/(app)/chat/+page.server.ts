@@ -2,7 +2,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { PageServerLoad, Actions } from './$types';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { emitWebhookEvent, threadSnapshot } from '$lib/server/webhooks';
+import { attachmentSnapshots, emitWebhookEvent, threadSnapshot } from '$lib/server/webhooks';
 import { organization, tag } from '$lib/server/db/app.schema';
 import { assertCan, can, isPortalUser, isTrackrTeam } from '$lib/server/permissions';
 import { getPreferences } from '$lib/server/preferences';
@@ -132,7 +132,7 @@ export const actions: Actions = {
 			createdBy: me.id,
 			tagIds
 		});
-		await attachFormFiles({
+		const { attachments } = await attachFormFiles({
 			files: stagedFiles,
 			entityType: 'message',
 			entityId: messageId,
@@ -149,7 +149,8 @@ export const actions: Actions = {
 			data: {
 				thread: threadSnapshot({ id: threadId, orgId, title }, url.origin),
 				tagIds,
-				body: body || null
+				body: body || null,
+				attachments: attachmentSnapshots(attachments, url.origin)
 			}
 		});
 		await notifyChatMessage({
@@ -159,7 +160,8 @@ export const actions: Actions = {
 			actor: { id: me.id, name: me.name },
 			body,
 			origin: url.origin,
-			messageId
+			messageId,
+			attachments
 		});
 		return { success: true, threadId };
 	},
@@ -184,7 +186,7 @@ export const actions: Actions = {
 			authorId: me.id,
 			body: body || '(attachment)'
 		});
-		await attachFormFiles({
+		const { attachments } = await attachFormFiles({
 			files: stagedFiles,
 			entityType: 'message',
 			entityId: messageId,
@@ -200,7 +202,8 @@ export const actions: Actions = {
 			actor: { id: me.id, name: me.name },
 			body,
 			origin: url.origin,
-			messageId
+			messageId,
+			attachments
 		});
 		return { success: true };
 	},

@@ -22,7 +22,7 @@ import {
 } from '$lib/server/tasks';
 import { normalizeTag } from '$lib/utils/label-meta';
 import { logActivityFF } from '$lib/server/activity';
-import { emitWebhookEvent, taskSnapshot } from '$lib/server/webhooks';
+import { attachmentSnapshots, emitWebhookEvent, taskSnapshot } from '$lib/server/webhooks';
 import { recordAudit } from '$lib/server/audit';
 import { syncTicketChecklistFromTask } from '$lib/server/tickets';
 import {
@@ -168,6 +168,18 @@ export const actions: Actions = {
 			meta: { projectId: p.id, taskRef: displayId }
 		});
 
+		// Attach any files dropped on the create modal. Best-effort: the task
+		// already exists, so a failed attachment is warned, not fatal. Runs
+		// before the webhook emit so `task.created` lists them.
+		const { failed, attachments } = await attachFormFiles({
+			files: form.getAll('attachments'),
+			entityType: 'task',
+			entityId: newId,
+			orgId: null,
+			projectId: p.id,
+			uploadedBy: me.id
+		});
+
 		// Notify each newly-assigned user (notify() drops the actor itself, so
 		// self-assignment is silent). Fire-and-forget: a failed notification
 		// must never undo the create.
@@ -190,7 +202,8 @@ export const actions: Actions = {
 			origin: url.origin,
 			data: {
 				task: taskSnapshot({ ...createdCtx, assigneeIds: assignedIds, dueDate }, url.origin),
-				description
+				description,
+				attachments: attachmentSnapshots(attachments, url.origin)
 			}
 		});
 		void notifyTaskAssigned({
@@ -199,17 +212,6 @@ export const actions: Actions = {
 			actor: { id: me.id, name: me.name },
 			origin: url.origin
 		}).catch((err) => console.error('task create notify failed', err));
-
-		// Attach any files dropped on the create modal. Best-effort: the task
-		// already exists, so a failed attachment is warned, not fatal.
-		const { failed } = await attachFormFiles({
-			files: form.getAll('attachments'),
-			entityType: 'task',
-			entityId: newId,
-			orgId: null,
-			projectId: p.id,
-			uploadedBy: me.id
-		});
 
 		return { success: true, id: newId, displayId, attachmentsFailed: failed };
 	},

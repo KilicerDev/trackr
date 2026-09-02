@@ -36,4 +36,37 @@ export async function readJson<T>(request: Request): Promise<T> {
 	}
 }
 
+/**
+ * Parse a create/reply body that may carry staged files. JSON clients send
+ * the plain object as before; clients that attach files send
+ * `multipart/form-data` with the same object JSON-encoded in a `payload`
+ * field plus one or more `attachments` file parts (the web modals' shape).
+ * Files are returned separately so the handler can attach them once the
+ * parent row exists — and BEFORE it emits webhooks, so the payload can list
+ * them.
+ */
+export async function readBody<T>(request: Request): Promise<{ body: T; files: File[] }> {
+	const contentType = request.headers.get('content-type') ?? '';
+	if (!contentType.toLowerCase().startsWith('multipart/form-data')) {
+		return { body: await readJson<T>(request), files: [] };
+	}
+	let form: FormData;
+	try {
+		form = await request.formData();
+	} catch {
+		error(400, 'Invalid form data.');
+	}
+	const raw = form.get('payload');
+	let body: T;
+	try {
+		body = (typeof raw === 'string' && raw.trim() ? JSON.parse(raw) : {}) as T;
+	} catch {
+		error(400, 'Invalid JSON payload.');
+	}
+	const files = form
+		.getAll('attachments')
+		.filter((f): f is File => f instanceof File && f.size > 0);
+	return { body, files };
+}
+
 export { json };

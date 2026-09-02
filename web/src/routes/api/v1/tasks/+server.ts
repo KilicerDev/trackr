@@ -4,7 +4,9 @@
 //   GET  ?scope=mine|all — `mine` (default) = tasks I'm assigned to or created.
 //   POST { title, projectKey, description?, status?, priority?, type?, due?,
 //          estimate?, tags?, assigneeIds?, plannedFor? } — full create, same
-//          field semantics as the web create action.
+//          field semantics as the web create action. Send multipart/form-data
+//          with the object in a `payload` field plus `attachments` file parts
+//          to attach files on create (listed in the `task.created` webhook).
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { project } from '$lib/server/db/app.schema';
@@ -19,10 +21,11 @@ import {
 import { loadTicketDisplayUsers } from '$lib/server/tickets';
 import { notifyTaskAssigned } from '$lib/server/notify/events/task';
 import { logActivityFF } from '$lib/server/activity';
-import { emitWebhookEvent, taskSnapshot } from '$lib/server/webhooks';
+import { attachmentSnapshots, emitWebhookEvent, taskSnapshot } from '$lib/server/webhooks';
+import { attachFormFiles } from '$lib/server/attachments';
 import { normalizeTag } from '$lib/utils/label-meta';
 import { m } from '$lib/paraglide/messages';
-import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
+import { apiError, json, readBody, requireUser } from '$lib/server/api/guard';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ locals, url }) => {
@@ -52,7 +55,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 export const POST: RequestHandler = async ({ locals, request, url }) => {
 	const user = requireUser(locals);
-	const body = await readJson<{
+	const { body, files } = await readBody<{
 		title?: string;
 		projectKey?: string;
 		description?: string;
@@ -133,6 +136,16 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		type: 'task.created',
 		meta: { taskRef: created.displayId, taskTitle: title, via: 'api.v1' }
 	});
+	// Files first (best-effort, the task already exists), so the webhook
+	// below can list them.
+	const { attachments } = await attachFormFiles({
+		files,
+		entityType: 'task',
+		entityId: created.id,
+		orgId: null,
+		projectId: proj.id,
+		uploadedBy: user.id
+	});
 	// Same contract as the web create action: notify assigned users (notify()
 	// drops the actor, so plain self-assignment stays silent).
 	const createdCtx = {
@@ -154,7 +167,8 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		origin: url.origin,
 		data: {
 			task: taskSnapshot({ ...createdCtx, assigneeIds: created.assignedIds, dueDate }, url.origin),
-			description: body.description?.trim() || null
+			description: body.description?.trim() || null,
+			attachments: attachmentSnapshots(attachments, url.origin)
 		}
 	});
 	void notifyTaskAssigned({

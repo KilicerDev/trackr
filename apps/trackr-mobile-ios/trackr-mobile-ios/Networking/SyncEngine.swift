@@ -343,11 +343,12 @@ final class SyncEngine {
         }
     }
 
+    /// Files ride along in the same request (multipart) so the server has
+    /// them before it fans out — the webhook payload lists them.
     func sendTaskComment(taskUUID: String, text: String, files: [PickedFile] = []) {
         Task {
-            guard let created = try? await client.addTaskComment(uuid: taskUUID, text: text)
+            guard (try? await client.addTaskComment(uuid: taskUUID, text: text, files: files)) != nil
             else { return }
-            await uploadFiles(files, entityType: .message, entityId: created.id)
             await loadTaskDetail(uuid: taskUUID)
         }
     }
@@ -363,44 +364,26 @@ final class SyncEngine {
         ticketUUID: String, text: String, internalNote: Bool, files: [PickedFile] = []
     ) {
         Task {
-            guard let created = try? await client.addTicketMessage(
-                uuid: ticketUUID, text: text, internalNote: internalNote
-            ) else { return }
-            await uploadFiles(files, entityType: .message, entityId: created.id)
+            guard (try? await client.addTicketMessage(
+                uuid: ticketUUID, text: text, internalNote: internalNote, files: files
+            )) != nil else { return }
             await loadTicketDetail(uuid: ticketUUID)
         }
     }
 
     func sendChatMessage(threadId: String, text: String, files: [PickedFile] = []) {
         Task {
-            guard let created = try? await client.addChatMessage(threadId: threadId, text: text)
+            guard (try? await client.addChatMessage(threadId: threadId, text: text, files: files)) != nil
             else { return }
-            await uploadFiles(files, entityType: .message, entityId: created.id)
             await loadChatThread(id: threadId)
         }
     }
 
-    /// Best-effort sequential upload of staged files onto a just-created
-    /// entity (web parity: attachFormFiles — a failed file never fails the
-    /// message it rides on).
-    private func uploadFiles(
-        _ files: [PickedFile], entityType: AttachmentEntityType, entityId: String
-    ) async {
-        for file in files {
-            _ = try? await uploadAttachment(
-                entityType: entityType,
-                entityId: entityId,
-                data: file.data,
-                filename: file.filename,
-                mimeType: file.mimeType
-            )
-        }
-    }
-
-    /// Create a task with the sheet's full field set in one POST (the v1
-    /// endpoint accepts the same fields as the web create action). Checklist
-    /// still lands via a follow-up PATCH — the create endpoint doesn't take
-    /// one, matching the web modal.
+    /// Create a task with the sheet's full field set + staged files in one
+    /// multipart POST (the v1 endpoint accepts the same fields as the web
+    /// create action; files attach server-side before the `task.created`
+    /// webhook fires). Checklist still lands via a follow-up PATCH — the
+    /// create endpoint doesn't take one, matching the web modal.
     func createTask(
         title: String,
         projectKey: String,
@@ -426,7 +409,8 @@ final class SyncEngine {
                     due: due.map { APIDate.dayString($0) },
                     estimate: estimate,
                     assigneeIds: assignees.compactMap(\.serverId)
-                )
+                ),
+                files: files
             ) else { return }
             if !checklist.isEmpty {
                 var patch = APIClient.TaskPatch()
@@ -435,7 +419,6 @@ final class SyncEngine {
                 }
                 try? await client.updateTask(uuid: created.id, patch: patch)
             }
-            await uploadFiles(files, entityType: .task, entityId: created.id)
             await refreshTasks()
         }
     }
@@ -481,18 +464,32 @@ final class SyncEngine {
         }
     }
 
-    func createTicket(orgId: String, subject: String, description: String?, assignees: [UserRef]) {
+    /// One multipart POST with the sheet's fields + staged files — the
+    /// v1 endpoint attaches them before the `ticket.created` webhook fires
+    /// so the payload carries their URLs. Assignees go in the same request
+    /// (agents only; the server ignores them for customers).
+    func createTicket(
+        orgId: String,
+        subject: String,
+        description: String?,
+        priority: TaskPriority,
+        category: TicketCategory,
+        assignees: [UserRef],
+        files: [PickedFile] = []
+    ) {
         Task {
-            guard let created = try? await client.createTicket(
-                .init(orgId: orgId, subject: subject, description: description)
-            ) else { return }
             let assigneeIds = assignees.compactMap(\.serverId)
-            if !assigneeIds.isEmpty {
-                try? await client.updateTicket(
-                    uuid: created.id,
-                    patch: .init(assigneeIds: assigneeIds)
-                )
-            }
+            guard (try? await client.createTicket(
+                .init(
+                    orgId: orgId,
+                    subject: subject,
+                    description: description,
+                    priority: priority.apiValue,
+                    category: category.apiValue,
+                    assigneeIds: assigneeIds.isEmpty ? nil : assigneeIds
+                ),
+                files: files
+            )) != nil else { return }
             await refreshTickets()
         }
     }

@@ -2,7 +2,8 @@
 //   GET  ?orgId=  — the org's whole feed (threads with messages inlined),
 //                   plus the org's tag directory, an author display map, and
 //                   the caller's unread thread ids.
-//   POST { orgId, title, body } — start a thread.
+//   POST { orgId, title, body } — start a thread. Multipart (`payload` JSON
+//        field + `attachments` parts) attaches files to the root message.
 import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { threadRead } from '$lib/server/db/app.schema';
@@ -11,9 +12,10 @@ import { createThread, listOrgTags, loadOrgFeed, markThreadRead } from '$lib/ser
 import { loadTicketDisplayUsers } from '$lib/server/tickets';
 import { notifyChatMessage } from '$lib/server/notify/events/chat';
 import { m } from '$lib/paraglide/messages';
-import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
+import { apiError, json, readBody, requireUser } from '$lib/server/api/guard';
+import { attachFormFiles } from '$lib/server/attachments';
 import type { RequestHandler } from './$types';
-import { emitWebhookEvent, threadSnapshot } from '$lib/server/webhooks';
+import { attachmentSnapshots, emitWebhookEvent, threadSnapshot } from '$lib/server/webhooks';
 
 export const GET: RequestHandler = async ({ locals, url }) => {
 	const user = requireUser(locals);
@@ -55,7 +57,9 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 export const POST: RequestHandler = async ({ locals, request, url }) => {
 	const user = requireUser(locals);
-	const body = await readJson<{ orgId?: string; title?: string; body?: string }>(request);
+	const { body, files } = await readBody<{ orgId?: string; title?: string; body?: string }>(
+		request
+	);
 	const orgId = body.orgId?.trim();
 	const title = body.title?.trim();
 	const text = body.body?.trim();
@@ -70,6 +74,14 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		body: text,
 		createdBy: user.id
 	});
+	const { attachments } = await attachFormFiles({
+		files,
+		entityType: 'message',
+		entityId: messageId,
+		orgId,
+		projectId: null,
+		uploadedBy: user.id
+	});
 	await markThreadRead(threadId, user.id);
 	emitWebhookEvent({
 		type: 'thread.created',
@@ -79,7 +91,8 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		data: {
 			thread: threadSnapshot({ id: threadId, orgId, title }, url.origin),
 			tagIds: [],
-			body: text
+			body: text,
+			attachments: attachmentSnapshots(attachments, url.origin)
 		}
 	});
 	await notifyChatMessage({
@@ -89,7 +102,8 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		actor: { id: user.id, name: user.name },
 		body: text,
 		origin: url.origin,
-		messageId
+		messageId,
+		attachments
 	});
 	return json({ threadId }, { status: 201 });
 };

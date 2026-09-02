@@ -25,6 +25,16 @@ struct WhatsNewView: View {
     }
 
     private let releases: [Release] = [
+        Release(version: "1.0.3", name: "Images on Create", date: "September 2026", features: [
+            Feature(icon: "paperclip.badge.ellipsis", title: "Attach While Creating a Ticket",
+                    detail: "The new-ticket sheet has an Attachments section — add screenshots from your library or files from the Files app before you tap Create."),
+            Feature(icon: "arrow.up.doc.fill", title: "One Upload, Not Many",
+                    detail: "Files now travel in the same request as the ticket, task, reply or comment they belong to, so they're there the moment the item exists."),
+            Feature(icon: "link", title: "Image URLs in Webhooks",
+                    detail: "Outgoing webhooks for new tickets, tasks and messages list the attached files with their URLs, ready for automations like n8n."),
+            Feature(icon: "slider.horizontal.3", title: "Priority & Category on Create",
+                    detail: "Priority, category and assignees you pick in the new-ticket sheet are saved with the ticket itself instead of in a second step."),
+        ]),
         Release(version: "1.0.2", name: "Attachments", date: "September 2026", features: [
             Feature(icon: "paperclip", title: "Files on Tasks & Tickets",
                     detail: "Attach photos and documents from the paperclip — from your library, the Files app or straight from the camera — and see everything that's already attached."),

@@ -108,8 +108,8 @@ extension APIClient {
         var plannedFor: String? = nil
     }
 
-    func createTask(_ body: CreateTaskBody) async throws -> API.CreatedResponse {
-        try await post("/api/v1/tasks", body: body)
+    func createTask(_ body: CreateTaskBody, files: [PickedFile] = []) async throws -> API.CreatedResponse {
+        try await postWithFiles("/api/v1/tasks", payload: body, files: files)
     }
 
     struct ConvertTicketBody: Encodable {
@@ -140,9 +140,13 @@ extension APIClient {
     }
 
     @discardableResult
-    func addTaskComment(uuid: String, text: String) async throws -> API.CreatedResponse {
+    func addTaskComment(
+        uuid: String, text: String, files: [PickedFile] = []
+    ) async throws -> API.CreatedResponse {
         struct Body: Encodable { let body: String }
-        return try await post("/api/v1/tasks/\(uuid)/comments", body: Body(body: text))
+        return try await postWithFiles(
+            "/api/v1/tasks/\(uuid)/comments", payload: Body(body: text), files: files
+        )
     }
 
     func logTaskTime(uuid: String, minutes: Int, date: Date, note: String?) async throws {
@@ -188,23 +192,28 @@ extension APIClient {
         let orgId: String
         let subject: String
         let description: String?
+        var priority: String? = nil
+        var category: String? = nil
+        /// Honoured for agents only — the server drops it for customers.
+        var assigneeIds: [String]? = nil
     }
 
-    func createTicket(_ body: CreateTicketBody) async throws -> API.CreatedResponse {
-        try await post("/api/v1/tickets", body: body)
+    func createTicket(_ body: CreateTicketBody, files: [PickedFile] = []) async throws -> API.CreatedResponse {
+        try await postWithFiles("/api/v1/tickets", payload: body, files: files)
     }
 
     @discardableResult
-    func addTicketMessage(uuid: String, text: String, internalNote: Bool) async throws
-        -> API.CreatedResponse
-    {
+    func addTicketMessage(
+        uuid: String, text: String, internalNote: Bool, files: [PickedFile] = []
+    ) async throws -> API.CreatedResponse {
         struct Body: Encodable {
             let body: String
             let `internal`: Bool
         }
-        return try await post(
+        return try await postWithFiles(
             "/api/v1/tickets/\(uuid)/messages",
-            body: Body(body: text, internal: internalNote)
+            payload: Body(body: text, internal: internalNote),
+            files: files
         )
     }
 
@@ -228,11 +237,14 @@ extension APIClient {
     }
 
     @discardableResult
-    func addChatMessage(threadId: String, text: String) async throws -> API.CreatedResponse {
+    func addChatMessage(
+        threadId: String, text: String, files: [PickedFile] = []
+    ) async throws -> API.CreatedResponse {
         struct Body: Encodable { let body: String }
-        return try await post(
+        return try await postWithFiles(
             "/api/v1/chat/threads/\(threadId)/messages",
-            body: Body(body: text)
+            payload: Body(body: text),
+            files: files
         )
     }
 

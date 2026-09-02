@@ -3,7 +3,7 @@
 //  trackr-mobile-ios
 //
 //  Quick ticket entry, mirroring the web CreateTicketModal essentials:
-//  org, subject, message, category, priority, assignees.
+//  org, subject, message, category, priority, assignees, attachments.
 //
 
 import SwiftUI
@@ -12,7 +12,9 @@ struct CreateTicketSheet: View {
     /// Existing tickets — source for org options and the next display id.
     let tickets: [TicketItem]
     var model: AppModel? = nil
-    let onCreate: (TicketItem) -> Void
+    /// Staged files ride along in the same create request (multipart), so
+    /// the server can list them in the `ticket.created` webhook.
+    let onCreate: (TicketItem, [PickedFile]) -> Void
     @Environment(\.dismiss) private var dismiss
 
     @State private var subject = ""
@@ -21,6 +23,7 @@ struct CreateTicketSheet: View {
     @State private var category: TicketCategory = .general
     @State private var priority: TaskPriority = .medium
     @State private var assignees: Set<UserRef> = []
+    @State private var staging = FileStaging()
 
     private var orgOptions: [OrgRef] {
         if let model, !model.orgs.isEmpty { return model.orgs }
@@ -61,7 +64,11 @@ struct CreateTicketSheet: View {
                         selection: $assignees
                     )
                 }
+
+                StagedFilesSection(staging: $staging)
             }
+            .fileStaging($staging, noun: "ticket")
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("New Ticket")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -100,13 +107,13 @@ struct CreateTicketSheet: View {
             messages: text.isEmpty ? [] : [TicketMessage(user: me, date: .now, text: text)],
             createdAt: .now
         )
-        onCreate(ticket)
+        onCreate(ticket, staging.files)
         dismiss()
     }
 }
 
 #Preview {
     Color.clear.sheet(isPresented: .constant(true)) {
-        CreateTicketSheet(tickets: TicketItem.samples) { _ in }
+        CreateTicketSheet(tickets: TicketItem.samples) { _, _ in }
     }
 }
