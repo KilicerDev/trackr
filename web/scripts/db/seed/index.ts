@@ -4,14 +4,21 @@
  *
  *   bun run db:seed --root   Clean setup: just the root superadmin so you can
  *                            log in. No demo data. Equivalent to a fresh install.
- *   bun run db:seed --all    Root + the full demo dataset (users, projects,
- *                            tasks, wiki) for a populated local/dev workspace.
+ *   bun run db:seed --all    Root + the full demo dataset: client orgs, team +
+ *                            client users, projects, tasks (comments, time
+ *                            logs, checklists, this week's plan), tickets with
+ *                            conversations, chat threads, notes, wiki pages,
+ *                            image/file attachments and an inbox for the demo
+ *                            user "Max Muster" (max.muster@trackr.dev).
  *
- * Both modes are idempotent — safe to re-run. Env:
+ * Both modes are idempotent — safe to re-run. Demo dates are relative to today,
+ * so re-running refreshes the workspace to "this week". Env:
  *   ROOT_EMAIL / ROOT_PASSWORD / ROOT_NAME  → root user (password required on
  *                                             first create, min 8 chars).
  *   DEMO_PASSWORD                           → shared demo-user password
  *                                             (default 'demo12345').
+ *   STORAGE_DRIVER / STORAGE_LOCAL_DIR / S3_* → where attachment bytes go
+ *                                             (same settings as the app).
  */
 
 import '../../load-root-env';
@@ -24,7 +31,9 @@ const wantRoot = args.has('--root');
 const wantAll = args.has('--all');
 
 if (!wantRoot && !wantAll) {
-	die('Choose what to seed:\n  bun run db:seed --root   (clean: root user only)\n  bun run db:seed --all    (root + demo data)');
+	die(
+		'Choose what to seed:\n  bun run db:seed --root   (clean: root user only)\n  bun run db:seed --all    (root + demo data)'
+	);
 }
 
 let close: (() => Promise<void>) | undefined;
