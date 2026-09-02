@@ -398,20 +398,26 @@ final class SyncEngine {
         files: [PickedFile] = []
     ) {
         Task {
-            guard let created = try? await client.createTask(
-                .init(
-                    title: title,
-                    projectKey: projectKey,
-                    description: description,
-                    status: status.apiValue,
-                    priority: priority.apiValue,
-                    type: type.apiValue,
-                    due: due.map { APIDate.dayString($0) },
-                    estimate: estimate,
-                    assigneeIds: assignees.compactMap(\.serverId)
-                ),
-                files: files
-            ) else { return }
+            let created: API.CreatedResponse
+            do {
+                created = try await client.createTask(
+                    .init(
+                        title: title,
+                        projectKey: projectKey,
+                        description: description,
+                        status: status.apiValue,
+                        priority: priority.apiValue,
+                        type: type.apiValue,
+                        due: due.map { APIDate.dayString($0) },
+                        estimate: estimate,
+                        assigneeIds: assignees.compactMap(\.serverId)
+                    ),
+                    files: files
+                )
+            } catch {
+                print("[sync] task create failed (\(files.count) files):", error)
+                return
+            }
             if !checklist.isEmpty {
                 var patch = APIClient.TaskPatch()
                 patch.checklist = checklist.map {
@@ -479,17 +485,22 @@ final class SyncEngine {
     ) {
         Task {
             let assigneeIds = assignees.compactMap(\.serverId)
-            guard (try? await client.createTicket(
-                .init(
-                    orgId: orgId,
-                    subject: subject,
-                    description: description,
-                    priority: priority.apiValue,
-                    category: category.apiValue,
-                    assigneeIds: assigneeIds.isEmpty ? nil : assigneeIds
-                ),
-                files: files
-            )) != nil else { return }
+            do {
+                _ = try await client.createTicket(
+                    .init(
+                        orgId: orgId,
+                        subject: subject,
+                        description: description,
+                        priority: priority.apiValue,
+                        category: category.apiValue,
+                        assigneeIds: assigneeIds.isEmpty ? nil : assigneeIds
+                    ),
+                    files: files
+                )
+            } catch {
+                print("[sync] ticket create failed (\(files.count) files):", error)
+                return
+            }
             await refreshTickets()
         }
     }

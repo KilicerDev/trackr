@@ -25,6 +25,12 @@ struct WhatsNewView: View {
     }
 
     private let releases: [Release] = [
+        Release(version: "1.0.4", name: "Reliability", date: "September 2026", features: [
+            Feature(icon: "exclamationmark.triangle.fill", title: "Create Failures Are Visible",
+                    detail: "When a new ticket or task can't reach the server, the app logs why instead of failing silently — no more phantom items that vanish on the next refresh."),
+            Feature(icon: "server.rack", title: "Server Boot Fix",
+                    detail: "A server-side start-up bug that could keep a fresh deployment restarting has been fixed. Update your Trackr server alongside this build."),
+        ]),
         Release(version: "1.0.3", name: "Images on Create", date: "September 2026", features: [
             Feature(icon: "paperclip.badge.ellipsis", title: "Attach While Creating a Ticket",
                     detail: "The new-ticket sheet has an Attachments section — add screenshots from your library or files from the Files app before you tap Create."),
