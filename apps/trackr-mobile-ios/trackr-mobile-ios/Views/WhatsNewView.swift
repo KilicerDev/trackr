@@ -25,6 +25,18 @@ struct WhatsNewView: View {
     }
 
     private let releases: [Release] = [
+        Release(version: "1.0.5", name: "Sort & Saved Views", date: "September 2026", features: [
+            Feature(icon: "arrow.up.arrow.down", title: "Sort Tasks and Tickets",
+                    detail: "The filter sheet has a Sort by row — tasks by due date, priority, last updated, created or title; tickets by priority, last activity, created or subject. Tap the arrow to flip the direction."),
+            Feature(icon: "arrow.triangle.2.circlepath", title: "Update a Saved View",
+                    detail: "Changed your filters? Long-press a saved view or swipe it from the left to overwrite it with the current settings instead of saving a new one."),
+            Feature(icon: "icloud.and.arrow.up.fill", title: "Sort Syncs with the Web",
+                    detail: "Your sort order travels with the rest of the view state, so the list looks the same on the phone and in the browser."),
+            Feature(icon: "bolt.fill", title: "Faster, Steadier Launch",
+                    detail: "The app opens straight from its local cache and checks your session in the background — no more hanging on a spinner when the first connection is slow."),
+            Feature(icon: "sparkles", title: "New Launch Screen",
+                    detail: "The stock spinner is gone; the trackr mark now greets you while things load."),
+        ]),
         Release(version: "1.0.4", name: "Reliability", date: "September 2026", features: [
             Feature(icon: "exclamationmark.triangle.fill", title: "Create Failures Are Visible",
                     detail: "When a new ticket or task can't reach the server, the app logs why instead of failing silently — no more phantom items that vanish on the next refresh."),
