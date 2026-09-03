@@ -237,6 +237,8 @@ enum Mapper {
             details: dto.description ?? "",
             due: APIDate.parse(dto.due),
             plannedFor: APIDate.parse(dto.plannedFor),
+            createdAt: APIDate.parse(dto.createdAt),
+            updatedAt: APIDate.parse(dto.updated),
             checklist: (dto.checklist ?? []).map {
                 ChecklistItem(id: $0.id ?? UUID().uuidString, text: $0.text, done: $0.done)
             },

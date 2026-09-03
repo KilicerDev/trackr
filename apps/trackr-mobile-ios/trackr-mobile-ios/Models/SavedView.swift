@@ -155,6 +155,11 @@ extension TaskFilters {
         if let window = config["time"]?.stringValue.flatMap(TimeWindow.init(web:)) {
             self.window = window
         }
+        if let sort = config["listSort"],
+           let key = sort["by"]?.stringValue.flatMap(TaskSortKey.init(rawValue:)) {
+            sortBy = key
+            sortAscending = sort["dir"]?.stringValue == "asc"
+        }
         statuses = Set(filterValues(config, "status").compactMap(TaskStatus.init(api:)))
         priorities = Set(filterValues(config, "priority").compactMap(TaskPriority.init(api:)))
         assignees = Set(filterValues(config, "assignee").compactMap { directories.usersById[$0] })
@@ -170,6 +175,8 @@ extension TaskFilters {
             "boardGroup": .string("project"),
             "sub": .string("status"),
             "time": .string(window.webValue),
+            "listSort": listSortJSON,
+            "boardSort": .object(["by": .string("priority"), "dir": .string("desc")]),
             "filters": filtersJSON([
                 "status": statuses.map(\.apiValue).sorted(),
                 "priority": priorities.map(\.apiValue).sorted(),
@@ -179,12 +186,19 @@ extension TaskFilters {
         ])
     }
 
+    /// Web `SortSpec` shape ({ by, dir }) — the list sort is the one the
+    /// mobile list shows, so that is what syncs.
+    private var listSortJSON: JSONValue {
+        .object(["by": .string(sortBy.rawValue), "dir": .string(sortAscending ? "asc" : "desc")])
+    }
+
     /// The persisted per-page state (localStorage/server `view_state.tasks`
     /// parity) — what "remember my current filters" writes.
     func webPatch(directories: ViewDirectories) -> JSONValue {
         .object([
             "listGroup": .string(group.rawValue),
             "time": .string(window.webValue),
+            "listSort": listSortJSON,
             "filters": filtersJSON([
                 "status": statuses.map(\.apiValue).sorted(),
                 "priority": priorities.map(\.apiValue).sorted(),

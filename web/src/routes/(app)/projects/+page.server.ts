@@ -25,6 +25,7 @@ export interface ProjectListItem {
 	color: string;
 	icon: string;
 	status: Project['status'];
+	createdAt: Date;
 	updatedAt: Date;
 	lead: MemberSummary | null;
 	members: MemberSummary[];
@@ -84,6 +85,7 @@ export const load: ServerLoad = async ({ locals }) => {
 			status: project.status,
 			leadId: project.leadId,
 			orgId: project.orgId,
+			createdAt: project.createdAt,
 			updatedAt: project.updatedAt
 		})
 		.from(project)
@@ -134,6 +136,7 @@ export const load: ServerLoad = async ({ locals }) => {
 		color: r.color,
 		icon: r.icon,
 		status: r.status as Project['status'],
+		createdAt: r.createdAt,
 		updatedAt: r.updatedAt,
 		lead: r.leadId ? (leadById.get(r.leadId) ?? null) : null,
 		members: membersByProject.get(r.id) ?? [],

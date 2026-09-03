@@ -13,6 +13,7 @@
 	import { readCollapsed, saveCollapsed } from '$lib/stores/view';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
+	import { sortTickets, DEFAULT_TICKET_BOARD_SORT, type TicketSort } from '$lib/utils/sort';
 
 	export type BoardGroup = 'status' | 'priority' | 'category' | 'org' | 'assignee' | 'none';
 	export type BoardSub = 'none' | 'status' | 'priority' | 'category' | 'assignee';
@@ -21,6 +22,8 @@
 		tickets: TicketRow[];
 		group?: BoardGroup;
 		sub?: BoardSub;
+		// Card order inside each column / subgroup (see $lib/utils/sort).
+		sort?: TicketSort;
 		onSelect?: (t: TicketRow) => void;
 		onAddInOrg?: (orgId: string | null) => void;
 		canCreate?: boolean;
@@ -35,20 +38,13 @@
 		tickets,
 		group = 'status',
 		sub = 'none',
+		sort = DEFAULT_TICKET_BOARD_SORT,
 		onSelect,
 		onAddInOrg,
 		canCreate = true,
 		persistKey,
 		initialCollapsed
 	}: Props = $props();
-
-	const prioRank: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
-	function byPriority(a: TicketRow, b: TicketRow) {
-		const d = (prioRank[b.priority] ?? 0) - (prioRank[a.priority] ?? 0);
-		if (d !== 0) return d;
-		// Stable tiebreak: most recently active first.
-		return (b.lastMessageAt ?? b.updatedAt).localeCompare(a.lastMessageAt ?? a.updatedAt);
-	}
 
 	interface ColumnDef {
 		key: string;
@@ -163,7 +159,7 @@
 	function subGroupsForColumn(col: ColumnDef): SubGroupDef[] {
 		const items = col.tickets;
 		if (sub === 'none' || sub === group) {
-			return [{ key: `${col.key}:all`, label: '', tickets: [...items].sort(byPriority) }];
+			return [{ key: `${col.key}:all`, label: '', tickets: sortTickets(items, sort) }];
 		}
 		if (sub === 'status') {
 			return TICKET_STATUSES.map((s) => ({
@@ -171,7 +167,10 @@
 				label: ticketStatusLabel(s.id),
 				dot: s.dot,
 				statusId: s.id,
-				tickets: items.filter((t) => t.status === s.id).sort(byPriority)
+				tickets: sortTickets(
+					items.filter((t) => t.status === s.id),
+					sort
+				)
 			})).filter((g) => g.tickets.length > 0);
 		}
 		if (sub === 'priority') {
@@ -182,7 +181,10 @@
 					label: priorityLabel(p.id),
 					dot: p.color,
 					priorityId: p.id,
-					tickets: items.filter((t) => t.priority === p.id)
+					tickets: sortTickets(
+						items.filter((t) => t.priority === p.id),
+						sort
+					)
 				}))
 				.filter((g) => g.tickets.length > 0);
 		}
@@ -191,7 +193,10 @@
 				key: `${col.key}:${c.id}`,
 				label: ticketCategoryLabel(c.id),
 				dot: c.color,
-				tickets: items.filter((t) => t.category === c.id).sort(byPriority)
+				tickets: sortTickets(
+					items.filter((t) => t.category === c.id),
+					sort
+				)
 			})).filter((g) => g.tickets.length > 0);
 		}
 		// assignee (fan-out over multiple assignees)
@@ -209,11 +214,12 @@
 					label: u?.name ?? m.common_unassigned(),
 					dot: u?.color,
 					userId: real ?? undefined,
-					tickets: items
-						.filter((t) =>
+					tickets: sortTickets(
+						items.filter((t) =>
 							uid === '__none' ? t.assignees.length === 0 : t.assignees.includes(uid)
-						)
-						.sort(byPriority)
+						),
+						sort
+					)
 				};
 			})
 			.filter((g) => g.tickets.length > 0)

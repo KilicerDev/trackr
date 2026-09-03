@@ -11,12 +11,15 @@
 	import { readCollapsed, saveCollapsed } from '$lib/stores/view';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
+	import { sortTasks, DEFAULT_TASK_LIST_SORT, type TaskSort } from '$lib/utils/sort';
 
 	type GroupBy = 'status' | 'priority' | 'assignee' | 'project' | 'none';
 
 	interface Props {
 		tasks: Task[];
 		group?: GroupBy;
+		// Row order inside each group (see $lib/utils/sort).
+		sort?: TaskSort;
 		onSelect?: (t: Task) => void;
 		selectedId?: string;
 		onAddInProject?: (pid: ProjectId) => void;
@@ -30,6 +33,7 @@
 	let {
 		tasks,
 		group = 'status',
+		sort = DEFAULT_TASK_LIST_SORT,
 		onSelect,
 		selectedId,
 		onAddInProject,
@@ -65,16 +69,19 @@
 		return p ? `/projects/${p.id}` : undefined;
 	}
 
+	// Sorted once up front so every grouping mode inherits the same row order.
+	const ordered = $derived(sortTasks(tasks, sort));
+
 	let groups = $derived.by(() => {
 		if (group === 'none') {
-			return [{ id: 'all', label: '', dot: 'transparent', tasks }];
+			return [{ id: 'all', label: '', dot: 'transparent', tasks: ordered }];
 		}
 		if (group === 'status') {
 			return TRACKR_STATUSES.map((s) => ({
 				id: s.id,
 				label: statusLabel(s.id),
 				dot: s.dot,
-				tasks: tasks.filter((t) => t.status === s.id)
+				tasks: ordered.filter((t) => t.status === s.id)
 			})).filter((g) => g.tasks.length > 0);
 		}
 		if (group === 'priority') {
@@ -84,14 +91,14 @@
 					id: p.id,
 					label: priorityLabel(p.id),
 					dot: p.color,
-					tasks: tasks.filter((t) => t.priority === p.id)
+					tasks: ordered.filter((t) => t.priority === p.id)
 				}))
 				.filter((g) => g.tasks.length > 0);
 		}
 		if (group === 'project') {
 			// Stable alphabetical group order so the section headers don't
 			// reshuffle every time a task's updatedAt changes.
-			const keys = Array.from(new Set(tasks.map((t) => t.project)));
+			const keys = Array.from(new Set(ordered.map((t) => t.project)));
 			return keys
 				.map((key) => {
 					const p = resolveProject(key);
@@ -99,14 +106,14 @@
 						id: key,
 						label: p?.name ?? key,
 						dot: p?.color ?? '#7c7c84',
-						tasks: tasks.filter((t) => t.project === key)
+						tasks: ordered.filter((t) => t.project === key)
 					};
 				})
 				.filter((g) => g.tasks.length > 0)
 				.sort((a, b) => a.label.localeCompare(b.label));
 		}
 		// assignee
-		const ids = Array.from(new Set(tasks.flatMap((t) => t.assignees ?? [t.assignee])));
+		const ids = Array.from(new Set(ordered.flatMap((t) => t.assignees ?? [t.assignee])));
 		return ids
 			.map((uid) => {
 				const u = resolveUser(uid);
@@ -114,7 +121,7 @@
 					id: uid,
 					label: u?.name ?? uid,
 					dot: u?.color ?? '#666',
-					tasks: tasks.filter((t) => (t.assignees ?? [t.assignee]).includes(uid))
+					tasks: ordered.filter((t) => (t.assignees ?? [t.assignee]).includes(uid))
 				};
 			})
 			.filter((g) => g.tasks.length > 0)

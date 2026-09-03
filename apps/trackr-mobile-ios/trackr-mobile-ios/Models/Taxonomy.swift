@@ -41,6 +41,9 @@ enum TaskPriority: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Ordinal for sorting: urgent highest. Matches the web PRIO_RANK.
+    var rank: Int { TaskPriority.allCases.firstIndex(of: self) ?? 0 }
+
     var label: String {
         switch self {
         case .none: "None"

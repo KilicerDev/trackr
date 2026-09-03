@@ -14,6 +14,7 @@
 	import { readCollapsed, saveCollapsed } from '$lib/stores/view';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
+	import { sortTasks, DEFAULT_TASK_BOARD_SORT, type TaskSort } from '$lib/utils/sort';
 
 	export type BoardGroup = 'project' | 'status' | 'priority' | 'assignee' | 'none';
 	export type BoardSub = 'none' | 'status' | 'priority' | 'assignee';
@@ -22,6 +23,8 @@
 		tasks: Task[];
 		group?: BoardGroup;
 		sub?: BoardSub;
+		// Card order inside each column / subgroup (see $lib/utils/sort).
+		sort?: TaskSort;
 		onSelect?: (t: Task) => void;
 		onAddInProject?: (pid: ProjectId, statusId?: StatusId) => void;
 		// View-state key (e.g. 'tasks') to remember collapsed columns under.
@@ -35,13 +38,12 @@
 		tasks,
 		group = 'project',
 		sub = 'status',
+		sort = DEFAULT_TASK_BOARD_SORT,
 		onSelect,
 		onAddInProject,
 		persistKey,
 		initialCollapsed
 	}: Props = $props();
-
-	const prioRank: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1, none: 0 };
 
 	interface ColumnDef {
 		key: string;
@@ -159,7 +161,7 @@
 				{
 					key: `${col.key}:all`,
 					label: '',
-					tasks: items.sort((a, b) => prioRank[b.priority] - prioRank[a.priority])
+					tasks: sortTasks(items, sort)
 				}
 			];
 		}
@@ -169,9 +171,10 @@
 				label: statusLabel(s.id),
 				color: s.dot,
 				statusId: s.id as StatusId,
-				tasks: items
-					.filter((t) => t.status === s.id)
-					.sort((a, b) => prioRank[b.priority] - prioRank[a.priority])
+				tasks: sortTasks(
+					items.filter((t) => t.status === s.id),
+					sort
+				)
 			})).filter((g) => g.tasks.length > 0);
 		}
 		if (sub === 'priority') {
@@ -182,7 +185,10 @@
 					label: priorityLabel(p.id),
 					color: p.color,
 					priorityId: p.id as PriorityId,
-					tasks: items.filter((t) => t.priority === p.id)
+					tasks: sortTasks(
+						items.filter((t) => t.priority === p.id),
+						sort
+					)
 				}))
 				.filter((g) => g.tasks.length > 0);
 		}
@@ -196,7 +202,10 @@
 					label: u?.name ?? uid,
 					color: u?.color,
 					userId: uid,
-					tasks: items.filter((t) => (t.assignees ?? [t.assignee]).includes(uid))
+					tasks: sortTasks(
+						items.filter((t) => (t.assignees ?? [t.assignee]).includes(uid)),
+						sort
+					)
 				};
 			})
 			.filter((g) => g.tasks.length > 0)

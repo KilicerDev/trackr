@@ -1618,5 +1618,21 @@
 	"api_keys_err_user_required": "Wähle einen Benutzer.",
 	"api_keys_err_name_required": "Gib einen Namen ein (max. 120 Zeichen).",
 	"api_keys_err_user_forbidden": "Für diesen Benutzer kannst du keine Schlüssel erstellen.",
-	"api_keys_err_save_failed": "Der API-Schlüssel konnte nicht gespeichert werden."
+	"api_keys_err_save_failed": "Der API-Schlüssel konnte nicht gespeichert werden.",
+	"view_options_title": "Ansicht anpassen",
+	"view_sort_by": "Sortieren nach",
+	"view_sort_asc": "Aufsteigend",
+	"view_sort_desc": "Absteigend",
+	"view_filters": "Filter",
+	"view_filter_any": "Alle",
+	"sort_due": "Fälligkeit",
+	"sort_priority": "Priorität",
+	"sort_updated": "Zuletzt geändert",
+	"sort_created": "Erstellt",
+	"sort_title": "Titel",
+	"sort_activity": "Letzte Aktivität",
+	"sort_subject": "Betreff",
+	"sort_name": "Name",
+	"view_filter_no_matches": "Keine Treffer",
+	"view_layout": "Anordnung"
 }

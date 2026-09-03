@@ -5,6 +5,7 @@
 	import { readCollapsed, saveCollapsed } from '$lib/stores/view';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
+	import { sortTickets, DEFAULT_TICKET_LIST_SORT, type TicketSort } from '$lib/utils/sort';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
 	import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from '$lib/config/taxonomy';
 	import type { TicketRow } from '$lib/server/tickets';
@@ -17,6 +18,8 @@
 	interface Props {
 		tickets: TicketRow[];
 		group?: GroupBy;
+		// Row order inside each group (see $lib/utils/sort).
+		sort?: TicketSort;
 		onSelect?: (t: TicketRow) => void;
 		selectedId?: string;
 		// View-state key (e.g. 'tickets') to remember collapsed groups under.
@@ -29,6 +32,7 @@
 	let {
 		tickets,
 		group = 'status',
+		sort = DEFAULT_TICKET_LIST_SORT,
 		onSelect,
 		selectedId,
 		persistKey,
@@ -53,14 +57,17 @@
 		if (persistKey) saveCollapsed(persistKey, 'listCollapsed', group, next);
 	}
 
+	// Sorted once up front so every grouping mode inherits the same row order.
+	const ordered = $derived(sortTickets(tickets, sort));
+
 	let groups = $derived.by(() => {
-		if (group === 'none') return [{ id: 'all', label: '', dot: 'transparent', tickets }];
+		if (group === 'none') return [{ id: 'all', label: '', dot: 'transparent', tickets: ordered }];
 		if (group === 'status') {
 			return TICKET_STATUSES.map((s) => ({
 				id: s.id,
 				label: ticketStatusLabel(s.id),
 				dot: s.dot,
-				tickets: tickets.filter((t) => t.status === s.id)
+				tickets: ordered.filter((t) => t.status === s.id)
 			})).filter((g) => g.tickets.length > 0);
 		}
 		if (group === 'priority') {
@@ -70,7 +77,7 @@
 					id: p.id,
 					label: priorityLabel(p.id),
 					dot: p.color,
-					tickets: tickets.filter((t) => t.priority === p.id)
+					tickets: ordered.filter((t) => t.priority === p.id)
 				}))
 				.filter((g) => g.tickets.length > 0);
 		}
@@ -79,14 +86,14 @@
 				id: c.id,
 				label: ticketCategoryLabel(c.id),
 				dot: c.color,
-				tickets: tickets.filter((t) => t.category === c.id)
+				tickets: ordered.filter((t) => t.category === c.id)
 			})).filter((g) => g.tickets.length > 0);
 		}
 		if (group === 'assignee') {
 			// Fan-out: a ticket with N assignees appears under each of their groups;
 			// unassigned tickets fall under the '__none' bucket.
 			const ids = new Set<string>();
-			for (const t of tickets) {
+			for (const t of ordered) {
 				if (t.assignees.length === 0) ids.add('__none');
 				else for (const a of t.assignees) ids.add(a);
 			}
@@ -98,7 +105,7 @@
 						id: uid,
 						label: u?.name ?? mm.common_unassigned(),
 						dot: u?.color ?? '#7c7c84',
-						tickets: tickets.filter((t) =>
+						tickets: ordered.filter((t) =>
 							uid === '__none' ? t.assignees.length === 0 : t.assignees.includes(uid)
 						)
 					};
@@ -107,15 +114,15 @@
 				.sort((a, b) => a.label.localeCompare(b.label));
 		}
 		// org
-		const orgIds = Array.from(new Set(tickets.map((t) => t.orgId)));
+		const orgIds = Array.from(new Set(ordered.map((t) => t.orgId)));
 		return orgIds
 			.map((id) => {
-				const sample = tickets.find((t) => t.orgId === id)!;
+				const sample = ordered.find((t) => t.orgId === id)!;
 				return {
 					id,
 					label: sample.orgName,
 					dot: sample.orgColor,
-					tickets: tickets.filter((t) => t.orgId === id)
+					tickets: ordered.filter((t) => t.orgId === id)
 				};
 			})
 			.filter((g) => g.tickets.length > 0);

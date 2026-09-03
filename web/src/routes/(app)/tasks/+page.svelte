@@ -11,6 +11,12 @@
 	import { goto } from '$app/navigation';
 	import { readView, saveView, flushViewSaves } from '$lib/stores/view';
 	import type { SavedViewEntry } from '$lib/components/ViewsMenu.svelte';
+	import {
+		DEFAULT_TASK_LIST_SORT,
+		DEFAULT_TASK_BOARD_SORT,
+		isTaskSort,
+		type TaskSort
+	} from '$lib/utils/sort';
 	import { m } from '$lib/paraglide/messages';
 
 	let { data }: { data: PageData } = $props();
@@ -24,6 +30,8 @@
 		sub?: SubGroup;
 		filters?: Record<string, string[]>;
 		time?: TimeWindow;
+		listSort?: TaskSort;
+		boardSort?: TaskSort;
 		// Collapsed group/column ids per grouping mode (see readCollapsed).
 		listCollapsed?: Record<string, string[]>;
 		boardCollapsed?: Record<string, string[]>;
@@ -36,6 +44,8 @@
 		sub: SubGroup;
 		filters: Record<string, string[]>;
 		time: TimeWindow;
+		listSort: TaskSort;
+		boardSort: TaskSort;
 	};
 	type TimeWindow = '7d' | '14d' | '30d' | '90d' | 'all';
 	// localStorage cache wins over the server snapshot — it's mirrored on
@@ -66,6 +76,24 @@
 		} else {
 			boardGroup = g;
 			saveView('tasks', { boardGroup: g });
+		}
+	}
+	// Row order inside groups — per view like `group`, so the list keeps its
+	// newest-first default while the board keeps ranking by priority.
+	let listSort = $state<TaskSort>(
+		isTaskSort(saved.listSort) ? saved.listSort : DEFAULT_TASK_LIST_SORT
+	);
+	let boardSort = $state<TaskSort>(
+		isTaskSort(saved.boardSort) ? saved.boardSort : DEFAULT_TASK_BOARD_SORT
+	);
+	let sort = $derived(view === 'list' ? listSort : boardSort);
+	function setSort(s: TaskSort) {
+		if (view === 'list') {
+			listSort = s;
+			saveView('tasks', { listSort: s });
+		} else {
+			boardSort = s;
+			saveView('tasks', { boardSort: s });
 		}
 	}
 	function setView(v: 'list' | 'board') {
@@ -112,7 +140,9 @@
 		boardGroup,
 		sub,
 		filters,
-		time
+		time,
+		listSort,
+		boardSort
 	});
 	// Configs come from storage, so guard every field against page defaults —
 	// a stale enum value must degrade gracefully, never break the page.
@@ -123,8 +153,10 @@
 		sub = isSubGroup(cfg.sub) ? cfg.sub : 'status';
 		filters = cfg.filters && typeof cfg.filters === 'object' ? cfg.filters : {};
 		time = cfg.time in TIME_HORIZON_DAYS ? cfg.time : '30d';
+		listSort = isTaskSort(cfg.listSort) ? cfg.listSort : DEFAULT_TASK_LIST_SORT;
+		boardSort = isTaskSort(cfg.boardSort) ? cfg.boardSort : DEFAULT_TASK_BOARD_SORT;
 		// The applied view becomes the live state, so it survives a reload.
-		saveView('tasks', { view, listGroup, boardGroup, sub, filters, time });
+		saveView('tasks', { view, listGroup, boardGroup, sub, filters, time, listSort, boardSort });
 	}
 	function changeSavedViews(next: SavedViewEntry<TasksViewConfig>[]) {
 		savedViews = next;
@@ -218,6 +250,8 @@
 	{setSub}
 	{time}
 	{setTime}
+	{sort}
+	{setSort}
 	onNewTask={() => openCreate()}
 	{canCreate}
 	viewsMenu={{
@@ -232,6 +266,7 @@
 	<ListView
 		{tasks}
 		{group}
+		sort={listSort}
 		persistKey="tasks"
 		initialCollapsed={saved.listCollapsed}
 		onSelect={(t) => (manualSelectedId = t.id)}
@@ -242,6 +277,7 @@
 	<BoardView
 		{tasks}
 		group={boardGroup}
+		sort={boardSort}
 		persistKey="tasks"
 		initialCollapsed={saved.boardCollapsed}
 		{sub}

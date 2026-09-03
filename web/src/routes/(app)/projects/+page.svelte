@@ -21,6 +21,12 @@
 	import { cubicOut } from 'svelte/easing';
 	import { readView, saveView, flushViewSaves } from '$lib/stores/view';
 	import type { SavedViewEntry } from '$lib/components/ViewsMenu.svelte';
+	import {
+		DEFAULT_PROJECT_SORT,
+		isProjectSort,
+		sortProjects,
+		type ProjectSort
+	} from '$lib/utils/sort';
 	import type { ProjectListItem } from './+page.server';
 	import type { PageData } from './$types';
 
@@ -34,6 +40,7 @@
 		listGroup?: ProjectGroup;
 		boardGroup?: ProjectGroup;
 		filters?: Record<string, string[]>;
+		sort?: ProjectSort;
 		savedViews?: SavedViewEntry<ProjectsViewConfig>[];
 	};
 	type ProjectsViewConfig = {
@@ -42,6 +49,7 @@
 		listGroup: ProjectGroup;
 		boardGroup: ProjectGroup;
 		filters: Record<string, string[]>;
+		sort: ProjectSort;
 	};
 	const saved: SavedProjectsView = {
 		...((data.savedView ?? {}) as SavedProjectsView),
@@ -51,6 +59,8 @@
 	let view = $state<ProjectView>(saved.view ?? 'grid');
 	let filters = $state<Record<string, string[]>>(saved.filters ?? {});
 	let search = $state('');
+	// One sort across grid / list / board — they show the same items.
+	let sort = $state<ProjectSort>(isProjectSort(saved.sort) ? saved.sort : DEFAULT_PROJECT_SORT);
 	// Separate group per view, mirroring the /tasks pattern. Grid defaults to
 	// 'none' so its default look stays a flat gallery.
 	let gridGroup = $state<ProjectGroup>(saved.gridGroup ?? 'none');
@@ -78,6 +88,10 @@
 		filters = f;
 		saveView('projects', { filters: f });
 	}
+	function setSort(s: ProjectSort) {
+		sort = s;
+		saveView('projects', { sort: s });
+	}
 
 	// ── Saved custom views (named filter+layout presets) ─────────────────────
 	const VIEW_IDS: ProjectView[] = ['grid', 'list', 'board'];
@@ -94,7 +108,8 @@
 		gridGroup,
 		listGroup,
 		boardGroup,
-		filters
+		filters,
+		sort
 	});
 	// Configs come from storage, so guard every field against page defaults —
 	// a stale enum value must degrade gracefully, never break the page.
@@ -104,8 +119,9 @@
 		listGroup = isProjectGroup(cfg.listGroup) ? cfg.listGroup : 'status';
 		boardGroup = isProjectGroup(cfg.boardGroup) ? cfg.boardGroup : 'status';
 		filters = cfg.filters && typeof cfg.filters === 'object' ? cfg.filters : {};
+		sort = isProjectSort(cfg.sort) ? cfg.sort : DEFAULT_PROJECT_SORT;
 		// The applied view becomes the live state, so it survives a reload.
-		saveView('projects', { view, gridGroup, listGroup, boardGroup, filters });
+		saveView('projects', { view, gridGroup, listGroup, boardGroup, filters, sort });
 	}
 	function changeSavedViews(next: SavedViewEntry<ProjectsViewConfig>[]) {
 		savedViews = next;
@@ -177,7 +193,7 @@
 		return true;
 	}
 
-	const visibleProjects = $derived(sourceProjects.filter(matches));
+	const visibleProjects = $derived(sortProjects(sourceProjects.filter(matches), sort));
 
 	// Grouped columns shared by the list (sections) and board (columns) views.
 	const columns = $derived.by<BoardColumn[]>(() => {
@@ -241,6 +257,8 @@
 	{setFilters}
 	{search}
 	setSearch={(s) => (search = s)}
+	{sort}
+	{setSort}
 	orgs={data.orgs}
 	{canCreate}
 	onNew={() => (createOpen = true)}

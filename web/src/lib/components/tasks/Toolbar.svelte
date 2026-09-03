@@ -4,18 +4,21 @@
 	import StatusDot from '../StatusDot.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
 	import Avatar from '../Avatar.svelte';
-	import FilterBar from '../FilterBar.svelte';
-	import type { FilterField } from '../FilterBar.svelte';
+	import type { FilterField } from '../view-panel/FilterSection.svelte';
 	import ViewsMenu from '../ViewsMenu.svelte';
 	import type { SavedViewEntry } from '../ViewsMenu.svelte';
-	import { clickOutside } from '$lib/actions/clickOutside';
-	import { fly } from 'svelte/transition';
-	import { POPOVER_IN } from '$lib/config/motion';
+	import ViewPanel from '../view-panel/ViewPanel.svelte';
+	import PanelSection from '../view-panel/PanelSection.svelte';
+	import SelectRow from '../view-panel/SelectRow.svelte';
+	import SortRow from '../view-panel/SortRow.svelte';
+	import FilterSection from '../view-panel/FilterSection.svelte';
+	import FilterTrigger from '../view-panel/FilterTrigger.svelte';
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/config/taxonomy';
 	import { labelMeta } from '$lib/utils/label-meta';
 	import { page } from '$app/state';
 	import { statusLabel, priorityLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
+	import { DEFAULT_TASK_LIST_SORT, type TaskSort, type TaskSortBy } from '$lib/utils/sort';
 
 	type LayoutData = {
 		users?: {
@@ -57,6 +60,8 @@
 		sub: SubBy;
 		filters: Record<string, string[]>;
 		time: TimeWindow;
+		listSort: TaskSort;
+		boardSort: TaskSort;
 	};
 
 	interface Props {
@@ -72,6 +77,8 @@
 		setSub?: (s: SubBy) => void;
 		time?: TimeWindow;
 		setTime?: (t: TimeWindow) => void;
+		sort?: TaskSort;
+		setSort?: (s: TaskSort) => void;
 		onNewTask?: () => void;
 		canCreate?: boolean;
 		viewsMenu?: {
@@ -94,6 +101,8 @@
 		setSub,
 		time = '30d',
 		setTime,
+		sort = DEFAULT_TASK_LIST_SORT,
+		setSort,
 		onNewTask,
 		canCreate = true,
 		viewsMenu
@@ -112,7 +121,6 @@
 		{ id: 'assignee', label: m.tasks_group_assignee },
 		{ id: 'none', label: m.common_none }
 	];
-
 	const TIME_OPTIONS: { id: TimeWindow; label: () => string }[] = [
 		{ id: '7d', label: m.tasks_time_next_7_days },
 		{ id: '14d', label: m.tasks_time_next_2_weeks },
@@ -120,60 +128,32 @@
 		{ id: '90d', label: m.tasks_time_next_3_months },
 		{ id: 'all', label: m.common_all }
 	];
-
-	const groupLabel = (id: GroupBy) => GROUP_OPTIONS.find((g) => g.id === id)?.label() ?? '';
-	const subLabel = (id: SubBy) => SUB_OPTIONS.find((s) => s.id === id)?.label() ?? '';
-	const timeLabel = (id: TimeWindow) => TIME_OPTIONS.find((t) => t.id === id)?.label() ?? '';
+	const SORT_OPTIONS: { id: TaskSortBy; label: () => string }[] = [
+		{ id: 'due', label: m.sort_due },
+		{ id: 'priority', label: m.sort_priority },
+		{ id: 'updated', label: m.sort_updated },
+		{ id: 'created', label: m.sort_created },
+		{ id: 'title', label: m.sort_title }
+	];
+	// Message functions are read at render time so a locale switch re-labels.
+	const opts = <T extends string>(list: { id: T; label: () => string }[]) =>
+		list.map((o) => ({ id: o.id, label: o.label() }));
 
 	const FIELDS: FilterField[] = [
 		{ id: 'status', label: m.tasks_group_status(), icon: 'check' },
 		{ id: 'priority', label: m.tasks_group_priority(), icon: 'filter' },
-		{ id: 'assignee', label: m.tasks_group_assignee(), icon: 'users' },
-		{ id: 'project', label: m.tasks_group_project(), icon: 'folder' },
-		{ id: 'tags', label: m.tasks_tags(), icon: 'bookmark' }
+		{ id: 'assignee', label: m.tasks_group_assignee(), icon: 'users', searchable: true },
+		{ id: 'project', label: m.tasks_group_project(), icon: 'folder', searchable: true },
+		{ id: 'tags', label: m.tasks_tags(), icon: 'bookmark', searchable: true }
 	];
 
-	// The Group / Subgroup / Time menus are anchored with `position: fixed`
-	// (not absolute) so the controls can sit inside a horizontally-scrollable
-	// strip without the dropdowns getting clipped by its overflow.
-	let pop = $state<'group' | 'sub' | 'time' | null>(null);
-	let popAnchor: HTMLElement | null = null;
-	let popPos = $state<{ left: number; top: number } | null>(null);
+	let panelOpen = $state(false);
+	const activeFilterCount = $derived(
+		Object.values(filters).reduce((n, v) => n + (v?.length ?? 0), 0)
+	);
 
-	function openPop(name: 'group' | 'sub' | 'time', el: HTMLElement) {
-		if (pop === name) {
-			pop = null;
-			popAnchor = null;
-			return;
-		}
-		pop = name;
-		popAnchor = el;
-		queueMicrotask(positionPop);
-	}
-
-	function positionPop() {
-		if (!popAnchor) {
-			popPos = null;
-			return;
-		}
-		const r = popAnchor.getBoundingClientRect();
-		// Clamp so the menu never spills past the right viewport edge.
-		const W = 190;
-		const maxLeft = Math.max(8, window.innerWidth - W - 8);
-		popPos = { left: Math.min(r.left, maxLeft), top: r.bottom + 6 };
-	}
-
-	$effect(() => {
-		if (!pop) return;
-		const on = () => positionPop();
-		// Capture phase catches scrolls on the controls strip too, not just window.
-		window.addEventListener('resize', on);
-		window.addEventListener('scroll', on, true);
-		return () => {
-			window.removeEventListener('resize', on);
-			window.removeEventListener('scroll', on, true);
-		};
-	});
+	// Search inside a long value list (query arrives lower-cased and trimmed).
+	const hit = (label: string, query: string) => !query || label.toLowerCase().includes(query);
 
 	function toggleValue(field: string, value: string) {
 		const cur = filters[field] ?? [];
@@ -184,8 +164,8 @@
 	}
 
 	// Resolve a raw filter value (status id, user id, project key, …) to the
-	// human label shown in the chip. Falls back to the raw value if no match —
-	// better to surface a stale id than to blank the chip out.
+	// human label shown in the row summary. Falls back to the raw value if no
+	// match — better to surface a stale id than to blank the row out.
 	function valueLabel(field: string, value: string): string {
 		if (field === 'status')
 			return TRACKR_STATUSES.find((s) => s.id === value) ? statusLabel(value) : value;
@@ -204,10 +184,10 @@
 	}
 </script>
 
-{#snippet valuesList(field: string)}
+{#snippet valuesList(field: string, query: string)}
 	{@const values = filters[field] ?? []}
 	{#if field === 'status'}
-		{#each TRACKR_STATUSES as s (s.id)}
+		{#each TRACKR_STATUSES.filter((s) => hit(statusLabel(s.id), query)) as s (s.id)}
 			<button
 				type="button"
 				onclick={() => toggleValue('status', s.id)}
@@ -221,7 +201,7 @@
 			</button>
 		{/each}
 	{:else if field === 'priority'}
-		{#each TRACKR_PRIORITIES as p (p.id)}
+		{#each TRACKR_PRIORITIES.filter((p) => hit(priorityLabel(p.id), query)) as p (p.id)}
 			<button
 				type="button"
 				onclick={() => toggleValue('priority', p.id)}
@@ -240,7 +220,7 @@
 		{@const dbUsers = ((page.data as LayoutData).users ?? []).filter(
 			(u) => u.internal && u.status !== 'disabled'
 		)}
-		{#each dbUsers as u (u.id)}
+		{#each dbUsers.filter((u) => hit(u.name, query)) as u (u.id)}
 			<button
 				type="button"
 				onclick={() => toggleValue('assignee', u.id)}
@@ -255,7 +235,7 @@
 		{/each}
 	{:else if field === 'project'}
 		{@const dbProjects = (page.data as LayoutData).projects ?? []}
-		{#each dbProjects as p (p.key)}
+		{#each dbProjects.filter((p) => hit(p.name, query)) as p (p.key)}
 			<button
 				type="button"
 				onclick={() => toggleValue('project', p.key)}
@@ -269,7 +249,7 @@
 			</button>
 		{/each}
 	{:else if field === 'tags'}
-		{#each allTags as id (id)}
+		{#each allTags.filter((id) => hit(labelMeta(id).label, query)) as id (id)}
 			{@const l = labelMeta(id)}
 			<button
 				type="button"
@@ -283,6 +263,9 @@
 				</span>
 			</button>
 		{/each}
+		{#if allTags.length === 0}
+			<div class="px-2 py-2 text-[12px] text-text-3">{m.common_none()}</div>
+		{/if}
 	{/if}
 {/snippet}
 
@@ -328,133 +311,13 @@
 
 		<div class="h-5 w-px shrink-0 bg-border"></div>
 
-		<!-- Group -->
-		<div class="shrink-0">
-			<button
-				type="button"
-				onclick={(e) => openPop('group', e.currentTarget)}
-				class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[14px] whitespace-nowrap transition-colors hover:bg-surface-2"
-			>
-				<span class="text-text-3">{m.tasks_group_by()}</span>
-				<span class="font-medium text-text">{groupLabel(group)}</span>
-				<Icon name="chevron" size={11} class="text-text-3" />
-			</button>
-			{#if pop === 'group' && popPos}
-				<div
-					use:clickOutside={() => (pop = null)}
-					in:fly={POPOVER_IN}
-					class="fixed z-50 min-w-[187px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-					style:left="{popPos.left}px"
-					style:top="{popPos.top}px"
-				>
-					{#each GROUP_OPTIONS as o (o.id)}
-						<button
-							type="button"
-							onclick={() => {
-								setGroup?.(o.id);
-								pop = null;
-							}}
-							class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
-						>
-							<span>{o.label()}</span>
-							<span class="ml-auto text-accent {group === o.id ? 'opacity-100' : 'opacity-0'}">
-								<Icon name="check" size={13} />
-							</span>
-						</button>
-					{/each}
-				</div>
-			{/if}
-		</div>
-
-		<!-- Sub (board view only) -->
-		{#if view === 'board'}
-			<div class="shrink-0">
-				<button
-					type="button"
-					onclick={(e) => openPop('sub', e.currentTarget)}
-					class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[14px] whitespace-nowrap transition-colors hover:bg-surface-2"
-				>
-					<span class="text-text-3">{m.tasks_sub_group()}</span>
-					<span class="font-medium text-text">{subLabel(sub)}</span>
-					<Icon name="chevron" size={11} class="text-text-3" />
-				</button>
-				{#if pop === 'sub' && popPos}
-					<div
-						use:clickOutside={() => (pop = null)}
-						in:fly={POPOVER_IN}
-						class="fixed z-50 min-w-[187px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-						style:left="{popPos.left}px"
-						style:top="{popPos.top}px"
-					>
-						{#each SUB_OPTIONS as o (o.id)}
-							<button
-								type="button"
-								onclick={() => {
-									setSub?.(o.id);
-									pop = null;
-								}}
-								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
-							>
-								<span>{o.label()}</span>
-								<span class="ml-auto text-accent {sub === o.id ? 'opacity-100' : 'opacity-0'}">
-									<Icon name="check" size={13} />
-								</span>
-							</button>
-						{/each}
-					</div>
-				{/if}
-			</div>
-		{/if}
-
-		<div class="h-5 w-px shrink-0 bg-border"></div>
-
-		<!-- Time window: forward horizon for end/planned dates (past always shown) -->
-		<div class="shrink-0">
-			<button
-				type="button"
-				onclick={(e) => openPop('time', e.currentTarget)}
-				class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[14px] whitespace-nowrap transition-colors hover:bg-surface-2"
-			>
-				<Icon name="calendar" size={14} class="text-text-3" />
-				<span class="text-text-3">{m.tasks_time()}</span>
-				<span class="font-medium text-text">{timeLabel(time)}</span>
-				<Icon name="chevron" size={11} class="text-text-3" />
-			</button>
-			{#if pop === 'time' && popPos}
-				<div
-					use:clickOutside={() => (pop = null)}
-					in:fly={POPOVER_IN}
-					class="fixed z-50 min-w-[187px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-					style:left="{popPos.left}px"
-					style:top="{popPos.top}px"
-				>
-					{#each TIME_OPTIONS as o (o.id)}
-						<button
-							type="button"
-							onclick={() => {
-								setTime?.(o.id);
-								pop = null;
-							}}
-							class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
-						>
-							<span>{o.label()}</span>
-							<span class="ml-auto text-accent {time === o.id ? 'opacity-100' : 'opacity-0'}">
-								<Icon name="check" size={13} />
-							</span>
-						</button>
-					{/each}
-				</div>
-			{/if}
-		</div>
-
-		<div class="h-5 w-px shrink-0 bg-border"></div>
-
-		<!-- Filter chips expand to fit their active chips; the "+ Filter" chip stays
-	     pinned at the left edge (min width). On very narrow widths the whole strip
-	     scrolls (its popovers are fixed, so no clipping). -->
-		<div class="min-w-[92px] shrink-0">
-			<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
-		</div>
+		<!-- Everything else (group, subgroup, sort, time, filters) lives in the
+		     side panel this button opens. -->
+		<FilterTrigger
+			open={panelOpen}
+			count={activeFilterCount}
+			onclick={() => (panelOpen = !panelOpen)}
+		/>
 
 		<!-- Search stays compact and right-aligned (ml-auto eats the slack), but is
 	     allowed to shrink as the toolbar narrows so the controls never squeeze
@@ -482,6 +345,41 @@
 		</div>
 	{/if}
 </div>
+
+<ViewPanel
+	open={panelOpen}
+	onclose={() => (panelOpen = false)}
+	title={m.view_options_title()}
+	count={activeFilterCount}
+>
+	<PanelSection title={m.view_layout()}>
+		<div class="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+			<SelectRow
+				label={m.tasks_group_by()}
+				options={opts(GROUP_OPTIONS)}
+				value={group}
+				onchange={(g) => setGroup?.(g)}
+			/>
+			{#if view === 'board'}
+				<SelectRow
+					label={m.tasks_sub_group()}
+					options={opts(SUB_OPTIONS)}
+					value={sub}
+					onchange={(s) => setSub?.(s)}
+				/>
+			{/if}
+			<SortRow options={opts(SORT_OPTIONS)} value={sort} onchange={(s) => setSort?.(s)} />
+			<SelectRow
+				label={m.tasks_time()}
+				options={opts(TIME_OPTIONS)}
+				value={time}
+				onchange={(t) => setTime?.(t)}
+			/>
+		</div>
+	</PanelSection>
+
+	<FilterSection fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
+</ViewPanel>
 
 <style>
 	/* Hide the controls-strip scrollbar; it only scrolls on very narrow widths. */

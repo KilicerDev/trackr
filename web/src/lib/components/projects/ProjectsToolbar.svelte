@@ -2,17 +2,20 @@
 	import Icon from '../Icon.svelte';
 	import Button from '../Button.svelte';
 	import Avatar from '../Avatar.svelte';
-	import FilterBar from '../FilterBar.svelte';
-	import type { FilterField } from '../FilterBar.svelte';
+	import type { FilterField } from '../view-panel/FilterSection.svelte';
 	import ViewsMenu from '../ViewsMenu.svelte';
 	import type { SavedViewEntry } from '../ViewsMenu.svelte';
-	import { clickOutside } from '$lib/actions/clickOutside';
-	import { fly } from 'svelte/transition';
-	import { POPOVER_IN } from '$lib/config/motion';
+	import ViewPanel from '../view-panel/ViewPanel.svelte';
+	import PanelSection from '../view-panel/PanelSection.svelte';
+	import SelectRow from '../view-panel/SelectRow.svelte';
+	import SortRow from '../view-panel/SortRow.svelte';
+	import FilterSection from '../view-panel/FilterSection.svelte';
+	import FilterTrigger from '../view-panel/FilterTrigger.svelte';
 	import { PROJECT_STATUS } from '$lib/config/taxonomy';
 	import { projectStatusLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
+	import { DEFAULT_PROJECT_SORT, type ProjectSort, type ProjectSortBy } from '$lib/utils/sort';
 
 	type LayoutUser = { id: string; name: string; initials: string; color: string; status: string };
 
@@ -26,6 +29,7 @@
 		listGroup: ProjectGroup;
 		boardGroup: ProjectGroup;
 		filters: Record<string, string[]>;
+		sort: ProjectSort;
 	};
 
 	interface Props {
@@ -37,6 +41,8 @@
 		setFilters: (f: Record<string, string[]>) => void;
 		search: string;
 		setSearch: (s: string) => void;
+		sort?: ProjectSort;
+		setSort?: (s: ProjectSort) => void;
 		orgs: OrgOption[];
 		canCreate: boolean;
 		onNew: () => void;
@@ -56,6 +62,8 @@
 		setFilters,
 		search,
 		setSearch,
+		sort = DEFAULT_PROJECT_SORT,
+		setSort,
 		orgs,
 		canCreate,
 		onNew,
@@ -70,12 +78,16 @@
 		{ id: 'org', label: m.projects_group_org() },
 		{ id: 'none', label: m.projects_group_none() }
 	]);
-	const groupLabel = (id: ProjectGroup) => GROUP_OPTIONS.find((g) => g.id === id)?.label ?? '';
+	const SORT_OPTIONS: { id: ProjectSortBy; label: string }[] = $derived([
+		{ id: 'created', label: m.sort_created() },
+		{ id: 'updated', label: m.sort_updated() },
+		{ id: 'name', label: m.sort_name() }
+	]);
 
 	const FIELDS: FilterField[] = $derived([
 		{ id: 'status', label: m.projects_filter_status(), icon: 'check' },
-		{ id: 'org', label: m.projects_filter_org(), icon: 'org' },
-		{ id: 'assignee', label: m.projects_filter_assignee(), icon: 'users' }
+		{ id: 'org', label: m.projects_filter_org(), icon: 'org', searchable: true },
+		{ id: 'assignee', label: m.projects_filter_assignee(), icon: 'users', searchable: true }
 	]);
 
 	const users = $derived((page.data as { users?: LayoutUser[] }).users ?? []);
@@ -86,47 +98,13 @@
 		{ id: 'board', label: m.projects_view_board(), icon: 'board' }
 	]);
 
-	// The Group menu is anchored with `position: fixed` (not absolute) so it can
-	// sit inside the horizontally-scrollable controls strip without getting
-	// clipped by its overflow — same pattern as the tasks/tickets toolbars.
-	let pop = $state<'group' | null>(null);
-	let popAnchor: HTMLElement | null = null;
-	let popPos = $state<{ left: number; top: number } | null>(null);
+	let panelOpen = $state(false);
+	const activeFilterCount = $derived(
+		Object.values(filters).reduce((n, v) => n + (v?.length ?? 0), 0)
+	);
 
-	function openPop(name: 'group', el: HTMLElement) {
-		if (pop === name) {
-			pop = null;
-			popAnchor = null;
-			return;
-		}
-		pop = name;
-		popAnchor = el;
-		queueMicrotask(positionPop);
-	}
-
-	function positionPop() {
-		if (!popAnchor) {
-			popPos = null;
-			return;
-		}
-		const r = popAnchor.getBoundingClientRect();
-		// Clamp so the menu never spills past the right viewport edge.
-		const W = 190;
-		const maxLeft = Math.max(8, window.innerWidth - W - 8);
-		popPos = { left: Math.min(r.left, maxLeft), top: r.bottom + 6 };
-	}
-
-	$effect(() => {
-		if (!pop) return;
-		const on = () => positionPop();
-		// Capture phase catches scrolls on the controls strip too, not just window.
-		window.addEventListener('resize', on);
-		window.addEventListener('scroll', on, true);
-		return () => {
-			window.removeEventListener('resize', on);
-			window.removeEventListener('scroll', on, true);
-		};
-	});
+	// Search inside a long value list (query arrives lower-cased and trimmed).
+	const hit = (label: string, query: string) => !query || label.toLowerCase().includes(query);
 
 	function toggleValue(field: string, value: string) {
 		const cur = filters[field] ?? [];
@@ -150,10 +128,10 @@
 	}
 </script>
 
-{#snippet valuesList(field: string)}
+{#snippet valuesList(field: string, query: string)}
 	{@const values = filters[field] ?? []}
 	{#if field === 'status'}
-		{#each Object.entries(PROJECT_STATUS) as [id, meta] (id)}
+		{#each Object.entries(PROJECT_STATUS).filter( ([id]) => hit(projectStatusLabel(id), query) ) as [id, meta] (id)}
 			<button
 				type="button"
 				onclick={() => toggleValue('status', id)}
@@ -167,18 +145,20 @@
 			</button>
 		{/each}
 	{:else if field === 'org'}
-		<button
-			type="button"
-			onclick={() => toggleValue('org', INTERNAL)}
-			class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
-		>
-			<span class="text-text-3"><Icon name="org" size={14} /></span>
-			<span class="text-[14px]">{m.projects_internal()}</span>
-			<span class="ml-auto text-accent {values.includes(INTERNAL) ? 'opacity-100' : 'opacity-0'}">
-				<Icon name="check" size={14} />
-			</span>
-		</button>
-		{#each orgs as o (o.id)}
+		{#if hit(m.projects_internal(), query)}
+			<button
+				type="button"
+				onclick={() => toggleValue('org', INTERNAL)}
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
+			>
+				<span class="text-text-3"><Icon name="org" size={14} /></span>
+				<span class="text-[14px]">{m.projects_internal()}</span>
+				<span class="ml-auto text-accent {values.includes(INTERNAL) ? 'opacity-100' : 'opacity-0'}">
+					<Icon name="check" size={14} />
+				</span>
+			</button>
+		{/if}
+		{#each orgs.filter((o) => hit(o.name, query)) as o (o.id)}
 			<button
 				type="button"
 				onclick={() => toggleValue('org', o.id)}
@@ -192,7 +172,7 @@
 			</button>
 		{/each}
 	{:else if field === 'assignee'}
-		{#each users.filter((u) => u.status !== 'disabled') as u (u.id)}
+		{#each users.filter((u) => u.status !== 'disabled' && hit(u.name, query)) as u (u.id)}
 			<button
 				type="button"
 				onclick={() => toggleValue('assignee', u.id)}
@@ -242,52 +222,11 @@
 
 		<div class="h-5 w-px shrink-0 bg-border"></div>
 
-		<!-- Group (all views) -->
-		<div class="shrink-0">
-			<button
-				type="button"
-				onclick={(e) => openPop('group', e.currentTarget)}
-				class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[14px] whitespace-nowrap transition-colors hover:bg-surface-2"
-			>
-				<span class="text-text-3">{m.projects_group_label()}</span>
-				<span class="font-medium text-text">{groupLabel(group)}</span>
-				<Icon name="chevron" size={11} class="text-text-3" />
-			</button>
-			{#if pop === 'group' && popPos}
-				<div
-					use:clickOutside={() => (pop = null)}
-					in:fly={POPOVER_IN}
-					class="fixed z-50 min-w-[187px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-					style:left="{popPos.left}px"
-					style:top="{popPos.top}px"
-				>
-					{#each GROUP_OPTIONS as o (o.id)}
-						<button
-							type="button"
-							onclick={() => {
-								setGroup(o.id);
-								pop = null;
-							}}
-							class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
-						>
-							<span>{o.label}</span>
-							<span class="ml-auto text-accent {group === o.id ? 'opacity-100' : 'opacity-0'}">
-								<Icon name="check" size={13} />
-							</span>
-						</button>
-					{/each}
-				</div>
-			{/if}
-		</div>
-
-		<div class="h-5 w-px shrink-0 bg-border"></div>
-
-		<!-- Filter chips expand to fit their active chips; the "+ Filter" chip stays
-		     pinned at the left edge (min width). On very narrow widths the whole strip
-		     scrolls (its popovers are fixed, so no clipping). -->
-		<div class="min-w-[92px] shrink-0">
-			<FilterBar fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
-		</div>
+		<FilterTrigger
+			open={panelOpen}
+			count={activeFilterCount}
+			onclick={() => (panelOpen = !panelOpen)}
+		/>
 
 		<!-- Search stays compact and right-aligned (ml-auto eats the slack), but is
 		     allowed to shrink as the toolbar narrows so the controls never squeeze
@@ -315,6 +254,27 @@
 		</div>
 	{/if}
 </div>
+
+<ViewPanel
+	open={panelOpen}
+	onclose={() => (panelOpen = false)}
+	title={m.view_options_title()}
+	count={activeFilterCount}
+>
+	<PanelSection title={m.view_layout()}>
+		<div class="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+			<SelectRow
+				label={m.tasks_group_by()}
+				options={GROUP_OPTIONS}
+				value={group}
+				onchange={(g) => setGroup(g)}
+			/>
+			<SortRow options={SORT_OPTIONS} value={sort} onchange={(s) => setSort?.(s)} />
+		</div>
+	</PanelSection>
+
+	<FilterSection fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
+</ViewPanel>
 
 <style>
 	/* Hide the controls-strip scrollbar; it only scrolls on very narrow widths. */

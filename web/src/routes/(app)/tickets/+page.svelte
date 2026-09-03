@@ -10,6 +10,12 @@
 	import { page } from '$app/state';
 	import { readView, saveView, flushViewSaves } from '$lib/stores/view';
 	import type { SavedViewEntry } from '$lib/components/ViewsMenu.svelte';
+	import {
+		DEFAULT_TICKET_LIST_SORT,
+		DEFAULT_TICKET_BOARD_SORT,
+		isTicketSort,
+		type TicketSort
+	} from '$lib/utils/sort';
 	import type { TicketRow } from '$lib/server/tickets';
 	import { m } from '$lib/paraglide/messages';
 	import { isPortalSeeAllRole } from '$lib/roles';
@@ -60,6 +66,8 @@
 		boardGroup?: GroupBy;
 		sub?: SubGroup;
 		filters?: Record<string, string[]>;
+		listSort?: TicketSort;
+		boardSort?: TicketSort;
 		// Collapsed group/column ids per grouping mode (see readCollapsed).
 		listCollapsed?: Record<string, string[]>;
 		boardCollapsed?: Record<string, string[]>;
@@ -71,6 +79,8 @@
 		boardGroup: GroupBy;
 		sub: SubGroup;
 		filters: Record<string, string[]>;
+		listSort: TicketSort;
+		boardSort: TicketSort;
 	};
 	// localStorage cache wins over the server snapshot — see /tasks for rationale.
 	const saved: SavedView = {
@@ -119,6 +129,15 @@
 	let boardGroup = $state<GroupBy>(saved.boardGroup ?? 'status');
 	let group = $derived(view === 'list' ? listGroup : boardGroup);
 	let sub = $state<SubGroup>(saved.sub ?? 'none');
+	// Row order inside groups — per view like `group`: list keeps newest-first,
+	// board keeps ranking by priority.
+	let listSort = $state<TicketSort>(
+		isTicketSort(saved.listSort) ? saved.listSort : DEFAULT_TICKET_LIST_SORT
+	);
+	let boardSort = $state<TicketSort>(
+		isTicketSort(saved.boardSort) ? saved.boardSort : DEFAULT_TICKET_BOARD_SORT
+	);
+	let sort = $derived(view === 'list' ? listSort : boardSort);
 	// URL deep-link wins over the persisted snapshot. Transient: not written back
 	// via saveView, so it doesn't stick once the user navigates away.
 	let filters = $state<Record<string, string[]>>(urlFilters ?? saved.filters ?? {});
@@ -163,6 +182,15 @@
 		filters = f;
 		saveView('tickets', { filters: f });
 	}
+	function setSort(s: TicketSort) {
+		if (view === 'list') {
+			listSort = s;
+			saveView('tickets', { listSort: s });
+		} else {
+			boardSort = s;
+			saveView('tickets', { boardSort: s });
+		}
+	}
 
 	// ── Saved custom views (named filter+layout presets) ─────────────────────
 	const GROUP_IDS: GroupBy[] = ['status', 'priority', 'category', 'org', 'assignee', 'none'];
@@ -174,7 +202,15 @@
 			? saved.savedViews.filter((v) => typeof v?.id === 'string' && typeof v?.name === 'string')
 			: []
 	);
-	const currentConfig = $derived<TicketsViewConfig>({ view, listGroup, boardGroup, sub, filters });
+	const currentConfig = $derived<TicketsViewConfig>({
+		view,
+		listGroup,
+		boardGroup,
+		sub,
+		filters,
+		listSort,
+		boardSort
+	});
 	// Configs come from storage, so guard every field against page defaults —
 	// a stale enum value must degrade gracefully, never break the page.
 	function applySavedView(cfg: TicketsViewConfig) {
@@ -183,8 +219,10 @@
 		boardGroup = isGroupBy(cfg.boardGroup) ? cfg.boardGroup : 'status';
 		sub = isSubGroup(cfg.sub) ? cfg.sub : 'none';
 		filters = cfg.filters && typeof cfg.filters === 'object' ? cfg.filters : {};
+		listSort = isTicketSort(cfg.listSort) ? cfg.listSort : DEFAULT_TICKET_LIST_SORT;
+		boardSort = isTicketSort(cfg.boardSort) ? cfg.boardSort : DEFAULT_TICKET_BOARD_SORT;
 		// The applied view becomes the live state, so it survives a reload.
-		saveView('tickets', { view, listGroup, boardGroup, sub, filters });
+		saveView('tickets', { view, listGroup, boardGroup, sub, filters, listSort, boardSort });
 	}
 	function changeSavedViews(next: SavedViewEntry<TicketsViewConfig>[]) {
 		savedViews = next;
@@ -304,6 +342,8 @@
 	{setGroup}
 	{sub}
 	{setSub}
+	{sort}
+	{setSort}
 	canCreate={data.canCreateTicket}
 	onNew={() => openCreate()}
 	{orgs}
@@ -333,6 +373,7 @@
 	<ListView
 		tickets={filtered}
 		{group}
+		sort={listSort}
 		persistKey="tickets"
 		initialCollapsed={saved.listCollapsed}
 		onSelect={(t) => (manualSelectedId = t.id)}
@@ -342,6 +383,7 @@
 	<BoardView
 		tickets={filtered}
 		group={boardGroup}
+		sort={boardSort}
 		persistKey="tickets"
 		initialCollapsed={saved.boardCollapsed}
 		{sub}

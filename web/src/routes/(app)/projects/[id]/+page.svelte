@@ -10,6 +10,7 @@
 	import EditProjectModal from '$lib/components/projects/EditProjectModal.svelte';
 	import ImportTasksModal from '$lib/components/projects/ImportTasksModal.svelte';
 	import ProjectTasksToolbar from '$lib/components/projects/ProjectTasksToolbar.svelte';
+	import { DEFAULT_TASK_LIST_SORT, type TaskSort } from '$lib/utils/sort';
 	import ProjectHistory from '$lib/components/projects/ProjectHistory.svelte';
 	import NewMeetingDialog from '$lib/components/notes/NewMeetingDialog.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -109,6 +110,7 @@
 	let taskFilters = $state<Record<string, string[]>>({});
 	let taskSearch = $state('');
 	let taskGroup = $state<TaskGroupBy>('status');
+	let taskSort = $state<TaskSort>(DEFAULT_TASK_LIST_SORT);
 
 	function taskMatches(t: Task): boolean {
 		for (const [field, values] of Object.entries(taskFilters)) {
@@ -808,6 +810,8 @@
 					setSearch={(s) => (taskSearch = s)}
 					group={taskGroup}
 					setGroup={(g) => (taskGroup = g)}
+					sort={taskSort}
+					setSort={(s) => (taskSort = s)}
 				/>
 			</div>
 			{#if tasks.length === 0}
@@ -824,6 +828,7 @@
 				<ListView
 					tasks={filteredTasks}
 					group={taskGroup}
+					sort={taskSort}
 					onSelect={(t) => (selectedId = t.id)}
 					selectedId={selectedId ?? undefined}
 				/>

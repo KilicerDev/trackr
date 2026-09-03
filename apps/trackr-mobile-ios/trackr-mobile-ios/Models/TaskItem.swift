@@ -77,6 +77,9 @@ struct TaskItem: Identifiable, Hashable {
     var details = ""
     var due: Date?
     var plannedFor: Date?
+    /// Server timestamps — nil for sample data. Used by the sort keys.
+    var createdAt: Date? = nil
+    var updatedAt: Date? = nil
     var checklist: [ChecklistItem] = []
     var estimate: Int?  // minutes
     var assignees: [UserRef] = []

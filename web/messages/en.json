@@ -1738,5 +1738,21 @@
 	"api_keys_err_user_required": "Choose a user.",
 	"api_keys_err_name_required": "Enter a name (max. 120 characters).",
 	"api_keys_err_user_forbidden": "You can't create keys for this user.",
-	"api_keys_err_save_failed": "Could not save the API key."
+	"api_keys_err_save_failed": "Could not save the API key.",
+	"view_options_title": "View options",
+	"view_sort_by": "Sort by",
+	"view_sort_asc": "Ascending",
+	"view_sort_desc": "Descending",
+	"view_filters": "Filters",
+	"view_filter_any": "Any",
+	"sort_due": "Due date",
+	"sort_priority": "Priority",
+	"sort_updated": "Last updated",
+	"sort_created": "Created",
+	"sort_title": "Title",
+	"sort_activity": "Last activity",
+	"sort_subject": "Subject",
+	"sort_name": "Name",
+	"view_filter_no_matches": "No matches",
+	"view_layout": "Layout"
 }

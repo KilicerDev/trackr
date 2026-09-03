@@ -50,6 +50,31 @@ enum TimeWindow: String, CaseIterable, Identifiable {
     }
 }
 
+enum TaskSortKey: String, CaseIterable, Identifiable {
+    case due, priority, updated, created, title
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .due: "Due date"
+        case .priority: "Priority"
+        case .updated: "Last updated"
+        case .created: "Created"
+        case .title: "Title"
+        }
+    }
+
+    /// Direction a freshly picked key starts in (web NATURAL_DIR parity):
+    /// dates and priority newest/highest first, due date and title A→Z.
+    var naturalAscending: Bool {
+        switch self {
+        case .due, .title: true
+        case .priority, .updated, .created: false
+        }
+    }
+}
+
 struct TaskGroup: Identifiable {
     let id: String
     let label: String
@@ -60,6 +85,10 @@ struct TaskGroup: Identifiable {
 struct TaskFilters: Equatable {
     var group: GroupBy = .status
     var window: TimeWindow = .month
+    /// Row order inside each group. Defaults reproduce the server order
+    /// (newest first) — web `listSort` parity.
+    var sortBy: TaskSortKey = .created
+    var sortAscending = false
     var statuses: Set<TaskStatus> = []
     var priorities: Set<TaskPriority> = []
     var assignees: Set<UserRef> = []
@@ -71,12 +100,23 @@ struct TaskFilters: Equatable {
         !statuses.isEmpty || !priorities.isEmpty || !assignees.isEmpty || !projects.isEmpty
     }
 
+    var isDefaultSort: Bool { sortBy == .created && !sortAscending }
+
+    /// Picking a key resets the direction to that key's natural one so the
+    /// first tap does the expected thing; the arrow button flips it after.
+    mutating func setSortKey(_ key: TaskSortKey) {
+        sortBy = key
+        sortAscending = key.naturalAscending
+    }
+
     mutating func reset() {
         statuses = []
         priorities = []
         assignees = []
         projects = []
         window = .month
+        sortBy = .created
+        sortAscending = false
     }
 
     func matches(_ task: TaskItem) -> Bool {
@@ -106,8 +146,48 @@ struct TaskFilters: Equatable {
         return soonest.startOfDay <= horizon
     }
 
+    /// Primary key in the chosen direction, then priority (high first), then
+    /// created (new first). Tasks without a value for the key always sort
+    /// last — an undated task is backlog, not "due first". Stable.
+    func sorted(_ tasks: [TaskItem]) -> [TaskItem] {
+        func key(_ t: TaskItem) -> SortValue? {
+            switch sortBy {
+            case .due: t.due.map(SortValue.date)
+            case .priority: .number(t.priority.rank)
+            case .updated: t.updatedAt.map(SortValue.date)
+            case .created: t.createdAt.map(SortValue.date)
+            case .title: .text(t.title.lowercased())
+            }
+        }
+        func compare(_ a: SortValue?, _ b: SortValue?, ascending: Bool) -> Bool? {
+            switch (a, b) {
+            case (nil, nil): return nil
+            case (nil, _): return false
+            case (_, nil): return true
+            case let (a?, b?):
+                if a == b { return nil }
+                return ascending ? a < b : b < a
+            }
+        }
+        return tasks.enumerated().sorted { lhs, rhs in
+            let (i, a) = lhs
+            let (j, b) = rhs
+            if let r = compare(key(a), key(b), ascending: sortAscending) { return r }
+            if sortBy != .priority,
+               let r = compare(.number(a.priority.rank), .number(b.priority.rank), ascending: false) {
+                return r
+            }
+            if sortBy != .created,
+               let r = compare(a.createdAt.map(SortValue.date), b.createdAt.map(SortValue.date),
+                               ascending: false) {
+                return r
+            }
+            return i < j
+        }.map(\.element)
+    }
+
     func grouped(_ tasks: [TaskItem]) -> [TaskGroup] {
-        let visible = tasks.filter(matches)
+        let visible = sorted(tasks.filter(matches))
 
         func nonEmpty(_ groups: [TaskGroup]) -> [TaskGroup] {
             groups.filter { !$0.tasks.isEmpty }
@@ -146,6 +226,22 @@ struct TaskFilters: Equatable {
             }
         case .none:
             return [TaskGroup(id: "all", label: "", color: nil, tasks: visible)]
+        }
+    }
+}
+
+/// Comparable wrapper so one comparator handles dates, ranks and strings.
+private enum SortValue: Comparable {
+    case date(Date)
+    case number(Int)
+    case text(String)
+
+    static func < (lhs: SortValue, rhs: SortValue) -> Bool {
+        switch (lhs, rhs) {
+        case let (.date(a), .date(b)): a < b
+        case let (.number(a), .number(b)): a < b
+        case let (.text(a), .text(b)): a < b
+        default: false
         }
     }
 }
