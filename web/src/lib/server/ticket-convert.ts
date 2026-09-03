@@ -20,7 +20,8 @@ import {
 	ALLOWED_TASK_TYPE,
 	createTask
 } from '$lib/server/tasks';
-import { copyAttachments } from '$lib/server/attachments';
+import { attachFormFiles, copyAttachments } from '$lib/server/attachments';
+import { normalizeTag } from '$lib/utils/label-meta';
 import { notifyTaskAssigned } from '$lib/server/notify/events/task';
 import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
@@ -48,7 +49,11 @@ export interface ConvertTicketInput {
 	priority?: string;
 	dueDate?: Date | null;
 	estimateMinutes?: number | null;
+	/** Raw tag values; normalized + deduped here so both callers agree. */
+	tags?: string[];
 	assigneeIds?: string[];
+	/** Files staged on the create modal (multipart `attachments` entries). */
+	attachments?: FormDataEntryValue[];
 	/** Request origin for notification links. */
 	origin: string;
 }
@@ -75,6 +80,7 @@ export async function convertTicketToTask(
 	const type = ALLOWED_TASK_TYPE.has(input.type ?? '') ? input.type! : 'task';
 	const status = ALLOWED_TASK_STATUS.has(input.status ?? '') ? input.status! : 'todo';
 	const priority = ALLOWED_TASK_PRIORITY.has(input.priority ?? '') ? input.priority! : 'medium';
+	const tags = [...new Set((input.tags ?? []).map(normalizeTag).filter(Boolean))];
 
 	const [p] = await db
 		.select({ id: project.id, key: project.key, orgId: project.orgId })
@@ -110,6 +116,7 @@ export async function convertTicketToTask(
 			type,
 			dueDate: input.dueDate ?? null,
 			estimateMinutes: input.estimateMinutes ?? null,
+			tags,
 			checklist: carriedChecklist,
 			assigneeIds: input.assigneeIds ?? [],
 			createdBy: me.id,
@@ -133,6 +140,23 @@ export async function convertTicketToTask(
 		});
 	} catch (err) {
 		console.error('ticket→task attachment copy failed', err);
+	}
+
+	// Files dropped on the create modal itself, on top of the carried-over
+	// ticket attachments. Same best-effort semantics as the /tasks create action.
+	if (input.attachments?.length) {
+		try {
+			await attachFormFiles({
+				files: input.attachments,
+				entityType: 'task',
+				entityId: created.id,
+				orgId: null,
+				projectId: p.id,
+				uploadedBy: me.id
+			});
+		} catch (err) {
+			console.error('ticket→task staged attachment failed', err);
+		}
 	}
 
 	// Leave an agents-only breadcrumb linking the new task. Best-effort too.

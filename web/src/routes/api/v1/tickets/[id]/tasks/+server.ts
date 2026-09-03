@@ -20,6 +20,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		type?: unknown;
 		due?: unknown;
 		estimate?: unknown;
+		tags?: unknown;
 		assigneeIds?: unknown;
 	}>(request);
 
@@ -42,6 +43,9 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 			dueDate,
 			estimateMinutes:
 				typeof body.estimate === 'number' && Number.isFinite(body.estimate) ? body.estimate : null,
+			tags: Array.isArray(body.tags)
+				? body.tags.filter((v): v is string => typeof v === 'string')
+				: [],
 			assigneeIds: Array.isArray(body.assigneeIds)
 				? body.assigneeIds.filter((v): v is string => typeof v === 'string')
 				: [],

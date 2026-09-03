@@ -188,10 +188,12 @@ export const actions: Actions = {
 				priority: String(form.get('priority') ?? 'medium'),
 				dueDate: due ? new Date(due) : null,
 				estimateMinutes: estimateRaw ? Number(estimateRaw) : null,
+				tags: form.getAll('tags').map((v) => String(v)),
 				assigneeIds: form
 					.getAll('assignees')
 					.map((v) => String(v))
 					.filter(Boolean),
+				attachments: form.getAll('attachments'),
 				origin: url.origin
 			});
 			return { ok: true, displayId: created.displayId };
