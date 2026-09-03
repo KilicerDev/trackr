@@ -26,6 +26,29 @@ enum TicketGroupBy: String, CaseIterable, Identifiable {
     }
 }
 
+enum TicketSortKey: String, CaseIterable, Identifiable {
+    case priority, activity, created, subject
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .priority: "Priority"
+        case .activity: "Last activity"
+        case .created: "Created"
+        case .subject: "Subject"
+        }
+    }
+
+    /// Direction a freshly picked key starts in (web NATURAL_DIR parity).
+    var naturalAscending: Bool {
+        switch self {
+        case .subject: true
+        case .priority, .activity, .created: false
+        }
+    }
+}
+
 struct TicketGroup: Identifiable {
     let id: String
     let label: String
@@ -35,6 +58,10 @@ struct TicketGroup: Identifiable {
 
 struct TicketFilters: Equatable {
     var group: TicketGroupBy = .status
+    /// Row order inside each group. Defaults reproduce the server order
+    /// (newest first) — web `listSort` parity.
+    var sortBy: TicketSortKey = .created
+    var sortAscending = false
     var statuses: Set<TicketStatus> = []
     var priorities: Set<TaskPriority> = []
     var categories: Set<TicketCategory> = []
@@ -46,12 +73,21 @@ struct TicketFilters: Equatable {
             || !orgs.isEmpty || !assignees.isEmpty
     }
 
+    var isDefaultSort: Bool { sortBy == .created && !sortAscending }
+
+    mutating func setSortKey(_ key: TicketSortKey) {
+        sortBy = key
+        sortAscending = key.naturalAscending
+    }
+
     mutating func reset() {
         statuses = []
         priorities = []
         categories = []
         orgs = []
         assignees = []
+        sortBy = .created
+        sortAscending = false
     }
 
     func matches(_ ticket: TicketItem) -> Bool {
@@ -71,8 +107,42 @@ struct TicketFilters: Equatable {
         return true
     }
 
+    /// Primary key in the chosen direction, then priority (high first), then
+    /// last activity (recent first). Stable. Mirrors web sortTickets().
+    func sorted(_ tickets: [TicketItem]) -> [TicketItem] {
+        func activity(_ t: TicketItem) -> Date {
+            t.messages.map(\.date).max() ?? t.serverLastMessageAt ?? t.updatedAt ?? t.createdAt
+        }
+        func key(_ t: TicketItem) -> SortValue {
+            switch sortBy {
+            case .priority: .number(t.priority.rank)
+            case .activity: .date(activity(t))
+            case .created: .date(t.createdAt)
+            case .subject: .text(t.subject.lowercased())
+            }
+        }
+        func compare(_ a: SortValue, _ b: SortValue, ascending: Bool) -> Bool? {
+            if a == b { return nil }
+            return ascending ? a < b : b < a
+        }
+        return tickets.enumerated().sorted { lhs, rhs in
+            let (i, a) = lhs
+            let (j, b) = rhs
+            if let r = compare(key(a), key(b), ascending: sortAscending) { return r }
+            if sortBy != .priority,
+               let r = compare(.number(a.priority.rank), .number(b.priority.rank), ascending: false) {
+                return r
+            }
+            if sortBy != .activity,
+               let r = compare(.date(activity(a)), .date(activity(b)), ascending: false) {
+                return r
+            }
+            return i < j
+        }.map(\.element)
+    }
+
     func grouped(_ tickets: [TicketItem]) -> [TicketGroup] {
-        let visible = tickets.filter(matches)
+        let visible = sorted(tickets.filter(matches))
 
         func nonEmpty(_ groups: [TicketGroup]) -> [TicketGroup] {
             groups.filter { !$0.tickets.isEmpty }

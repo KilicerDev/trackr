@@ -1634,5 +1634,9 @@
 	"sort_subject": "Betreff",
 	"sort_name": "Name",
 	"view_filter_no_matches": "Keine Treffer",
-	"view_layout": "Anordnung"
+	"view_layout": "Anordnung",
+	"views_update": "Mit aktuellen Einstellungen aktualisieren",
+	"views_update_named": "„{name}“ aktualisieren",
+	"views_updated_toast": "Ansicht „{name}“ aktualisiert",
+	"views_modified": "Geändert"
 }

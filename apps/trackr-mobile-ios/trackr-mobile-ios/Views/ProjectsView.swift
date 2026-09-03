@@ -122,7 +122,8 @@ struct ProjectsView: View {
                 onApply: { model.sync?.applySavedView(.projects, entry: $0) },
                 onCreate: { model.sync?.createSavedView(.projects, name: $0) },
                 onRename: { model.sync?.renameSavedView(.projects, id: $0.id, to: $1) },
-                onDelete: { model.sync?.deleteSavedView(.projects, id: $0.id) }
+                onDelete: { model.sync?.deleteSavedView(.projects, id: $0.id) },
+                onUpdate: { model.sync?.updateSavedView(.projects, id: $0.id) }
             )
         }
         .sheet(item: $historyProject) { project in

@@ -18,8 +18,10 @@ extension APIClient {
     /// better-auth get-session: 200 with a literal `null` body means the
     /// token is dead — that must NOT trigger the global sign-out hook (it's
     /// the probe deciding whether we're signed in at all).
-    func validateSession() async throws -> Bool {
-        let (data, _) = try await raw("GET", "/api/auth/get-session", allowUnauthorized: true)
+    func validateSession(timeout: TimeInterval? = nil) async throws -> Bool {
+        let (data, _) = try await raw(
+            "GET", "/api/auth/get-session", allowUnauthorized: true, timeout: timeout
+        )
         let text = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
         return !(text == nil || text == "null" || text!.isEmpty)
     }

@@ -24,6 +24,10 @@ struct TicketFiltersSheet: View {
             .map { ($0, $0.name) }
     }
 
+    private var sortKey: Binding<TicketSortKey> {
+        Binding(get: { filters.sortBy }, set: { filters.setSortKey($0) })
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -32,6 +36,29 @@ struct TicketFiltersSheet: View {
                         ForEach(TicketGroupBy.allCases) { option in
                             Text(option.label).tag(option)
                         }
+                    }
+                    // Direction arrow sits just left of the dropdown, like the web
+                    // panel. Picking a key resets the direction to its natural one.
+                    HStack(spacing: 12) {
+                        Text("Sort by")
+                        Spacer()
+                        Button {
+                            filters.sortAscending.toggle()
+                        } label: {
+                            Image(systemName: filters.sortAscending ? "arrow.up" : "arrow.down")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(width: 28, height: 28)
+                                .background(.quaternary, in: RoundedRectangle(cornerRadius: 7))
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel(filters.sortAscending ? "Ascending" : "Descending")
+                        Picker("Sort by", selection: sortKey) {
+                            ForEach(TicketSortKey.allCases) { option in
+                                Text(option.label).tag(option)
+                            }
+                        }
+                        .labelsHidden()
+                        .fixedSize()
                     }
                 }
 
@@ -70,7 +97,7 @@ struct TicketFiltersSheet: View {
                     Button("Reset") {
                         filters.reset()
                     }
-                    .disabled(!filters.hasActiveFilters)
+                    .disabled(!filters.hasActiveFilters && filters.isDefaultSort)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }

@@ -239,6 +239,11 @@ extension TicketFilters {
         if let group = config["listGroup"]?.stringValue.flatMap(TicketGroupBy.init(rawValue:)) {
             self.group = group
         }
+        if let sort = config["listSort"],
+           let key = sort["by"]?.stringValue.flatMap(TicketSortKey.init(rawValue:)) {
+            sortBy = key
+            sortAscending = sort["dir"]?.stringValue == "asc"
+        }
         statuses = Set(filterValues(config, "status").compactMap(TicketStatus.init(api:)))
         priorities = Set(filterValues(config, "priority").compactMap(TaskPriority.init(api:)))
         categories = Set(filterValues(config, "category").compactMap(TicketCategory.init(api:)))
@@ -252,6 +257,8 @@ extension TicketFilters {
             "listGroup": .string(group.rawValue),
             "boardGroup": .string("status"),
             "sub": .string("none"),
+            "listSort": listSortJSON,
+            "boardSort": .object(["by": .string("priority"), "dir": .string("desc")]),
             "filters": filtersJSON([
                 "status": statuses.map(\.apiValue).sorted(),
                 "priority": priorities.map(\.apiValue).sorted(),
@@ -262,9 +269,14 @@ extension TicketFilters {
         ])
     }
 
+    private var listSortJSON: JSONValue {
+        .object(["by": .string(sortBy.rawValue), "dir": .string(sortAscending ? "asc" : "desc")])
+    }
+
     func webPatch(directories: ViewDirectories) -> JSONValue {
         .object([
             "listGroup": .string(group.rawValue),
+            "listSort": listSortJSON,
             "filters": filtersJSON([
                 "status": statuses.map(\.apiValue).sorted(),
                 "priority": priorities.map(\.apiValue).sorted(),

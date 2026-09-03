@@ -99,7 +99,24 @@
 	const plain = (v: C): C => JSON.parse(JSON.stringify(v)) as C;
 
 	function apply(e: SavedViewEntry<C>) {
+		lastAppliedId = e.id;
 		onApply(plain(e.config));
+		close();
+	}
+
+	// ── Update ───────────────────────────────────────────────────────────────
+	// The view applied most recently in this page visit. Once the live state
+	// drifts from it, the trigger flags it as modified and the menu offers a
+	// one-click "update" so tweaks don't have to be re-saved under a new name.
+	let lastAppliedId = $state<string | null>(null);
+	const dirtyView = $derived.by(() => {
+		const v = views.find((x) => x.id === lastAppliedId);
+		return v && !isActive(v) ? v : null;
+	});
+	function update(e: SavedViewEntry<C>) {
+		onChange(views.map((v) => (v.id === e.id ? { ...v, config: plain(current) } : v)));
+		showToast('ok', m.views_updated_toast({ name: e.name }));
+		lastAppliedId = e.id;
 		close();
 	}
 
@@ -162,6 +179,13 @@
 		<Icon name="bookmark" size={14} class={activeView ? 'text-accent' : 'text-text-3'} />
 		{#if activeView}
 			<span class="max-w-[140px] truncate font-medium text-accent">{activeView.name}</span>
+		{:else if dirtyView}
+			<span class="max-w-[140px] truncate font-medium text-text">{dirtyView.name}</span>
+			<span
+				class="h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+				title={m.views_modified()}
+				aria-label={m.views_modified()}
+			></span>
 		{:else}
 			<span class="font-medium text-text">{m.views_menu_label()}</span>
 		{/if}
@@ -204,6 +228,17 @@
 								<Icon name="check" size={13} />
 							</span>
 						</button>
+						{#if !isActive(v)}
+							<button
+								type="button"
+								aria-label={m.views_update()}
+								title={m.views_update()}
+								onclick={() => update(v)}
+								class="grid h-6 w-6 shrink-0 place-items-center rounded-md text-text-4 opacity-0 group-hover:opacity-100 hover:bg-bg-elev hover:text-text"
+							>
+								<Icon name="refresh" size={12} />
+							</button>
+						{/if}
 						<button
 							type="button"
 							aria-label={m.views_rename()}
@@ -227,6 +262,17 @@
 			{/each}
 
 			<div class="my-1 h-px bg-border"></div>
+
+			{#if dirtyView && !savingOpen}
+				<button
+					type="button"
+					onclick={() => update(dirtyView)}
+					class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
+				>
+					<Icon name="refresh" size={13} />
+					<span class="truncate">{m.views_update_named({ name: dirtyView.name })}</span>
+				</button>
+			{/if}
 
 			{#if savingOpen}
 				<div class="flex items-center gap-1 px-1 py-1">

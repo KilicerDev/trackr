@@ -379,6 +379,7 @@ enum Mapper {
             activity: activity,
             createdAt: APIDate.parse(dto.createdAt) ?? .now,
             firstResponseAt: APIDate.parse(dto.firstResponseAt),
+            updatedAt: APIDate.parse(dto.updatedAt),
             resolvedAt: APIDate.parse(dto.resolvedAt)
         )
         // The list endpoint has no messages inline — carry its counts so the

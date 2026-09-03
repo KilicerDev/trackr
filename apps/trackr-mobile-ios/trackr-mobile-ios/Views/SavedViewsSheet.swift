@@ -4,7 +4,8 @@
 //
 //  Saved views for a page (tasks / tickets / projects) — the entries synced
 //  with the web ViewsMenu. Tap applies, "Save current filters" snapshots the
-//  page's active filters, rename/delete via context menu and swipe.
+//  page's active filters, rename/delete via context menu and swipe, "update with current
+//  filters" via context menu and leading swipe (web ViewsMenu parity).
 //
 
 import SwiftUI
@@ -17,6 +18,8 @@ struct SavedViewsSheet: View {
     let onCreate: (String) -> Void
     let onRename: (SavedViewEntry, String) -> Void
     let onDelete: (SavedViewEntry) -> Void
+    /// Overwrite the entry with the page's current filters.
+    let onUpdate: (SavedViewEntry) -> Void
     @Environment(\.dismiss) private var dismiss
 
     @State private var namingNew = false
@@ -82,6 +85,14 @@ struct SavedViewsSheet: View {
                                 }
                             }
                             .contextMenu {
+                                if !isActive(entry) {
+                                    Button {
+                                        onUpdate(entry)
+                                    } label: {
+                                        Label("Update with current filters",
+                                              systemImage: "arrow.triangle.2.circlepath")
+                                    }
+                                }
                                 Button {
                                     renameText = entry.name
                                     renaming = entry
@@ -99,6 +110,16 @@ struct SavedViewsSheet: View {
                                     onDelete(entry)
                                 } label: {
                                     Label("Delete", systemImage: "trash")
+                                }
+                            }
+                            .swipeActions(edge: .leading) {
+                                if !isActive(entry) {
+                                    Button {
+                                        onUpdate(entry)
+                                    } label: {
+                                        Label("Update", systemImage: "arrow.triangle.2.circlepath")
+                                    }
+                                    .tint(.accentColor)
                                 }
                             }
                         }
@@ -147,7 +168,8 @@ struct SavedViewsSheet: View {
             onApply: { _ in },
             onCreate: { _ in },
             onRename: { _, _ in },
-            onDelete: { _ in }
+            onDelete: { _ in },
+            onUpdate: { _ in }
         )
     }
 }

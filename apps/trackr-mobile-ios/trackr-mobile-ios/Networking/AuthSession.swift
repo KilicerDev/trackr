@@ -69,31 +69,39 @@ final class AuthSession {
         await activate(client: candidate, base: base)
     }
 
-    /// Launch/restore: stored host + token → probe the session. A network
-    /// error keeps the token for next launch; a definitive "dead" answer
-    /// (401 or null session) drops it.
+    /// Launch/restore: stored host + token → activate right away so the
+    /// shell paints from the snapshot cache, then probe the session in the
+    /// background. Only a definitive "dead" answer (401 or null session)
+    /// signs out; a network error or a slow server keeps the token.
+    ///
+    /// Gating the UI on the probe made cold starts hang on the spinner
+    /// whenever the first connection stalled (60 s default timeout) — and
+    /// bought nothing, since the client's 401 hook catches a dead token on
+    /// the first data request anyway.
     func restore() async {
         guard let base = ServerConfig.savedHost, let token = KeychainStore.token else {
             phase = .signedOut
             return
         }
         let candidate = APIClient(baseURL: base, token: token)
-        do {
-            if try await candidate.validateSession() {
-                await activate(client: candidate, base: base)
-            } else {
-                KeychainStore.token = nil
-                phase = .signedOut
+        await activate(client: candidate, base: base)
+        Task { [weak self] in
+            do {
+                if try await candidate.validateSession(timeout: Self.probeTimeout) == false {
+                    self?.forgetSession()
+                }
+            } catch APIError.unauthorized {
+                self?.forgetSession()
+            } catch {
+                // Offline or slow — keep the session; the 401 hook covers a
+                // token that actually died.
             }
-        } catch APIError.unauthorized {
-            KeychainStore.token = nil
-            phase = .signedOut
-        } catch {
-            // Offline — trust the stored token so cached data still shows;
-            // any later authenticated 401 signs out via the client hook.
-            await activate(client: candidate, base: base)
         }
     }
+
+    /// Short leash for the launch probe: it runs behind the UI, so a stall
+    /// should give up quickly rather than hold a connection for a minute.
+    private static let probeTimeout: TimeInterval = 8
 
     func signOut() async {
         if let client {

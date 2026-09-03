@@ -1754,5 +1754,9 @@
 	"sort_subject": "Subject",
 	"sort_name": "Name",
 	"view_filter_no_matches": "No matches",
-	"view_layout": "Layout"
+	"view_layout": "Layout",
+	"views_update": "Update with current settings",
+	"views_update_named": "Update \"{name}\"",
+	"views_updated_toast": "View \"{name}\" updated",
+	"views_modified": "Modified"
 }

@@ -231,7 +231,7 @@ struct TaskFilters: Equatable {
 }
 
 /// Comparable wrapper so one comparator handles dates, ranks and strings.
-private enum SortValue: Comparable {
+enum SortValue: Comparable {
     case date(Date)
     case number(Int)
     case text(String)

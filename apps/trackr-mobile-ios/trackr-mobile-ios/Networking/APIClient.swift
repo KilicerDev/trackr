@@ -116,9 +116,11 @@ actor APIClient {
         _ path: String,
         query: [URLQueryItem] = [],
         authenticated: Bool = true,
-        allowUnauthorized: Bool = false
+        allowUnauthorized: Bool = false,
+        timeout: TimeInterval? = nil
     ) async throws -> (Data, HTTPURLResponse) {
-        let request = try makeRequest(method, path, query: query, bodyData: nil, authenticated: authenticated)
+        var request = try makeRequest(method, path, query: query, bodyData: nil, authenticated: authenticated)
+        if let timeout { request.timeoutInterval = timeout }
         return try await perform(request, authenticated: authenticated, allowUnauthorized: allowUnauthorized)
     }
 

@@ -123,7 +123,8 @@ struct TicketsView: View {
                     onApply: { model.sync?.applySavedView(.tickets, entry: $0) },
                     onCreate: { model.sync?.createSavedView(.tickets, name: $0) },
                     onRename: { model.sync?.renameSavedView(.tickets, id: $0.id, to: $1) },
-                    onDelete: { model.sync?.deleteSavedView(.tickets, id: $0.id) }
+                    onDelete: { model.sync?.deleteSavedView(.tickets, id: $0.id) },
+                    onUpdate: { model.sync?.updateSavedView(.tickets, id: $0.id) }
                 )
             }
             .sheet(isPresented: $showingCreate) {

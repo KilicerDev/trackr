@@ -25,13 +25,22 @@ struct RootView: View {
         Group {
             switch auth.phase {
             case .launching:
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.webBackground)
+                LaunchView()
             case .signedOut:
                 ServerSetupView(auth: auth)
             case .ready:
-                ContentView(model: model, auth: auth)
+                // First launch on this device has no snapshot cache to paint
+                // from — keep the brand screen up until the first refresh
+                // lands (capped in SyncEngine) instead of showing empty tabs.
+                ZStack {
+                    ContentView(model: model, auth: auth)
+                    if engine?.isColdStarting == true {
+                        LaunchView()
+                            .transition(.opacity)
+                            .zIndex(1)
+                    }
+                }
+                .animation(.easeOut(duration: 0.35), value: engine?.isColdStarting)
             }
         }
         .environment(\.attachmentStore, attachmentStore)

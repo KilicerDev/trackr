@@ -126,7 +126,8 @@ struct TasksView: View {
                     onApply: { model.sync?.applySavedView(.tasks, entry: $0) },
                     onCreate: { model.sync?.createSavedView(.tasks, name: $0) },
                     onRename: { model.sync?.renameSavedView(.tasks, id: $0.id, to: $1) },
-                    onDelete: { model.sync?.deleteSavedView(.tasks, id: $0.id) }
+                    onDelete: { model.sync?.deleteSavedView(.tasks, id: $0.id) },
+                    onUpdate: { model.sync?.updateSavedView(.tasks, id: $0.id) }
                 )
             }
             .sheet(isPresented: $showingCreate) {

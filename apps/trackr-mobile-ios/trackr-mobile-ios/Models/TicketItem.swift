@@ -55,6 +55,8 @@ struct TicketItem: Identifiable, Hashable {
     var attachments: [AttachmentItem] = []
     var createdAt: Date
     var firstResponseAt: Date?
+    /// Server `updatedAt` — nil for sample data. Feeds the "last activity" sort.
+    var updatedAt: Date? = nil
     var resolvedAt: Date?
     /// List rows arrive without their messages — the server's counts fill in
     /// until the detail fetch loads the real conversation.

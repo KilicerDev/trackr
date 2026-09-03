@@ -30,6 +30,10 @@ final class SyncEngine {
     private let model: AppModel
 
     private(set) var me: API.Me?
+    /// True from start() until the first refresh completes, but only when
+    /// the snapshot cache was empty — the boot screen stays up meanwhile.
+    /// Capped so a stalled network never traps the user on it.
+    private(set) var isColdStarting = false
     private var eventTask: Task<Void, Never>?
     private var favoriteKeys: Set<String> {
         get { Set(UserDefaults.standard.stringArray(forKey: "trackr.favoriteProjects") ?? []) }
@@ -50,8 +54,15 @@ final class SyncEngine {
     /// Cache-first startup: paint every screen from the last snapshot, then
     /// refresh everything and open the live event stream.
     func start() async {
-        bootstrapFromCache()
+        let hadCache = bootstrapFromCache()
+        isColdStarting = !hadCache
+        let cap = Task {  [weak self] in
+            try? await Task.sleep(for: .seconds(6))
+            self?.isColdStarting = false
+        }
         await refreshAll()
+        cap.cancel()
+        isColdStarting = false
         startEventStream()
     }
 
@@ -73,7 +84,9 @@ final class SyncEngine {
 
     // MARK: - Cache bootstrap
 
-    private func bootstrapFromCache() {
+    /// Returns whether anything was painted from the cache.
+    @discardableResult
+    private func bootstrapFromCache() -> Bool {
         if let cached = store.load("me", as: API.Me.self) {
             apply(me: cached)
         }
@@ -104,6 +117,7 @@ final class SyncEngine {
             }
         }
         if !threads.isEmpty { model.chatThreads = sortThreads(threads) }
+        return me != nil || !model.projects.isEmpty || !model.tasks.isEmpty
     }
 
     // MARK: - Refresh (event-driven, never polled)
@@ -801,6 +815,26 @@ final class SyncEngine {
         var list = savedViews(for: key)
         guard let index = list.firstIndex(where: { $0.id == id }) else { return }
         list[index].name = trimmed
+        setSavedViews(key, list)
+        pushSavedViews(key, list)
+    }
+
+    /// Overwrite a saved view with the page's current filters. Merges the
+    /// mobile-controlled fields (the same ones `webPatch` persists) into the
+    /// existing config so web-only slots (board group, subgroup, …) and any
+    /// keys this app doesn't know survive — web ViewsMenu "update" parity.
+    func updateSavedView(_ key: ViewKey, id: String) {
+        var list = savedViews(for: key)
+        guard let index = list.firstIndex(where: { $0.id == id }) else { return }
+        let directories = ViewDirectories(model: model)
+        let patch: JSONValue = switch key {
+        case .tasks: model.taskFilters.webPatch(directories: directories)
+        case .tickets: model.ticketFilters.webPatch(directories: directories)
+        case .projects: model.projectFilters.webPatch(directories: directories)
+        }
+        var merged = list[index].config.objectValue ?? [:]
+        for (field, value) in patch.objectValue ?? [:] { merged[field] = value }
+        list[index].config = .object(merged)
         setSavedViews(key, list)
         pushSavedViews(key, list)
     }
