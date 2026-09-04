@@ -12,11 +12,18 @@ import {
 	organization,
 	organizationMember
 } from './db/app.schema';
-import { user } from './db/auth.schema';
-import { logActivity } from './activity';
-import { ticketDisplayId } from './tickets';
+import { user, user as userTable } from './db/auth.schema';
+import { error } from '@sveltejs/kit';
+import { logActivity, logActivityFF } from './activity';
+import { syncTicketChecklistFromTask, ticketDisplayId } from './tickets';
 import type { Task } from '$lib/types';
-import { listAttachmentsForMany } from './attachments';
+import { deleteAttachmentsFor, listAttachmentsForMany } from './attachments';
+import { can } from './permissions';
+import { notifyTaskAssigned, notifyTaskStatusChanged } from './notify/events/task';
+import { emitWebhookEvent, taskSnapshot } from './webhooks';
+import { recordAudit } from './audit';
+import { normalizeTag } from '$lib/utils/label-meta';
+import { m } from '$lib/paraglide/messages';
 
 // Drizzle's transaction callback parameter — structurally a subset of `db`.
 export type Tx = Parameters<Parameters<(typeof db)['transaction']>[0]>[0];
@@ -492,4 +499,731 @@ export async function createTasks(input: {
 	else await db.transaction(run);
 
 	return results;
+}
+
+// ─── Resolvers ─────────────────────────────────────────────────────────────
+
+/** Look up a project by its short key (trimmed, upper-cased). */
+export async function resolveProjectByKey(
+	key: string
+): Promise<{ id: string; key: string; name: string; orgId: string | null } | null> {
+	const k = key.trim().toUpperCase();
+	if (!k) return null;
+	const [row] = await db
+		.select({ id: project.id, key: project.key, name: project.name, orgId: project.orgId })
+		.from(project)
+		.where(eq(project.key, k))
+		.limit(1);
+	return row ?? null;
+}
+
+export type ResolvedTask = {
+	id: string;
+	number: number;
+	title: string;
+	status: string;
+	priority: string;
+	type: string;
+	projectId: string;
+	projectKey: string;
+	projectOrgId: string | null;
+	createdBy: string | null;
+	sourceTicketId: string | null;
+};
+
+/**
+ * Resolve a display id (`<PROJECT_KEY>-<number>`, e.g. TRACK-42) to the task
+ * row plus its project scope. Deleted tasks never resolve; null for malformed
+ * input or no match. Shared by the web actions and the MCP tools.
+ */
+export async function resolveTaskByDisplayId(displayId: string): Promise<ResolvedTask | null> {
+	const trimmed = displayId.trim();
+	const dash = trimmed.lastIndexOf('-');
+	if (dash <= 0) return null;
+	const key = trimmed.slice(0, dash).toUpperCase();
+	const number = Number(trimmed.slice(dash + 1));
+	if (!Number.isInteger(number) || number <= 0) return null;
+
+	const [row] = await db
+		.select({
+			id: task.id,
+			number: task.number,
+			title: task.title,
+			status: task.status,
+			priority: task.priority,
+			type: task.type,
+			projectId: project.id,
+			projectKey: project.key,
+			projectOrgId: project.orgId,
+			createdBy: task.createdBy,
+			sourceTicketId: task.sourceTicketId
+		})
+		.from(task)
+		.innerJoin(project, eq(project.id, task.projectId))
+		.where(and(eq(project.key, key), eq(task.number, number), isNull(task.deletedAt)))
+		.limit(1);
+	return row ?? null;
+}
+
+export type ChecklistItem = { id: string; text: string; done: boolean };
+
+/**
+ * Sanitize a client-posted checklist array (whole-array replace semantics):
+ * cap at 100 items / 500 chars, drop empties, fill missing ids. Returns null
+ * for a payload that isn't an array at all. Shared by the web `update` action,
+ * PATCH /api/v1/tasks/[id] and the MCP tools.
+ */
+export function sanitizeTaskChecklist(raw: unknown): ChecklistItem[] | null {
+	if (!Array.isArray(raw)) return null;
+	return raw
+		.slice(0, 100)
+		.map((it) => ({
+			id: typeof it?.id === 'string' && it.id ? it.id : crypto.randomUUID(),
+			text: String(it?.text ?? '')
+				.trim()
+				.slice(0, 500),
+			done: !!it?.done
+		}))
+		.filter((it) => it.text.length > 0);
+}
+
+// ─── Write paths with side effects ─────────────────────────────────────────
+// The complete "edit / delete / log time / create" behaviour — validation,
+// permission rules, persistence, ticket checklist mirroring, webhooks,
+// notifications, activity and audit — shared by the /api/v1 handlers and the
+// MCP tools. Failures throw SvelteKit `error(status, message)` so every caller
+// answers identically.
+
+export type WriteEffectOpts = {
+	/** Request origin for absolute links in notifications/webhooks. */
+	origin: string;
+	/** Recorded in activity/audit meta so the trail says which surface wrote. */
+	via: 'api.v1' | 'mcp';
+};
+
+function requireActor(locals: App.Locals): NonNullable<App.Locals['user']> {
+	if (!locals.user) error(401, 'Not authenticated.');
+	return locals.user;
+}
+
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+async function loadTaskTarget(taskId: string) {
+	const [target] = await db
+		.select({
+			id: task.id,
+			number: task.number,
+			title: task.title,
+			status: task.status,
+			priority: task.priority,
+			type: task.type,
+			createdBy: task.createdBy,
+			sourceTicketId: task.sourceTicketId,
+			projectId: project.id,
+			projectKey: project.key,
+			projectOrgId: project.orgId
+		})
+		.from(task)
+		.innerJoin(project, eq(project.id, task.projectId))
+		.where(and(eq(task.id, taskId), isNull(task.deletedAt)))
+		.limit(1);
+	return target ?? null;
+}
+
+export type TaskUpdatePatch = {
+	title?: string;
+	description?: string | null;
+	status?: string;
+	priority?: string;
+	type?: string;
+	/** ISO date / datetime string, or null/'' to clear. */
+	due?: string | null;
+	/** Minutes; null clears. */
+	estimate?: number | null;
+	tags?: string[];
+	/** Whole-array replace; sanitized via `sanitizeTaskChecklist`. */
+	checklist?: unknown;
+	assigneeIds?: string[];
+	/** YYYY-MM-DD plans the task into the caller's week; null/'' removes it. */
+	plannedFor?: string | null;
+};
+
+/**
+ * Apply an edit to a task. Permission mirrors the web update action:
+ * `project.tasks.edit.any`, or creator + `project.tasks.edit.own`. A
+ * plannedFor-only call needs just read access (per-user planning row; 404 on
+ * no access so uuids don't leak). Assignees are filtered to internal-org users.
+ * Side effects: ticket checklist mirroring, `task.updated`/`task.unassigned`
+ * webhooks, status + assignment notifications, activity, audit.
+ * Extracted from PATCH /api/v1/tasks/[id]; `changed: false` = nothing to do.
+ */
+export async function applyTaskUpdate(
+	locals: App.Locals,
+	taskId: string,
+	body: TaskUpdatePatch,
+	opts: WriteEffectOpts
+): Promise<{ changed: boolean }> {
+	const me = requireActor(locals);
+	const target = await loadTaskTarget(taskId);
+	if (!target) error(404, m.tasks_err_task_not_found());
+
+	const isCreator = target.createdBy === me.id;
+	const allowed =
+		(await can(locals, 'project.tasks.edit.any', { projectId: target.projectId })) ||
+		(isCreator && (await can(locals, 'project.tasks.edit.own', { projectId: target.projectId })));
+
+	const patch: Record<string, unknown> = {};
+	if (body.status !== undefined) {
+		if (!ALLOWED_TASK_STATUS.has(body.status)) {
+			error(400, m.tasks_err_invalid_status({ value: String(body.status) }));
+		}
+		patch.status = body.status;
+	}
+	if (body.priority !== undefined) {
+		if (!ALLOWED_TASK_PRIORITY.has(body.priority)) {
+			error(400, m.tasks_err_invalid_priority({ value: String(body.priority) }));
+		}
+		patch.priority = body.priority;
+	}
+	if (body.type !== undefined) {
+		if (!ALLOWED_TASK_TYPE.has(body.type)) {
+			error(400, m.tasks_err_invalid_type({ type: String(body.type) }));
+		}
+		patch.type = body.type;
+	}
+	if (body.title !== undefined) {
+		const v = String(body.title).trim();
+		if (!v) error(400, m.tasks_err_title_empty());
+		patch.title = v;
+	}
+	if (body.description !== undefined) {
+		patch.description = String(body.description ?? '').trim() || null;
+	}
+	if (body.estimate !== undefined) {
+		if (body.estimate === null) {
+			patch.estimateMinutes = null;
+		} else {
+			if (typeof body.estimate !== 'number' || !Number.isFinite(body.estimate)) {
+				error(400, 'estimate must be a number of minutes or null.');
+			}
+			patch.estimateMinutes = body.estimate > 0 ? Math.round(body.estimate) : null;
+		}
+	}
+	// Tags: full array, normalized + deduped like the web action ([] clears).
+	if (body.tags !== undefined) {
+		if (!Array.isArray(body.tags) || body.tags.some((x) => typeof x !== 'string')) {
+			error(400, 'tags must be a string array.');
+		}
+		patch.tags = [...new Set(body.tags.map((v) => normalizeTag(v)).filter(Boolean))];
+	}
+	if (body.due !== undefined) {
+		if (body.due) {
+			const d = new Date(body.due);
+			if (Number.isNaN(d.getTime())) error(400, m.tasks_err_invalid_date());
+			patch.dueDate = d;
+		} else {
+			patch.dueDate = null;
+		}
+	}
+	// Checklist: full array, sanitized like the web action — {id,text,done},
+	// empty text dropped, capped so a runaway payload can't bloat the row.
+	if (body.checklist !== undefined) {
+		const list = sanitizeTaskChecklist(body.checklist);
+		if (!list) error(400, m.tasks_err_invalid_checklist());
+		patch.checklist = list;
+	}
+	let assigneesUpdate: string[] | null = null;
+	if (body.assigneeIds !== undefined) {
+		if (!Array.isArray(body.assigneeIds) || body.assigneeIds.some((x) => typeof x !== 'string')) {
+			error(400, 'assigneeIds must be a string array.');
+		}
+		assigneesUpdate = [...new Set(body.assigneeIds)];
+	}
+	// plannedFor plans the task into the caller's own week (a date string) or
+	// removes it (null). Web planSet parity: per-user planning row, read access
+	// is enough — it never touches the task row itself.
+	let plannedUpdate: { date: string | null } | null = null;
+	if (body.plannedFor !== undefined) {
+		if (body.plannedFor === null || body.plannedFor === '') {
+			plannedUpdate = { date: null };
+		} else {
+			if (typeof body.plannedFor !== 'string' || !DATE_ONLY.test(body.plannedFor)) {
+				error(400, m.tasks_err_invalid_date());
+			}
+			plannedUpdate = { date: body.plannedFor };
+		}
+	}
+
+	const hasEdits = Object.keys(patch).length > 0 || assigneesUpdate !== null;
+	if (hasEdits && !allowed) error(403, m.tasks_err_cannot_edit());
+	if (!hasEdits && plannedUpdate !== null) {
+		// Planning-only calls need read access; answer 404 (not 403) so the
+		// endpoint doesn't leak which task uuids exist — same as GET.
+		if (!(await can(locals, 'project.tasks.read', { projectId: target.projectId }))) {
+			error(404, m.tasks_err_task_not_found());
+		}
+	}
+
+	if (!hasEdits && plannedUpdate === null) return { changed: false };
+
+	if (plannedUpdate !== null) {
+		if (plannedUpdate.date) {
+			await db
+				.insert(taskPlanning)
+				.values({ taskId: target.id, userId: me.id, plannedFor: plannedUpdate.date })
+				.onConflictDoUpdate({
+					target: [taskPlanning.taskId, taskPlanning.userId],
+					set: { plannedFor: plannedUpdate.date, updatedAt: new Date() }
+				});
+		} else {
+			await db
+				.delete(taskPlanning)
+				.where(and(eq(taskPlanning.taskId, target.id), eq(taskPlanning.userId, me.id)));
+		}
+		if (!hasEdits) return { changed: true };
+	}
+
+	const priorAssigneeRows = await db
+		.select({ userId: taskAssignee.userId })
+		.from(taskAssignee)
+		.where(eq(taskAssignee.taskId, target.id));
+	const priorAssignees = new Set(priorAssigneeRows.map((r) => r.userId));
+
+	const assigneeOut: { next: string[] | null } = { next: null };
+	await db.transaction(async (tx) => {
+		if (Object.keys(patch).length > 0) {
+			await tx.update(task).set(patch).where(eq(task.id, target.id));
+		}
+		if (assigneesUpdate !== null) {
+			await tx.delete(taskAssignee).where(eq(taskAssignee.taskId, target.id));
+			if (assigneesUpdate.length > 0) {
+				// Tasks are internal work: only platform (internal-org) users may be
+				// assigned — mirror the web action's guard, never trust posted ids.
+				const valid = await tx
+					.selectDistinct({ id: userTable.id })
+					.from(userTable)
+					.innerJoin(organizationMember, eq(organizationMember.userId, userTable.id))
+					.innerJoin(organization, eq(organization.id, organizationMember.orgId))
+					.where(and(inArray(userTable.id, assigneesUpdate), eq(organization.isInternal, true)));
+				if (valid.length > 0) {
+					await tx
+						.insert(taskAssignee)
+						.values(valid.map((u) => ({ taskId: target.id, userId: u.id })));
+				}
+				assigneeOut.next = valid.map((u) => u.id);
+			} else {
+				assigneeOut.next = [];
+			}
+		}
+	});
+
+	// Mirror checklist completion back to the source ticket (items copied on
+	// conversion share their id). Fire-and-forget — never undoes the save.
+	if (target.sourceTicketId && Array.isArray(patch.checklist)) {
+		void syncTicketChecklistFromTask(
+			target.sourceTicketId,
+			patch.checklist as { id: string; done: boolean }[]
+		).catch((err) => console.error('ticket checklist sync failed', err));
+	}
+
+	const displayId = `${target.projectKey}-${target.number}`;
+	const currentAssignees = assigneeOut.next ?? [...priorAssignees];
+	const actor = { id: me.id, name: me.name };
+
+	const taskCtx = {
+		id: target.id,
+		displayId,
+		title: (patch.title as string | undefined) ?? target.title,
+		orgId: target.projectOrgId,
+		projectId: target.projectId,
+		status: (patch.status as string | undefined) ?? target.status,
+		priority: (patch.priority as string | undefined) ?? target.priority,
+		type: (patch.type as string | undefined) ?? target.type
+	};
+	const statusChanged = patch.status !== undefined && patch.status !== target.status;
+	{
+		const before: Record<string, unknown> = {
+			status: target.status,
+			priority: target.priority,
+			type: target.type,
+			title: target.title
+		};
+		const changes: Record<string, { from: unknown; to: unknown }> = {};
+		for (const key of Object.keys(patch)) {
+			if (key === 'checklist') continue;
+			const to = patch[key];
+			const from = key in before ? before[key] : undefined;
+			if (from !== undefined && from === to) continue;
+			changes[key] = {
+				from: from ?? null,
+				to: to instanceof Date ? to.toISOString() : (to ?? null)
+			};
+		}
+		const nextAssignees = assigneeOut.next;
+		if (nextAssignees !== null) {
+			const added = nextAssignees.filter((id) => !priorAssignees.has(id));
+			const removed = [...priorAssignees].filter((id) => !nextAssignees.includes(id));
+			if (added.length || removed.length) {
+				changes.assigneeIds = { from: [...priorAssignees], to: nextAssignees };
+			}
+			if (removed.length) {
+				emitWebhookEvent({
+					type: 'task.unassigned',
+					orgId: target.projectOrgId,
+					projectId: target.projectId,
+					actor,
+					assigneeIds: removed,
+					origin: opts.origin,
+					data: {
+						task: taskSnapshot({ ...taskCtx, assigneeIds: currentAssignees }, opts.origin),
+						removedAssigneeIds: removed
+					}
+				});
+			}
+		}
+		if (Object.keys(changes).length > 0) {
+			emitWebhookEvent({
+				type: 'task.updated',
+				orgId: target.projectOrgId,
+				projectId: target.projectId,
+				actor,
+				assigneeIds: currentAssignees,
+				origin: opts.origin,
+				data: {
+					task: taskSnapshot({ ...taskCtx, assigneeIds: currentAssignees }, opts.origin),
+					changes
+				}
+			});
+		}
+	}
+	if (statusChanged) {
+		void notifyTaskStatusChanged({
+			task: taskCtx,
+			creatorId: target.createdBy,
+			assigneeIds: currentAssignees,
+			newStatus: String(patch.status),
+			previousStatus: target.status,
+			actor,
+			origin: opts.origin
+		}).catch((err) => console.error('task status notify failed', err));
+		logActivityFF({
+			projectId: target.projectId,
+			taskId: target.id,
+			actorId: me.id,
+			type: 'task.status',
+			meta: {
+				taskRef: displayId,
+				taskTitle: target.title,
+				from: target.status,
+				to: patch.status
+			}
+		});
+	}
+
+	// Notify users newly added to the task (never the actor themselves).
+	const newlyAssigned = (assigneeOut.next ?? []).filter(
+		(id) => !priorAssignees.has(id) && id !== me.id
+	);
+	if (newlyAssigned.length) {
+		void notifyTaskAssigned({
+			task: taskCtx,
+			assigneeIds: newlyAssigned,
+			actor,
+			origin: opts.origin
+		}).catch((err) => console.error('task assigned notify failed', err));
+	}
+
+	void recordAudit({
+		type: 'task.update',
+		actorId: me.id,
+		targetType: 'task',
+		targetId: target.id,
+		targetLabel: `${displayId} · ${target.title}`,
+		orgId: target.projectOrgId,
+		meta: {
+			projectId: target.projectId,
+			fields: [...Object.keys(patch), ...(assigneesUpdate !== null ? ['assignees'] : [])],
+			via: opts.via
+		}
+	});
+
+	return { changed: true };
+}
+
+/**
+ * Soft-delete a task: `project.tasks.delete.any` only (non-readers get the same
+ * 404 as unknown ids), deletedAt stamp, attachment cleanup (task-level +
+ * per-comment), activity + audit entries. Extracted from DELETE /api/v1/tasks/[id].
+ */
+export async function deleteTaskFully(
+	locals: App.Locals,
+	taskId: string,
+	opts: WriteEffectOpts
+): Promise<void> {
+	const me = requireActor(locals);
+	const target = await loadTaskTarget(taskId);
+	if (!target) error(404, m.tasks_err_task_not_found());
+	if (!(await can(locals, 'project.tasks.read', { projectId: target.projectId }))) {
+		error(404, m.tasks_err_task_not_found());
+	}
+	if (!(await can(locals, 'project.tasks.delete.any', { projectId: target.projectId }))) {
+		error(403, m.tasks_err_cannot_edit());
+	}
+
+	const displayId = `${target.projectKey}-${target.number}`;
+	await db.update(task).set({ deletedAt: new Date() }).where(eq(task.id, target.id));
+	// The task's read paths are now closed, so its attachments are already
+	// unreachable; remove their files (task-level + per-comment) to reclaim
+	// disk — same cleanup as the web action.
+	await deleteAttachmentsFor('task', target.id);
+	const comments = await db
+		.select({ id: message.id })
+		.from(message)
+		.innerJoin(thread, eq(thread.id, message.threadId))
+		.where(and(eq(thread.subjectType, 'task'), eq(thread.subjectId, target.id)));
+	for (const c of comments) await deleteAttachmentsFor('message', c.id);
+
+	logActivityFF({
+		projectId: target.projectId,
+		taskId: target.id,
+		actorId: me.id,
+		type: 'task.deleted',
+		meta: { taskRef: displayId, taskTitle: target.title }
+	});
+	void recordAudit({
+		type: 'task.delete',
+		actorId: me.id,
+		targetType: 'task',
+		targetId: target.id,
+		targetLabel: `${displayId} · ${target.title}`,
+		orgId: target.projectOrgId,
+		meta: { projectId: target.projectId, via: opts.via }
+	});
+}
+
+/**
+ * Log time on a task: any user who can read the task may log; entry = whole
+ * minutes (> 0) + calendar date (YYYY-MM-DD) + optional note. Bumps the task's
+ * updatedAt, writes the `time.logged` activity and the `task.time_logged`
+ * webhook. Extracted from POST /api/v1/tasks/[id]/time.
+ */
+export async function logTaskTime(
+	locals: App.Locals,
+	taskId: string,
+	entry: { minutes: number; date: string; note?: string | null },
+	opts: WriteEffectOpts
+): Promise<{ id: string }> {
+	const me = requireActor(locals);
+	const total = Math.round(Number(entry.minutes ?? 0));
+	if (!Number.isFinite(total) || total <= 0) error(400, m.tasks_err_time_positive());
+	const date = String(entry.date ?? '').trim();
+	if (!DATE_ONLY.test(date)) error(400, m.tasks_err_invalid_date());
+
+	const target = await loadTaskTarget(taskId);
+	if (!target) error(404, m.tasks_err_task_not_found());
+	// Unknown ids and no-access both answer 404 (same as the detail GET).
+	if (!(await can(locals, 'project.tasks.read', { projectId: target.projectId }))) {
+		error(404, m.tasks_err_task_not_found());
+	}
+
+	const note = String(entry.note ?? '').trim() || null;
+	const id = crypto.randomUUID();
+	await db.insert(taskTimeLog).values({
+		id,
+		taskId: target.id,
+		userId: me.id,
+		minutes: total,
+		note,
+		loggedAt: date
+	});
+	await db.update(task).set({ updatedAt: new Date() }).where(eq(task.id, target.id));
+
+	const displayId = `${target.projectKey}-${target.number}`;
+	logActivityFF({
+		projectId: target.projectId,
+		taskId: target.id,
+		actorId: me.id,
+		type: 'time.logged',
+		meta: { taskRef: displayId, taskTitle: target.title, minutes: total, note, loggedAt: date }
+	});
+
+	emitWebhookEvent({
+		type: 'task.time_logged',
+		orgId: target.projectOrgId,
+		projectId: target.projectId,
+		actor: { id: me.id, name: me.name },
+		assigneeIds: [me.id],
+		origin: opts.origin,
+		data: {
+			task: taskSnapshot({ ...target, displayId }, opts.origin),
+			timeLog: { minutes: total, note, loggedAt: date, userId: me.id }
+		}
+	});
+	return { id };
+}
+
+export type CreateTaskWithEffectsInput = {
+	/** Target project — either its uuid or its key (key is resolved first). */
+	projectId?: string;
+	projectKey?: string;
+	title: string;
+	description?: string | null;
+	status?: string;
+	priority?: string;
+	type?: string;
+	/** ISO date / datetime string (`dueDate` is the already-parsed alternative). */
+	due?: string | null;
+	dueDate?: Date | string | null;
+	estimateMinutes?: number | null;
+	tags?: string[];
+	assigneeIds?: string[];
+	/** Sanitized via `sanitizeTaskChecklist`. */
+	checklist?: unknown;
+	/** YYYY-MM-DD: plan the new task into the creator's week. */
+	plannedFor?: string | null;
+	/** Ignored — the creator is always `locals.user`. Accepted for call-site symmetry. */
+	createdBy?: string;
+};
+
+/**
+ * Create a task the way POST /api/v1/tasks does: validation, the
+ * `project.tasks.create` gate, `createTask`, then the create-time side effects
+ * (`task.created` webhook, assignment notifications, audit) — minus file
+ * handling: the caller attaches afterwards.
+ *
+ * Activity: `createTask` already logs one `task.created` inside its transaction;
+ * the v1 handler logs a SECOND one carrying `via` (so the feed shows the
+ * surface). That double entry is the existing v1 behaviour and is kept
+ * verbatim here — change both places together if it is ever consolidated.
+ */
+export async function createTaskWithEffects(
+	locals: App.Locals,
+	input: CreateTaskWithEffectsInput,
+	opts: WriteEffectOpts
+): Promise<{ id: string; number: number; displayId: string; assignedIds: string[] }> {
+	const me = requireActor(locals);
+	const title = input.title?.trim();
+	if (!title) error(400, m.tasks_err_title_empty());
+
+	const status = input.status ?? 'todo';
+	const priority = input.priority ?? 'none';
+	const type = input.type ?? 'task';
+	if (!ALLOWED_TASK_STATUS.has(status)) {
+		error(400, m.tasks_err_invalid_status({ value: String(status) }));
+	}
+	if (!ALLOWED_TASK_PRIORITY.has(priority)) {
+		error(400, m.tasks_err_invalid_priority({ value: String(priority) }));
+	}
+	if (!ALLOWED_TASK_TYPE.has(type)) {
+		error(400, m.tasks_err_invalid_type({ type: String(type) }));
+	}
+	let dueDate: Date | null = null;
+	const dueRaw = input.due ?? input.dueDate ?? null;
+	if (dueRaw) {
+		dueDate = dueRaw instanceof Date ? dueRaw : new Date(dueRaw);
+		if (Number.isNaN(dueDate.getTime())) error(400, m.tasks_err_invalid_date());
+	}
+	const estimate =
+		typeof input.estimateMinutes === 'number' &&
+		Number.isFinite(input.estimateMinutes) &&
+		input.estimateMinutes > 0
+			? Math.round(input.estimateMinutes)
+			: null;
+	const tags = Array.isArray(input.tags)
+		? [...new Set(input.tags.map((v) => normalizeTag(String(v))).filter(Boolean))]
+		: [];
+	const assigneeIds = Array.isArray(input.assigneeIds)
+		? input.assigneeIds.filter((v): v is string => typeof v === 'string' && v.length > 0)
+		: [];
+	const plannedFor = input.plannedFor?.trim() || null;
+	if (plannedFor && !DATE_ONLY.test(plannedFor)) error(400, m.tasks_err_invalid_planned_date());
+	const checklist = input.checklist === undefined ? null : sanitizeTaskChecklist(input.checklist);
+	if (input.checklist !== undefined && !checklist) error(400, m.tasks_err_invalid_checklist());
+
+	let proj: { id: string; key: string; orgId: string | null } | null = null;
+	if (input.projectKey) {
+		proj = await resolveProjectByKey(input.projectKey);
+	} else if (input.projectId) {
+		const [row] = await db
+			.select({ id: project.id, key: project.key, orgId: project.orgId })
+			.from(project)
+			.where(eq(project.id, input.projectId))
+			.limit(1);
+		proj = row ?? null;
+	} else {
+		error(400, 'projectKey is required.');
+	}
+	if (!proj) error(404, m.tasks_err_task_not_found());
+	if (!(await can(locals, 'project.tasks.create', { projectId: proj.id }))) {
+		error(403, 'You do not have permission to perform this action.');
+	}
+
+	const description = input.description?.trim() || null;
+	const created = await createTask({
+		projectId: proj.id,
+		projectKey: proj.key,
+		title,
+		description,
+		status,
+		priority,
+		type,
+		dueDate,
+		estimateMinutes: estimate,
+		tags,
+		checklist: checklist ?? undefined,
+		assigneeIds,
+		createdBy: me.id,
+		plannedForUserId: me.id,
+		plannedFor
+	});
+	logActivityFF({
+		projectId: proj.id,
+		taskId: created.id,
+		actorId: me.id,
+		type: 'task.created',
+		meta: { taskRef: created.displayId, taskTitle: title, via: opts.via }
+	});
+	const createdCtx = {
+		id: created.id,
+		displayId: created.displayId,
+		title,
+		orgId: proj.orgId,
+		projectId: proj.id,
+		status,
+		priority,
+		type
+	};
+	emitWebhookEvent({
+		type: 'task.created',
+		orgId: proj.orgId,
+		projectId: proj.id,
+		actor: { id: me.id, name: me.name },
+		assigneeIds: created.assignedIds,
+		origin: opts.origin,
+		data: {
+			task: taskSnapshot({ ...createdCtx, assigneeIds: created.assignedIds, dueDate }, opts.origin),
+			description,
+			attachments: []
+		}
+	});
+	// Same contract as the web create action: notify assigned users (notify()
+	// drops the actor, so plain self-assignment stays silent).
+	void notifyTaskAssigned({
+		task: createdCtx,
+		assigneeIds: created.assignedIds,
+		actor: { id: me.id, name: me.name },
+		origin: opts.origin
+	}).catch((err) => console.error('task create notify failed', err));
+	// The web create action audits; the v1 handler does not. Audit here so the
+	// MCP surface leaves a trail (harmless superset for v1 callers).
+	void recordAudit({
+		type: 'task.create',
+		actorId: me.id,
+		targetType: 'task',
+		targetId: created.id,
+		targetLabel: `${created.displayId} · ${title}`,
+		orgId: proj.orgId,
+		meta: { projectId: proj.id, taskRef: created.displayId, via: opts.via }
+	});
+	return created;
 }

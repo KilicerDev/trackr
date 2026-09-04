@@ -32,6 +32,7 @@
 		"@eslint/compat": "^2.0.4",
 		"@eslint/js": "^10.0.1",
 		"@inlang/paraglide-js": "^2.18.2",
+		"@modelcontextprotocol/client": "^2.0.0",
 		"@sveltejs/adapter-node": "^5.5.4",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
 		"@tailwindcss/forms": "^0.5.11",
@@ -40,6 +41,7 @@
 		"@types/jsdom": "^28.0.3",
 		"@types/node": "^24",
 		"@types/pdfmake": "^0.3.3",
+		"@types/turndown": "^5.0.6",
 		"@types/ws": "^8.18.1",
 		"drizzle-kit": "^0.31.10",
 		"eslint": "^10.2.0",
@@ -62,6 +64,7 @@
 		"@hocuspocus/server": "^4.1.0",
 		"@hocuspocus/transformer": "^4.1.0",
 		"@lucide/svelte": "^1.14.0",
+		"@modelcontextprotocol/server": "2.0.0",
 		"@sveltejs/kit": "^2.57.0",
 		"@tiptap/core": "^3.23.4",
 		"@tiptap/extension-collaboration": "^3.23.4",
@@ -84,7 +87,10 @@
 		"sharp": "^0.34.5",
 		"svelte": "^5.55.2",
 		"thumbhash": "^0.1.1",
+		"turndown": "^7.2.4",
+		"turndown-plugin-gfm": "^1.0.2",
 		"ws": "^8.21.0",
-		"yjs": "^13"
+		"yjs": "^13",
+		"zod": "^4.2"
 	}
 }

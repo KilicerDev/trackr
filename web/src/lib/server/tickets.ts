@@ -10,7 +10,13 @@ import {
 	type MessageKind
 } from './db/app.schema';
 import { user as userTable } from './db/auth.schema';
+import { error } from '@sveltejs/kit';
 import { ticketRecipients } from './notify/recipients';
+import { notifyTicketCreated, notifyTicketUpdated } from './notify/events/ticket';
+import { recordAudit } from './audit';
+import { deleteAttachmentsFor } from './attachments';
+import { can, canViewTicket } from './permissions';
+import { m } from '$lib/paraglide/messages';
 
 export const TICKET_STATUSES = [
 	'open',
@@ -109,6 +115,31 @@ export function ticketDisplayId(orgKey: string, n: number): string {
 }
 // Local alias kept so existing call sites in this module read unchanged.
 const displayId = ticketDisplayId;
+
+/**
+ * Resolve a display id (`<ORG_KEY>-<number>`, e.g. TRACK-108) to the ticket's
+ * uuid + org. The key is matched case-insensitively; deleted tickets never
+ * resolve. Returns null for malformed input or no match.
+ */
+export async function resolveTicketByDisplayId(
+	display: string
+): Promise<{ id: string; orgId: string } | null> {
+	const trimmed = display.trim();
+	const dash = trimmed.lastIndexOf('-');
+	if (dash <= 0) return null;
+	const key = trimmed.slice(0, dash).toUpperCase();
+	const n = Number(trimmed.slice(dash + 1));
+	if (!Number.isInteger(n) || n <= 0) return null;
+	const [row] = await db
+		.select({ id: ticket.id, orgId: ticket.orgId })
+		.from(ticket)
+		.innerJoin(organization, eq(organization.id, ticket.orgId))
+		.where(
+			and(sql`upper(${organization.key}) = ${key}`, eq(ticket.number, n), isNull(ticket.deletedAt))
+		)
+		.limit(1);
+	return row ?? null;
+}
 
 type AccessOpts = {
 	// When set, restrict to these org ids. Null/undefined means no org filter
@@ -363,6 +394,7 @@ export async function createTicket(input: CreateTicketInput): Promise<{
 
 type UpdateTicketInput = {
 	subject?: string;
+	description?: string;
 	status?: TicketStatus;
 	priority?: TicketPriority;
 	category?: TicketCategory;
@@ -404,6 +436,7 @@ export function sanitizeTicketChecklist(
 export async function updateTicket(ticketId: string, patch: UpdateTicketInput): Promise<void> {
 	const fields: Record<string, unknown> = {};
 	if (patch.subject !== undefined) fields.subject = patch.subject;
+	if (patch.description !== undefined) fields.description = patch.description;
 	if (patch.priority !== undefined) fields.priority = patch.priority;
 	if (patch.category !== undefined) fields.category = patch.category;
 	if (patch.satisfactionScore !== undefined) fields.satisfactionScore = patch.satisfactionScore;
@@ -835,4 +868,334 @@ export async function loadTicketDisplayUsers(
 			orgIds: []
 		};
 	});
+}
+
+// ─── Write paths with side effects ─────────────────────────────────────────
+// The full "edit a ticket" / "delete a ticket" / "create a ticket" behaviour —
+// validation, diffing, timeline events, notifications, audit — shared by the
+// /api/v1 handlers and the MCP tools so the two surfaces cannot drift. Failures
+// are thrown as SvelteKit `error(status, message)` so every caller maps them
+// the same way.
+
+export type WriteEffectOpts = {
+	/** Request origin for absolute links in notifications/webhooks. */
+	origin: string;
+	/** Recorded in the audit row's meta so the trail says which surface wrote. */
+	via: 'api.v1' | 'mcp';
+};
+
+type ChecklistItem = { id: string; text: string; done: boolean };
+
+function requireActor(locals: App.Locals): NonNullable<App.Locals['user']> {
+	if (!locals.user) error(401, 'Not authenticated.');
+	return locals.user;
+}
+
+function sameStringSet(a: string[], b: string[]): boolean {
+	if (a.length !== b.length) return false;
+	const set = new Set(b);
+	return a.every((v) => set.has(v));
+}
+
+export type TicketUpdatePatch = {
+	subject?: string;
+	description?: string;
+	status?: string;
+	priority?: string;
+	category?: string;
+	tags?: string[];
+	assigneeIds?: string[];
+	/** Whole-array replace; sanitized via `sanitizeTicketChecklist`. */
+	checklist?: unknown;
+};
+
+/**
+ * Apply an agent edit to a ticket: validate + diff against the current row,
+ * persist, fold the changes into the timeline as system events, notify, and
+ * audit. The permission check (`org.tickets.edit.any`) stays with the caller.
+ * Returns `changed: false` (and the unchanged ticket) when the patch is a no-op.
+ * Extracted from PATCH /api/v1/tickets/[id]; behaviour is identical for the
+ * fields that handler accepted.
+ */
+export async function applyTicketUpdate(
+	locals: App.Locals,
+	ticketId: string,
+	body: TicketUpdatePatch,
+	opts: WriteEffectOpts
+): Promise<{ changed: boolean; ticket: TicketRow }> {
+	const user = requireActor(locals);
+	const current = await getTicket(ticketId);
+	if (!current) error(404, m.tickets_not_found());
+
+	const events: { meta: TicketEventMeta; internal: boolean }[] = [];
+	const patch: UpdateTicketInput = {};
+
+	if (body.subject !== undefined) {
+		const next = String(body.subject).trim();
+		if (!next) error(400, m.tickets_subject_required());
+		if (next !== current.subject) {
+			patch.subject = next;
+			events.push({
+				meta: { event: 'edited', subject: { from: current.subject, to: next } },
+				internal: true
+			});
+		}
+	}
+	if (body.description !== undefined) {
+		const next = String(body.description ?? '').trim();
+		if (next !== (current.description ?? '')) patch.description = next;
+	}
+	if (body.status !== undefined) {
+		if (!TICKET_STATUS_SET.has(body.status)) error(400, 'Invalid status.');
+		if (body.status !== current.status) {
+			patch.status = body.status as TicketStatus;
+			events.push({
+				meta: { event: 'status_changed', from: current.status, to: body.status },
+				internal: false
+			});
+		}
+	}
+	if (body.priority !== undefined) {
+		if (!TICKET_PRIORITY_SET.has(body.priority)) error(400, 'Invalid priority.');
+		if (body.priority !== current.priority) {
+			patch.priority = body.priority as TicketPriority;
+			events.push({
+				meta: { event: 'priority_changed', from: current.priority, to: body.priority },
+				internal: false
+			});
+		}
+	}
+	if (body.category !== undefined) {
+		if (!TICKET_CATEGORY_SET.has(body.category)) error(400, 'Invalid category.');
+		if (body.category !== current.category) {
+			patch.category = body.category as TicketCategory;
+			events.push({
+				meta: { event: 'category_changed', from: current.category, to: body.category },
+				internal: false
+			});
+		}
+	}
+	if (body.assigneeIds !== undefined) {
+		if (!Array.isArray(body.assigneeIds) || body.assigneeIds.some((x) => typeof x !== 'string')) {
+			error(400, 'assigneeIds must be a string array.');
+		}
+		const next = [...new Set(body.assigneeIds)];
+		// Never trust posted ids — same boundary as the web update action.
+		if (next.length) {
+			const allowed = new Set((await loadAssignableUsers([current.orgId])).map((u) => u.id));
+			if (!next.every((id) => allowed.has(id))) error(400, 'Invalid assignee.');
+		}
+		const prev = new Set(current.assignees);
+		const added = next.filter((id) => !prev.has(id));
+		const removed = current.assignees.filter((id) => !next.includes(id));
+		if (added.length || removed.length) {
+			patch.assigneeIds = next;
+			events.push({ meta: { event: 'assigned', added, removed }, internal: false });
+		}
+	}
+	// Tags: full array, [] clears. Compared as a set like the web action; the
+	// change lands as an internal 'edited' event — bookkeeping the customer has
+	// no stake in.
+	if (body.tags !== undefined) {
+		if (!Array.isArray(body.tags) || body.tags.some((x) => typeof x !== 'string')) {
+			error(400, 'tags must be a string array.');
+		}
+		const next = [...new Set(body.tags.map((t) => t.trim()).filter(Boolean))];
+		if (!sameStringSet(next, current.tags)) {
+			patch.tags = next;
+			events.push({
+				meta: { event: 'edited', tags: { from: current.tags, to: next } },
+				internal: true
+			});
+		}
+	}
+	if (body.checklist !== undefined) {
+		const list = sanitizeTicketChecklist(body.checklist);
+		if (!list) error(400, m.tasks_err_invalid_checklist());
+		patch.checklist = list;
+	}
+
+	if (Object.keys(patch).length === 0) return { changed: false, ticket: current };
+
+	await updateTicket(current.id, patch);
+	await addTicketSystemEvents(current.id, user.id, events);
+
+	// Notifications mirror the web update action (minus priority, which the
+	// app's pill editor treats as a silent triage edit): newly-added assignees
+	// and status changes, fanned out by the shared event helper.
+	await notifyTicketUpdated({
+		ticket: {
+			id: current.id,
+			displayId: current.displayId,
+			orgId: current.orgId,
+			subject: patch.subject ?? current.subject,
+			customerId: current.customerId,
+			creatorId: current.createdBy,
+			assigneeIds: patch.assigneeIds ?? current.assignees,
+			status: patch.status ?? current.status,
+			priority: patch.priority ?? current.priority
+		},
+		addedAssigneeIds: (patch.assigneeIds ?? []).filter((id) => !current.assignees.includes(id)),
+		newStatus: patch.status ?? null,
+		previousStatus: current.status,
+		newPriority: null,
+		actor: { id: user.id, name: user.name },
+		origin: opts.origin
+	});
+	void recordAudit({
+		type: 'ticket.update',
+		actorId: user.id,
+		targetType: 'ticket',
+		targetId: current.id,
+		targetLabel: `${current.displayId} · ${current.subject}`,
+		orgId: current.orgId,
+		meta: { fields: Object.keys(patch), via: opts.via }
+	});
+
+	const fresh = await getTicket(current.id);
+	return { changed: true, ticket: fresh ?? current };
+}
+
+/**
+ * Soft-delete a ticket with the full permission gate (non-viewers get the same
+ * 404 as unknown ids; viewers without `org.tickets.delete.any` get 403), then
+ * audit and reclaim the attachment files (ticket-level + per-message).
+ * Extracted from DELETE /api/v1/tickets/[id].
+ */
+export async function deleteTicketFully(
+	locals: App.Locals,
+	ticketId: string,
+	opts: WriteEffectOpts
+): Promise<void> {
+	const user = requireActor(locals);
+	const current = await getTicket(ticketId);
+	if (!current) error(404, m.tickets_not_found());
+	if (!(await canViewTicket(locals, current))) error(404, m.tickets_not_found());
+	if (!(await can(locals, 'org.tickets.delete.any', { orgId: current.orgId }))) {
+		error(403, m.tickets_no_access());
+	}
+
+	await softDeleteTicket(current.id);
+	void recordAudit({
+		type: 'ticket.delete',
+		actorId: user.id,
+		targetType: 'ticket',
+		targetId: current.id,
+		targetLabel: `${current.displayId} · ${current.subject}`,
+		orgId: current.orgId,
+		meta: { via: opts.via }
+	});
+	// Read paths are closed now; reclaim the attachment files (ticket-level
+	// + per-message), same cleanup as the web action.
+	await deleteAttachmentsFor('ticket', current.id);
+	const msgs = await db
+		.select({ id: message.id })
+		.from(message)
+		.innerJoin(thread, eq(thread.id, message.threadId))
+		.where(and(eq(thread.subjectType, 'ticket'), eq(thread.subjectId, current.id)));
+	for (const msg of msgs) await deleteAttachmentsFor('message', msg.id);
+}
+
+export type CreateTicketWithEffectsInput = {
+	orgId: string;
+	subject: string;
+	description?: string | null;
+	priority?: string;
+	category?: string;
+	/** Honoured only for agents (edit.any); everyone else becomes the customer. */
+	assigneeIds?: string[];
+	/**
+	 * Agents may file on behalf of a customer (user id); default none (the v1
+	 * behaviour). Non-agents are always the customer themselves.
+	 */
+	customerId?: string | null;
+	tags?: string[];
+	checklist?: unknown;
+	/** Defaults to 'api' — the channel both /api/v1 and MCP write. */
+	channel?: TicketChannel;
+	/** Ignored — the creator is always `locals.user`. Accepted for call-site symmetry. */
+	createdBy?: string;
+};
+
+/**
+ * Create a ticket the way POST /api/v1/tickets does (validation, the
+ * `org.tickets.create` gate, agent-vs-customer semantics, `notifyTicketCreated`,
+ * audit) — minus file handling: the caller attaches afterwards. An optional
+ * checklist is sanitized and written right after the insert.
+ */
+export async function createTicketWithEffects(
+	locals: App.Locals,
+	input: CreateTicketWithEffectsInput,
+	opts: WriteEffectOpts
+): Promise<{ id: string; number: number; displayId: string; assignedIds: string[] }> {
+	const user = requireActor(locals);
+	const orgId = input.orgId?.trim();
+	const subject = input.subject?.trim();
+	if (!orgId) error(400, m.tickets_org_required());
+	if (!subject) error(400, m.tickets_subject_required());
+	const priority = input.priority ?? 'medium';
+	const category = input.category ?? 'general';
+	const channel = input.channel ?? 'api';
+	if (!TICKET_PRIORITY_SET.has(priority)) error(400, m.tickets_invalid_priority());
+	if (!TICKET_CATEGORY_SET.has(category)) error(400, m.tickets_invalid_category());
+	if (!TICKET_CHANNEL_SET.has(channel)) error(400, 'Invalid channel.');
+	if (!(await can(locals, 'org.tickets.create', { orgId }))) error(403, m.tickets_no_access());
+	const checklist: ChecklistItem[] | null =
+		input.checklist === undefined ? null : sanitizeTicketChecklist(input.checklist);
+	if (input.checklist !== undefined && !checklist) error(400, m.tasks_err_invalid_checklist());
+
+	// Mirrors the web create action: agents may set assignees and leave the
+	// ticket unassigned; everyone else becomes the customer, never assigned.
+	const isAgent = await can(locals, 'org.tickets.edit.any', { orgId });
+	const assigneeIds =
+		isAgent && Array.isArray(input.assigneeIds)
+			? [...new Set(input.assigneeIds.filter((v): v is string => typeof v === 'string' && !!v))]
+			: [];
+	const customerId = isAgent ? input.customerId?.trim() || null : user.id;
+	const tags = Array.isArray(input.tags)
+		? [...new Set(input.tags.map((t) => String(t).trim()).filter(Boolean))]
+		: [];
+	const description = input.description?.trim() || null;
+	const created = await createTicket({
+		orgId,
+		subject,
+		description,
+		priority: priority as TicketPriority,
+		category: category as TicketCategory,
+		channel,
+		customerId,
+		assigneeIds,
+		tags,
+		createdBy: user.id
+	});
+	if (checklist && checklist.length) await updateTicket(created.id, { checklist });
+
+	await notifyTicketCreated({
+		ticket: {
+			id: created.id,
+			displayId: created.displayId,
+			orgId,
+			subject,
+			customerId,
+			creatorId: user.id,
+			assigneeIds: created.assignedIds,
+			status: 'open',
+			priority,
+			category
+		},
+		description: description?.slice(0, 280) ?? null,
+		actor: { id: user.id, name: user.name },
+		origin: opts.origin,
+		attachments: []
+	});
+	void recordAudit({
+		type: 'ticket.create',
+		actorId: user.id,
+		targetType: 'ticket',
+		targetId: created.id,
+		targetLabel: `${created.displayId} · ${subject}`,
+		orgId,
+		meta: { priority, category, channel, via: opts.via }
+	});
+	return created;
 }

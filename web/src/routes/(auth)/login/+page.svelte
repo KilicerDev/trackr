@@ -14,6 +14,13 @@
 
 	const justReset = $derived(page.url.searchParams.get('reset') === '1');
 	const next = $derived(page.url.searchParams.get('next') ?? '');
+	// MCP OAuth mode: the authorize query is re-sent as a hidden field so the
+	// action can resume the flow after sign-in (see +page.server.ts).
+	const oauth = $derived(data.oauth);
+	const authorizeQuery = $derived(page.url.searchParams.toString());
+	// Signed in (or just signed in without access): no form, only the verdict.
+	const oauthDecision = $derived(!!oauth && !!oauth.userName);
+	const showForm = $derived(!oauthDecision);
 
 	$effect(() => {
 		emailInput?.focus();
@@ -21,7 +28,9 @@
 </script>
 
 <svelte:head>
-	<title>{m.auth_login_page_title()}</title>
+	<title>
+		{oauth ? m.mcp_login_page_title({ client: oauth.clientName }) : m.auth_login_page_title()}
+	</title>
 </svelte:head>
 
 <div class="relative flex min-h-screen items-center justify-center px-4 py-10">
@@ -34,141 +43,216 @@
 	<div class="relative w-full max-w-[440px]">
 		<BrandMark />
 
-		<div
-			class="rounded-[14px] border border-border bg-bg-elev px-7 pt-7 pb-6 shadow-card"
-		>
-			<h1 class="text-[22px] font-semibold tracking-[-0.012em] text-text">
-				{m.auth_login_welcome()}
-			</h1>
-			<p class="mt-1 text-[14px] text-text-3">
-				{m.auth_login_subtitle()}
-			</p>
+		<div class="rounded-[14px] border border-border bg-bg-elev px-7 pt-7 pb-6 shadow-card">
+			{#if oauth}
+				<div
+					class="mb-5 flex items-start gap-3 rounded-[10px] border border-border bg-surface p-3.5"
+				>
+					<div
+						class="grid h-9 w-9 shrink-0 place-items-center rounded-[8px] border border-border bg-bg-elev text-accent"
+					>
+						<Icon name="sparkle" size={17} />
+					</div>
+					<div class="min-w-0">
+						<p class="text-[15px] font-semibold tracking-[-0.01em] text-text">
+							{m.mcp_login_consent_title({ client: oauth.clientName })}
+						</p>
+						<p class="mt-0.5 text-[13px] text-text-3">{m.mcp_login_consent_subtitle()}</p>
+					</div>
+				</div>
+			{/if}
+
+			{#if oauthDecision && oauth}
+				<h1 class="text-[22px] font-semibold tracking-[-0.012em] text-text">
+					{m.auth_login_welcome()}
+				</h1>
+				<p class="mt-1 text-[14px] text-text-3">
+					{m.mcp_login_signed_in_as({ name: oauth.userName ?? '', email: oauth.userEmail ?? '' })}
+				</p>
+
+				{#if !oauth.enabled}
+					<div
+						class="mt-5 rounded-[8px] border border-prio-urgent/35 bg-prio-urgent/8 px-3 py-2 text-[14px] text-prio-urgent"
+					>
+						{m.mcp_login_not_enabled()}
+					</div>
+				{/if}
+
+				<div class="mt-6 flex flex-col gap-2">
+					{#if oauth.enabled}
+						<!-- Plain navigation: the authorize endpoint issues the code
+						     against the existing session cookie and redirects to the
+						     client. -->
+						<a
+							href={oauth.authorizeUrl}
+							data-sveltekit-reload
+							class="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[14px] font-semibold text-white shadow-btn-lg transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px]"
+						>
+							{m.mcp_login_continue_as({ name: oauth.userName ?? '' })}
+						</a>
+					{/if}
+					{#if oauth.cancelUrl}
+						<a
+							href={oauth.cancelUrl}
+							data-sveltekit-reload
+							class="inline-flex h-10 items-center justify-center rounded-[8px] border border-border bg-surface text-[14px] font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text"
+						>
+							{m.mcp_login_cancel()}
+						</a>
+					{/if}
+				</div>
+			{:else}
+				<h1 class="text-[22px] font-semibold tracking-[-0.012em] text-text">
+					{m.auth_login_welcome()}
+				</h1>
+				<p class="mt-1 text-[14px] text-text-3">
+					{m.auth_login_subtitle()}
+				</p>
+			{/if}
 
 			{#if justReset}
 				<div
-					class="mt-5 flex items-start gap-2 rounded-[8px] border border-status-done/30 px-3 py-2 text-[14px] text-status-done bg-status-done/8"
+					class="mt-5 flex items-start gap-2 rounded-[8px] border border-status-done/30 bg-status-done/8 px-3 py-2 text-[14px] text-status-done"
 				>
 					<Icon name="check" size={15} stroke={2} class="mt-0.5 shrink-0" />
 					<span>{m.auth_login_reset_success()}</span>
 				</div>
 			{/if}
 
-			<form
-				method="post"
-				use:enhance={() => {
-					submitting = true;
-					return async ({ update }) => {
-						await update();
-						submitting = false;
-					};
-				}}
-				class="mt-6 flex flex-col gap-4"
-			>
-				{#if next}
-					<input type="hidden" name="next" value={next} />
-				{/if}
-				{#if data.native}
-					<!-- Native (Tauri) sign-in: the action redirects the token to the
-					     app's deep-link scheme instead of the web app. -->
-					<input type="hidden" name="client" value="native" />
-				{/if}
-				{#if data.cli}
-					<!-- CLI sign-in: the action redirects the token to the loopback
-					     listener `trackr login` runs; state is the CLI's CSRF nonce. -->
-					<input type="hidden" name="client" value="cli" />
-					<input type="hidden" name="port" value={data.cliPort} />
-					<input type="hidden" name="state" value={data.cliState} />
-				{/if}
-
-				<label class="flex flex-col gap-1.5">
-					<span class="text-[14px] font-medium text-text-2">{m.auth_email_label()}</span>
-					<input
-						bind:this={emailInput}
-						type="email"
-						name="email"
-						required
-						autocomplete="email"
-						spellcheck="false"
-						bind:value={email}
-						placeholder="you@example.com"
-						class="h-10 rounded-[8px] border border-border bg-surface px-3 text-[15px] text-text transition-colors placeholder:text-text-4 focus:border-border-strong focus:bg-surface-2"
-					/>
-				</label>
-
-				<label class="flex flex-col gap-1.5">
-					<div class="flex items-center justify-between">
-						<span class="text-[14px] font-medium text-text-2">{m.auth_password_label()}</span>
-						<a
-							href="/forgot-password"
-							class="text-[13px] font-medium text-text-3 transition-colors hover:text-text"
-						>
-							{m.auth_login_forgot()}
-						</a>
-					</div>
-					<div class="relative">
-						<input
-							type={showPassword ? 'text' : 'password'}
-							name="password"
-							required
-							autocomplete="current-password"
-							placeholder="••••••••"
-							class="h-10 w-full rounded-[8px] border border-border bg-surface pr-10 pl-3 text-[15px] text-text transition-colors placeholder:text-text-4 focus:border-border-strong focus:bg-surface-2"
-						/>
-						<button
-							type="button"
-							onclick={() => (showPassword = !showPassword)}
-							class="absolute top-1/2 right-2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-[6px] text-text-4 transition-colors hover:bg-[var(--row-hover)] hover:text-text-2"
-							aria-label={showPassword ? m.auth_hide_password() : m.auth_show_password()}
-							tabindex={-1}
-						>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								width="15"
-								height="15"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="1.7"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							>
-								{#if showPassword}
-									<path
-										d="M2 12s3.5-7 10-7c2.2 0 4.1.6 5.6 1.5M22 12s-3.5 7-10 7c-2.2 0-4.1-.6-5.6-1.5"
-									/>
-									<path d="m3 3 18 18" />
-								{:else}
-									<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
-									<circle cx="12" cy="12" r="3" />
-								{/if}
-							</svg>
-						</button>
-					</div>
-				</label>
-
-				{#if form?.message}
-					<div
-						class="rounded-[8px] border border-prio-urgent/35 px-3 py-2 text-[14px] text-prio-urgent bg-prio-urgent/8"
-					>
-						{form.message}
-					</div>
-				{/if}
-
-				<button
-					type="submit"
-					disabled={submitting}
-					class="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[14px] font-semibold text-white shadow-btn-lg transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-default disabled:opacity-70"
+			{#if showForm}
+				<form
+					method="post"
+					use:enhance={() => {
+						submitting = true;
+						return async ({ update }) => {
+							await update();
+							submitting = false;
+						};
+					}}
+					class="mt-6 flex flex-col gap-4"
 				>
-					{#if submitting}
-						<span
-							class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"
-						></span>
-						<span>{m.auth_login_signing_in()}</span>
-					{:else}
-						<span>{m.auth_login_sign_in()}</span>
+					{#if next}
+						<input type="hidden" name="next" value={next} />
 					{/if}
-				</button>
-			</form>
+					{#if oauth}
+						<!-- MCP OAuth sign-in: the action resumes the authorize flow
+						     with this query after a successful sign-in. -->
+						<input type="hidden" name="oauth" value="1" />
+						<input type="hidden" name="authorize" value={authorizeQuery} />
+					{/if}
+					{#if data.native}
+						<!-- Native (Tauri) sign-in: the action redirects the token to the
+						     app's deep-link scheme instead of the web app. -->
+						<input type="hidden" name="client" value="native" />
+					{/if}
+					{#if data.cli}
+						<!-- CLI sign-in: the action redirects the token to the loopback
+						     listener `trackr login` runs; state is the CLI's CSRF nonce. -->
+						<input type="hidden" name="client" value="cli" />
+						<input type="hidden" name="port" value={data.cliPort} />
+						<input type="hidden" name="state" value={data.cliState} />
+					{/if}
+
+					<label class="flex flex-col gap-1.5">
+						<span class="text-[14px] font-medium text-text-2">{m.auth_email_label()}</span>
+						<input
+							bind:this={emailInput}
+							type="email"
+							name="email"
+							required
+							autocomplete="email"
+							spellcheck="false"
+							bind:value={email}
+							placeholder="you@example.com"
+							class="h-10 rounded-[8px] border border-border bg-surface px-3 text-[15px] text-text transition-colors placeholder:text-text-4 focus:border-border-strong focus:bg-surface-2"
+						/>
+					</label>
+
+					<label class="flex flex-col gap-1.5">
+						<div class="flex items-center justify-between">
+							<span class="text-[14px] font-medium text-text-2">{m.auth_password_label()}</span>
+							<a
+								href="/forgot-password"
+								class="text-[13px] font-medium text-text-3 transition-colors hover:text-text"
+							>
+								{m.auth_login_forgot()}
+							</a>
+						</div>
+						<div class="relative">
+							<input
+								type={showPassword ? 'text' : 'password'}
+								name="password"
+								required
+								autocomplete="current-password"
+								placeholder="••••••••"
+								class="h-10 w-full rounded-[8px] border border-border bg-surface pr-10 pl-3 text-[15px] text-text transition-colors placeholder:text-text-4 focus:border-border-strong focus:bg-surface-2"
+							/>
+							<button
+								type="button"
+								onclick={() => (showPassword = !showPassword)}
+								class="absolute top-1/2 right-2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-[6px] text-text-4 transition-colors hover:bg-[var(--row-hover)] hover:text-text-2"
+								aria-label={showPassword ? m.auth_hide_password() : m.auth_show_password()}
+								tabindex={-1}
+							>
+								<svg
+									xmlns="http://www.w3.org/2000/svg"
+									width="15"
+									height="15"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.7"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+								>
+									{#if showPassword}
+										<path
+											d="M2 12s3.5-7 10-7c2.2 0 4.1.6 5.6 1.5M22 12s-3.5 7-10 7c-2.2 0-4.1-.6-5.6-1.5"
+										/>
+										<path d="m3 3 18 18" />
+									{:else}
+										<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+										<circle cx="12" cy="12" r="3" />
+									{/if}
+								</svg>
+							</button>
+						</div>
+					</label>
+
+					{#if form?.message}
+						<div
+							class="rounded-[8px] border border-prio-urgent/35 bg-prio-urgent/8 px-3 py-2 text-[14px] text-prio-urgent"
+						>
+							{form.message}
+						</div>
+					{/if}
+
+					<button
+						type="submit"
+						disabled={submitting}
+						class="mt-1 inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-accent text-[14px] font-semibold text-white shadow-btn-lg transition-[background,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-default disabled:opacity-70"
+					>
+						{#if submitting}
+							<span
+								class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white"
+							></span>
+							<span>{m.auth_login_signing_in()}</span>
+						{:else}
+							<span>{m.auth_login_sign_in()}</span>
+						{/if}
+					</button>
+
+					{#if oauth?.cancelUrl}
+						<a
+							href={oauth.cancelUrl}
+							data-sveltekit-reload
+							class="inline-flex h-10 items-center justify-center rounded-[8px] border border-border bg-surface text-[14px] font-medium text-text-2 transition-colors hover:bg-surface-2 hover:text-text"
+						>
+							{m.mcp_login_cancel()}
+						</a>
+					{/if}
+				</form>
+			{/if}
 		</div>
 
 		<p class="mt-5 text-center text-[13px] text-text-4">

@@ -328,7 +328,25 @@ export const LOG_EVENT_TYPES: Record<
 	// api keys
 	'api_key.create': { label: 'API key created', icon: 'plus', color: '#7fc8a9', kind: 'settings' },
 	'api_key.revoke': { label: 'API key revoked', icon: 'x', color: '#e9c46a', kind: 'settings' },
-	'api_key.delete': { label: 'API key deleted', icon: 'trash', color: '#ef4f5e', kind: 'settings' }
+	'api_key.delete': { label: 'API key deleted', icon: 'trash', color: '#ef4f5e', kind: 'settings' },
+	'mcp_access.enable': {
+		label: 'MCP access enabled',
+		icon: 'plus',
+		color: '#7fc8a9',
+		kind: 'settings'
+	},
+	'mcp_access.disable': {
+		label: 'MCP access disabled',
+		icon: 'x',
+		color: '#e9c46a',
+		kind: 'settings'
+	},
+	'mcp_connection.revoke': {
+		label: 'MCP connection revoked',
+		icon: 'trash',
+		color: '#ef4f5e',
+		kind: 'settings'
+	}
 };
 
 export const LOG_KINDS = [

@@ -14,7 +14,7 @@ declare global {
 			preferences?: ResolvedPreferences;
 			// How `user` was authenticated. 'api_key' requests carry no session
 			// and are confined to /api/v1 (see hooks.server.ts).
-			authKind?: 'session' | 'api_key';
+			authKind?: 'session' | 'api_key' | 'oauth';
 			apiKeyId?: string;
 		}
 

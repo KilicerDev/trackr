@@ -13,6 +13,8 @@ import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { db } from './db';
 import { document, note, noteAccess, noteShareLink, noteTemplate } from './db/app.schema';
 import { deleteAttachmentsFor } from './attachments';
+import { loadBodyHtml } from './collab/derive';
+import { replaceDocumentHtml } from './collab/replace';
 import type { Memberships } from '$lib/permissions';
 
 export type NoteRole = 'read' | 'write';
@@ -27,6 +29,26 @@ function isTeam(m: Memberships): boolean {
 export async function getNote(id: string) {
 	const [row] = await db.select().from(note).where(eq(note.id, id)).limit(1);
 	return row ?? null;
+}
+
+/** Note row plus its rendered body HTML (see `loadBodyHtml`). Null if missing. */
+export async function getNoteWithBody(id: string) {
+	const row = await getNote(id);
+	if (!row) return null;
+	const bodyHtml = row.documentId ? await loadBodyHtml(row.documentId) : '';
+	return { ...row, bodyHtml };
+}
+
+/**
+ * Replace a note's content with the given document HTML (see
+ * `markdownToDocHtml`) through the collab layer, creating the linked document
+ * first if needed. Returns false when the note doesn't exist.
+ */
+export async function updateNoteBody(id: string, html: string, userId: string): Promise<boolean> {
+	const docId = await ensureDocumentForNote(id);
+	if (!docId) return false;
+	await replaceDocumentHtml(docId, html, userId);
+	return true;
 }
 
 export type NoteListItem = {

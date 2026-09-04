@@ -18,7 +18,8 @@ import {
 	ALLOWED_TASK_STATUS,
 	ALLOWED_TASK_TYPE,
 	createTask,
-	loadTasks
+	loadTasks,
+	resolveTaskByDisplayId
 } from '$lib/server/tasks';
 import { normalizeTag } from '$lib/utils/label-meta';
 import { logActivityFF } from '$lib/server/activity';
@@ -51,33 +52,6 @@ export const load: ServerLoad = async ({ locals }) => {
 	const savedView = (preferences.viewState?.tasks ?? {}) as Record<string, unknown>;
 	return { tasks, savedView };
 };
-
-async function resolveTaskByDisplayId(displayId: string) {
-	const dash = displayId.lastIndexOf('-');
-	if (dash < 0) return null;
-	const key = displayId.slice(0, dash);
-	const number = Number(displayId.slice(dash + 1));
-	if (!Number.isFinite(number)) return null;
-
-	const [row] = await db
-		.select({
-			id: task.id,
-			title: task.title,
-			status: task.status,
-			priority: task.priority,
-			type: task.type,
-			projectId: project.id,
-			projectKey: project.key,
-			projectOrgId: project.orgId,
-			createdBy: task.createdBy,
-			sourceTicketId: task.sourceTicketId
-		})
-		.from(task)
-		.innerJoin(project, eq(project.id, task.projectId))
-		.where(and(eq(project.key, key), eq(task.number, number), isNull(task.deletedAt)))
-		.limit(1);
-	return row ?? null;
-}
 
 const ALLOWED_STATUS = ALLOWED_TASK_STATUS;
 const ALLOWED_PRIORITY = ALLOWED_TASK_PRIORITY;

@@ -5,34 +5,17 @@
 //   PATCH { status?, priority?, category?, assigneeIds?, tags? } — the
 //   property-pill and tag edits the app offers. Checklist/subject stay a
 //   desktop concern.
-import { and, eq } from 'drizzle-orm';
-import { db } from '$lib/server/db';
-import { message, thread } from '$lib/server/db/app.schema';
-import {
-	deleteAttachmentsFor,
-	listAttachments,
-	listAttachmentsForMany
-} from '$lib/server/attachments';
+import { listAttachments, listAttachmentsForMany } from '$lib/server/attachments';
 import { canViewTicket, can, isTrackrTeam } from '$lib/server/permissions';
 import {
-	addTicketSystemEvents,
+	applyTicketUpdate,
+	deleteTicketFully,
 	getTicket,
 	loadAssignableUsers,
 	loadTicketDisplayUsers,
-	loadTicketMessages,
-	softDeleteTicket,
-	updateTicket,
-	TICKET_CATEGORY_SET,
-	TICKET_PRIORITY_SET,
-	TICKET_STATUS_SET,
-	type TicketCategory,
-	type TicketEventMeta,
-	type TicketPriority,
-	type TicketStatus
+	loadTicketMessages
 } from '$lib/server/tickets';
 import { listLinkedTasks } from '$lib/server/tasks';
-import { notifyTicketUpdated } from '$lib/server/notify/events/ticket';
-import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
 import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
 import type { RequestHandler } from './$types';
@@ -99,7 +82,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 };
 
 export const PATCH: RequestHandler = async ({ locals, params, request, url }) => {
-	const user = requireUser(locals);
+	requireUser(locals);
 	const ticket = await getTicket(params.id);
 	if (!ticket) apiError(404, m.tickets_not_found());
 	// Status/assignment are agent actions — same grant as the web update action.
@@ -114,154 +97,29 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 		assigneeIds?: string[];
 		tags?: string[];
 	}>(request);
-	const events: { meta: TicketEventMeta; internal: boolean }[] = [];
-	const patch: {
-		status?: TicketStatus;
-		priority?: TicketPriority;
-		category?: TicketCategory;
-		assigneeIds?: string[];
-		tags?: string[];
-	} = {};
-
-	if (body.status !== undefined) {
-		if (!TICKET_STATUS_SET.has(body.status)) apiError(400, 'Invalid status.');
-		if (body.status !== ticket.status) {
-			patch.status = body.status as TicketStatus;
-			events.push({
-				meta: { event: 'status_changed', from: ticket.status, to: body.status },
-				internal: false
-			});
-		}
-	}
-	if (body.priority !== undefined) {
-		if (!TICKET_PRIORITY_SET.has(body.priority)) apiError(400, 'Invalid priority.');
-		if (body.priority !== ticket.priority) {
-			patch.priority = body.priority as TicketPriority;
-			events.push({
-				meta: { event: 'priority_changed', from: ticket.priority, to: body.priority },
-				internal: false
-			});
-		}
-	}
-	if (body.category !== undefined) {
-		if (!TICKET_CATEGORY_SET.has(body.category)) apiError(400, 'Invalid category.');
-		if (body.category !== ticket.category) {
-			patch.category = body.category as TicketCategory;
-			events.push({
-				meta: { event: 'category_changed', from: ticket.category, to: body.category },
-				internal: false
-			});
-		}
-	}
-	if (body.assigneeIds !== undefined) {
-		if (!Array.isArray(body.assigneeIds) || body.assigneeIds.some((x) => typeof x !== 'string')) {
-			apiError(400, 'assigneeIds must be a string array.');
-		}
-		const next = [...new Set(body.assigneeIds)];
-		// Never trust posted ids — same boundary as the web update action.
-		if (next.length) {
-			const allowed = new Set((await loadAssignableUsers([ticket.orgId])).map((u) => u.id));
-			if (!next.every((id) => allowed.has(id))) apiError(400, 'Invalid assignee.');
-		}
-		const prev = new Set(ticket.assignees);
-		const added = next.filter((id) => !prev.has(id));
-		const removed = ticket.assignees.filter((id) => !next.includes(id));
-		if (added.length || removed.length) {
-			patch.assigneeIds = next;
-			events.push({ meta: { event: 'assigned', added, removed }, internal: false });
-		}
-	}
-	// Tags: full array, [] clears. Compared as a set like the web action;
-	// the change lands as an internal 'edited' event — bookkeeping the
-	// customer has no stake in.
-	if (body.tags !== undefined) {
-		if (!Array.isArray(body.tags) || body.tags.some((x) => typeof x !== 'string')) {
-			apiError(400, 'tags must be a string array.');
-		}
-		const next = [...new Set(body.tags.map((t) => t.trim()).filter(Boolean))];
-		const prev = new Set(ticket.tags);
-		if (next.length !== ticket.tags.length || !next.every((t) => prev.has(t))) {
-			patch.tags = next;
-			events.push({
-				meta: { event: 'edited', tags: { from: ticket.tags, to: next } },
-				internal: true
-			});
-		}
-	}
-
-	if (Object.keys(patch).length === 0) return json({ ok: true, unchanged: true });
-
-	await updateTicket(ticket.id, patch);
-	await addTicketSystemEvents(ticket.id, user.id, events);
-
-	// Notifications mirror the web update action (minus priority, which the
-	// app's pill editor treats as a silent triage edit): newly-added assignees
-	// and status changes, fanned out by the shared event helper.
-	await notifyTicketUpdated({
-		ticket: {
-			id: ticket.id,
-			displayId: ticket.displayId,
-			orgId: ticket.orgId,
-			subject: ticket.subject,
-			customerId: ticket.customerId,
-			creatorId: ticket.createdBy,
-			assigneeIds: patch.assigneeIds ?? ticket.assignees,
-			status: patch.status ?? ticket.status,
-			priority: patch.priority ?? ticket.priority
+	// Only the fields this endpoint documents are forwarded; the diff, timeline
+	// events, notifications and audit live in applyTicketUpdate (shared with MCP).
+	const result = await applyTicketUpdate(
+		locals,
+		ticket.id,
+		{
+			status: body.status,
+			priority: body.priority,
+			category: body.category,
+			assigneeIds: body.assigneeIds,
+			tags: body.tags
 		},
-		addedAssigneeIds: (patch.assigneeIds ?? []).filter((id) => !ticket.assignees.includes(id)),
-		newStatus: (patch.status as TicketStatus | undefined) ?? null,
-		previousStatus: ticket.status,
-		newPriority: null,
-		actor: { id: user.id, name: user.name },
-		origin: url.origin
-	});
-	void recordAudit({
-		type: 'ticket.update',
-		actorId: user.id,
-		targetType: 'ticket',
-		targetId: ticket.id,
-		targetLabel: `${ticket.displayId} · ${ticket.subject}`,
-		orgId: ticket.orgId,
-		meta: { fields: Object.keys(patch), via: 'api.v1' }
-	});
-
-	const fresh = await getTicket(ticket.id);
-	return json({ ok: true, ticket: fresh });
+		{ origin: url.origin, via: 'api.v1' }
+	);
+	if (!result.changed) return json({ ok: true, unchanged: true });
+	return json({ ok: true, ticket: result.ticket });
 };
 
 // Soft delete, mirroring the web `delete` action: org.tickets.delete.any
 // (internal admin roles only), deletedAt stamp via softDeleteTicket, then
-// attachment cleanup and an audit entry.
-export const DELETE: RequestHandler = async ({ locals, params }) => {
-	const user = requireUser(locals);
-	const ticket = await getTicket(params.id);
-	if (!ticket) apiError(404, m.tickets_not_found());
-	// Non-viewers get the same 404 as unknown ids so nothing leaks.
-	if (!(await canViewTicket(locals, ticket))) apiError(404, m.tickets_not_found());
-	if (!(await can(locals, 'org.tickets.delete.any', { orgId: ticket.orgId }))) {
-		apiError(403, m.tickets_no_access());
-	}
-
-	await softDeleteTicket(ticket.id);
-	void recordAudit({
-		type: 'ticket.delete',
-		actorId: user.id,
-		targetType: 'ticket',
-		targetId: ticket.id,
-		targetLabel: `${ticket.displayId} · ${ticket.subject}`,
-		orgId: ticket.orgId,
-		meta: { via: 'api.v1' }
-	});
-	// Read paths are closed now; reclaim the attachment files (ticket-level
-	// + per-message), same cleanup as the web action.
-	await deleteAttachmentsFor('ticket', ticket.id);
-	const msgs = await db
-		.select({ id: message.id })
-		.from(message)
-		.innerJoin(thread, eq(thread.id, message.threadId))
-		.where(and(eq(thread.subjectType, 'ticket'), eq(thread.subjectId, ticket.id)));
-	for (const msg of msgs) await deleteAttachmentsFor('message', msg.id);
-
+// attachment cleanup and an audit entry — all inside deleteTicketFully.
+export const DELETE: RequestHandler = async ({ locals, params, url }) => {
+	requireUser(locals);
+	await deleteTicketFully(locals, params.id, { origin: url.origin, via: 'api.v1' });
 	return json({ ok: true });
 };

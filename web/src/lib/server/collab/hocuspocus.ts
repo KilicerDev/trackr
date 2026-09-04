@@ -29,7 +29,7 @@ declare global {
 // Parse stored HTML into ProseMirror JSON. We don't use @tiptap/html's
 // generateJSON here: its server DOM (zeed-dom) can't handle the Link extension's
 // case-insensitive `:not()` parse selector under Bun. jsdom parses it correctly.
-function htmlToProseMirrorJSON(html: string): Record<string, unknown> {
+export function htmlToProseMirrorJSON(html: string): Record<string, unknown> {
 	const schema = getSchema(collabSchemaExtensions);
 	const dom = new JSDOM(`<!DOCTYPE html><body>${html}</body>`);
 	const node = PMDOMParser.fromSchema(schema).parse(dom.window.document.body);
@@ -166,4 +166,14 @@ function build(): Hocuspocus {
 /** Process-wide singleton; guarded on globalThis so HMR doesn't spin up duplicates. */
 export function getHocuspocus(): Hocuspocus {
 	return (globalThis.__hocuspocus ??= build());
+}
+
+/**
+ * The instance already serving this process (mounted by `attachCollab`), or
+ * null when none is — e.g. a worker/job context with no websocket server.
+ * Server-side document writes use it to go through the live doc (so connected
+ * editors see the change) and fall back to a direct DB write otherwise.
+ */
+export function getRunningHocuspocus(): Hocuspocus | null {
+	return globalThis.__hocuspocus ?? null;
 }

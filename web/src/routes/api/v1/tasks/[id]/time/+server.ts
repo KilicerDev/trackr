@@ -1,87 +1,19 @@
 // Log time on a task. `id` is the task UUID. Mirrors the web timeLogAdd
 // action: any user who can read the task may log time; entry = minutes +
-// calendar date + optional note.
-import { and, eq, isNull } from 'drizzle-orm';
-import { db } from '$lib/server/db';
-import { project, task, taskTimeLog } from '$lib/server/db/app.schema';
-import { can } from '$lib/server/permissions';
-import { logActivityFF } from '$lib/server/activity';
-import { emitWebhookEvent, taskSnapshot } from '$lib/server/webhooks';
-import { m } from '$lib/paraglide/messages';
-import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
+// calendar date + optional note. Logic lives in $lib/server/tasks logTaskTime
+// (shared with the MCP server).
+import { logTaskTime } from '$lib/server/tasks';
+import { json, readJson, requireUser } from '$lib/server/api/guard';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ locals, params, request, url }) => {
-	const user = requireUser(locals);
+	requireUser(locals);
 	const body = await readJson<{ minutes?: number; date?: string; note?: string }>(request);
-
-	const total = Math.round(Number(body.minutes ?? 0));
-	if (!Number.isFinite(total) || total <= 0) apiError(400, m.tasks_err_time_positive());
-	const date = String(body.date ?? '').trim();
-	if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) apiError(400, m.tasks_err_invalid_date());
-
-	const [target] = await db
-		.select({
-			id: task.id,
-			number: task.number,
-			title: task.title,
-			projectId: project.id,
-			projectKey: project.key,
-			projectOrgId: project.orgId,
-			status: task.status,
-			priority: task.priority,
-			type: task.type
-		})
-		.from(task)
-		.innerJoin(project, eq(project.id, task.projectId))
-		.where(and(eq(task.id, params.id), isNull(task.deletedAt)))
-		.limit(1);
-	if (!target) apiError(404, m.tasks_err_task_not_found());
-	// Unknown ids and no-access both answer 404 (same as the detail GET).
-	if (!(await can(locals, 'project.tasks.read', { projectId: target.projectId }))) {
-		apiError(404, m.tasks_err_task_not_found());
-	}
-
-	const note = String(body.note ?? '').trim() || null;
-	await db.insert(taskTimeLog).values({
-		id: crypto.randomUUID(),
-		taskId: target.id,
-		userId: user.id,
-		minutes: total,
-		note,
-		loggedAt: date
-	});
-	await db.update(task).set({ updatedAt: new Date() }).where(eq(task.id, target.id));
-
-	logActivityFF({
-		projectId: target.projectId,
-		taskId: target.id,
-		actorId: user.id,
-		type: 'time.logged',
-		meta: {
-			taskRef: `${target.projectKey}-${target.number}`,
-			taskTitle: target.title,
-			minutes: total,
-			note,
-			loggedAt: date
-		}
-	});
-
-	emitWebhookEvent({
-		type: 'task.time_logged',
-		orgId: target.projectOrgId,
-		projectId: target.projectId,
-		actor: { id: user.id, name: user.name },
-		assigneeIds: [user.id],
-		origin: url.origin,
-		data: {
-			task: taskSnapshot(
-				{ ...target, displayId: `${target.projectKey}-${target.number}` },
-				url.origin
-			),
-			timeLog: { minutes: total, note, loggedAt: date, userId: user.id }
-		}
-	});
-
+	await logTaskTime(
+		locals,
+		params.id,
+		{ minutes: Number(body.minutes ?? 0), date: String(body.date ?? ''), note: body.note },
+		{ origin: url.origin, via: 'api.v1' }
+	);
 	return json({ ok: true }, { status: 201 });
 };

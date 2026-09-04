@@ -21,6 +21,11 @@ const FORM_CONTENT_TYPES = new Set([
 	'application/x-sveltekit-formdata'
 ]);
 const CSRF_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+// OAuth 2.1 token endpoint of the MCP plugin: clients (claude.ai, Claude Code)
+// POST `application/x-www-form-urlencoded` server-to-server with no Origin at
+// all. The request is authenticated by the authorization code + PKCE verifier,
+// never by our session cookie, so the origin rule does not apply to it.
+const CSRF_EXEMPT_PATHS = new Set(['/api/auth/mcp/token']);
 
 // Replacement for SvelteKit's `csrf.checkOrigin` (disabled in svelte.config.js).
 // Same rule — form-content mutations must carry an Origin header matching the
@@ -32,7 +37,11 @@ const CSRF_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 // all, which the stock check treats as cross-site.
 const handleCsrf: Handle = async ({ event, resolve }) => {
 	const { request, url } = event;
-	if (CSRF_METHODS.has(request.method) && !request.headers.has('authorization')) {
+	if (
+		CSRF_METHODS.has(request.method) &&
+		!request.headers.has('authorization') &&
+		!CSRF_EXEMPT_PATHS.has(url.pathname)
+	) {
 		const type = request.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase() ?? '';
 		if (FORM_CONTENT_TYPES.has(type)) {
 			const origin = request.headers.get('origin');
@@ -57,6 +66,10 @@ const handleCsrf: Handle = async ({ event, resolve }) => {
 function apiKeyAllowed(method: string, pathname: string): boolean {
 	// The JSON surface built for machine clients.
 	if (pathname.startsWith('/api/v1/')) return true;
+	// The MCP endpoint: a key is one of its two bearer kinds (the other is an
+	// OAuth token resolved in $lib/server/mcp/auth). Per-user enablement is
+	// checked there, not here.
+	if (pathname === '/api/mcp') return true;
 	// Read-only attachment fetches (inline + /download), so integrations can
 	// resolve the file URLs that API responses and webhook payloads carry. The
 	// handlers run the full per-file permission check themselves.

@@ -2,6 +2,8 @@ import { asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from './db';
 import { document, wikiPage } from './db/app.schema';
 import { deleteAttachmentsFor } from './attachments';
+import { loadBodyHtml } from './collab/derive';
+import { replaceDocumentHtml } from './collab/replace';
 
 export type WikiTreeNode = {
 	id: string;
@@ -29,6 +31,31 @@ export async function loadWikiTree(): Promise<WikiTreeNode[]> {
 export async function getWikiPage(id: string) {
 	const [row] = await db.select().from(wikiPage).where(eq(wikiPage.id, id)).limit(1);
 	return row ?? null;
+}
+
+/**
+ * Page row plus its rendered body HTML (from the linked document, re-derived
+ * from the Yjs state when the read model is stale; the legacy `body` column
+ * for pages that never got a document). Null when the page doesn't exist.
+ */
+export async function getWikiPageWithBody(id: string) {
+	const row = await getWikiPage(id);
+	if (!row) return null;
+	const bodyHtml = row.documentId ? await loadBodyHtml(row.documentId) : (row.body ?? '');
+	return { ...row, bodyHtml };
+}
+
+/**
+ * Replace a page's content with the given document HTML (see
+ * `markdownToDocHtml`), going through the collab layer so open editors update.
+ * Creates the linked document first for pages that never had one. Returns
+ * false when the page doesn't exist.
+ */
+export async function updateWikiBody(id: string, html: string, userId: string): Promise<boolean> {
+	const docId = await ensureDocumentForPage(id);
+	if (!docId) return false;
+	await replaceDocumentHtml(docId, html, userId);
+	return true;
 }
 
 /**

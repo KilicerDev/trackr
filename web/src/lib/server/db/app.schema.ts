@@ -1765,3 +1765,20 @@ export const apiKey = pgTable(
 );
 
 export type ApiKey = typeof apiKey.$inferSelect;
+
+// ─── MCP access ────────────────────────────────────────────────────────────
+// Per-user allow-list for the MCP endpoint (/api/mcp). Row present = the user
+// may connect an MCP client, whether via an OAuth token (better-auth `mcp`
+// plugin) or a `trk_` API key. Enforced on every MCP request and before an
+// OAuth authorization code is issued. Managed by admins under
+// /admin/settings/mcp; permissions inside MCP are the user's own.
+
+export const mcpAccess = pgTable('mcp_access', {
+	userId: text('user_id')
+		.primaryKey()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	enabledById: text('enabled_by_id').references(() => user.id, { onDelete: 'set null' }),
+	createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+export type McpAccess = typeof mcpAccess.$inferSelect;

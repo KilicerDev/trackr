@@ -3,8 +3,11 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { admin } from 'better-auth/plugins/admin';
 import { bearer } from 'better-auth/plugins/bearer';
+// `mcp` has no `better-auth/plugins/mcp` subpath export — only the barrel.
+import { mcp } from 'better-auth/plugins';
 import { adminAc, defaultAc, userAc } from 'better-auth/plugins/admin/access';
-import { APIError, createAuthMiddleware } from 'better-auth/api';
+import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
+import { isMcpEnabled } from '$lib/server/mcp/access';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
@@ -91,6 +94,21 @@ export const auth = betterAuth({
 	// Audit: record failed email sign-ins. The endpoint returns an APIError on
 	// bad credentials; the actor is anonymous (we only know the email tried).
 	hooks: {
+		// MCP: a signed-in user who is not on the `mcp_access` allow-list must
+		// never receive an authorization code. The mcp plugin's authorize
+		// endpoint issues one straight away when a session exists (consent is
+		// skipped), so intercept before it runs and send the browser to the
+		// /login page, which renders the "not enabled" explanation in OAuth mode.
+		// Anonymous requests fall through — the plugin redirects them to /login
+		// itself, and the login action re-checks enablement before resuming.
+		before: createAuthMiddleware(async (ctx) => {
+			if (ctx.path !== '/mcp/authorize') return;
+			const session = await getSessionFromCtx(ctx);
+			if (!session) return;
+			if (await isMcpEnabled(session.user.id)) return;
+			const query = ctx.request?.url.split('?')[1] ?? '';
+			throw ctx.redirect(`/login?${query}`);
+		}),
 		after: createAuthMiddleware(async (ctx) => {
 			if (ctx.path !== '/sign-in/email') return;
 			const returned = ctx.context.returned;
@@ -140,6 +158,23 @@ export const auth = betterAuth({
 					],
 					session: ['list', 'revoke', 'delete']
 				})
+			}
+		}),
+		// OAuth 2.1 authorization server for MCP clients (claude.ai connectors,
+		// Claude Code, …): dynamic client registration, PKCE-only authorization
+		// code flow, opaque access tokens looked up via `auth.api.getMcpSession`.
+		// The /login page doubles as the consent screen — see (auth)/login.
+		// Per-user enablement (`mcp_access`) is enforced in $lib/server/mcp/auth.
+		mcp({
+			loginPage: '/login',
+			oidcConfig: {
+				// The plugin copies the outer loginPage over this, but the
+				// OIDCOptions type still requires the field.
+				loginPage: '/login',
+				requirePKCE: true,
+				allowPlainCodeChallengeMethod: false,
+				accessTokenExpiresIn: 3600,
+				refreshTokenExpiresIn: 60 * 60 * 24 * 30
 			}
 		}),
 		sveltekitCookies(getRequestEvent) // make sure this is the last plugin in the array
