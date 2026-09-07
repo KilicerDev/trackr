@@ -5,9 +5,10 @@ import { admin } from 'better-auth/plugins/admin';
 import { bearer } from 'better-auth/plugins/bearer';
 // `mcp` has no `better-auth/plugins/mcp` subpath export — only the barrel.
 import { mcp } from 'better-auth/plugins';
-import { adminAc, defaultAc, userAc } from 'better-auth/plugins/admin/access';
+import { defaultAc, userAc } from 'better-auth/plugins/admin/access';
 import { APIError, createAuthMiddleware, getSessionFromCtx } from 'better-auth/api';
 import { isMcpEnabled } from '$lib/server/mcp/access';
+import { adminGuard, type AdminGuardContext } from '$lib/server/auth-admin-guard';
 import { env } from '$env/dynamic/private';
 import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
@@ -109,6 +110,13 @@ export const auth = betterAuth({
 		// Anonymous requests fall through — the plugin redirects them to /login
 		// itself, and the login action re-checks enablement before resuming.
 		before: createAuthMiddleware(async (ctx) => {
+			// Admin plugin: refuse HTTP, enforce the role hierarchy + root
+			// protection on every in-process auth.api.admin* call
+			// ($lib/server/auth-admin-guard). Runs for form actions too.
+			if (ctx.path.startsWith('/admin/')) {
+				await adminGuard(ctx as unknown as AdminGuardContext);
+				return;
+			}
 			if (ctx.path !== '/mcp/authorize') return;
 			const session = await getSessionFromCtx(ctx);
 			if (!session) return;
@@ -147,10 +155,16 @@ export const auth = betterAuth({
 		admin({
 			defaultRole: 'user',
 			adminRoles: ['admin', 'superadmin'],
+			// Superadmins may impersonate admins and other (non-root) superadmins;
+			// the root / rank / self rules are enforced in the before-hook above.
 			allowImpersonatingAdmins: true,
+			// The plugin's permission check is the outer layer; the hook is the
+			// inner one. `admin` gets exactly what the app calls as an admin
+			// (createUser, listUsers, removeUser) — no impersonate, set-role,
+			// set-password, ban or session control at this layer either.
 			roles: {
 				user: userAc,
-				admin: adminAc,
+				admin: defaultAc.newRole({ user: ['create', 'list', 'get', 'delete'], session: [] }),
 				superadmin: defaultAc.newRole({
 					user: [
 						'create',
