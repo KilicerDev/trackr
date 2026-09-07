@@ -149,6 +149,34 @@ describe('impersonation', () => {
 		expect(stop.status).toBe(200);
 	});
 
+	rootOnly('root impersonating an admin sees the users page (reads allowed)', async () => {
+		const r = await formAction(
+			'/admin/users',
+			'impersonateUser',
+			{ userId: admin2Id },
+			{ cookie: rootCookie }
+		);
+		expect(r.type).toBe('success');
+		const impersonated = cookiesOf(
+			new Response(null, { headers: r.setCookie.map((c) => ['set-cookie', c]) })
+		);
+		const page = await fetch(`${BASE_URL}/admin/users`, { headers: { cookie: impersonated } });
+		expect(page.status).toBe(200);
+		// …but cannot perform admin mutations from inside the impersonation.
+		const del = await formAction(
+			'/admin/users',
+			'deleteUser',
+			{ userId },
+			{ cookie: impersonated }
+		);
+		expect(del.type).toBe('failure');
+		const stop = await fetch(`${BASE_URL}/stop-impersonating`, {
+			method: 'POST',
+			headers: { cookie: impersonated, origin: BASE_URL }
+		});
+		expect(stop.status).toBe(200);
+	});
+
 	rootOnly('root cannot impersonate itself', async () => {
 		const r = await formAction(
 			'/admin/users',

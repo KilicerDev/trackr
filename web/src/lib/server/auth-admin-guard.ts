@@ -117,11 +117,15 @@ export async function adminGuard(ctx: AdminGuardContext): Promise<void> {
 	if (!session) throw new APIError('UNAUTHORIZED', { message: 'Not authenticated.' });
 	const actor = session.user;
 	if (!isAdminLike(actor.role)) deny(ctx, actor, null, 'not_admin');
-	// No admin operations from inside an impersonated session — the visible
-	// actor would be the impersonated user, not the person acting.
-	if (session.session.impersonatedBy) deny(ctx, actor, null, 'impersonated_session');
 
+	// Reads are fine for any admin-like caller, impersonated or not — a
+	// superadmin impersonating an admin must see what that admin sees (the
+	// users page lists through /admin/list-users).
 	if (READ_ONLY.has(path)) return;
+
+	// No admin MUTATIONS from inside an impersonated session — the audit trail
+	// would name the impersonated user, not the person acting.
+	if (session.session.impersonatedBy) deny(ctx, actor, null, 'impersonated_session');
 
 	const body = bodyOf(ctx);
 
