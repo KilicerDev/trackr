@@ -430,7 +430,7 @@ describe('attachments', () => {
 });
 
 describe('MCP Apps (inline UI)', () => {
-	const UI_URI = 'ui://trackr/tickets';
+	const UI_URI = 'ui://trackr/tickets.html';
 	const UI_MIME = 'text/html;profile=mcp-app';
 
 	test('list_tickets advertises its widget in _meta', async () => {
@@ -453,7 +453,7 @@ describe('MCP Apps (inline UI)', () => {
 		expect(meta.ui?.domain).toBeUndefined();
 	});
 
-	test('reading ui://trackr/tickets returns a self-contained HTML app', async () => {
+	test('reading ui://trackr/tickets.html returns a self-contained HTML app', async () => {
 		const res = await client.readResource({ uri: UI_URI });
 		const [c] = res.contents;
 		expect(c.mimeType).toBe(UI_MIME);

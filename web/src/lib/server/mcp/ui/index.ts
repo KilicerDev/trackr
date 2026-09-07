@@ -22,7 +22,9 @@ import ticketsHtml from './dist/tickets/index.html?raw';
 /** MIME type that marks a resource as an MCP App. */
 export const UI_RESOURCE_MIME_TYPE = 'text/html;profile=mcp-app';
 
-export const TICKETS_UI_URI = 'ui://trackr/tickets';
+// `ui://<server>/<file>.html` is the convention every official example uses;
+// hosts may treat the path like a document name, so keep the extension.
+export const TICKETS_UI_URI = 'ui://trackr/tickets.html';
 
 /**
  * `_meta` for a tool that has a widget. Both the spec key (`ui.resourceUri`)

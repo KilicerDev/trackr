@@ -127,7 +127,7 @@ body {
 .table {
 	width: 100%;
 	border-collapse: collapse;
-	min-width: 640px;
+	min-width: 560px;
 }
 .table th,
 .table td {
@@ -170,7 +170,10 @@ body {
 	color: var(--text-3);
 }
 .subject {
-	max-width: 420px;
+	/* Take the slack and truncate, so the fixed columns stay visible instead
+	   of the table overflowing the host's frame. */
+	width: 100%;
+	max-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	color: var(--text);
