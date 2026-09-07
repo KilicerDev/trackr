@@ -1746,7 +1746,7 @@ export const webhookDeliveryAttemptRelations = relations(webhookDeliveryAttempt,
 // session would, so no route or `can()` check knows the difference. Only a
 // SHA-256 hash is stored; the plaintext (`trk_…`) is shown once at creation.
 // Keys are minted by admins for any user they may manage (see $lib/roles
-// `canManageTarget`) and never authenticate anything outside /api/v1.
+// $lib/server/user-policy) and never authenticate anything outside /api/v1.
 
 export const apiKey = pgTable(
 	'api_key',

@@ -579,7 +579,8 @@
 		{@const meta = ROLE_META[(sel.role ?? 'user') as Role] ?? ROLE_META.user}
 		{@const banned = !!sel.banned}
 		{@const isSelf = sel.id === data.currentUserId}
-		{@const canImpersonate = data.viewerIsSuperadmin && !isSelf && !banned}
+		{@const isRootAccount = !!sel.isRoot}
+		{@const canImpersonate = data.viewerIsSuperadmin && !isSelf && !banned && !isRootAccount}
 		{@const memberships = data.orgMemberships?.[sel.id] ?? []}
 		<div class="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3">
 			<span class="font-mono text-[12px] tracking-[0.08em] text-text-4 uppercase"
@@ -661,17 +662,19 @@
 			</div>
 
 			<div class="flex flex-col gap-2">
-				<Button
-					variant="default"
-					size="sm"
-					disabled={pendingAction === `reset:${sel.id}`}
-					onclick={() => handleResetPassword(sel)}
-				>
-					<Icon name="shield" size={14} />
-					{pendingAction === `reset:${sel.id}`
-						? m.admin_users_sending()
-						: m.admin_users_send_password_reset()}
-				</Button>
+				{#if !isRootAccount || isSelf}
+					<Button
+						variant="default"
+						size="sm"
+						disabled={pendingAction === `reset:${sel.id}`}
+						onclick={() => handleResetPassword(sel)}
+					>
+						<Icon name="shield" size={14} />
+						{pendingAction === `reset:${sel.id}`
+							? m.admin_users_sending()
+							: m.admin_users_send_password_reset()}
+					</Button>
+				{/if}
 				{#if canImpersonate}
 					<Button
 						variant="default"
@@ -685,7 +688,7 @@
 							: m.admin_users_impersonate()}
 					</Button>
 				{/if}
-				{#if !isSelf}
+				{#if !isSelf && !isRootAccount}
 					<Button
 						variant="default"
 						size="sm"

@@ -173,6 +173,7 @@ export function logEventLabel(type: string): string {
 			'user.delete': m.log_event_user_delete,
 			'user.impersonate': m.log_event_user_impersonate,
 			'user.impersonate_stop': m.log_event_user_impersonate_stop,
+			'user.invite_accept': m.log_event_user_invite_accept,
 			'project.create': m.log_event_project_create,
 			'project.update': m.log_event_project_update,
 			'project.archive': m.log_event_project_archive,

@@ -19,6 +19,8 @@ import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { apiKey, type ApiKey } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
+import { assertCanManageApiKeyFor, type PolicySubject } from '$lib/server/user-policy';
+import { error } from '@sveltejs/kit';
 
 export const API_KEY_PREFIX = 'trk_';
 
@@ -60,11 +62,35 @@ export function statusOf(row: Pick<ApiKey, 'revokedAt' | 'expiresAt'>): ApiKeyVi
 	return 'active';
 }
 
-/** Create a key. The returned `plaintext` is the only time it is ever visible. */
+async function loadOwner(userId: string) {
+	const [row] = await db
+		.select({
+			id: user.id,
+			email: user.email,
+			role: user.role,
+			isRoot: user.isRoot,
+			banned: user.banned
+		})
+		.from(user)
+		.where(eq(user.id, userId))
+		.limit(1);
+	return row ?? null;
+}
+
+/**
+ * Create a key for `input.userId` on behalf of `actor`. A key acts as its
+ * owner, so this is impersonation-grade: the policy allows own keys for
+ * everyone, otherwise only peers-and-below and never root. The returned
+ * `plaintext` is the only time it is ever visible.
+ */
 export async function createApiKey(
 	input: CreateApiKeyInput,
-	createdBy: string
+	actor: PolicySubject
 ): Promise<{ key: ApiKey; plaintext: string }> {
+	const owner = await loadOwner(input.userId);
+	if (!owner || owner.banned) error(404, 'User not found.');
+	assertCanManageApiKeyFor(actor, owner);
+	const createdBy = actor.id;
 	const plaintext = generatePlaintext();
 	const [key] = await db
 		.insert(apiKey)
@@ -126,8 +152,21 @@ export async function getApiKey(id: string): Promise<ApiKeyView | null> {
 	return all.find((k) => k.id === id) ?? null;
 }
 
+/** The policy subject a key row belongs to, or null when the key is unknown. */
+async function ownerOfKey(id: string) {
+	const [row] = await db
+		.select({ userId: apiKey.userId })
+		.from(apiKey)
+		.where(eq(apiKey.id, id))
+		.limit(1);
+	return row ? loadOwner(row.userId) : null;
+}
+
 /** Soft-revoke: the row stays for the audit trail, the key stops working now. */
-export async function revokeApiKey(id: string): Promise<boolean> {
+export async function revokeApiKey(id: string, actor: PolicySubject): Promise<boolean> {
+	const owner = await ownerOfKey(id);
+	if (!owner) return false;
+	assertCanManageApiKeyFor(actor, owner);
 	const rows = await db
 		.update(apiKey)
 		.set({ revokedAt: new Date() })
@@ -136,7 +175,10 @@ export async function revokeApiKey(id: string): Promise<boolean> {
 	return rows.length > 0;
 }
 
-export async function deleteApiKey(id: string): Promise<boolean> {
+export async function deleteApiKey(id: string, actor: PolicySubject): Promise<boolean> {
+	const owner = await ownerOfKey(id);
+	if (!owner) return false;
+	assertCanManageApiKeyFor(actor, owner);
 	const rows = await db.delete(apiKey).where(eq(apiKey.id, id)).returning({ id: apiKey.id });
 	return rows.length > 0;
 }

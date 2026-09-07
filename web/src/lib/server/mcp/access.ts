@@ -15,6 +15,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { db } from '$lib/server/db';
 import { mcpAccess } from '$lib/server/db/app.schema';
 import { oauthAccessToken, oauthApplication, user } from '$lib/server/db/auth.schema';
+import { assertCanManageMcpFor, type PolicySubject } from '$lib/server/user-policy';
 
 export async function isMcpEnabled(userId: string): Promise<boolean> {
 	const [row] = await db
@@ -55,12 +56,16 @@ export async function listMcpAccess(): Promise<McpAccessRow[]> {
 export async function setMcpAccess(
 	userId: string,
 	enabled: boolean,
-	actorId: string
+	actor: PolicySubject
 ): Promise<boolean> {
+	// Policy backstop: peers-and-below (self needs an admin-like role), never root.
+	const target = await loadSubject(userId);
+	if (!target) return false;
+	assertCanManageMcpFor(actor, target);
 	if (enabled) {
 		const inserted = await db
 			.insert(mcpAccess)
-			.values({ userId, enabledById: actorId })
+			.values({ userId, enabledById: actor.id })
 			.onConflictDoNothing()
 			.returning({ userId: mcpAccess.userId });
 		return inserted.length > 0;
@@ -70,6 +75,15 @@ export async function setMcpAccess(
 		.where(eq(mcpAccess.userId, userId))
 		.returning({ userId: mcpAccess.userId });
 	return deleted.length > 0;
+}
+
+async function loadSubject(userId: string): Promise<PolicySubject | null> {
+	const [row] = await db
+		.select({ id: user.id, role: user.role, isRoot: user.isRoot })
+		.from(user)
+		.where(eq(user.id, userId))
+		.limit(1);
+	return row ?? null;
 }
 
 export type McpConnection = {
@@ -120,7 +134,16 @@ export async function getMcpConnection(tokenRowId: string): Promise<McpConnectio
 }
 
 /** Delete one token row (revokes its access AND refresh token). */
-export async function revokeMcpConnection(tokenRowId: string): Promise<boolean> {
+export async function revokeMcpConnection(
+	tokenRowId: string,
+	actor: PolicySubject
+): Promise<boolean> {
+	const existing = await getMcpConnection(tokenRowId);
+	if (!existing) return false;
+	if (existing.userId) {
+		const target = await loadSubject(existing.userId);
+		if (target) assertCanManageMcpFor(actor, target);
+	}
 	const deleted = await db
 		.delete(oauthAccessToken)
 		.where(eq(oauthAccessToken.id, tokenRowId))
@@ -129,7 +152,10 @@ export async function revokeMcpConnection(tokenRowId: string): Promise<boolean> 
 }
 
 /** Delete every token issued to a user. Returns how many were removed. */
-export async function revokeAllForUser(userId: string): Promise<number> {
+export async function revokeAllForUser(userId: string, actor: PolicySubject): Promise<number> {
+	const target = await loadSubject(userId);
+	if (!target) return 0;
+	assertCanManageMcpFor(actor, target);
 	const deleted = await db
 		.delete(oauthAccessToken)
 		.where(eq(oauthAccessToken.userId, userId))

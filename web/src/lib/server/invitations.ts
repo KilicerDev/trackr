@@ -11,6 +11,7 @@ import {
 	type Invitation
 } from '$lib/server/db/app.schema';
 import type { Role } from '$lib/roles';
+import { assertCanAssignRole, type PolicySubject } from '$lib/server/user-policy';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const TOKEN_BYTES = 32;
@@ -45,10 +46,12 @@ export async function createOrRefreshInvitation(opts: {
 	role: InvitationRole;
 	orgId: string | null;
 	orgRole: string | null;
-	invitedBy?: string | null;
+	/** Who invites. Must be allowed to hand out `role` ($lib/server/user-policy). */
+	actor: PolicySubject;
 	// Request origin (event.url.origin) used to build an absolute accept link.
 	origin?: string | null;
 }): Promise<CreatedInvitation> {
+	assertCanAssignRole(opts.actor, opts.role);
 	const email = opts.email.trim().toLowerCase();
 	const name = opts.name.trim();
 	const token = generateToken();
@@ -67,7 +70,7 @@ export async function createOrRefreshInvitation(opts: {
 				token,
 				expiresAt,
 				acceptedAt: null,
-				invitedBy: opts.invitedBy ?? existing.invitedBy ?? null
+				invitedBy: opts.actor.id
 			})
 			.where(eq(invitation.id, existing.id))
 			.returning();
@@ -85,7 +88,7 @@ export async function createOrRefreshInvitation(opts: {
 			orgRole: opts.orgRole,
 			token,
 			expiresAt,
-			invitedBy: opts.invitedBy ?? null
+			invitedBy: opts.actor.id
 		})
 		.returning();
 	return { invitation: created, acceptUrl: acceptUrl(created.token, opts.origin) };
@@ -127,7 +130,15 @@ export async function getInvitationById(id: string): Promise<Invitation | null> 
 export type AcceptInvitationError = 'invalid_token' | 'email_taken';
 
 export type AcceptInvitationResult =
-	| { ok: true; email: string; invitationId: string; userId: string; role: string }
+	| {
+			ok: true;
+			email: string;
+			invitationId: string;
+			userId: string;
+			role: string;
+			orgRole: string | null;
+			invitedBy: string | null;
+	  }
 	| { ok: false; reason: AcceptInvitationError };
 
 export async function acceptInvitation(opts: {
@@ -205,5 +216,13 @@ export async function acceptInvitation(opts: {
 		});
 	}
 
-	return { ok: true, email: inv.email, invitationId: inv.id, userId, role: inv.role };
+	return {
+		ok: true,
+		email: inv.email,
+		invitationId: inv.id,
+		userId,
+		role: inv.role,
+		orgRole: inv.orgRole,
+		invitedBy: inv.invitedBy ?? null
+	};
 }

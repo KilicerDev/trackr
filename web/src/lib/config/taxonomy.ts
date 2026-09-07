@@ -218,6 +218,12 @@ export const LOG_EVENT_TYPES: Record<
 		color: '#9aa4b2',
 		kind: 'member'
 	},
+	'user.invite_accept': {
+		label: 'Invitation accepted',
+		icon: 'check',
+		color: '#7fc8a9',
+		kind: 'member'
+	},
 	// projects
 	'project.create': { label: 'Project created', icon: 'folder', color: '#7fc8a9', kind: 'project' },
 	'project_template.create': {

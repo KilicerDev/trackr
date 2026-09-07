@@ -2,6 +2,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { APIError } from 'better-auth/api';
 import { auth } from '$lib/server/auth';
 import { acceptInvitation, findInvitationByToken } from '$lib/server/invitations';
+import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -33,6 +34,24 @@ export const actions: Actions = {
 			}
 			return fail(400, { message: m.auth_invite_account_exists() });
 		}
+		// The one place a user row (with a role) is created outside better-auth.
+		void recordAudit(
+			{
+				type: 'user.invite_accept',
+				actorId: result.userId,
+				actorLabel: result.email,
+				targetType: 'user',
+				targetId: result.userId,
+				targetLabel: result.email,
+				meta: {
+					invitationId: result.invitationId,
+					invitedBy: result.invitedBy,
+					role: result.role,
+					orgRole: result.orgRole
+				}
+			},
+			event
+		);
 
 		try {
 			await auth.api.signInEmail({

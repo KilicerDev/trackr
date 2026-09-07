@@ -10,26 +10,8 @@ export function isSuperadmin(role: string | null | undefined): boolean {
 	return role === 'superadmin';
 }
 
-/**
- * Superadmin is invisible/untouchable to lesser roles. A user with role
- * `admin` cannot modify, delete, or even see superadmin accounts — that's
- * what makes the root account a safe fallback if an admin goes rogue.
- */
-export function canManageTarget(
-	callerRole: string | null | undefined,
-	targetRole: string | null | undefined
-): boolean {
-	if (targetRole === 'superadmin') return callerRole === 'superadmin';
-	return true;
-}
-
-export function canAssignRole(
-	callerRole: string | null | undefined,
-	desiredRole: string | null | undefined
-): boolean {
-	if (desiredRole === 'superadmin') return callerRole === 'superadmin';
-	return isAdminLike(callerRole);
-}
+// Who may manage / assign what lives in $lib/server/user-policy (rank-based,
+// root-aware). Nothing here decides authorization.
 
 // ─── Org-scoped roles ───────────────────────────────────────────────────────
 // The roles stored on `organization_member.role`. These are the roles that

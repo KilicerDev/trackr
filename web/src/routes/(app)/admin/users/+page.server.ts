@@ -15,19 +15,52 @@ import { recordAudit } from '$lib/server/audit';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import { organization, organizationMember } from '$lib/server/db/app.schema';
 import { asc, desc } from 'drizzle-orm';
+import { deriveUserRole, isAdminLike, isAllowedOrgRole, isSuperadmin } from '$lib/roles';
 import {
 	canAssignRole,
-	canManageTarget,
-	deriveUserRole,
-	isAdminLike,
-	isAllowedOrgRole,
-	isSuperadmin
-} from '$lib/roles';
+	canImpersonate,
+	canManageUser,
+	canViewUser,
+	isRoot,
+	rankOfRole,
+	type PolicySubject
+} from '$lib/server/user-policy';
 import { m } from '$lib/paraglide/messages';
-import type { Actions, PageServerLoad } from './$types';
+import type { Actions, PageServerLoad, RequestEvent } from './$types';
 
-function roleOf(u: unknown): string | null | undefined {
-	return (u as { role?: string | null } | undefined)?.role;
+/**
+ * The signed-in admin as a policy subject, or null. Every action starts here;
+ * the /admin hook already refused anonymous and non-admin callers, this is
+ * the in-file backstop.
+ */
+function actorOf(event: RequestEvent): (PolicySubject & { id: string; name: string }) | null {
+	const u = event.locals.user;
+	return u && isAdminLike(u.role) ? u : null;
+}
+
+/** Audit a refused user-management attempt (the policy said no). */
+function denied(
+	event: RequestEvent,
+	reason: string,
+	target?: { id?: string | null; email?: string | null } | null
+) {
+	void recordAudit(
+		{
+			type: 'authz.denied',
+			actorId: event.locals.user?.id ?? null,
+			actorLabel: event.locals.user?.email ?? null,
+			targetType: target ? 'user' : null,
+			targetId: target?.id ?? null,
+			targetLabel: target?.email ?? null,
+			meta: { path: event.url.pathname, action: event.url.search.slice(2), reason }
+		},
+		event
+	);
+}
+
+/** 403 message for a target the actor may see but not act on. */
+function rankMessage(target: PolicySubject): string {
+	return isRoot(target) ? m.admin_err_root_untouchable() : m.admin_err_rank();
 }
 
 function s(value: FormDataEntryValue | null): string {
@@ -59,8 +92,8 @@ async function resolveOrgRole(form: FormData): Promise<ResolvedOrg> {
 }
 
 export const load: PageServerLoad = async (event) => {
-	const callerRole = roleOf(event.locals.user);
-	if (!isAdminLike(callerRole)) {
+	const me = actorOf(event);
+	if (!me) {
 		redirect(303, '/');
 	}
 
@@ -70,7 +103,7 @@ export const load: PageServerLoad = async (event) => {
 	});
 	const invitations = await listPendingInvitations();
 
-	const viewerIsSuperadmin = isSuperadmin(callerRole);
+	const viewerIsSuperadmin = isSuperadmin(me.role);
 
 	// Orgs the admin can place the new user into. The role picker is derived
 	// client-side from `isInternal`.
@@ -85,7 +118,11 @@ export const load: PageServerLoad = async (event) => {
 		.where(isNull(organization.archivedAt))
 		.orderBy(desc(organization.isInternal), asc(organization.name));
 
-	const users = viewerIsSuperadmin ? list.users : list.users.filter((u) => !isSuperadmin(u.role));
+	// Same tier or below only (admins never see superadmins). `isRoot` rides
+	// along so the drawer can hide actions the policy would refuse anyway.
+	const users = list.users
+		.filter((u) => canViewUser(me, u as PolicySubject))
+		.map((u) => ({ ...u, isRoot: !!(u as PolicySubject).isRoot }));
 
 	// Org memberships per listed user — surfaced in the detail drawer so an admin
 	// can see which organizations (and at what role) a user belongs to.
@@ -126,9 +163,7 @@ export const load: PageServerLoad = async (event) => {
 
 	return {
 		users,
-		invitations: viewerIsSuperadmin
-			? invitations
-			: invitations.filter((inv) => !isSuperadmin(inv.role)),
+		invitations: invitations.filter((inv) => rankOfRole(inv.role) <= rankOfRole(me.role)),
 		currentUserId: event.locals.user!.id,
 		viewerIsSuperadmin,
 		orgs,
@@ -138,10 +173,8 @@ export const load: PageServerLoad = async (event) => {
 
 export const actions: Actions = {
 	createUser: async (event) => {
-		const callerRole = roleOf(event.locals.user);
-		if (!isAdminLike(callerRole)) {
-			return fail(403, { message: m.admin_err_admin_required() });
-		}
+		const me = actorOf(event);
+		if (!me) return fail(403, { message: m.admin_err_admin_required() });
 
 		const form = await event.request.formData();
 		const name = s(form.get('name'));
@@ -158,7 +191,8 @@ export const actions: Actions = {
 		if (!resolved.ok) return fail(resolved.status, { message: resolved.message });
 
 		const role = deriveUserRole(resolved.orgRole, resolved.isInternal);
-		if (!canAssignRole(callerRole, role)) {
+		if (!canAssignRole(me, role)) {
+			denied(event, 'assign_role');
 			return fail(403, { message: m.admin_err_cannot_assign_role() });
 		}
 
@@ -197,10 +231,8 @@ export const actions: Actions = {
 	},
 
 	inviteUser: async (event) => {
-		const callerRole = roleOf(event.locals.user);
-		if (!isAdminLike(callerRole)) {
-			return fail(403, { message: m.admin_err_admin_required() });
-		}
+		const me = actorOf(event);
+		if (!me) return fail(403, { message: m.admin_err_admin_required() });
 
 		const form = await event.request.formData();
 		const name = s(form.get('name'));
@@ -214,7 +246,8 @@ export const actions: Actions = {
 		if (!resolved.ok) return fail(resolved.status, { message: resolved.message });
 
 		const role = deriveUserRole(resolved.orgRole, resolved.isInternal);
-		if (!canAssignRole(callerRole, role)) {
+		if (!canAssignRole(me, role)) {
+			denied(event, 'assign_role');
 			return fail(403, { message: m.admin_err_cannot_invite_role() });
 		}
 
@@ -225,7 +258,7 @@ export const actions: Actions = {
 				role,
 				orgId: resolved.orgId,
 				orgRole: resolved.orgRole,
-				invitedBy: event.locals.user?.id ?? null,
+				actor: me,
 				origin: event.url.origin
 			});
 			await sendEmail(
@@ -257,10 +290,8 @@ export const actions: Actions = {
 	},
 
 	resendInvitation: async (event) => {
-		const callerRole = roleOf(event.locals.user);
-		if (!isAdminLike(callerRole)) {
-			return fail(403, { message: m.admin_err_admin_required() });
-		}
+		const me = actorOf(event);
+		if (!me) return fail(403, { message: m.admin_err_admin_required() });
 
 		const form = await event.request.formData();
 		const id = s(form.get('id'));
@@ -268,7 +299,8 @@ export const actions: Actions = {
 
 		const existing = await getInvitationById(id);
 		if (!existing) return fail(404, { message: m.admin_err_invitation_gone() });
-		if (!canAssignRole(callerRole, existing.role)) {
+		if (!canAssignRole(me, existing.role ?? 'user')) {
+			denied(event, 'assign_role');
 			return fail(403, { message: m.admin_err_invitation_not_found() });
 		}
 
@@ -279,7 +311,7 @@ export const actions: Actions = {
 				role: (existing.role as InvitationRole) ?? 'user',
 				orgId: existing.orgId,
 				orgRole: existing.orgRole,
-				invitedBy: event.locals.user?.id ?? existing.invitedBy,
+				actor: me,
 				origin: event.url.origin
 			});
 			await sendEmail(
@@ -311,10 +343,8 @@ export const actions: Actions = {
 	},
 
 	revokeInvitation: async (event) => {
-		const callerRole = roleOf(event.locals.user);
-		if (!isAdminLike(callerRole)) {
-			return fail(403, { message: m.admin_err_admin_required() });
-		}
+		const me = actorOf(event);
+		if (!me) return fail(403, { message: m.admin_err_admin_required() });
 
 		const form = await event.request.formData();
 		const id = s(form.get('id'));
@@ -322,7 +352,8 @@ export const actions: Actions = {
 
 		const existing = await getInvitationById(id);
 		if (!existing) return { ok: true };
-		if (!canAssignRole(callerRole, existing.role)) {
+		if (!canAssignRole(me, existing.role ?? 'user')) {
+			denied(event, 'assign_role');
 			return fail(403, { message: m.admin_err_invitation_not_found() });
 		}
 
@@ -341,8 +372,8 @@ export const actions: Actions = {
 	},
 
 	impersonateUser: async (event) => {
-		const callerRole = roleOf(event.locals.user);
-		if (!isSuperadmin(callerRole)) {
+		const me = actorOf(event);
+		if (!me || !isSuperadmin(me.role)) {
 			return fail(403, { message: m.admin_err_superadmin_required() });
 		}
 
@@ -354,11 +385,23 @@ export const actions: Actions = {
 		}
 
 		const [target] = await db
-			.select({ id: userTable.id, email: userTable.email, role: userTable.role })
+			.select({
+				id: userTable.id,
+				email: userTable.email,
+				role: userTable.role,
+				isRoot: userTable.isRoot
+			})
 			.from(userTable)
 			.where(eq(userTable.id, userId))
 			.limit(1);
 		if (!target) return fail(404, { message: m.admin_err_user_not_found() });
+		// Never root, never a higher rank, never from inside an impersonation.
+		const impersonating = !!(event.locals.session as { impersonatedBy?: string | null } | undefined)
+			?.impersonatedBy;
+		if (!canImpersonate(me, target, { actorImpersonating: impersonating })) {
+			denied(event, 'impersonate', target);
+			return fail(403, { message: rankMessage(target) });
+		}
 
 		try {
 			await auth.api.impersonateUser({
@@ -387,23 +430,31 @@ export const actions: Actions = {
 	},
 
 	sendPasswordReset: async (event) => {
-		const callerRole = roleOf(event.locals.user);
-		if (!isAdminLike(callerRole)) {
-			return fail(403, { message: m.admin_err_admin_required() });
-		}
+		const me = actorOf(event);
+		if (!me) return fail(403, { message: m.admin_err_admin_required() });
 
 		const form = await event.request.formData();
 		const userId = s(form.get('userId'));
 		if (!userId) return fail(400, { message: m.admin_err_missing_user_id() });
 
 		const [target] = await db
-			.select({ id: userTable.id, email: userTable.email, role: userTable.role })
+			.select({
+				id: userTable.id,
+				email: userTable.email,
+				role: userTable.role,
+				isRoot: userTable.isRoot
+			})
 			.from(userTable)
 			.where(eq(userTable.id, userId))
 			.limit(1);
-		if (!target) return fail(404, { message: m.admin_err_user_not_found() });
-		if (!canManageTarget(callerRole, target.role)) {
+		// Invisible tiers answer 404 (don't reveal the account); visible but
+		// out-of-reach ones (root, for a superadmin) answer 403.
+		if (!target || !canViewUser(me, target)) {
 			return fail(404, { message: m.admin_err_user_not_found() });
+		}
+		if (!canManageUser(me, target)) {
+			denied(event, 'password_reset', target);
+			return fail(403, { message: rankMessage(target) });
 		}
 
 		try {
@@ -430,10 +481,8 @@ export const actions: Actions = {
 	},
 
 	deleteUser: async (event) => {
-		const callerRole = roleOf(event.locals.user);
-		if (!isAdminLike(callerRole)) {
-			return fail(403, { message: m.admin_err_admin_required() });
-		}
+		const me = actorOf(event);
+		if (!me) return fail(403, { message: m.admin_err_admin_required() });
 
 		const form = await event.request.formData();
 		const userId = s(form.get('userId'));
@@ -447,14 +496,18 @@ export const actions: Actions = {
 				id: userTable.id,
 				name: userTable.name,
 				email: userTable.email,
-				role: userTable.role
+				role: userTable.role,
+				isRoot: userTable.isRoot
 			})
 			.from(userTable)
 			.where(eq(userTable.id, userId))
 			.limit(1);
-		if (!target) return fail(404, { message: m.admin_err_user_not_found() });
-		if (!canManageTarget(callerRole, target.role)) {
+		if (!target || !canViewUser(me, target)) {
 			return fail(404, { message: m.admin_err_user_not_found() });
+		}
+		if (!canManageUser(me, target)) {
+			denied(event, 'delete', target);
+			return fail(403, { message: rankMessage(target) });
 		}
 
 		try {
