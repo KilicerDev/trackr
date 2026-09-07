@@ -304,3 +304,127 @@ describe('note lifecycle', () => {
 		expect(again.isError).toBe(true);
 	});
 });
+
+describe('attachments', () => {
+	// 1×1 transparent PNG — the smallest raster image createAttachment will
+	// sniff, thumbnail and hand back inline from get_attachment.
+	const PNG_1X1 =
+		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+	const title = `${SMOKE_PREFIX} mcp attachments ${run}`;
+	let key: string;
+	let textId: string;
+	let pngId: string;
+
+	test('a throwaway task to attach to', async () => {
+		const res = structured<{ key: string }>(await ok('create_task', { projectKey, title }));
+		key = res.key;
+		created.taskKeys.add(key);
+	});
+
+	test('attach_file with inline base64 text', async () => {
+		const body = `hello ${run}\n`;
+		const res = structured<{ id: string; mimeType: string; sizeBytes: number; filename: string }>(
+			await ok('attach_file', {
+				target: 'task',
+				key,
+				filename: 'notes.txt',
+				content: Buffer.from(body).toString('base64')
+			})
+		);
+		expect(res.id).toMatch(/^[0-9a-f-]{36}$/);
+		expect(res.filename).toBe('notes.txt');
+		expect(res.mimeType).toBe('text/plain'); // derived from the extension
+		expect(res.sizeBytes).toBe(body.length);
+		textId = res.id;
+	});
+
+	test('attach_file with an inline data: URL image', async () => {
+		const res = structured<{ id: string; mimeType: string }>(
+			await ok('attach_file', {
+				target: 'task',
+				key,
+				filename: 'dot.png',
+				content: `data:image/png;base64,${PNG_1X1}`
+			})
+		);
+		expect(res.mimeType).toBe('image/png');
+		pngId = res.id;
+	});
+
+	test('get_attachment returns the image inline and text as metadata', async () => {
+		const img = await ok('get_attachment', { id: pngId });
+		const blocks = (img.content ?? []) as { type: string; mimeType?: string }[];
+		expect(blocks.some((b) => b.type === 'image' && b.mimeType === 'image/png')).toBe(true);
+		const txt = await ok('get_attachment', { id: textId });
+		expect(textOf(txt)).toContain('notes.txt');
+		expect(textOf(txt)).toContain('/api/attachments/');
+	});
+
+	test('get_task lists both files', async () => {
+		const md = textOf(await ok('get_task', { key }));
+		expect(md).toContain('notes.txt');
+		expect(md).toContain('dot.png');
+	});
+
+	test('inline content is refused when oversized, empty, invalid, or unnamed', async () => {
+		// 10 MiB + 1 byte, base64 — bounded by encoded length, never buffered.
+		const big = 'A'.repeat(Math.ceil(((10 * 1024 * 1024 + 1) * 4) / 3) + 4);
+		const tooBig = await call('attach_file', {
+			target: 'task',
+			key,
+			filename: 'big.bin',
+			content: big
+		});
+		expect(tooBig.isError).toBe(true);
+		expect(textOf(tooBig)).toContain('10 MiB');
+		const empty = await call('attach_file', {
+			target: 'task',
+			key,
+			filename: 'e.txt',
+			content: '   '
+		});
+		expect(empty.isError).toBe(true);
+		const invalid = await call('attach_file', {
+			target: 'task',
+			key,
+			filename: 'x.txt',
+			content: '@@@'
+		});
+		expect(invalid.isError).toBe(true);
+		const unnamed = await call('attach_file', { target: 'task', key, content: PNG_1X1 });
+		expect(unnamed.isError).toBe(true);
+		const both = await call('attach_file', {
+			target: 'task',
+			key,
+			filename: 'x.txt',
+			content: PNG_1X1,
+			url: 'https://example.com/x'
+		});
+		expect(both.isError).toBe(true);
+	});
+
+	test('url attachments refuse private hosts and plain http', async () => {
+		const loopback = await call('attach_file', {
+			target: 'task',
+			key,
+			url: `https://127.0.0.1:5173/api/v1/instance`
+		});
+		expect(loopback.isError).toBe(true);
+		expect(textOf(loopback)).toContain('not allowed');
+		const http = await call('attach_file', { target: 'task', key, url: 'http://example.com/x' });
+		expect(http.isError).toBe(true);
+		expect(textOf(http)).toContain('https');
+	});
+
+	// Needs internet; opt in with SMOKE_ONLINE=1.
+	test.skipIf(!process.env.SMOKE_ONLINE)('attach_file downloads a public https URL', async () => {
+		const res = structured<{ id: string; filename: string }>(
+			await ok('attach_file', {
+				target: 'task',
+				key,
+				url: 'https://raw.githubusercontent.com/github/gitignore/main/Node.gitignore'
+			})
+		);
+		expect(res.filename).toBe('Node.gitignore');
+	});
+});

@@ -142,10 +142,12 @@ export async function signInForCookie(email: string, password: string): Promise<
 
 /** The `cookie` header a browser would send after this response. */
 export function cookiesOf(res: Response): string {
-	return res.headers
-		.getSetCookie()
-		.map((c) => c.split(';')[0])
-		.join('; ');
+	return joinCookies(res.headers.getSetCookie());
+}
+
+/** Same, from a list of raw Set-Cookie values. */
+export function joinCookies(setCookie: string[]): string {
+	return setCookie.map((c) => c.split(';')[0]).join('; ');
 }
 
 /** The user id behind a login (via /api/v1/me). */

@@ -17,9 +17,9 @@ import {
 	resolveEntityContext,
 	thumbKey
 } from '$lib/server/attachments';
-import { attachFromUrl } from '$lib/server/attachments-fetch'; // W2
+import { attachBytes, attachFromUrl, decodeInlineUpload } from '$lib/server/attachments-fetch';
 import { storage } from '$lib/server/storage';
-import { formatBytes } from '$lib/config/attachments';
+import { formatBytes, MAX_INLINE_UPLOAD_BYTES } from '$lib/config/attachments';
 import { attachmentDownloadUrl, iso, listMd } from '../format';
 import { isUuid, normalizeKey } from '../ids';
 import {
@@ -407,18 +407,39 @@ export function registerGeneralTools(server: McpServer, ctx: McpContext): void {
 	server.registerTool(
 		'attach_file',
 		{
-			title: 'Attach file from URL',
-			description:
-				'Download a public https URL server-side and attach it to a ticket or task (`target` + display `key`). Requires write access on the parent (ticket: org.tickets.edit.any or comment; task: project.tasks.edit.any or comment). Limits: https only, no private/loopback hosts, ≤3 redirects, 25 MiB, 20 s. Optional `filename` overrides the name derived from the response. Returns the attachment id.',
-			inputSchema: z.object({
-				target: z.enum(['ticket', 'task']).describe('Parent kind.'),
-				key: z.string().describe('Parent display id (e.g. `TRACK-108` or `WEB-12`).'),
-				url: z.url().describe('Public https URL of the file.'),
-				filename: z.string().max(255).optional().describe('Override filename.')
-			}),
+			title: 'Attach file',
+			description: `Attach a file to a ticket or task (\`target\` + display \`key\`), either from a public https \`url\` (downloaded server-side: https only, no private/loopback hosts, ≤3 redirects, 25 MiB, 20 s) or from inline \`content\` (base64 of the file bytes, or a data: URL; ≤${MAX_INLINE_UPLOAD_BYTES / 1024 / 1024} MiB decoded — use this for local files). Exactly one of \`url\` / \`content\`. \`filename\` is required with \`content\` and optional with \`url\` (overrides the detected name); \`mimeType\` is derived from the filename when omitted. Requires write access on the parent (ticket: org.tickets.edit.any or comment; task: project.tasks.edit.any or comment). Returns the attachment id.`,
+			inputSchema: z
+				.object({
+					target: z.enum(['ticket', 'task']).describe('Parent kind.'),
+					key: z.string().describe('Parent display id (e.g. `TRACK-108` or `WEB-12`).'),
+					url: z.url().optional().describe('Public https URL of the file.'),
+					content: z
+						.string()
+						.optional()
+						.describe('File bytes as base64 (or a data: URL). Alternative to `url`.'),
+					filename: z
+						.string()
+						.max(255)
+						.optional()
+						.describe(
+							'Filename (required with `content`; overrides the detected name with `url`).'
+						),
+					mimeType: z
+						.string()
+						.max(120)
+						.optional()
+						.describe('MIME type of `content` (default: derived from `filename`).')
+				})
+				.refine((v) => !!v.url !== !!v.content, {
+					message: 'Provide exactly one of `url` or `content`.'
+				})
+				.refine((v) => !v.content || !!v.filename?.trim(), {
+					message: '`filename` is required with `content`.'
+				}),
 			annotations: WRITE
 		},
-		guarded(async ({ target, key, url, filename }) => {
+		guarded(async ({ target, key, url, content, filename, mimeType }) => {
 			let entityId: string;
 			let display: string;
 			if (target === 'ticket') {
@@ -430,12 +451,20 @@ export function registerGeneralTools(server: McpServer, ctx: McpContext): void {
 				entityId = ref.id;
 				display = ref.display;
 			}
-			const a = await attachFromUrl(ctx.locals, {
-				entityType: target,
-				entityId,
-				url,
-				filename: filename?.trim() || undefined
-			});
+			const a = content
+				? await attachBytes(ctx.locals, {
+						entityType: target,
+						entityId,
+						bytes: decodeInlineUpload(content),
+						filename: filename!.trim(),
+						mimeType
+					})
+				: await attachFromUrl(ctx.locals, {
+						entityType: target,
+						entityId,
+						url: url!,
+						filename: filename?.trim() || undefined
+					});
 			return text(
 				`Attached **${a.filename}** (${a.mimeType}, ${formatBytes(a.sizeBytes)}) to ${display} — id \`${a.id}\`\n- Download: ${attachmentDownloadUrl(ctx.origin, a.id)}`,
 				{

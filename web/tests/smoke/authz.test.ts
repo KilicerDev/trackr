@@ -13,10 +13,10 @@ import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import {
 	api,
 	BASE_URL,
-	cookiesOf,
 	DEMO,
 	formAction,
 	idOf,
+	joinCookies,
 	requireServer,
 	signInForBearerToken,
 	signInForCookie,
@@ -137,9 +137,7 @@ describe('impersonation', () => {
 			{ cookie: rootCookie }
 		);
 		expect(r.type).toBe('success');
-		const impersonated = cookiesOf(
-			new Response(null, { headers: r.setCookie.map((c) => ['set-cookie', c]) })
-		);
+		const impersonated = joinCookies(r.setCookie);
 		const me = await fetch(`${BASE_URL}/api/v1/me`, { headers: { cookie: impersonated } });
 		expect(((await me.json()) as { user: { email: string } }).user.email).toBe(DEMO.user.email);
 		const stop = await fetch(`${BASE_URL}/stop-impersonating`, {
@@ -157,9 +155,7 @@ describe('impersonation', () => {
 			{ cookie: rootCookie }
 		);
 		expect(r.type).toBe('success');
-		const impersonated = cookiesOf(
-			new Response(null, { headers: r.setCookie.map((c) => ['set-cookie', c]) })
-		);
+		const impersonated = joinCookies(r.setCookie);
 		const page = await fetch(`${BASE_URL}/admin/users`, { headers: { cookie: impersonated } });
 		expect(page.status).toBe(200);
 		// …but cannot perform admin mutations from inside the impersonation.

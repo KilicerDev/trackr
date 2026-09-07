@@ -1,6 +1,9 @@
-// Server-side download of a remote file for attaching to a ticket/task (the
-// MCP `attach_file` tool). The model supplies an https URL; we fetch it here,
-// so the fetch is SSRF-guarded:
+// Attaching a file to a ticket/task on behalf of an MCP caller — either by
+// downloading a remote https URL server-side or from bytes the caller sent
+// inline (base64; `decodeInlineUpload`). Both end in `attachToEntity`, which
+// proves the parent exists, checks write access, then stores the file.
+//
+// The URL path is SSRF-guarded:
 //   - https only, no credentials in the URL
 //   - the host is resolved with dns.lookup and every address must be public
 //     (loopback, private, link-local, CGNAT, unspecified and their IPv6
@@ -13,7 +16,11 @@
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import { error } from '@sveltejs/kit';
-import { MAX_UPLOAD_BYTES, type AttachmentEntityType } from '$lib/config/attachments';
+import {
+	MAX_INLINE_UPLOAD_BYTES,
+	MAX_UPLOAD_BYTES,
+	type AttachmentEntityType
+} from '$lib/config/attachments';
 import {
 	authorizeAttachmentAccess,
 	createAttachment,
@@ -117,7 +124,7 @@ function filenameFromDisposition(header: string | null): string | null {
 	return v ? v.trim() : null;
 }
 
-function sanitizeFilename(raw: string | null | undefined): string {
+export function sanitizeFilename(raw: string | null | undefined): string {
 	const base = (raw ?? '')
 		.split(/[\\/]/)
 		.pop()!
@@ -216,48 +223,154 @@ export async function fetchRemoteFile(url: string): Promise<RemoteFile> {
 	}
 }
 
-export type AttachFromUrlInput = {
+// ─── Inline (base64) uploads ────────────────────────────────────────────────
+
+/** MIME by extension for inline uploads that don't declare one. Images are
+ *  re-sniffed by `createAttachment` anyway; this mostly matters for previews
+ *  and downloads of documents. */
+const MIME_BY_EXTENSION: Record<string, string> = {
+	png: 'image/png',
+	jpg: 'image/jpeg',
+	jpeg: 'image/jpeg',
+	gif: 'image/gif',
+	webp: 'image/webp',
+	avif: 'image/avif',
+	heic: 'image/heic',
+	heif: 'image/heif',
+	svg: 'image/svg+xml',
+	pdf: 'application/pdf',
+	txt: 'text/plain',
+	md: 'text/markdown',
+	csv: 'text/csv',
+	json: 'application/json',
+	xml: 'application/xml',
+	html: 'text/html',
+	zip: 'application/zip',
+	xls: 'application/vnd.ms-excel',
+	xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	doc: 'application/msword',
+	docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+};
+
+export function mimeFromFilename(filename: string): string {
+	const ext = filename.toLowerCase().split('.').pop() ?? '';
+	return MIME_BY_EXTENSION[ext] ?? 'application/octet-stream';
+}
+
+const BASE64_RE = /^[A-Za-z0-9+/]*={0,2}$/;
+
+/**
+ * Decode a base64 payload sent inline through MCP. Accepts a bare base64
+ * string or a `data:*;base64,` URL, ignores whitespace, and rejects anything
+ * that would decode to more than MAX_INLINE_UPLOAD_BYTES *before* decoding
+ * (the encoded length bounds the decoded size), so an oversized payload
+ * never gets buffered twice.
+ */
+export function decodeInlineUpload(content: string): Buffer {
+	let b64 = content.trim();
+	const dataUrl = /^data:[^;,]*;base64,/i.exec(b64);
+	if (dataUrl) b64 = b64.slice(dataUrl[0].length);
+	b64 = b64.replace(/\s+/g, '');
+	if (!b64) error(400, 'The file content is empty.');
+	// Every 4 base64 chars encode 3 bytes; padding only makes it smaller.
+	if ((b64.length * 3) / 4 - 2 > MAX_INLINE_UPLOAD_BYTES) {
+		error(413, `Inline files are limited to ${MAX_INLINE_UPLOAD_BYTES / 1024 / 1024} MiB.`);
+	}
+	if (!BASE64_RE.test(b64)) error(400, 'The file content is not valid base64.');
+	const bytes = Buffer.from(b64, 'base64');
+	if (bytes.length === 0) error(400, 'The file content is empty.');
+	if (bytes.length > MAX_INLINE_UPLOAD_BYTES) {
+		error(413, `Inline files are limited to ${MAX_INLINE_UPLOAD_BYTES / 1024 / 1024} MiB.`);
+	}
+	return bytes;
+}
+
+// ─── Attaching ──────────────────────────────────────────────────────────────
+
+type AttachTarget = {
 	entityType: Extract<AttachmentEntityType, 'ticket' | 'task'>;
 	entityId: string;
+};
+
+export type AttachFromUrlInput = AttachTarget & {
 	url: string;
 	/** Overrides the detected filename. */
 	filename?: string | null;
 };
 
+export type AttachBytesInput = AttachTarget & {
+	bytes: Buffer;
+	filename: string;
+	/** Declared MIME; derived from the filename when omitted. */
+	mimeType?: string | null;
+};
+
 /**
- * Attach a remote file to a ticket or task as the calling user: prove the
- * parent exists (404), check write access (403), download (400/403/404/413),
- * then store via `createAttachment`.
+ * Prove the parent exists (404) and the caller may write to it (403), then
+ * store the file via `createAttachment` (400/413 on empty / too large).
+ */
+async function attachToEntity(
+	locals: App.Locals,
+	target: AttachTarget,
+	file: RemoteFile
+): Promise<AttachmentPublic> {
+	if (!locals.user) error(401, 'Not authenticated.');
+	if (target.entityType !== 'ticket' && target.entityType !== 'task') {
+		error(400, 'Attachments can be added to tickets and tasks only.');
+	}
+	const ctx = await resolveEntityContext(target.entityType, target.entityId);
+	if (!ctx) error(404, 'Not found.');
+	if (!(await authorizeAttachmentAccess(locals, target.entityType, ctx, 'write'))) {
+		error(403, 'You do not have permission to attach files here.');
+	}
+	try {
+		return await createAttachment({
+			entityType: target.entityType,
+			entityId: target.entityId,
+			orgId: ctx.orgId,
+			projectId: ctx.projectId,
+			bytes: file.bytes,
+			filename: file.filename,
+			mimeType: file.mimeType,
+			uploadedBy: locals.user.id
+		});
+	} catch (e) {
+		const code = (e as { code?: string }).code;
+		if (code === 'too_large') error(413, 'File exceeds the maximum upload size.');
+		if (code === 'empty') error(400, 'The file is empty.');
+		throw e;
+	}
+}
+
+/**
+ * Attach a remote https file to a ticket or task as the calling user
+ * (download errors: 400/403/404/413).
  */
 export async function attachFromUrl(
 	locals: App.Locals,
 	input: AttachFromUrlInput
 ): Promise<AttachmentPublic> {
+	// Access is checked before the download so a stranger can't use us as a
+	// fetch proxy; attachToEntity re-checks it, which is cheap.
 	if (!locals.user) error(401, 'Not authenticated.');
-	if (input.entityType !== 'ticket' && input.entityType !== 'task') {
-		error(400, 'Attachments can be added to tickets and tasks only.');
-	}
 	const ctx = await resolveEntityContext(input.entityType, input.entityId);
 	if (!ctx) error(404, 'Not found.');
 	if (!(await authorizeAttachmentAccess(locals, input.entityType, ctx, 'write'))) {
 		error(403, 'You do not have permission to attach files here.');
 	}
 	const remote = await fetchRemoteFile(input.url);
-	try {
-		return await createAttachment({
-			entityType: input.entityType,
-			entityId: input.entityId,
-			orgId: ctx.orgId,
-			projectId: ctx.projectId,
-			bytes: remote.bytes,
-			filename: input.filename?.trim() ? sanitizeFilename(input.filename) : remote.filename,
-			mimeType: remote.mimeType,
-			uploadedBy: locals.user.id
-		});
-	} catch (e) {
-		const code = (e as { code?: string }).code;
-		if (code === 'too_large') error(413, 'File exceeds the maximum upload size.');
-		if (code === 'empty') error(400, 'The remote file is empty.');
-		throw e;
-	}
+	return attachToEntity(locals, input, {
+		...remote,
+		filename: input.filename?.trim() ? sanitizeFilename(input.filename) : remote.filename
+	});
+}
+
+/** Attach bytes the caller sent inline (already decoded and size-checked). */
+export async function attachBytes(
+	locals: App.Locals,
+	input: AttachBytesInput
+): Promise<AttachmentPublic> {
+	const filename = sanitizeFilename(input.filename);
+	const mimeType = input.mimeType?.split(';')[0].trim().toLowerCase() || mimeFromFilename(filename);
+	return attachToEntity(locals, input, { bytes: input.bytes, filename, mimeType });
 }

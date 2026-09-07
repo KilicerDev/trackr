@@ -9,6 +9,14 @@
 /** Maximum size of a single uploaded file, in bytes (25 MiB). */
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
+/**
+ * Maximum DECODED size of a file sent inline (base64) through the MCP
+ * `attach_file` tool, in bytes (10 MiB). Lower than the upload cap because the
+ * bytes travel inside a JSON-RPC message (+33 % as base64) rather than as a
+ * multipart stream.
+ */
+export const MAX_INLINE_UPLOAD_BYTES = 10 * 1024 * 1024;
+
 /** Maximum number of files that may be staged in one create/upload batch. */
 export const MAX_FILES_PER_BATCH = 20;
 
