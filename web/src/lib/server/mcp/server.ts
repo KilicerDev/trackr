@@ -17,6 +17,7 @@ import { registerWikiTools } from './tools/wiki';
 import { registerNoteTools } from './tools/notes';
 import { registerResources } from './tools/resources';
 import { registerPrompts } from './tools/prompts';
+import { registerUiResources } from './ui';
 
 export const MCP_SERVER_NAME = 'trackr';
 export const MCP_SERVER_VERSION = '1.0.0';
@@ -48,5 +49,6 @@ export function buildServer(principal: McpPrincipal, origin: string): McpServer 
 	registerNoteTools(server, ctx);
 	registerResources(server, ctx);
 	registerPrompts(server, ctx);
+	registerUiResources(server, origin);
 	return server;
 }

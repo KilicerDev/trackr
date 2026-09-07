@@ -30,6 +30,7 @@ import {
 import { listLinkedTasks } from '$lib/server/tasks';
 import { listAttachments, listAttachmentsForMany } from '$lib/server/attachments';
 import { attachFromUrl } from '$lib/server/attachments-fetch'; // W2
+import { TICKETS_UI_URI, uiToolMeta } from '../ui';
 import { describeCandidates, normalizeDisplayId, resolveUserRefs } from '../ids';
 import {
 	listMd,
@@ -221,6 +222,7 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 				total: z.number(),
 				tickets: z.array(
 					z.object({
+						id: z.string(),
 						key: z.string(),
 						subject: z.string(),
 						status: z.string(),
@@ -233,11 +235,15 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 						messageCount: z.number(),
 						lastActivityAt: z.string().nullable(),
 						updatedAt: z.string(),
-						createdAt: z.string()
+						createdAt: z.string(),
+						url: z.string()
 					})
 				)
 			}),
-			annotations: READ_ONLY
+			annotations: READ_ONLY,
+			// MCP Apps: hosts that support inline UI render this result with the
+			// ticket table widget (src/lib/server/mcp/ui); others show the text.
+			_meta: uiToolMeta(TICKETS_UI_URI)
 		},
 		guarded(async ({ segment, status, orgKey, limit }) => {
 			const uid = ctx.locals.user.id;
@@ -261,7 +267,11 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 			const lines = page.map((t) => ticketLine(t, users));
 			return text(listMd(`Tickets (${segment})`, lines, total), {
 				total,
-				tickets: page.map((t) => ticketSummary(t, users))
+				tickets: page.map((t) => ({
+					id: t.id,
+					...ticketSummary(t, users),
+					url: `${ctx.origin}/tickets/${t.id}`
+				}))
 			});
 		})
 	);

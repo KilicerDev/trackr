@@ -428,3 +428,49 @@ describe('attachments', () => {
 		expect(res.filename).toBe('Node.gitignore');
 	});
 });
+
+describe('MCP Apps (inline UI)', () => {
+	const UI_URI = 'ui://trackr/tickets';
+	const UI_MIME = 'text/html;profile=mcp-app';
+
+	test('list_tickets advertises its widget in _meta', async () => {
+		const { tools } = await client.listTools();
+		const tool = tools.find((t) => t.name === 'list_tickets')!;
+		const meta = (tool._meta ?? {}) as { ui?: { resourceUri?: string }; 'ui/resourceUri'?: string };
+		expect(meta.ui?.resourceUri).toBe(UI_URI);
+		expect(meta['ui/resourceUri']).toBe(UI_URI);
+	});
+
+	test('the widget is listed as an MCP App resource with a sandbox domain', async () => {
+		const { resources } = await client.listResources();
+		const r = resources.find((x) => x.uri === UI_URI)!;
+		expect(r).toBeDefined();
+		expect(r.mimeType).toBe(UI_MIME);
+		const meta = (r._meta ?? {}) as { ui?: { domain?: string; prefersBorder?: boolean } };
+		expect(meta.ui?.domain).toMatch(/^[0-9a-f]{32}\.claudemcpcontent\.com$/);
+	});
+
+	test('reading ui://trackr/tickets returns a self-contained HTML app', async () => {
+		const res = await client.readResource({ uri: UI_URI });
+		const [c] = res.contents;
+		expect(c.mimeType).toBe(UI_MIME);
+		const html = 'text' in c ? c.text : '';
+		expect(html).toStartWith('<!doctype html>');
+		expect(html).toContain('trackr-tickets'); // the App's name
+		expect(html.length).toBeGreaterThan(100_000); // ext-apps client is inlined
+		// Single file: no external scripts or stylesheets to load.
+		expect(html).not.toMatch(/<script[^>]+src=/);
+		expect(html).not.toMatch(/<link[^>]+rel="stylesheet"/);
+	});
+
+	test('list_tickets rows carry id + url for click-to-open', async () => {
+		const res = structured<{ tickets: { id: string; key: string; url: string }[] }>(
+			await ok('list_tickets', { segment: 'all', limit: 3 })
+		);
+		expect(res.tickets.length).toBeGreaterThan(0);
+		for (const t of res.tickets) {
+			expect(t.id).toMatch(/^[0-9a-f-]{36}$/);
+			expect(t.url).toBe(`${BASE_URL}/tickets/${t.id}`);
+		}
+	});
+});

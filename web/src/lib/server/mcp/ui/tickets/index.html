@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>trackr · tickets</title>
+		<link rel="stylesheet" href="./style.css" />
+	</head>
+	<body>
+		<div id="app" class="app">
+			<div class="toolbar">
+				<input
+					id="q"
+					class="search"
+					type="search"
+					placeholder="Filter tickets…"
+					autocomplete="off"
+				/>
+				<div id="chips" class="chips"></div>
+				<div id="count" class="count"></div>
+			</div>
+			<div class="scroll">
+				<table class="table">
+					<thead>
+						<tr id="head"></tr>
+					</thead>
+					<tbody id="rows"></tbody>
+				</table>
+			</div>
+			<div id="empty" class="empty" hidden>No tickets match.</div>
+			<div id="error" class="error" hidden></div>
+		</div>
+		<script type="module" src="./main.ts"></script>
+	</body>
+</html>
