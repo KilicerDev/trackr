@@ -51,6 +51,7 @@ bun run test:go           # go test in cli/ and services/
 bun run test:smoke        # /api/v1 + /api/mcp against a live server
 bun run test:smoke:api    # just the /api/v1 suite
 bun run test:smoke:mcp    # just the MCP suite
+bun run test:smoke:authz  # user-management policy: root, role hierarchy, impersonation
 ```
 
 Every entry point goes through `web/scripts/test/run.ts`, which prints a ✓ per

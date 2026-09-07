@@ -15,7 +15,9 @@
  *               scheduler), rendered from `-json`.
  *   smoke:api   tests/smoke/api.test.ts — the /api/v1 surface, live server.
  *   smoke:mcp   tests/smoke/mcp.test.ts — the /api/mcp endpoint, live server.
- *   smoke       both smoke tiers.
+ *   smoke:authz tests/smoke/authz.test.ts — user-management policy (root,
+ *               role hierarchy, impersonation), live server.
+ *   smoke       all smoke tiers.
  *
  * The smoke tiers need a running trackr + database. The runner first seeds
  * the smoke credentials (scripts/db/seed/test-fixtures.ts), then picks a
@@ -42,9 +44,9 @@ const SPAWN_PORT = 5199;
 const DEV_URL = 'http://127.0.0.1:5173';
 
 // ── CLI ─────────────────────────────────────────────────────────────────────
-type Tier = 'unit' | 'go' | 'smoke:api' | 'smoke:mcp';
-const TIERS: Tier[] = ['unit', 'go', 'smoke:api', 'smoke:mcp'];
-const ALIASES: Record<string, Tier[]> = { smoke: ['smoke:api', 'smoke:mcp'] };
+type Tier = 'unit' | 'go' | 'smoke:api' | 'smoke:mcp' | 'smoke:authz';
+const TIERS: Tier[] = ['unit', 'go', 'smoke:api', 'smoke:mcp', 'smoke:authz'];
+const ALIASES: Record<string, Tier[]> = { smoke: ['smoke:api', 'smoke:mcp', 'smoke:authz'] };
 
 function tierArg(name: string): Set<Tier> | null {
 	const i = process.argv.indexOf(`--${name}`);
@@ -450,6 +452,9 @@ async function tierSmoke(tiers: Tier[]) {
 	try {
 		if (tiers.includes('smoke:api')) await bunTest('smoke:api', 'tests/smoke/api.test.ts', env);
 		if (tiers.includes('smoke:mcp')) await bunTest('smoke:mcp', 'tests/smoke/mcp.test.ts', env);
+		if (tiers.includes('smoke:authz')) {
+			await bunTest('smoke:authz', 'tests/smoke/authz.test.ts', env);
+		}
 	} finally {
 		await server.stop();
 	}
@@ -459,7 +464,7 @@ async function tierSmoke(tiers: Tier[]) {
 const startedAll = Date.now();
 if (wants('unit')) await bunTest('unit', 'src');
 if (wants('go')) await tierGo();
-const smokeTiers = (['smoke:api', 'smoke:mcp'] as Tier[]).filter(wants);
+const smokeTiers = (['smoke:api', 'smoke:mcp', 'smoke:authz'] as Tier[]).filter(wants);
 if (smokeTiers.length) await tierSmoke(smokeTiers);
 
 heading('summary');

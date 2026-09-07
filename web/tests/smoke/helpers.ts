@@ -11,7 +11,9 @@
 //   TRACKR_TEST_URL   base URL of the server (default http://127.0.0.1:5173)
 //   TRACKR_API_KEY    `trk_` key to present (default: the seeded test key)
 //   DEMO_PASSWORD     demo user password (default demo12345)
+//   ROOT_EMAIL / ROOT_PASSWORD  (repo-root .env) enable the root cases in authz.test.ts
 
+import '../../scripts/load-root-env';
 import {
 	TEST_API_KEY,
 	TEST_USER_EMAIL,
@@ -110,4 +112,98 @@ export async function signInForBearerToken(
 		);
 	}
 	return token;
+}
+
+// ─── Session cookies + form actions (authz suite) ───────────────────────────
+
+/** Demo accounts the authz suite acts as (see scripts/db/seed/fixtures.ts). */
+export const DEMO = {
+	admin: { email: 'max.muster@trackr.dev', password: USER_PASSWORD },
+	admin2: { email: 'maja.schmidt@trackr.dev', password: USER_PASSWORD },
+	user: { email: 'leon.vogel@trackr.dev', password: USER_PASSWORD },
+	/** ROOT_EMAIL / ROOT_PASSWORD from the repo-root .env (may be unset). */
+	root: {
+		email: process.env.ROOT_EMAIL ?? '',
+		password: process.env.ROOT_PASSWORD ?? ''
+	}
+} as const;
+
+/** Sign in and return the `cookie` header value for the browser-style session. */
+export async function signInForCookie(email: string, password: string): Promise<string> {
+	const res = await fetch(`${BASE_URL}/api/auth/sign-in/email`, {
+		method: 'POST',
+		headers: { 'content-type': 'application/json' },
+		body: JSON.stringify({ email, password }),
+		signal: AbortSignal.timeout(30_000)
+	});
+	if (!res.ok) throw new Error(`sign-in as ${email} failed (HTTP ${res.status})`);
+	return cookiesOf(res);
+}
+
+/** The `cookie` header a browser would send after this response. */
+export function cookiesOf(res: Response): string {
+	return res.headers
+		.getSetCookie()
+		.map((c) => c.split(';')[0])
+		.join('; ');
+}
+
+/** The user id behind a login (via /api/v1/me). */
+export async function idOf(email: string, password: string): Promise<string> {
+	const token = await signInForBearerToken(email, password);
+	const res = await api<{ user: { id: string } }>('GET', '/api/v1/me', undefined, { token });
+	if (res.status !== 200) throw new Error(`/api/v1/me as ${email} answered ${res.status}`);
+	return res.body.user.id;
+}
+
+/** SvelteKit's JSON envelope for a form action called with x-sveltekit-action. */
+export type ActionResult = {
+	type: 'success' | 'failure' | 'redirect' | 'error';
+	status?: number;
+	location?: string;
+	/** devalue-encoded payload — assert on `type`/`status`, or grep `raw`. */
+	raw: string;
+	setCookie: string[];
+};
+
+/**
+ * Call a SvelteKit form action the way the app's pages do: urlencoded body,
+ * `Origin` (the CSRF rule), `x-sveltekit-action`. Auth is a cookie header or
+ * a bearer session token.
+ */
+export async function formAction(
+	path: string,
+	action: string,
+	fields: Record<string, string>,
+	auth: { cookie: string } | { token: string }
+): Promise<ActionResult> {
+	const headers: Record<string, string> = {
+		origin: BASE_URL,
+		'x-sveltekit-action': 'true',
+		accept: 'application/json',
+		'content-type': 'application/x-www-form-urlencoded'
+	};
+	if ('cookie' in auth) headers.cookie = auth.cookie;
+	else headers.authorization = `Bearer ${auth.token}`;
+	const res = await fetch(`${BASE_URL}${path}?/${action}`, {
+		method: 'POST',
+		headers,
+		body: new URLSearchParams(fields),
+		signal: AbortSignal.timeout(30_000)
+	});
+	const raw = await res.text();
+	let parsed: { type?: ActionResult['type']; status?: number; location?: string; data?: string } =
+		{};
+	try {
+		parsed = JSON.parse(raw);
+	} catch {
+		/* non-JSON (e.g. a 403 from the admin gate) — type 'error' below */
+	}
+	return {
+		type: parsed.type ?? 'error',
+		status: parsed.status ?? res.status,
+		location: parsed.location,
+		raw: parsed.data ?? raw,
+		setCookie: res.headers.getSetCookie()
+	};
 }

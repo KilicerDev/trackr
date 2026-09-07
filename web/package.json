@@ -31,7 +31,8 @@
 		"test:go": "bun run scripts/test/run.ts --only go",
 		"test:smoke": "bun run scripts/test/run.ts --only smoke",
 		"test:smoke:api": "bun run scripts/test/run.ts --only smoke:api",
-		"test:smoke:mcp": "bun run scripts/test/run.ts --only smoke:mcp"
+		"test:smoke:mcp": "bun run scripts/test/run.ts --only smoke:mcp",
+		"test:smoke:authz": "bun run scripts/test/run.ts --only smoke:authz"
 	},
 	"devDependencies": {
 		"@better-auth/cli": "~1.4.21",
