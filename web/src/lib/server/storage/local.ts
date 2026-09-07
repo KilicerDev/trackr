@@ -64,8 +64,9 @@ export class LocalStorageDriver implements StorageDriver {
 		const tmp = `${target}.${randomBytes(8).toString('hex')}.tmp`;
 		try {
 			if (body instanceof ReadableStream) {
-				// Web vs node:stream/web ReadableStream differ only structurally.
-				const nodeStream = Readable.fromWeb(body as NodeWebReadableStream<Uint8Array>);
+				// Web vs node:stream/web ReadableStream differ only structurally
+				// (and @types/bun widens the web one further, hence via unknown).
+				const nodeStream = Readable.fromWeb(body as unknown as NodeWebReadableStream<Uint8Array>);
 				await pipeline(nodeStream, createWriteStream(tmp));
 			} else {
 				await writeFile(tmp, body);
@@ -90,7 +91,9 @@ export class LocalStorageDriver implements StorageDriver {
 		// Confirm existence first so a missing object surfaces as a thrown
 		// error, not an `error` event on a stream the caller has yet to read.
 		if (!(await this.stat(key))) throw new StorageObjectNotFoundError(key);
-		return Readable.toWeb(createReadStream(this.pathFor(key))) as ReadableStream<Uint8Array>;
+		return Readable.toWeb(
+			createReadStream(this.pathFor(key))
+		) as unknown as ReadableStream<Uint8Array>;
 	}
 
 	async stat(key: string): Promise<StorageStat | null> {

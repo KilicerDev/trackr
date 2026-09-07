@@ -9,7 +9,8 @@
  *                            logs, checklists, this week's plan), tickets with
  *                            conversations, chat threads, notes, wiki pages,
  *                            image/file attachments and an inbox for the demo
- *                            user "Max Muster" (max.muster@trackr.dev).
+ *                            user "Max Muster" (max.muster@trackr.dev), plus
+ *                            the smoke-test API key (scripts/db/seed/test-fixtures.ts).
  *
  * Both modes are idempotent — safe to re-run. Demo dates are relative to today,
  * so re-running refreshes the workspace to "this week". Env:
@@ -47,6 +48,9 @@ try {
 		// and fixtures the root-only boot path (container CMD) must not need.
 		const { seedDemo } = await import('./demo');
 		await seedDemo(conn.db);
+		// Smoke-test credentials for Max Muster (tests/smoke/*).
+		const { seedTestFixtures } = await import('./test-fixtures');
+		await seedTestFixtures(conn.db);
 	}
 } catch (err) {
 	const msg = err instanceof Error ? err.message : String(err);

@@ -25,7 +25,13 @@
 		"db:reset": "bun run scripts/db/reset.ts",
 		"db:studio": "drizzle-kit studio",
 		"auth:schema": "better-auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes",
-		"db:seed": "bun run scripts/db/seed/index.ts"
+		"db:seed": "bun run scripts/db/seed/index.ts",
+		"test": "bun run scripts/test/run.ts",
+		"test:unit": "bun run scripts/test/run.ts --only unit",
+		"test:go": "bun run scripts/test/run.ts --only go",
+		"test:smoke": "bun run scripts/test/run.ts --only smoke",
+		"test:smoke:api": "bun run scripts/test/run.ts --only smoke:api",
+		"test:smoke:mcp": "bun run scripts/test/run.ts --only smoke:mcp"
 	},
 	"devDependencies": {
 		"@better-auth/cli": "~1.4.21",
@@ -38,6 +44,7 @@
 		"@tailwindcss/forms": "^0.5.11",
 		"@tailwindcss/typography": "^0.5.19",
 		"@tailwindcss/vite": "^4.2.2",
+		"@types/bun": "^1.4.1",
 		"@types/jsdom": "^28.0.3",
 		"@types/node": "^24",
 		"@types/pdfmake": "^0.3.3",

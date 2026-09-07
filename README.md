@@ -40,3 +40,27 @@ npm run build
 You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+
+## Testing
+
+```sh
+cd web
+bun run test              # everything: unit + Go + smoke, one summary board
+bun run test:unit         # pure TypeScript modules (bun test, no database)
+bun run test:go           # go test in cli/ and services/
+bun run test:smoke        # /api/v1 + /api/mcp against a live server
+bun run test:smoke:api    # just the /api/v1 suite
+bun run test:smoke:mcp    # just the MCP suite
+```
+
+Every entry point goes through `web/scripts/test/run.ts`, which prints a ✓ per
+passed test and exits non-zero on any failure. Unit tests live next to the code
+as `*.test.ts`; the smoke suites are in `web/tests/smoke`.
+
+The smoke tiers need a running trackr with the demo dataset
+(`bun run db:seed --all`, which also seeds their credentials). They act as the
+demo user Max Muster, title every row they create with `[smoke]`, and delete it
+again. Server selection: `TRACKR_TEST_URL` if set, otherwise the dev server on
+`127.0.0.1:5173`, otherwise the runner starts its own `vite dev` on `:5199` for
+the run (`--spawn` forces that). Missing prerequisites skip a tier with a reason
+instead of failing it.
