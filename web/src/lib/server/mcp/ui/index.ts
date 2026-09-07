@@ -17,14 +17,18 @@
 // and all it does is write the keys below.
 
 import type { McpServer } from '@modelcontextprotocol/server';
-import ticketsHtml from './dist/tickets/index.html?raw';
+import listHtml from './dist/list/index.html?raw';
+import detailHtml from './dist/detail/index.html?raw';
 
 /** MIME type that marks a resource as an MCP App. */
 export const UI_RESOURCE_MIME_TYPE = 'text/html;profile=mcp-app';
 
-// `ui://<server>/<file>.html` is the convention every official example uses;
-// hosts may treat the path like a document name, so keep the extension.
-export const TICKETS_UI_URI = 'ui://trackr/tickets.html';
+// `ui://<server>/<file>.html` is the convention every official example uses
+// and Claude Desktop only mounts the frame when the path has the extension.
+/** Table of tickets / tasks / projects / search hits (list_* and search). */
+export const LIST_UI_URI = 'ui://trackr/list.html';
+/** One task or ticket in full (get_*, create_*, update_*, checklist_toggle, log_time). */
+export const DETAIL_UI_URI = 'ui://trackr/detail.html';
 
 /**
  * `_meta` for a tool that has a widget. Both the spec key (`ui.resourceUri`)
@@ -36,12 +40,20 @@ export function uiToolMeta(resourceUri: string): Record<string, unknown> {
 
 const WIDGETS: { uri: string; name: string; title: string; description: string; html: string }[] = [
 	{
-		uri: TICKETS_UI_URI,
-		name: 'tickets-table',
-		title: 'Ticket table',
+		uri: LIST_UI_URI,
+		name: 'list',
+		title: 'List',
 		description:
-			'Interactive table for list_tickets results: status and priority badges, sorting, filtering, click to open in trackr.',
-		html: ticketsHtml
+			'Interactive table for list_tickets / list_tasks / list_projects / search results: badges, filtering, sorting, click to open in trackr.',
+		html: listHtml
+	},
+	{
+		uri: DETAIL_UI_URI,
+		name: 'detail',
+		title: 'Task / ticket detail',
+		description:
+			'One task or ticket in full: description, checklist (toggle), status, assignees, attachments, comments / timeline, time logs.',
+		html: detailHtml
 	}
 ];
 

@@ -3,17 +3,18 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>trackr · tickets</title>
+		<title>trackr · list</title>
+		<link rel="stylesheet" href="../shared/base.css" />
 		<link rel="stylesheet" href="./style.css" />
 	</head>
 	<body>
-		<div id="app" class="app">
+		<div class="app">
 			<div class="toolbar">
 				<input
 					id="q"
-					class="search"
+					class="control search"
 					type="search"
-					placeholder="Filter tickets…"
+					placeholder="Filter…"
 					autocomplete="off"
 				/>
 				<div id="chips" class="chips"></div>
@@ -27,7 +28,7 @@
 					<tbody id="rows"></tbody>
 				</table>
 			</div>
-			<div id="empty" class="empty" hidden>No tickets match.</div>
+			<div id="empty" class="empty" hidden>Nothing matches.</div>
 			<div id="error" class="error" hidden></div>
 		</div>
 		<script type="module" src="./main.ts"></script>

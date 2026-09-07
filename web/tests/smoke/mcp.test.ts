@@ -430,50 +430,160 @@ describe('attachments', () => {
 });
 
 describe('MCP Apps (inline UI)', () => {
-	const UI_URI = 'ui://trackr/tickets.html';
+	const LIST_URI = 'ui://trackr/list.html';
+	const DETAIL_URI = 'ui://trackr/detail.html';
 	const UI_MIME = 'text/html;profile=mcp-app';
+	const LIST_TOOLS = ['list_tickets', 'list_tasks', 'list_projects', 'search'];
+	const DETAIL_TOOLS = [
+		'get_task',
+		'create_task',
+		'update_task',
+		'log_time',
+		'checklist_toggle',
+		'get_ticket',
+		'create_ticket',
+		'update_ticket'
+	];
 
-	test('list_tickets advertises its widget in _meta', async () => {
+	test('list and detail tools advertise their widget in _meta', async () => {
 		const { tools } = await client.listTools();
-		const tool = tools.find((t) => t.name === 'list_tickets')!;
-		const meta = (tool._meta ?? {}) as { ui?: { resourceUri?: string }; 'ui/resourceUri'?: string };
-		expect(meta.ui?.resourceUri).toBe(UI_URI);
-		expect(meta['ui/resourceUri']).toBe(UI_URI);
+		const uriOf = (name: string) => {
+			const meta = (tools.find((t) => t.name === name)?._meta ?? {}) as {
+				ui?: { resourceUri?: string };
+				'ui/resourceUri'?: string;
+			};
+			expect(meta['ui/resourceUri'], name).toBe(meta.ui?.resourceUri);
+			return meta.ui?.resourceUri;
+		};
+		for (const name of LIST_TOOLS) expect(uriOf(name), name).toBe(LIST_URI);
+		for (const name of DETAIL_TOOLS) expect(uriOf(name), name).toBe(DETAIL_URI);
+		expect(uriOf('delete_task')).toBeUndefined();
 	});
 
-	test('the widget is listed as an MCP App resource (no host-specific domain)', async () => {
+	test('both widgets are listed as MCP App resources (no host-specific domain)', async () => {
 		const { resources } = await client.listResources();
-		const r = resources.find((x) => x.uri === UI_URI)!;
-		expect(r).toBeDefined();
-		expect(r.mimeType).toBe(UI_MIME);
-		const meta = (r._meta ?? {}) as { ui?: { domain?: string; prefersBorder?: boolean } };
-		expect(meta.ui?.prefersBorder).toBe(true);
-		// A `domain` would point Claude Desktop at a sandbox host that only
-		// exists for claude.ai remote connectors — the frame then fails to load.
-		expect(meta.ui?.domain).toBeUndefined();
+		for (const uri of [LIST_URI, DETAIL_URI]) {
+			const r = resources.find((x) => x.uri === uri)!;
+			expect(r, uri).toBeDefined();
+			expect(r.mimeType, uri).toBe(UI_MIME);
+			const meta = (r._meta ?? {}) as { ui?: { domain?: string; prefersBorder?: boolean } };
+			expect(meta.ui?.prefersBorder, uri).toBe(true);
+			// A `domain` would point Claude Desktop at a sandbox host that only
+			// exists for claude.ai remote connectors — the frame then fails to load.
+			expect(meta.ui?.domain, uri).toBeUndefined();
+		}
 	});
 
-	test('reading ui://trackr/tickets.html returns a self-contained HTML app', async () => {
-		const res = await client.readResource({ uri: UI_URI });
-		const [c] = res.contents;
-		expect(c.mimeType).toBe(UI_MIME);
-		const html = 'text' in c ? c.text : '';
-		expect(html).toStartWith('<!doctype html>');
-		expect(html).toContain('trackr-tickets'); // the App's name
-		expect(html.length).toBeGreaterThan(100_000); // ext-apps client is inlined
-		// Single file: no external scripts or stylesheets to load.
-		expect(html).not.toMatch(/<script[^>]+src=/);
-		expect(html).not.toMatch(/<link[^>]+rel="stylesheet"/);
+	test('reading each widget returns a self-contained HTML app', async () => {
+		for (const [uri, appName] of [
+			[LIST_URI, 'trackr-list'],
+			[DETAIL_URI, 'trackr-detail']
+		]) {
+			const res = await client.readResource({ uri });
+			const [c] = res.contents;
+			expect(c.mimeType, uri).toBe(UI_MIME);
+			const html = 'text' in c ? c.text : '';
+			expect(html, uri).toStartWith('<!doctype html>');
+			expect(html, uri).toContain(appName);
+			expect(html.length, uri).toBeGreaterThan(100_000); // ext-apps client inlined
+			expect(html, uri).not.toMatch(/<script[^>]+src=/);
+			expect(html, uri).not.toMatch(/<link[^>]+rel="stylesheet"/);
+		}
 	});
 
-	test('list_tickets rows carry id + url for click-to-open', async () => {
-		const res = structured<{ tickets: { id: string; key: string; url: string }[] }>(
+	test('list rows carry an app url for click-to-open', async () => {
+		const tickets = structured<{ tickets: { id: string; url: string }[] }>(
 			await ok('list_tickets', { segment: 'all', limit: 3 })
 		);
-		expect(res.tickets.length).toBeGreaterThan(0);
-		for (const t of res.tickets) {
-			expect(t.id).toMatch(/^[0-9a-f-]{36}$/);
-			expect(t.url).toBe(`${BASE_URL}/tickets/${t.id}`);
-		}
+		for (const t of tickets.tickets) expect(t.url).toBe(`${BASE_URL}/tickets/${t.id}`);
+		const tasks = structured<{ tasks: { key: string; url: string }[] }>(
+			await ok('list_tasks', { scope: 'all', limit: 3 })
+		);
+		for (const t of tasks.tasks) expect(t.url).toBe(`${BASE_URL}/tasks?task=${t.key}`);
+		const projects = structured<{ projects: { id: string; url: string | null }[] }>(
+			await ok('list_projects', { limit: 3 })
+		);
+		for (const p of projects.projects) expect(p.url).toBe(`${BASE_URL}/projects/${p.id}`);
+		const hits = structured<{ results: { url: string }[] }>(await ok('search', { query: 'in' }));
+		for (const r of hits.results) expect(r.url).toStartWith(`${BASE_URL}/`);
+	});
+
+	test('task write tools return the full task for the detail widget', async () => {
+		const title = `${SMOKE_PREFIX} mcp detail ${run}`;
+		type Detail = {
+			task: {
+				kind: string;
+				key: string;
+				url: string;
+				status: string;
+				description: string;
+				checklist: { id: string; text: string; done: boolean }[];
+				comments: unknown[];
+				timeLogs: { minutes: number }[];
+				totalMinutes: number;
+			};
+		};
+		const made = structured<Detail>(
+			await ok('create_task', {
+				projectKey,
+				title,
+				description: 'Some **markdown**',
+				checklist: [{ text: 'first' }, { text: 'second', done: true }]
+			})
+		);
+		created.taskKeys.add(made.task.key);
+		expect(made.task.kind).toBe('task');
+		expect(made.task.description).toBe('Some **markdown**');
+		expect(made.task.checklist.map((c) => c.done)).toEqual([false, true]);
+		expect(made.task.url).toBe(`${BASE_URL}/tasks?task=${made.task.key}`);
+
+		const updated = structured<Detail & { changed: boolean }>(
+			await ok('update_task', { key: made.task.key, status: 'in_progress' })
+		);
+		expect(updated.changed).toBe(true);
+		expect(updated.task.status).toBe('in_progress');
+		expect(updated.task.checklist).toHaveLength(2);
+
+		const toggled = structured<Detail>(
+			await ok('checklist_toggle', {
+				target: 'task',
+				key: made.task.key,
+				itemId: made.task.checklist[0].id,
+				done: true
+			})
+		);
+		expect(toggled.task.checklist.every((c) => c.done)).toBe(true);
+
+		const logged = structured<Detail>(
+			await ok('log_time', { taskKey: made.task.key, minutes: 25 })
+		);
+		expect(logged.task.totalMinutes).toBe(25);
+
+		const fetched = structured<Detail>(await ok('get_task', { key: made.task.key }));
+		expect(fetched.task.timeLogs[0].minutes).toBe(25);
+		expect(fetched.task.status).toBe('in_progress');
+	});
+
+	test('get_ticket returns the full ticket for the detail widget', async () => {
+		const list = structured<{ tickets: { key: string }[] }>(
+			await ok('list_tickets', { segment: 'all', limit: 1 })
+		);
+		const key = list.tickets[0].key;
+		const d = structured<{
+			ticket: {
+				kind: string;
+				key: string;
+				url: string;
+				messages: { kind: string; body: string; author: { name: string } | null }[];
+				checklist: unknown[];
+				attachments: unknown[];
+				assignees: { name: string }[];
+			};
+		}>(await ok('get_ticket', { key }));
+		expect(d.ticket.kind).toBe('ticket');
+		expect(d.ticket.key).toBe(key);
+		expect(d.ticket.url).toContain('/tickets/');
+		expect(Array.isArray(d.ticket.messages)).toBe(true);
+		expect(Array.isArray(d.ticket.checklist)).toBe(true);
 	});
 });

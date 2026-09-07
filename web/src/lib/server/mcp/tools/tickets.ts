@@ -30,14 +30,17 @@ import {
 import { listLinkedTasks } from '$lib/server/tasks';
 import { listAttachments, listAttachmentsForMany } from '$lib/server/attachments';
 import { attachFromUrl } from '$lib/server/attachments-fetch'; // W2
-import { TICKETS_UI_URI, uiToolMeta } from '../ui';
+import { DETAIL_UI_URI, LIST_UI_URI, uiToolMeta } from '../ui';
 import { describeCandidates, normalizeDisplayId, resolveUserRefs } from '../ids';
 import {
+	type TicketMessageWithFiles,
+	type UserDirectory,
 	listMd,
+	ticketDetailDto,
 	ticketDetailMd,
 	ticketLine,
 	ticketSummary,
-	type TicketMessageWithFiles
+	ticketUrl
 } from '../format';
 import {
 	attachmentUrlsSchema,
@@ -134,6 +137,7 @@ export type TicketDetail = {
 	messages: TicketMessageWithFiles[];
 	attachments: Awaited<ReturnType<typeof listAttachments>>;
 	linkedTasks: Awaited<ReturnType<typeof listLinkedTasks>>;
+	users: UserDirectory;
 	markdown: string;
 };
 
@@ -173,7 +177,7 @@ export async function loadTicketDetail(ctx: McpContext, key: string): Promise<Ti
 		linkedTasks,
 		origin: ctx.origin
 	});
-	return { ticket, messages, attachments, linkedTasks, markdown };
+	return { ticket, messages, attachments, linkedTasks, users, markdown };
 }
 
 async function attachUrls(
@@ -243,7 +247,7 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 			annotations: READ_ONLY,
 			// MCP Apps: hosts that support inline UI render this result with the
 			// ticket table widget (src/lib/server/mcp/ui); others show the text.
-			_meta: uiToolMeta(TICKETS_UI_URI)
+			_meta: uiToolMeta(LIST_UI_URI)
 		},
 		guarded(async ({ segment, status, orgKey, limit }) => {
 			const uid = ctx.locals.user.id;
@@ -270,7 +274,7 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 				tickets: page.map((t) => ({
 					id: t.id,
 					...ticketSummary(t, users),
-					url: `${ctx.origin}/tickets/${t.id}`
+					url: ticketUrl(ctx.origin, t.id)
 				}))
 			});
 		})
@@ -283,26 +287,12 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 			description:
 				'Full view of one ticket by display id (e.g. `TRACK-108`): fields, description (markdown), checklist with item ids, attachments with ids and download URLs, the message timeline (internal notes only if you are staff), and linked tasks. Attachment ids can be passed to `get_attachment`.',
 			inputSchema: z.object({ key: ticketKeySchema }),
-			annotations: READ_ONLY
+			annotations: READ_ONLY,
+			_meta: uiToolMeta(DETAIL_UI_URI)
 		},
 		guarded(async ({ key }) => {
 			const d = await loadTicketDetail(ctx, key);
-			return text(d.markdown, {
-				ticket: {
-					...d.ticket,
-					messages: d.messages.map((m) => ({
-						id: m.id,
-						authorId: m.authorId,
-						kind: m.kind,
-						internal: m.isInternalNote,
-						body: m.body,
-						createdAt: m.createdAt,
-						attachmentIds: m.attachments.map((a) => a.id)
-					})),
-					attachmentIds: d.attachments.map((a) => a.id),
-					linkedTasks: d.linkedTasks
-				}
-			});
+			return text(d.markdown, { ticket: ticketDetailDto({ ...d, origin: ctx.origin }) });
 		})
 	);
 
@@ -326,7 +316,8 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 				checklist: checklistSchema.optional(),
 				attachmentUrls: attachmentUrlsSchema
 			}),
-			annotations: WRITE
+			annotations: WRITE,
+			_meta: uiToolMeta(DETAIL_UI_URI)
 		},
 		guarded(async (args) => {
 			const { locals, origin } = ctx;
@@ -369,7 +360,13 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 					: '- Filed with you as the customer.',
 				...(notes.length ? ['', 'Attachments:', ...notes] : [])
 			].join('\n');
-			return text(md, { key: created.displayId, id: created.id, attachments: notes });
+			const fresh = await loadTicketDetail(ctx, created.displayId);
+			return text(md, {
+				key: created.displayId,
+				id: created.id,
+				attachments: notes,
+				ticket: ticketDetailDto({ ...fresh, origin })
+			});
 		})
 	);
 
@@ -390,7 +387,8 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 				assignees: z.array(z.string()).optional().describe('Full assignee list; [] unassigns.'),
 				checklist: checklistSchema.optional()
 			}),
-			annotations: WRITE_IDEMPOTENT
+			annotations: WRITE_IDEMPOTENT,
+			_meta: uiToolMeta(DETAIL_UI_URI)
 		},
 		guarded(async (args) => {
 			const ticket = await loadVisibleTicket(ctx, args.key);
@@ -415,14 +413,14 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 				origin: ctx.origin,
 				via: 'mcp'
 			});
-			const users = await userDirectory([result.ticket.customerId, ...result.ticket.assignees]);
+			const fresh = await loadTicketDetail(ctx, ticket.displayId);
 			const head = result.changed
 				? `Updated **${ticket.displayId}** (${Object.keys(patch).join(', ')}).`
 				: `No changes for **${ticket.displayId}** — values already matched.`;
-			return text(`${head}\n${ticketLine(result.ticket, users)}`, {
+			return text(`${head}\n${ticketLine(fresh.ticket, fresh.users)}`, {
 				key: ticket.displayId,
 				changed: result.changed,
-				ticket: ticketSummary(result.ticket, users)
+				ticket: ticketDetailDto({ ...fresh, origin: ctx.origin })
 			});
 		})
 	);

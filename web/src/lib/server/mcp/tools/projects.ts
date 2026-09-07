@@ -22,6 +22,7 @@ import {
 	projectSummary,
 	type ProjectRowLike
 } from '../format';
+import { LIST_UI_URI, uiToolMeta } from '../ui';
 import {
 	fail,
 	guarded,
@@ -78,6 +79,7 @@ export function registerProjectTools(server: McpServer, ctx: McpContext): void {
 				total: z.number(),
 				projects: z.array(
 					z.object({
+						id: z.string(),
 						key: z.string(),
 						name: z.string(),
 						status: z.string(),
@@ -85,11 +87,13 @@ export function registerProjectTools(server: McpServer, ctx: McpContext): void {
 						orgName: z.string().nullable(),
 						tags: z.array(z.string()),
 						taskCount: z.number().nullable(),
-						updatedAt: z.string().nullable()
+						updatedAt: z.string().nullable(),
+						url: z.string().nullable()
 					})
 				)
 			}),
-			annotations: READ_ONLY
+			annotations: READ_ONLY,
+			_meta: uiToolMeta(LIST_UI_URI)
 		},
 		guarded(async ({ includeArchived, status, limit }) => {
 			let rows: ProjectRowLike[] = await listProjectsFor(ctx.locals);
@@ -100,7 +104,7 @@ export function registerProjectTools(server: McpServer, ctx: McpContext): void {
 			const page = rows.slice(0, limit);
 			return text(listMd('Projects', page.map(projectLine), total), {
 				total,
-				projects: page.map(projectSummary)
+				projects: page.map((p) => projectSummary(p, ctx.origin))
 			});
 		})
 	);

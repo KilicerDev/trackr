@@ -22,10 +22,19 @@ import {
 } from '$lib/server/tasks'; // W2: applyTaskUpdate, createTaskWithEffects, deleteTaskFully, logTaskTime, resolveProjectByKey, resolveTaskByDisplayId, sanitizeTaskChecklist
 import { loadAssignableUsers } from '$lib/server/tickets';
 import { attachFromUrl } from '$lib/server/attachments-fetch'; // W2
+import { DETAIL_UI_URI, LIST_UI_URI, uiToolMeta } from '../ui';
 import { normalizeTag } from '$lib/utils/label-meta';
 import type { Task } from '$lib/types';
 import { describeCandidates, normalizeDisplayId, normalizeKey, resolveUserRefs } from '../ids';
-import { listMd, taskDetailMd, taskLine, taskSummary } from '../format';
+import {
+	type UserDirectory,
+	listMd,
+	taskDetailDto,
+	taskDetailMd,
+	taskLine,
+	taskSummary,
+	taskUrl
+} from '../format';
 import {
 	attachmentUrlsSchema,
 	checklistSchema,
@@ -82,7 +91,7 @@ export async function loadVisibleTaskRef(
 	return { id: ref.id, projectId: ref.projectId, display };
 }
 
-export type TaskDetail = { task: Task; markdown: string };
+export type TaskDetail = { task: Task; users: UserDirectory; markdown: string };
 
 /** Full task view (detail tool + resource): fields, checklist, files, comments, time. */
 export async function loadTaskDetail(ctx: McpContext, key: string): Promise<TaskDetail> {
@@ -96,7 +105,7 @@ export async function loadTaskDetail(ctx: McpContext, key: string): Promise<Task
 		...(task.comments ?? []).map((c) => c.user),
 		...(task.timeLogs ?? []).map((l) => l.user)
 	]);
-	return { task, markdown: taskDetailMd({ task, users, origin: ctx.origin }) };
+	return { task, users, markdown: taskDetailMd({ task, users, origin: ctx.origin }) };
 }
 
 /** Task assignees are internal users only — same directory the web picker uses. */
@@ -166,11 +175,13 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 						due: z.string().nullable(),
 						tags: z.array(z.string()),
 						updated: z.string(),
-						checklist: z.string()
+						checklist: z.string(),
+						url: z.string()
 					})
 				)
 			}),
-			annotations: READ_ONLY
+			annotations: READ_ONLY,
+			_meta: uiToolMeta(LIST_UI_URI)
 		},
 		guarded(async ({ scope, projectKey, status, assignee, limit }) => {
 			const uid = ctx.locals.user.id;
@@ -204,7 +215,7 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 				),
 				{
 					total,
-					tasks: page.map((t) => taskSummary(t, users))
+					tasks: page.map((t) => ({ ...taskSummary(t, users), url: taskUrl(ctx.origin, t.id) }))
 				}
 			);
 		})
@@ -217,11 +228,12 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 			description:
 				'Full view of one task by display id (e.g. `WEB-12`): fields, description (markdown), checklist with item ids, attachments with ids and download URLs, comments, time logs, and the source ticket if it was converted from one.',
 			inputSchema: z.object({ key: taskKeySchema }),
-			annotations: READ_ONLY
+			annotations: READ_ONLY,
+			_meta: uiToolMeta(DETAIL_UI_URI)
 		},
 		guarded(async ({ key }) => {
 			const d = await loadTaskDetail(ctx, key);
-			return text(d.markdown, { task: d.task });
+			return text(d.markdown, { task: taskDetailDto(d.task, d.users, ctx.origin) });
 		})
 	);
 
@@ -257,7 +269,8 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 				checklist: checklistSchema.optional(),
 				attachmentUrls: attachmentUrlsSchema
 			}),
-			annotations: WRITE
+			annotations: WRITE,
+			_meta: uiToolMeta(DETAIL_UI_URI)
 		},
 		guarded(async (args) => {
 			const { locals, origin } = ctx;
@@ -297,7 +310,13 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 				`- Assignees: ${created.assignedIds.join(', ')}${dueDate ? ` · Due: ${dueDate.toISOString().slice(0, 10)}` : ''}`,
 				...(notes.length ? ['', 'Attachments:', ...notes] : [])
 			].join('\n');
-			return text(md, { key: created.displayId, id: created.id, attachments: notes });
+			const fresh = await loadTaskDetail(ctx, created.displayId);
+			return text(md, {
+				key: created.displayId,
+				id: created.id,
+				attachments: notes,
+				task: taskDetailDto(fresh.task, fresh.users, origin)
+			});
 		})
 	);
 
@@ -332,7 +351,8 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 					.optional()
 					.describe('Plan into your week (YYYY-MM-DD) or null to unplan.')
 			}),
-			annotations: WRITE_IDEMPOTENT
+			annotations: WRITE_IDEMPOTENT,
+			_meta: uiToolMeta(DETAIL_UI_URI)
 		},
 		guarded(async (args) => {
 			const ref = await loadVisibleTaskRef(ctx, args.key);
@@ -360,14 +380,13 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 				via: 'mcp'
 			});
 			const fresh = await loadTaskDetail(ctx, ref.display);
-			const users = await userDirectory(fresh.task.assignees ?? []);
 			const head = result.changed
 				? `Updated **${ref.display}** (${Object.keys(patch).join(', ')}).`
 				: `No changes for **${ref.display}**.`;
-			return text(`${head}\n${taskLine(fresh.task, users)}`, {
+			return text(`${head}\n${taskLine(fresh.task, fresh.users)}`, {
 				key: ref.display,
 				changed: result.changed,
-				task: taskSummary(fresh.task, users)
+				task: taskDetailDto(fresh.task, fresh.users, ctx.origin)
 			});
 		})
 	);
@@ -400,7 +419,8 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 				date: isoDateSchema.optional().describe('Work date YYYY-MM-DD (default: today, UTC).'),
 				note: z.string().max(1000).optional().describe('What was done (plain text).')
 			}),
-			annotations: WRITE
+			annotations: WRITE,
+			_meta: uiToolMeta(DETAIL_UI_URI)
 		},
 		guarded(async ({ taskKey, minutes, date, note }) => {
 			const ref = await loadVisibleTaskRef(ctx, taskKey);
@@ -411,12 +431,14 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 				{ minutes, date: day, note: note?.trim() || undefined },
 				{ origin: ctx.origin, via: 'mcp' }
 			);
+			const fresh = await loadTaskDetail(ctx, ref.display);
 			return text(
 				`Logged ${minutes} min on **${ref.display}** for ${day}${note ? ` — ${note}` : ''}.`,
 				{
 					key: ref.display,
 					minutes,
-					date: day
+					date: day,
+					task: taskDetailDto(fresh.task, fresh.users, ctx.origin)
 				}
 			);
 		})

@@ -381,8 +381,9 @@ export function projectLine(p: ProjectRowLike): string {
 	return `- ${bits.join(' · ')}`;
 }
 
-export function projectSummary(p: ProjectRowLike) {
+export function projectSummary(p: ProjectRowLike, origin?: string) {
 	return {
+		id: p.id,
 		key: p.key,
 		name: p.name,
 		status: p.status ?? 'active',
@@ -390,7 +391,8 @@ export function projectSummary(p: ProjectRowLike) {
 		orgName: p.orgName ?? null,
 		tags: p.tags ?? [],
 		taskCount: p.openTaskCount ?? p.taskCount ?? null,
-		updatedAt: iso(p.updatedAt) ?? null
+		updatedAt: iso(p.updatedAt) ?? null,
+		url: origin ? projectUrl(origin, p.id) : null
 	};
 }
 
@@ -417,4 +419,207 @@ export function projectDetailMd(p: ProjectRowLike, dir: UserDirectory, extra?: s
 		out.push(extra);
 	}
 	return out.join('\n').trimEnd();
+}
+
+// ─── App links + detail DTOs (MCP Apps widgets) ─────────────────────────────
+// The structured payloads the `ui://trackr/*.html` widgets render. Every
+// task/ticket read AND write tool returns the full record in this shape so
+// the host can show the updated item after a change. Ids stay human (display
+// ids) where the model needs them; uuids ride along for links.
+
+export const taskUrl = (origin: string, key: string) =>
+	`${origin}/tasks?task=${encodeURIComponent(key)}`;
+export const ticketUrl = (origin: string, id: string) => `${origin}/tickets/${id}`;
+export const projectUrl = (origin: string, id: string) => `${origin}/projects/${id}`;
+
+export type AttachmentSummary = {
+	id: string;
+	filename: string;
+	mimeType: string;
+	sizeBytes: number;
+	width: number | null;
+	height: number | null;
+	url: string;
+};
+
+function attachmentSummary(a: AttachmentDTO, origin: string): AttachmentSummary {
+	return {
+		id: a.id,
+		filename: a.filename,
+		mimeType: a.mimeType,
+		sizeBytes: a.sizeBytes,
+		width: a.width ?? null,
+		height: a.height ?? null,
+		url: attachmentDownloadUrl(origin, a.id)
+	};
+}
+
+export type TaskDetailDto = {
+	kind: 'task';
+	key: string;
+	id: string | null;
+	url: string;
+	title: string;
+	projectKey: string;
+	status: string;
+	priority: string;
+	type: string;
+	assignees: { id: string; name: string }[];
+	createdBy: { id: string; name: string } | null;
+	createdAt: string | null;
+	updatedAt: string;
+	due: string | null;
+	estimateMinutes: number | null;
+	tags: string[];
+	channel: string;
+	plannedFor: string | null;
+	inMyPlan: boolean;
+	sourceTicket: { id: string; displayId: string } | null;
+	description: string;
+	checklist: ChecklistItemLike[];
+	attachments: AttachmentSummary[];
+	comments: {
+		id: string | null;
+		author: { id: string; name: string };
+		body: string;
+		createdAt: string;
+		attachments: AttachmentSummary[];
+	}[];
+	timeLogs: { user: { id: string; name: string }; date: string; minutes: number; note: string }[];
+	totalMinutes: number;
+};
+
+export function taskDetailDto(t: Task, dir: UserDirectory, origin: string): TaskDetailDto {
+	const logs = t.timeLogs ?? [];
+	return {
+		kind: 'task',
+		key: t.id,
+		id: t.uuid ?? null,
+		url: taskUrl(origin, t.id),
+		title: t.title,
+		projectKey: t.project,
+		status: t.status,
+		priority: t.priority,
+		type: t.type ?? 'task',
+		assignees: (t.assignees ?? []).map((id) => ({ id, name: userName(dir, id) })),
+		createdBy: t.createdBy ? { id: t.createdBy, name: userName(dir, t.createdBy) } : null,
+		createdAt: iso(t.createdAt),
+		updatedAt: t.updated,
+		due: t.due,
+		estimateMinutes: t.estimate ?? null,
+		tags: t.tags ?? t.labels ?? [],
+		channel: t.channel ?? 'web',
+		plannedFor: t.plannedFor ?? null,
+		inMyPlan: !!t.inMyPlan,
+		sourceTicket: t.sourceTicket ?? null,
+		description: t.description ?? '',
+		checklist: (t.checklist ?? []).map((c) => ({ id: c.id, text: c.text, done: c.done })),
+		attachments: (t.files ?? []).map((a) => attachmentSummary(a, origin)),
+		comments: (t.comments ?? []).map((c) => ({
+			id: c.id ?? null,
+			author: { id: c.user, name: userName(dir, c.user) },
+			body: c.text,
+			createdAt: c.createdAt ?? c.date,
+			attachments: (c.files ?? []).map((a) => attachmentSummary(a, origin))
+		})),
+		timeLogs: logs.map((l) => ({
+			user: { id: l.user, name: userName(dir, l.user) },
+			date: l.date,
+			minutes: l.minutes,
+			note: l.note
+		})),
+		totalMinutes: logs.reduce((acc, l) => acc + l.minutes, 0)
+	};
+}
+
+export type TicketDetailDto = {
+	kind: 'ticket';
+	key: string;
+	id: string;
+	url: string;
+	subject: string;
+	orgKey: string;
+	orgName: string;
+	status: string;
+	priority: string;
+	category: string;
+	channel: string;
+	customer: { id: string; name: string } | null;
+	assignees: { id: string; name: string }[];
+	createdBy: { id: string; name: string } | null;
+	createdAt: string;
+	updatedAt: string;
+	firstResponseAt: string | null;
+	resolvedAt: string | null;
+	closedAt: string | null;
+	tags: string[];
+	description: string;
+	checklist: ChecklistItemLike[];
+	attachments: AttachmentSummary[];
+	linkedTasks: { key: string; title: string; status: string; url: string }[];
+	messages: {
+		id: string;
+		kind: string;
+		internal: boolean;
+		author: { id: string; name: string } | null;
+		body: string;
+		createdAt: string;
+		attachments: AttachmentSummary[];
+	}[];
+	messageCount: number;
+};
+
+export function ticketDetailDto(input: {
+	ticket: TicketRow;
+	messages: readonly TicketMessageWithFiles[];
+	attachments: readonly AttachmentDTO[];
+	users: UserDirectory;
+	linkedTasks: readonly { displayId: string; title: string; status: string }[];
+	origin: string;
+}): TicketDetailDto {
+	const { ticket: t, users: dir, origin } = input;
+	const person = (id: string | null | undefined) => (id ? { id, name: userName(dir, id) } : null);
+	return {
+		kind: 'ticket',
+		key: t.displayId,
+		id: t.id,
+		url: ticketUrl(origin, t.id),
+		subject: t.subject,
+		orgKey: t.displayId.slice(0, t.displayId.lastIndexOf('-')),
+		orgName: t.orgName,
+		status: t.status,
+		priority: t.priority,
+		category: t.category,
+		channel: t.channel,
+		customer: person(t.customerId),
+		assignees: t.assignees.map((id) => ({ id, name: userName(dir, id) })),
+		createdBy: person(t.createdBy),
+		createdAt: t.createdAt,
+		updatedAt: t.updatedAt,
+		firstResponseAt: t.firstResponseAt,
+		resolvedAt: t.resolvedAt,
+		closedAt: t.closedAt,
+		tags: t.tags,
+		description: t.description ?? '',
+		checklist: t.checklist.map((c) => ({ id: c.id, text: c.text, done: c.done })),
+		attachments: input.attachments.map((a) => attachmentSummary(a, origin)),
+		linkedTasks: input.linkedTasks.map((lt) => ({
+			key: lt.displayId,
+			title: lt.title,
+			status: lt.status,
+			url: taskUrl(origin, lt.displayId)
+		})),
+		messages: input.messages.map((m) => ({
+			id: m.id,
+			kind: m.kind,
+			internal: m.isInternalNote,
+			author: person(m.authorId),
+			// System events are rendered per-locale in the app; here the same
+			// plain-English line the markdown view uses.
+			body: m.kind === 'system' ? systemEventText(m.meta, m.body, dir) : m.body,
+			createdAt: m.createdAt,
+			attachments: m.attachments.map((a) => attachmentSummary(a, origin))
+		})),
+		messageCount: t.messageCount
+	};
 }

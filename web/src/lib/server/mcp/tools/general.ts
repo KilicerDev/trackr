@@ -21,6 +21,7 @@ import { attachBytes, attachFromUrl, decodeInlineUpload } from '$lib/server/atta
 import { storage } from '$lib/server/storage';
 import { formatBytes, MAX_INLINE_UPLOAD_BYTES } from '$lib/config/attachments';
 import { attachmentDownloadUrl, iso, listMd } from '../format';
+import { LIST_UI_URI, uiToolMeta } from '../ui';
 import { isUuid, normalizeKey } from '../ids';
 import {
 	fail,
@@ -179,11 +180,13 @@ export function registerGeneralTools(server: McpServer, ctx: McpContext): void {
 						id: z.string(),
 						ref: z.string(),
 						title: z.string(),
-						subtitle: z.string().nullable()
+						subtitle: z.string().nullable(),
+						url: z.string()
 					})
 				)
 			}),
-			annotations: READ_ONLY
+			annotations: READ_ONLY,
+			_meta: uiToolMeta(LIST_UI_URI)
 		},
 		guarded(async ({ query, types, orgKey }) => {
 			let orgId: string | undefined;
@@ -201,7 +204,8 @@ export function registerGeneralTools(server: McpServer, ctx: McpContext): void {
 				id: r.id,
 				ref: r.displayId ?? r.id,
 				title: r.title,
-				subtitle: r.subtitle
+				subtitle: r.subtitle,
+				url: `${ctx.origin}${r.url}`
 			}));
 			const lines = rows.map(
 				(r) =>

@@ -7,9 +7,16 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { can } from '$lib/server/permissions';
 import { applyTicketUpdate } from '$lib/server/tickets'; // W2
 import { applyTaskUpdate } from '$lib/server/tasks'; // W2
-import { checklistMd, checklistSummary, type ChecklistItemLike } from '../format';
+import {
+	checklistMd,
+	checklistSummary,
+	taskDetailDto,
+	ticketDetailDto,
+	type ChecklistItemLike
+} from '../format';
+import { DETAIL_UI_URI, uiToolMeta } from '../ui';
 import { fail, guarded, text, WRITE_IDEMPOTENT, type McpContext } from './shared';
-import { loadVisibleTicket } from './tickets';
+import { loadTicketDetail, loadVisibleTicket } from './tickets';
 import { loadTaskDetail } from './tasks';
 
 function pickItem(
@@ -51,7 +58,8 @@ export function registerChecklistTools(server: McpServer, ctx: McpContext): void
 					.describe('Item text (exact or unique substring) when no id is known.'),
 				done: z.boolean().default(true).describe('New state (default true = done).')
 			}),
-			annotations: WRITE_IDEMPOTENT
+			annotations: WRITE_IDEMPOTENT,
+			_meta: uiToolMeta(DETAIL_UI_URI)
 		},
 		guarded(async ({ target, key, itemId, itemText, done }) => {
 			if (target === 'ticket') {
@@ -70,9 +78,16 @@ export function registerChecklistTools(server: McpServer, ctx: McpContext): void
 						{ origin: ctx.origin, via: 'mcp' }
 					);
 				}
+				const fresh = await loadTicketDetail(ctx, ticket.displayId);
 				return text(
 					`${changed ? 'Updated' : 'Unchanged'} **${ticket.displayId}** checklist (${checklistSummary(next)}):\n${checklistMd(next)}`,
-					{ key: ticket.displayId, changed, item: { ...item, done }, checklist: next }
+					{
+						key: ticket.displayId,
+						changed,
+						item: { ...item, done },
+						checklist: next,
+						ticket: ticketDetailDto({ ...fresh, origin: ctx.origin })
+					}
 				);
 			}
 			const { task } = await loadTaskDetail(ctx, key);
@@ -88,9 +103,16 @@ export function registerChecklistTools(server: McpServer, ctx: McpContext): void
 					{ origin: ctx.origin, via: 'mcp' }
 				);
 			}
+			const fresh = await loadTaskDetail(ctx, task.id);
 			return text(
 				`${changed ? 'Updated' : 'Unchanged'} **${task.id}** checklist (${checklistSummary(next)}):\n${checklistMd(next)}`,
-				{ key: task.id, changed, item: { ...item, done }, checklist: next }
+				{
+					key: task.id,
+					changed,
+					item: { ...item, done },
+					checklist: next,
+					task: taskDetailDto(fresh.task, fresh.users, ctx.origin)
+				}
 			);
 		})
 	);

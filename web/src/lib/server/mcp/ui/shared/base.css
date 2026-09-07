@@ -1,0 +1,207 @@
+/* Shared look of the trackr MCP App widgets (list + detail). Rendered by the
+   MCP host inside a sandboxed iframe. Colours mirror src/lib/config/taxonomy.ts.
+   Theme: the host tells us light/dark (data-theme on <html>); fall back to
+   prefers-color-scheme. */
+
+:root {
+	--bg: #ffffff;
+	--bg-elev: #f7f7f8;
+	--surface: #ffffff;
+	--surface-2: #eeeef1;
+	--border: #e6e6ea;
+	--text: #1c1c21;
+	--text-2: #4a4a52;
+	--text-3: #7c7c84;
+	--accent: #7a9cf0;
+	--danger: #ef4f5e;
+	--row-hover: #f2f4f8;
+	color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		--bg: #131316;
+		--bg-elev: #1b1b20;
+		--surface: #1f1f25;
+		--surface-2: #2a2a31;
+		--border: #2b2b33;
+		--text: #ececf1;
+		--text-2: #b8b8c2;
+		--text-3: #8a8a94;
+		--row-hover: #24242b;
+		color-scheme: dark;
+	}
+}
+:root[data-theme='dark'] {
+	--bg: #131316;
+	--bg-elev: #1b1b20;
+	--surface: #1f1f25;
+	--surface-2: #2a2a31;
+	--border: #2b2b33;
+	--text: #ececf1;
+	--text-2: #b8b8c2;
+	--text-3: #8a8a94;
+	--row-hover: #24242b;
+	color-scheme: dark;
+}
+
+* {
+	box-sizing: border-box;
+}
+html,
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
+	font:
+		13px/1.45 -apple-system,
+		BlinkMacSystemFont,
+		'Segoe UI',
+		Roboto,
+		Helvetica,
+		Arial,
+		sans-serif;
+}
+a {
+	color: var(--accent);
+}
+button {
+	font: inherit;
+}
+.mono {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12px;
+}
+.muted {
+	color: var(--text-3);
+}
+
+/* Status badge: dot + label on a tinted pill. */
+.badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	background: var(--tint, var(--surface-2));
+	color: var(--text);
+	font-size: 12px;
+	white-space: nowrap;
+}
+.badge .dot,
+.chip .dot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--dot, var(--text-3));
+	flex: none;
+}
+
+/* Priority: four bars, the first N lit. */
+.prio {
+	display: inline-flex;
+	align-items: flex-end;
+	gap: 2px;
+	height: 12px;
+	vertical-align: middle;
+}
+.prio i {
+	display: block;
+	width: 3px;
+	border-radius: 1px;
+	background: var(--border);
+}
+.prio i.on {
+	background: var(--color);
+}
+.prio i:nth-child(1) {
+	height: 4px;
+}
+.prio i:nth-child(2) {
+	height: 7px;
+}
+.prio i:nth-child(3) {
+	height: 10px;
+}
+.prio i:nth-child(4) {
+	height: 12px;
+}
+
+/* Filter chips (list toolbar). */
+.chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 3px 8px;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: var(--surface);
+	color: var(--text-2);
+	font-size: 12px;
+	cursor: pointer;
+}
+.chip[aria-pressed='true'] {
+	border-color: var(--dot, var(--accent));
+	background: var(--tint, var(--row-hover));
+	color: var(--text);
+}
+
+/* Tag pill. */
+.tag {
+	display: inline-block;
+	padding: 1px 7px;
+	border-radius: 6px;
+	background: var(--surface-2);
+	color: var(--text-2);
+	font-size: 11px;
+}
+
+/* Buttons. */
+.btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 5px 10px;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface);
+	color: var(--text);
+	cursor: pointer;
+	white-space: nowrap;
+}
+.btn:hover {
+	background: var(--row-hover);
+}
+.btn.primary {
+	border-color: var(--accent);
+	background: var(--accent);
+	color: #fff;
+}
+.btn:disabled {
+	opacity: 0.6;
+	cursor: default;
+}
+
+select.control,
+input.control {
+	padding: 5px 8px;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	background: var(--surface);
+	color: var(--text);
+	font: inherit;
+	outline: none;
+}
+select.control:focus,
+input.control:focus {
+	border-color: var(--accent);
+}
+
+.empty,
+.error {
+	padding: 18px;
+	text-align: center;
+	color: var(--text-3);
+}
+.error {
+	color: var(--danger);
+}
