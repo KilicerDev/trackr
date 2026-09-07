@@ -217,7 +217,10 @@
 			if (field === 'status' && !values.includes(t.status)) return false;
 			if (field === 'priority' && !values.includes(t.priority)) return false;
 			if (field === 'assignee') {
-				const assignees = t.assignees ?? [t.assignee];
+				// Any-match over the assignee set; the `__unassigned__` sentinel
+				// (from the toolbar's "Unassigned" row) matches tasks with nobody on them.
+				const real = (t.assignees ?? [t.assignee]).filter((a): a is string => !!a);
+				const assignees = real.length ? real : ['__unassigned__'];
 				if (!assignees.some((a) => values.includes(a))) return false;
 			}
 			if (field === 'project' && !values.includes(t.project)) return false;

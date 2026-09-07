@@ -234,6 +234,27 @@
 			</button>
 		{/each}
 	{:else if field === 'assignee'}
+		<!-- `__unassigned__` sentinel: matches tickets with no assignee (same key the
+		     sidebar / dashboard deep-links use). -->
+		{#if hit(m.common_unassigned(), query)}
+			<button
+				type="button"
+				onclick={() => toggleValue('assignee', '__unassigned__')}
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
+			>
+				<span
+					class="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border border-dashed border-text-3 text-text-3"
+				>
+					<Icon name="user" size={12} />
+				</span>
+				<span class="truncate text-[14px]">{m.common_unassigned()}</span>
+				<span
+					class="ml-auto text-accent {values.includes('__unassigned__') ? 'opacity-100' : 'opacity-0'}"
+				>
+					<Icon name="check" size={14} />
+				</span>
+			</button>
+		{/if}
 		{#each agents.filter((u) => hit(u.name, query)) as u (u.id)}
 			<button
 				type="button"
