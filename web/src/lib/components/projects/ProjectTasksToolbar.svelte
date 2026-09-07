@@ -4,6 +4,8 @@
 	import PriorityBars from '../PriorityBars.svelte';
 	import Avatar from '../Avatar.svelte';
 	import type { FilterField } from '../view-panel/FilterSection.svelte';
+	import ViewsMenu from '../ViewsMenu.svelte';
+	import type { SavedViewEntry } from '../ViewsMenu.svelte';
 	import ViewPanel from '../view-panel/ViewPanel.svelte';
 	import PanelSection from '../view-panel/PanelSection.svelte';
 	import SelectRow from '../view-panel/SelectRow.svelte';
@@ -19,6 +21,12 @@
 	import { DEFAULT_TASK_LIST_SORT, type TaskSort, type TaskSortBy } from '$lib/utils/sort';
 
 	type GroupBy = 'status' | 'priority' | 'assignee' | 'none';
+
+	export type ProjectTasksViewConfig = {
+		group: GroupBy;
+		filters: Record<string, string[]>;
+		sort: TaskSort;
+	};
 
 	type LayoutData = {
 		users?: {
@@ -44,6 +52,12 @@
 		setGroup: (g: GroupBy) => void;
 		sort?: TaskSort;
 		setSort?: (s: TaskSort) => void;
+		viewsMenu?: {
+			views: SavedViewEntry<ProjectTasksViewConfig>[];
+			current: ProjectTasksViewConfig;
+			onApply: (config: ProjectTasksViewConfig) => void;
+			onChange: (views: SavedViewEntry<ProjectTasksViewConfig>[]) => void;
+		};
 	}
 	let {
 		tasks,
@@ -54,7 +68,8 @@
 		group,
 		setGroup,
 		sort = DEFAULT_TASK_LIST_SORT,
-		setSort
+		setSort,
+		viewsMenu
 	}: Props = $props();
 
 	// Every tag actually in use across this project's tasks. Deduped.
@@ -193,6 +208,15 @@
 {/snippet}
 
 <div class="flex min-w-0 items-center gap-2">
+	{#if viewsMenu}
+		<ViewsMenu
+			views={viewsMenu.views}
+			current={viewsMenu.current}
+			onApply={viewsMenu.onApply}
+			onChange={viewsMenu.onChange}
+		/>
+		<div class="h-5 w-px shrink-0 bg-border"></div>
+	{/if}
 	<FilterTrigger
 		open={panelOpen}
 		count={activeFilterCount}

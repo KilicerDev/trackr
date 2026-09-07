@@ -8,6 +8,7 @@ import { getPreferences, upsertPreferences } from './preferences';
 export const VIEW_STATE_KEYS = new Set([
 	'tasks',
 	'projects',
+	'projectTasks',
 	'week',
 	'tickets',
 	'wiki',

@@ -10,7 +10,10 @@
 	import EditProjectModal from '$lib/components/projects/EditProjectModal.svelte';
 	import ImportTasksModal from '$lib/components/projects/ImportTasksModal.svelte';
 	import ProjectTasksToolbar from '$lib/components/projects/ProjectTasksToolbar.svelte';
-	import { DEFAULT_TASK_LIST_SORT, type TaskSort } from '$lib/utils/sort';
+	import type { ProjectTasksViewConfig } from '$lib/components/projects/ProjectTasksToolbar.svelte';
+	import type { SavedViewEntry } from '$lib/components/ViewsMenu.svelte';
+	import { readView, saveView, flushViewSaves } from '$lib/stores/view';
+	import { DEFAULT_TASK_LIST_SORT, isTaskSort, type TaskSort } from '$lib/utils/sort';
 	import ProjectHistory from '$lib/components/projects/ProjectHistory.svelte';
 	import NewMeetingDialog from '$lib/components/notes/NewMeetingDialog.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -109,10 +112,73 @@
 
 	// ── Task section: filters / search / grouping (ephemeral per visit) ────────
 	type TaskGroupBy = 'status' | 'priority' | 'assignee' | 'none';
-	let taskFilters = $state<Record<string, string[]>>({});
+	const TASK_GROUP_IDS: TaskGroupBy[] = ['status', 'priority', 'assignee', 'none'];
+	const isTaskGroup = (v: unknown): v is TaskGroupBy => TASK_GROUP_IDS.includes(v as TaskGroupBy);
+
+	// Task-list view state persists under one key shared by every project page
+	// (filters / group / sort live state + named saved views), so a picked
+	// view is still applied on the next visit. localStorage cache wins over
+	// the server snapshot — see the /projects page for the same pattern.
+	type SavedProjectTasksView = Partial<ProjectTasksViewConfig> & {
+		savedViews?: SavedViewEntry<ProjectTasksViewConfig>[];
+	};
+	const savedTasksView: SavedProjectTasksView = {
+		...((data.savedView ?? {}) as SavedProjectTasksView),
+		...readView<SavedProjectTasksView>('projectTasks')
+	};
+	let taskFilters = $state<Record<string, string[]>>(
+		savedTasksView.filters && typeof savedTasksView.filters === 'object'
+			? savedTasksView.filters
+			: {}
+	);
 	let taskSearch = $state('');
-	let taskGroup = $state<TaskGroupBy>('status');
-	let taskSort = $state<TaskSort>(DEFAULT_TASK_LIST_SORT);
+	let taskGroup = $state<TaskGroupBy>(
+		isTaskGroup(savedTasksView.group) ? savedTasksView.group : 'status'
+	);
+	let taskSort = $state<TaskSort>(
+		isTaskSort(savedTasksView.sort) ? savedTasksView.sort : DEFAULT_TASK_LIST_SORT
+	);
+	function setTaskFilters(f: Record<string, string[]>) {
+		taskFilters = f;
+		saveView('projectTasks', { filters: f });
+	}
+	function setTaskGroup(g: TaskGroupBy) {
+		taskGroup = g;
+		saveView('projectTasks', { group: g });
+	}
+	function setTaskSort(s: TaskSort) {
+		taskSort = s;
+		saveView('projectTasks', { sort: s });
+	}
+
+	// ── Saved custom views (named filter+group+sort presets) ─────────────────
+	let taskSavedViews = $state<SavedViewEntry<ProjectTasksViewConfig>[]>(
+		Array.isArray(savedTasksView.savedViews)
+			? savedTasksView.savedViews.filter(
+					(v) => typeof v?.id === 'string' && typeof v?.name === 'string'
+				)
+			: []
+	);
+	const taskViewConfig = $derived<ProjectTasksViewConfig>({
+		group: taskGroup,
+		filters: taskFilters,
+		sort: taskSort
+	});
+	// Configs come from storage, so guard every field against page defaults.
+	function applyTaskView(cfg: ProjectTasksViewConfig) {
+		taskGroup = isTaskGroup(cfg.group) ? cfg.group : 'status';
+		taskFilters = cfg.filters && typeof cfg.filters === 'object' ? cfg.filters : {};
+		taskSort = isTaskSort(cfg.sort) ? cfg.sort : DEFAULT_TASK_LIST_SORT;
+		// The applied view becomes the live state, so it survives a reload.
+		saveView('projectTasks', { group: taskGroup, filters: taskFilters, sort: taskSort });
+	}
+	function changeTaskViews(next: SavedViewEntry<ProjectTasksViewConfig>[]) {
+		taskSavedViews = next;
+		saveView('projectTasks', { savedViews: next });
+		// CRUD is rare and explicit — flush immediately rather than risk losing
+		// the debounced write to a quick navigation.
+		flushViewSaves();
+	}
 
 	function taskMatches(t: Task): boolean {
 		for (const [field, values] of Object.entries(taskFilters)) {
@@ -859,13 +925,19 @@
 				<ProjectTasksToolbar
 					{tasks}
 					filters={taskFilters}
-					setFilters={(f) => (taskFilters = f)}
+					setFilters={setTaskFilters}
 					search={taskSearch}
 					setSearch={(s) => (taskSearch = s)}
 					group={taskGroup}
-					setGroup={(g) => (taskGroup = g)}
+					setGroup={setTaskGroup}
 					sort={taskSort}
-					setSort={(s) => (taskSort = s)}
+					setSort={setTaskSort}
+					viewsMenu={{
+						views: taskSavedViews,
+						current: taskViewConfig,
+						onApply: applyTaskView,
+						onChange: changeTaskViews
+					}}
 				/>
 			</div>
 			{#if tasks.length === 0}

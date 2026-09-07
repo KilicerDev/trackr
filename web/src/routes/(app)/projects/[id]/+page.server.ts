@@ -17,6 +17,7 @@ import { recordAudit } from '$lib/server/audit';
 import { notifyProjectComment } from '$lib/server/notify/events/project';
 import { assertCan, isTrackrTeam } from '$lib/server/permissions';
 import { listProjectMeetings, listTemplates } from '$lib/server/notes';
+import { getPreferences } from '$lib/server/preferences';
 import { m } from '$lib/paraglide/messages';
 import { normalizeTags } from '$lib/server/projects';
 
@@ -142,7 +143,13 @@ export const load: ServerLoad = async ({ params, locals }) => {
 	// fetches further pages on demand via the `?/activity` endpoint.
 	const activity = await loadProjectActivity(id, { limit: 50 });
 
+	// Task-list view state (filters/group/sort + saved views) is shared across
+	// project pages under one key, like the /tasks page keeps its own.
+	const preferences = await getPreferences(locals.user.id);
+	const savedView = (preferences.viewState?.projectTasks ?? {}) as Record<string, unknown>;
+
 	return {
+		savedView,
 		project: {
 			id: row.id,
 			key: row.key,
