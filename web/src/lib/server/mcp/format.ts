@@ -289,7 +289,7 @@ export function taskDetailMd(input: { task: Task; users: UserDirectory; origin: 
 		`- Project: ${t.project} · Status: ${t.status} · Priority: ${t.priority} · Type: ${t.type ?? 'task'}`
 	);
 	out.push(
-		`- Assignees: ${userNames(dir, t.assignees)} · Created by: ${userName(dir, t.createdBy)} · Created: ${t.createdAt ?? '—'}`
+		`- Assignees: ${userNames(dir, t.assignees)} · Created by: ${userName(dir, t.createdBy)} · Created: ${t.createdAt ?? '—'} · Channel: ${t.channel ?? 'web'}`
 	);
 	out.push(
 		`- Due: ${t.due ?? '—'} · Estimate: ${t.estimate != null ? minutesToHuman(t.estimate) : '—'} · Updated: ${t.updated}`

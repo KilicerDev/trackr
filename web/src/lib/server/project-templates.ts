@@ -365,6 +365,7 @@ export async function applyTemplate(
 		projectId: input.projectId,
 		projectKey: input.projectKey,
 		createdBy: input.createdBy,
+		channel: 'template',
 		tasks: tasks.map((t) => ({
 			title: t.title,
 			description: t.description,

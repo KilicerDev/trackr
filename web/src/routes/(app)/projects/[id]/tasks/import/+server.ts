@@ -439,6 +439,7 @@ export const POST: RequestHandler = async ({ request, params, locals, url }) => 
 				projectKey: p.key,
 				createdBy: me.id,
 				plannedForUserId: me.id,
+				channel: 'import',
 				tasks: toCreate.map((t) => t.task)
 			});
 		}

@@ -350,6 +350,8 @@ export const task = pgTable(
 		status: text('status').notNull().default('todo'),
 		priority: text('priority').notNull().default('none'),
 		type: text('type').notNull().default('task'),
+		// Which surface created the task: web | mcp | api | import | template.
+		channel: text('channel').notNull().default('web'),
 		parentId: text('parent_id').references((): AnyPgColumn => task.id, { onDelete: 'set null' }),
 		// Set when this task was spun up from a support ticket (admin/team
 		// "convert ticket → task" flow). Nullable; one ticket may seed many

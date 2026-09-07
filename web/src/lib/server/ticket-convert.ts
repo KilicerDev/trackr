@@ -15,6 +15,7 @@ import { project } from '$lib/server/db/app.schema';
 import { assertCan, isTrackrTeam } from '$lib/server/permissions';
 import { addTicketMessage, getTicket } from '$lib/server/tickets';
 import {
+	type TaskChannel,
 	ALLOWED_TASK_PRIORITY,
 	ALLOWED_TASK_STATUS,
 	ALLOWED_TASK_TYPE,
@@ -56,6 +57,8 @@ export interface ConvertTicketInput {
 	attachments?: FormDataEntryValue[];
 	/** Request origin for notification links. */
 	origin: string;
+	/** Creating surface recorded on the task (default `web`). */
+	channel?: TaskChannel;
 }
 
 export async function convertTicketToTask(
@@ -120,7 +123,8 @@ export async function convertTicketToTask(
 			checklist: carriedChecklist,
 			assigneeIds: input.assigneeIds ?? [],
 			createdBy: me.id,
-			sourceTicketId: input.ticketId
+			sourceTicketId: input.ticketId,
+			channel: input.channel ?? 'web'
 		});
 	} catch (err) {
 		console.error('ticket→task create failed', err);

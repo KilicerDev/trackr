@@ -61,6 +61,8 @@ export interface Task {
 	tags?: string[];
 	createdBy?: string;
 	createdAt?: string;
+	/** Surface that created the task: web | mcp | api | import | template. */
+	channel?: string;
 	description?: string;
 	checklist?: ChecklistItem[];
 	attachments?: { name: string; size: string }[];

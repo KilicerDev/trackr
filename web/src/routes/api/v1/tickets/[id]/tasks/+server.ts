@@ -32,6 +32,7 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 
 	try {
 		const created = await convertTicketToTask(locals, {
+			channel: 'api',
 			ticketId: params.id,
 			title: typeof body.title === 'string' ? body.title : '',
 			description: typeof body.description === 'string' ? body.description : null,

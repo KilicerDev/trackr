@@ -37,7 +37,7 @@
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES, TRACKR_TYPES } from '$lib/config/taxonomy';
 	import { formatDateLong, formatEstimate } from '$lib/utils/format';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
-	import { statusLabel, priorityLabel, typeLabel } from '$lib/utils/labels';
+	import { taskChannelLabel, statusLabel, priorityLabel, typeLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 
 	type AssignableUser = {
@@ -942,6 +942,10 @@
 						<span class="font-mono text-text-3">{draft.createdAt}</span></span
 					>{/if}
 				<span>{m.tasks_updated()} <span class="font-mono text-text-3">{draft.updated}</span></span>
+				{#if draft.channel}<span
+						>{m.tasks_meta_channel()}
+						<span class="text-text-2">{taskChannelLabel(draft.channel)}</span></span
+					>{/if}
 			</div>
 		</div>
 

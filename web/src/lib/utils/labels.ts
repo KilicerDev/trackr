@@ -118,6 +118,19 @@ export function ticketCategoryLabel(id: string, locale?: Locale): string {
 	return map[id]?.(undefined, locale ? { locale } : undefined) ?? id;
 }
 
+export function taskChannelLabel(id: string): string {
+	return pick(
+		{
+			web: m.task_channel_web,
+			mcp: m.task_channel_mcp,
+			api: m.task_channel_api,
+			import: m.task_channel_import,
+			template: m.task_channel_template
+		},
+		id
+	);
+}
+
 export function ticketChannelLabel(id: string): string {
 	return pick(
 		{

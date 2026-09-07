@@ -117,6 +117,7 @@ export async function loadTasks(opts?: {
 			createdAt: task.createdAt,
 			updatedAt: task.updatedAt,
 			sourceTicketId: task.sourceTicketId,
+			channel: task.channel,
 			projectKey: project.key
 		})
 		.from(task)
@@ -282,6 +283,7 @@ export async function loadTasks(opts?: {
 			tags: t.tags,
 			createdBy: t.createdBy ?? undefined,
 			createdAt: fmtDate(t.createdAt),
+			channel: t.channel,
 			description: t.description ?? undefined,
 			checklist: t.checklist ?? [],
 			comments: commentsByTask.get(t.id) ?? [],
@@ -293,6 +295,9 @@ export async function loadTasks(opts?: {
 		};
 	});
 }
+
+export const TASK_CHANNELS = ['web', 'mcp', 'api', 'import', 'template'] as const;
+export type TaskChannel = (typeof TASK_CHANNELS)[number];
 
 export type CreateTaskInput = {
 	projectId: string;
@@ -314,6 +319,8 @@ export type CreateTaskInput = {
 	plannedFor?: string | null;
 	/** Set when the task is spun up from a support ticket. */
 	sourceTicketId?: string | null;
+	/** Creating surface (default `web`). */
+	channel?: TaskChannel;
 };
 
 /**
@@ -355,7 +362,8 @@ export async function createTask(
 			tags: input.tags ?? [],
 			checklist: input.checklist ?? [],
 			createdBy: input.createdBy,
-			sourceTicketId: input.sourceTicketId ?? null
+			sourceTicketId: input.sourceTicketId ?? null,
+			channel: input.channel ?? 'web'
 		});
 
 		// Tasks are internal work: only platform (internal-org) users may be
@@ -426,6 +434,8 @@ export async function createTasks(input: {
 	tasks: BulkTaskInput[];
 	/** Owner of the planning rows written for tasks with `plannedFor` (defaults to `createdBy`). */
 	plannedForUserId?: string;
+	/** Creating surface for the whole batch (default `web`). */
+	channel?: TaskChannel;
 	/**
 	 * Enlist in an outer transaction instead of opening one. Used when the
 	 * project itself is created in the same transaction (template seeding), so
@@ -471,7 +481,8 @@ export async function createTasks(input: {
 			estimateMinutes: t.estimateMinutes ?? null,
 			tags: t.tags ?? [],
 			checklist: t.checklist ?? [],
-			createdBy: input.createdBy
+			createdBy: input.createdBy,
+			channel: input.channel ?? 'web'
 		}));
 		await tx.insert(task).values(rows);
 
@@ -1186,7 +1197,8 @@ export async function createTaskWithEffects(
 		assigneeIds,
 		createdBy: me.id,
 		plannedForUserId: me.id,
-		plannedFor
+		plannedFor,
+		channel: opts.via === 'mcp' ? 'mcp' : 'api'
 	});
 	logActivityFF({
 		projectId: proj.id,

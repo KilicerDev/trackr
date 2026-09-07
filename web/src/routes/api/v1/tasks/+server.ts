@@ -127,7 +127,8 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		assigneeIds,
 		createdBy: user.id,
 		plannedForUserId: user.id,
-		plannedFor
+		plannedFor,
+		channel: 'api'
 	});
 	logActivityFF({
 		projectId: proj.id,
