@@ -5,6 +5,13 @@ import { emitWebhookEvent } from '$lib/server/webhooks';
 import { organization, organizationMember, project } from '$lib/server/db/app.schema';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import { allowedOrgRoles } from '$lib/roles';
+import {
+	canRemoveInternalOrgMember,
+	canSetInternalOrgRole,
+	isRoot,
+	type PolicySubject
+} from '$lib/server/user-policy';
+import { syncUserRoleFromMemberships } from '$lib/server/user-roles';
 import { recordAudit } from '$lib/server/audit';
 import { m } from '$lib/paraglide/messages';
 import { isValidOrgKey, normalizeOrgKey } from '$lib/org-key';
@@ -35,6 +42,71 @@ function requireAdmin(locals: App.Locals) {
 	if (!locals.user) return fail(401, { message: m.admin_err_not_authenticated() });
 	if (!locals.isAdmin) return fail(403, { message: m.admin_err_admin_required() });
 	return null;
+}
+
+// The user a membership action targets, as a policy subject.
+async function loadTarget(userId: string) {
+	const [u] = await db
+		.select({
+			id: userTable.id,
+			email: userTable.email,
+			role: userTable.role,
+			isRoot: userTable.isRoot
+		})
+		.from(userTable)
+		.where(eq(userTable.id, userId))
+		.limit(1);
+	return u ?? null;
+}
+
+/**
+ * Hierarchy checks shared by memberAdd / memberSetRole / memberRemove.
+ * Membership roles on the INTERNAL org map onto the better-auth tier
+ * (org.superadmin → superadmin, org.admin → admin, org.staff → user), so
+ * changing one is a role change and follows $lib/server/user-policy: never
+ * oneself, never root, never above the actor's own rank. On client orgs only
+ * the self/root rules apply (no tier impact). Returns a `fail()` or null.
+ */
+function membershipDenied(
+	locals: App.Locals,
+	orgId: string,
+	isInternal: boolean,
+	target: PolicySubject & { email?: string | null },
+	change: { role: string } | { remove: true }
+) {
+	const me = locals.user!;
+	const reason =
+		target.id === me.id
+			? 'own_membership'
+			: isRoot(target)
+				? 'root'
+				: !isInternal
+					? null
+					: 'remove' in change
+						? canRemoveInternalOrgMember(me, target)
+							? null
+							: 'rank'
+						: canSetInternalOrgRole(me, target, change.role)
+							? null
+							: 'rank';
+	if (!reason) return null;
+	void recordAudit({
+		type: 'authz.denied',
+		actorId: me.id,
+		actorLabel: me.email,
+		targetType: 'user',
+		targetId: target.id,
+		targetLabel: target.email ?? null,
+		orgId,
+		meta: { path: `/admin/organizations/${orgId}`, reason, change }
+	});
+	const message =
+		reason === 'own_membership'
+			? m.admin_err_own_membership()
+			: reason === 'root'
+				? m.admin_err_root_untouchable()
+				: m.admin_err_rank();
+	return fail(403, { message });
 }
 
 // Role IDs assignable on each org type come from the shared helper. Internal-
@@ -69,7 +141,7 @@ function userColor(id: string): string {
 	return `hsl(${h % 360} 55% 60%)`;
 }
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, locals }) => {
 	const id = params.id;
 	if (!id) throw error(404, m.admin_err_org_not_found());
 
@@ -96,7 +168,8 @@ export const load: PageServerLoad = async ({ params }) => {
 			role: organizationMember.role,
 			addedAt: organizationMember.addedAt,
 			name: userTable.name,
-			email: userTable.email
+			email: userTable.email,
+			isRoot: userTable.isRoot
 		})
 		.from(organizationMember)
 		.innerJoin(userTable, eq(userTable.id, organizationMember.userId))
@@ -110,7 +183,10 @@ export const load: PageServerLoad = async ({ params }) => {
 		role: m.role,
 		initials: initials(m.name),
 		color: userColor(m.userId),
-		addedAt: m.addedAt
+		addedAt: m.addedAt,
+		// Rows the policy would refuse to change anyway (root, oneself) — the
+		// server enforces it, the UI just doesn't offer it.
+		locked: m.isRoot || m.userId === locals.user?.id
 	}));
 
 	return {
@@ -270,12 +346,12 @@ export const actions: Actions = {
 			});
 		}
 
-		const [u] = await db
-			.select({ id: userTable.id })
-			.from(userTable)
-			.where(eq(userTable.id, userId))
-			.limit(1);
-		if (!u) return fail(404, { message: m.admin_err_user_not_found() });
+		const target = await loadTarget(userId);
+		if (!target) return fail(404, { message: m.admin_err_user_not_found() });
+		const refused = membershipDenied(locals, params.id, org.isInternal, target, {
+			role: requestedRole
+		});
+		if (refused) return refused;
 
 		try {
 			await db
@@ -289,6 +365,7 @@ export const actions: Actions = {
 			console.error('memberAdd failed', err);
 			return fail(500, { message: m.admin_err_add_member_failed() });
 		}
+		const userRole = org.isInternal ? await syncUserRoleFromMemberships(userId) : undefined;
 		void recordAudit({
 			type: 'user.role_change',
 			actorId: locals.user?.id ?? null,
@@ -296,7 +373,7 @@ export const actions: Actions = {
 			targetId: userId,
 			targetLabel: await userLabel(userId),
 			orgId: params.id,
-			meta: { action: 'org.member_add', orgId: params.id, role: requestedRole }
+			meta: { action: 'org.member_add', orgId: params.id, role: requestedRole, userRole }
 		});
 		emitWebhookEvent({
 			type: 'organization.member_added',
@@ -329,6 +406,11 @@ export const actions: Actions = {
 			});
 		}
 
+		const target = await loadTarget(userId);
+		if (!target) return fail(404, { message: m.admin_err_user_not_found() });
+		const refused = membershipDenied(locals, params.id, org.isInternal, target, { role });
+		if (refused) return refused;
+
 		// Last-admin protection: if we'd be demoting the only top-role holder,
 		// refuse. UI should promote someone else first.
 		const tops = org.isInternal ? TOP_ROLE_FOR_INTERNAL : TOP_ROLE_FOR_CLIENT;
@@ -352,6 +434,7 @@ export const actions: Actions = {
 			.update(organizationMember)
 			.set({ role })
 			.where(and(eq(organizationMember.orgId, params.id), eq(organizationMember.userId, userId)));
+		const userRole = org.isInternal ? await syncUserRoleFromMemberships(userId) : undefined;
 		void recordAudit({
 			type: 'user.role_change',
 			actorId: locals.user?.id ?? null,
@@ -359,7 +442,7 @@ export const actions: Actions = {
 			targetId: userId,
 			targetLabel: await userLabel(userId),
 			orgId: params.id,
-			meta: { action: 'org.member_role', orgId: params.id, role }
+			meta: { action: 'org.member_role', orgId: params.id, role, userRole }
 		});
 		emitWebhookEvent({
 			type: 'organization.member_role_changed',
@@ -392,6 +475,10 @@ export const actions: Actions = {
 			.where(and(eq(organizationMember.orgId, params.id), eq(organizationMember.userId, userId)))
 			.limit(1);
 		if (!current) return fail(404, { message: m.admin_err_member_not_found() });
+		const target = await loadTarget(userId);
+		if (!target) return fail(404, { message: m.admin_err_user_not_found() });
+		const refused = membershipDenied(locals, params.id, org.isInternal, target, { remove: true });
+		if (refused) return refused;
 
 		if (tops.includes(current.role)) {
 			const remaining = await countTopRoleHolders(params.id, org.isInternal);
@@ -405,6 +492,7 @@ export const actions: Actions = {
 		await db
 			.delete(organizationMember)
 			.where(and(eq(organizationMember.orgId, params.id), eq(organizationMember.userId, userId)));
+		const userRole = org.isInternal ? await syncUserRoleFromMemberships(userId) : undefined;
 		void recordAudit({
 			type: 'user.role_change',
 			actorId: locals.user?.id ?? null,
@@ -412,7 +500,7 @@ export const actions: Actions = {
 			targetId: userId,
 			targetLabel: await userLabel(userId),
 			orgId: params.id,
-			meta: { action: 'org.member_remove', orgId: params.id, role: current.role }
+			meta: { action: 'org.member_remove', orgId: params.id, role: current.role, userRole }
 		});
 		emitWebhookEvent({
 			type: 'organization.member_removed',

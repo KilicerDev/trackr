@@ -251,6 +251,7 @@
 	"admin_err_key_in_use": "The key \"{key}\" is already in use.",
 	"admin_err_superadmin_required": "Superadmin access required.",
 	"admin_err_root_untouchable": "The root account cannot be modified.",
+	"admin_err_own_membership": "You cannot change your own role. Ask another admin.",
 	"admin_err_rank": "You cannot do this to a user at or above your own level.",
 	"admin_err_user_not_found": "User not found.",
 	"admin_failed": "Failed.",

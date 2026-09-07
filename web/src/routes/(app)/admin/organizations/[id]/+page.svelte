@@ -296,6 +296,7 @@
 						ROLES.includes(member.role as OrgRole) ? member.role : DEFAULT_ROLE
 					) as OrgRole}
 					{@const meta = ROLE_META[role] ?? { label: orgRoleLabel(role), color: '#7c7c84' }}
+					{@const locked = member.locked}
 					<div
 						class="flex items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[14px] last:border-b-0"
 					>
@@ -307,16 +308,17 @@
 						<div class="relative">
 							<button
 								type="button"
+								disabled={locked}
 								onclick={() => (openRoleMenu = openRoleMenu === member.id ? null : member.id)}
-								class="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[12px] font-medium hover:bg-surface"
+								class="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[12px] font-medium hover:bg-surface disabled:cursor-default disabled:hover:bg-transparent"
 								style:color={meta.color}
 								style:background={meta.color + '22'}
 							>
 								<span class="h-1.5 w-1.5 rounded-full" style:background={meta.color}></span>
 								{orgRoleLabel(role)}
-								<Icon name="chevron" size={11} />
+								{#if !locked}<Icon name="chevron" size={11} />{/if}
 							</button>
-							{#if openRoleMenu === member.id}
+							{#if openRoleMenu === member.id && !locked}
 								<div
 									use:clickOutside={() => (openRoleMenu = null)}
 									use:autoPlace
@@ -340,19 +342,23 @@
 								</div>
 							{/if}
 						</div>
-						<IconButton
-							size={31}
-							ariaLabel={m.admin_org_remove_member()}
-							onclick={() => removeMember(member.id, member.name)}
-						>
-							{#if busyMember === `memberRemove:${member.id}`}
-								<span
-									class="h-3 w-3 animate-spin rounded-full border-2 border-text-3 border-t-transparent"
-								></span>
-							{:else}
-								<Icon name="x" size={14} />
-							{/if}
-						</IconButton>
+						{#if !locked}
+							<IconButton
+								size={31}
+								ariaLabel={m.admin_org_remove_member()}
+								onclick={() => removeMember(member.id, member.name)}
+							>
+								{#if busyMember === `memberRemove:${member.id}`}
+									<span
+										class="h-3 w-3 animate-spin rounded-full border-2 border-text-3 border-t-transparent"
+									></span>
+								{:else}
+									<Icon name="x" size={14} />
+								{/if}
+							</IconButton>
+						{:else}
+							<span class="w-[31px]"></span>
+						{/if}
 					</div>
 				{/each}
 			{/if}

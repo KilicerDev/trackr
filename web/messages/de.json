@@ -279,6 +279,7 @@
 	"admin_err_key_in_use": "Das Kürzel \"{key}\" wird bereits verwendet.",
 	"admin_err_superadmin_required": "Superadmin-Zugriff erforderlich.",
 	"admin_err_root_untouchable": "Das Root-Konto kann nicht verändert werden.",
+	"admin_err_own_membership": "Du kannst deine eigene Rolle nicht ändern. Bitte einen anderen Admin.",
 	"admin_err_rank": "Das ist bei Benutzern auf oder über deiner eigenen Stufe nicht erlaubt.",
 	"admin_err_user_not_found": "Benutzer nicht gefunden.",
 	"admin_failed": "Fehlgeschlagen.",
