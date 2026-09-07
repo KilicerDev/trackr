@@ -407,6 +407,8 @@ export type BulkTaskInput = {
 	tags?: string[];
 	checklist?: { id: string; text: string; done: boolean }[];
 	assigneeIds?: string[];
+	/** Plan the task into `plannedForUserId`'s week (YYYY-MM-DD). */
+	plannedFor?: string | null;
 };
 
 /**
@@ -422,6 +424,8 @@ export async function createTasks(input: {
 	projectKey: string;
 	createdBy: string;
 	tasks: BulkTaskInput[];
+	/** Owner of the planning rows written for tasks with `plannedFor` (defaults to `createdBy`). */
+	plannedForUserId?: string;
 	/**
 	 * Enlist in an outer transaction instead of opening one. Used when the
 	 * project itself is created in the same transaction (template seeding), so
@@ -484,6 +488,14 @@ export async function createTasks(input: {
 			});
 		}
 		await tx.insert(taskAssignee).values(assigneeRows);
+
+		const planningRows = rows.flatMap((r, i) => {
+			const d = input.tasks[i].plannedFor;
+			return d
+				? [{ taskId: r.id, userId: input.plannedForUserId ?? input.createdBy, plannedFor: d }]
+				: [];
+		});
+		if (planningRows.length > 0) await tx.insert(taskPlanning).values(planningRows);
 
 		for (let i = 0; i < results.length; i++) {
 			await logActivity(tx, {

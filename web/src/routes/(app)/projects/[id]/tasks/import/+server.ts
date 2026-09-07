@@ -6,7 +6,8 @@ import {
 	organizationMember,
 	project,
 	task,
-	taskAssignee
+	taskAssignee,
+	taskPlanning
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
 import {
@@ -35,6 +36,7 @@ import type { RequestHandler } from './$types';
 const MAX_TASKS = 500;
 const MAX_CHECKLIST = 100;
 const MAX_TAGS = 20;
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 type RawItem = Record<string, unknown>;
 
@@ -50,6 +52,8 @@ type ParsedFields = {
 	estimateMinutes?: number | null;
 	tags?: string[];
 	checklist?: { text: string; done: boolean }[];
+	/** Plan into the importer's week (YYYY-MM-DD); null removes the plan. */
+	plannedFor?: string | null;
 };
 
 // Validate one JSON item, or explain why it can't be. `assignees` stays raw
@@ -102,6 +106,21 @@ function parseItem(
 			const d = new Date(it.dueDate);
 			if (Number.isNaN(d.getTime())) return { ok: false, message: m.tasks_err_invalid_date() };
 			fields.dueDate = d;
+		}
+	}
+
+	// plannedFor is the importer's own week plan (per-user, not a task field):
+	// "YYYY-MM-DD" plans it, null/"" removes the importer's plan for it.
+	if (it.plannedFor !== undefined) {
+		if (it.plannedFor == null || it.plannedFor === '') {
+			fields.plannedFor = null;
+		} else {
+			if (typeof it.plannedFor !== 'string' || !DATE_ONLY.test(it.plannedFor))
+				return { ok: false, message: m.import_err_invalid_planned_for() };
+			const d = new Date(`${it.plannedFor}T00:00:00Z`);
+			if (Number.isNaN(d.getTime()))
+				return { ok: false, message: m.import_err_invalid_planned_for() };
+			fields.plannedFor = it.plannedFor;
 		}
 	}
 
@@ -338,7 +357,8 @@ export const POST: RequestHandler = async ({ request, params, locals, url }) => 
 				estimateMinutes: f.estimateMinutes ?? null,
 				tags: f.tags ?? [],
 				checklist: (f.checklist ?? []).map((c) => ({ ...c, id: crypto.randomUUID() })),
-				assigneeIds: resolved ?? []
+				assigneeIds: resolved ?? [],
+				plannedFor: f.plannedFor ?? null
 			}
 		});
 	}
@@ -349,6 +369,8 @@ export const POST: RequestHandler = async ({ request, params, locals, url }) => 
 		target: Target;
 		patch: Record<string, unknown>;
 		assigneeIds: string[] | null;
+		/** undefined = key absent (leave the plan alone); null = remove. */
+		plannedFor: string | null | undefined;
 	};
 	const toUpdate: UpdatePlan[] = [];
 	for (const v of updateItems) {
@@ -375,7 +397,13 @@ export const POST: RequestHandler = async ({ request, params, locals, url }) => 
 				return { id, text: c.text, done: c.done };
 			});
 		}
-		toUpdate.push({ index: v.index, target, patch, assigneeIds: resolved });
+		toUpdate.push({
+			index: v.index,
+			target,
+			patch,
+			assigneeIds: resolved,
+			plannedFor: f.plannedFor
+		});
 	}
 	failed.sort((a, b) => a.index - b.index);
 
@@ -410,6 +438,7 @@ export const POST: RequestHandler = async ({ request, params, locals, url }) => 
 				projectId: p.id,
 				projectKey: p.key,
 				createdBy: me.id,
+				plannedForUserId: me.id,
 				tasks: toCreate.map((t) => t.task)
 			});
 		}
@@ -422,6 +451,21 @@ export const POST: RequestHandler = async ({ request, params, locals, url }) => 
 				for (const u of toUpdate) {
 					if (Object.keys(u.patch).length > 0) {
 						await tx.update(task).set(u.patch).where(eq(task.id, u.target.id));
+					}
+					if (u.plannedFor !== undefined) {
+						if (u.plannedFor) {
+							await tx
+								.insert(taskPlanning)
+								.values({ taskId: u.target.id, userId: me.id, plannedFor: u.plannedFor })
+								.onConflictDoUpdate({
+									target: [taskPlanning.taskId, taskPlanning.userId],
+									set: { plannedFor: u.plannedFor, updatedAt: new Date() }
+								});
+						} else {
+							await tx
+								.delete(taskPlanning)
+								.where(and(eq(taskPlanning.taskId, u.target.id), eq(taskPlanning.userId, me.id)));
+						}
 					}
 					if (u.assigneeIds !== null) {
 						await tx.delete(taskAssignee).where(eq(taskAssignee.taskId, u.target.id));

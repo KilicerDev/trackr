@@ -142,6 +142,7 @@
 	"import_err_failed": "Import fehlgeschlagen.",
 	"import_err_item_not_object": "Eintrag muss ein Objekt sein.",
 	"import_err_invalid_estimate": "Ungültige Schätzung.",
+	"import_err_invalid_planned_for": "Ungültiges plannedFor-Datum (erwartet JJJJ-MM-TT).",
 	"import_err_invalid_tags": "Tags müssen ein Array aus Strings sein.",
 	"import_err_invalid_assignees": "Zuweisungen müssen ein Array aus Benutzer-IDs oder E-Mail-Adressen sein.",
 	"import_err_no_valid_assignees": "Keine der angegebenen Personen ist ein zuweisbarer Benutzer: {list}",

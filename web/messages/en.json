@@ -1031,6 +1031,7 @@
 	"import_err_failed": "Import failed.",
 	"import_err_item_not_object": "Item must be an object.",
 	"import_err_invalid_estimate": "Invalid estimate.",
+	"import_err_invalid_planned_for": "Invalid plannedFor date (expected YYYY-MM-DD).",
 	"import_err_invalid_tags": "Tags must be an array of strings.",
 	"import_err_invalid_assignees": "Assignees must be an array of user ids or emails.",
 	"import_err_no_valid_assignees": "None of the listed assignees match an assignable user: {list}",

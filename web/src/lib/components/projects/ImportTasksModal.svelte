@@ -177,6 +177,8 @@
 	// Other fields:
 	//   description:     string
 	//   dueDate:         ISO date, e.g. "2026-09-01"
+	//   plannedFor:      ISO date, e.g. "2026-09-01" — plans the task into YOUR
+	//                    week on that day (null removes it from your plan)
 	//   estimateMinutes: positive number
 	//   tags:            array of strings (lowercased, max 24 chars each)
 	//   checklist:       array of { "text": string, "done": boolean }
@@ -192,6 +194,7 @@
 			"status": "todo",
 			"priority": "medium",
 			"dueDate": "2026-09-01",
+			"plannedFor": "2026-08-31",
 			"estimateMinutes": 90,
 			"tags": ["infra"],
 			"checklist": [{ "text": "Provision server", "done": false }],

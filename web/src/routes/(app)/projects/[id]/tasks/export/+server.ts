@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit';
 import { asc, and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { project, task, taskAssignee } from '$lib/server/db/app.schema';
+import { project, task, taskAssignee, taskPlanning } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
 import { can } from '$lib/server/permissions';
 import { recordAudit } from '$lib/server/audit';
@@ -63,6 +63,19 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		assigneesByTask.set(r.taskId, list);
 	}
 
+	// The exporter's own week plan per task (planning is per user, so this is
+	// what a re-upload by the same person would restore).
+	const planRows = taskIds.length
+		? await db
+				.select({ taskId: taskPlanning.taskId, plannedFor: taskPlanning.plannedFor })
+				.from(taskPlanning)
+				.where(and(inArray(taskPlanning.taskId, taskIds), eq(taskPlanning.userId, locals.user.id)))
+		: [];
+	const plannedByTask = new Map<string, string>();
+	for (const r of planRows) {
+		if (r.plannedFor) plannedByTask.set(r.taskId, String(r.plannedFor).slice(0, 10));
+	}
+
 	const exportedAt = new Date().toISOString().slice(0, 10);
 	const header = `{
 	// Trackr task export — ${p.key} · ${p.name} — exported ${exportedAt}.
@@ -83,6 +96,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	// Other fields:
 	//   description:     string ("" clears it)
 	//   dueDate:         ISO date, e.g. "2026-09-01" (null clears it)
+	//   plannedFor:      ISO date, e.g. "2026-09-01" — plans the task into YOUR
+	//                    week on that day (null removes it from your plan)
 	//   estimateMinutes: positive number (null clears it)
 	//   tags:            array of strings (lowercased, max 24 chars each)
 	//   checklist:       array of { "text": string, "done": boolean }
@@ -96,6 +111,8 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		item.status = t.status;
 		item.priority = t.priority;
 		if (t.dueDate) item.dueDate = t.dueDate.toISOString().slice(0, 10);
+		const planned = plannedByTask.get(t.id);
+		if (planned) item.plannedFor = planned;
 		if (t.estimateMinutes) item.estimateMinutes = t.estimateMinutes;
 		if (t.tags.length > 0) item.tags = t.tags;
 		if (t.checklist.length > 0) {
