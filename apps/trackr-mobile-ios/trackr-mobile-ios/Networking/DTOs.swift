@@ -396,6 +396,8 @@ enum API {
         let color: String?
         let icon: String?
         let status: String
+        /// Optional so older servers without project tags still decode.
+        let tags: [String]?
         let leadId: String?
         let members: [ProjectMember]
         let updatedAt: String

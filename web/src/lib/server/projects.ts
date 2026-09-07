@@ -20,6 +20,7 @@ import { logActivityFF } from './activity';
 import { recordAudit } from './audit';
 import { emitWebhookEvent, projectSnapshot } from './webhooks';
 import { m } from '$lib/paraglide/messages';
+import { normalizeTag } from '$lib/utils/label-meta';
 
 export const PROJECT_STATUSES = [
 	'prospect',
@@ -33,6 +34,18 @@ export const PROJECT_STATUSES = [
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 const PROJECT_STATUS_SET = new Set<string>(PROJECT_STATUSES);
 
+/** Trim/lower-case/dedupe a tag list the same way task tags are stored. */
+export function normalizeTags(raw: readonly unknown[]): string[] {
+	return [...new Set(raw.map((t) => normalizeTag(String(t ?? ''))).filter(Boolean))];
+}
+
+/** Order-insensitive equality for tag lists. */
+function sameList(a: readonly string[], b: readonly string[]): boolean {
+	if (a.length !== b.length) return false;
+	const set = new Set(a);
+	return b.every((v) => set.has(v));
+}
+
 export type ProjectListRow = {
 	id: string;
 	key: string;
@@ -41,6 +54,7 @@ export type ProjectListRow = {
 	color: string;
 	icon: string;
 	status: string;
+	tags: string[];
 	/** Convenience flag: `status === 'archived'`. */
 	archived: boolean;
 	orgId: string | null;
@@ -97,6 +111,7 @@ const listColumns = {
 	color: project.color,
 	icon: project.icon,
 	status: project.status,
+	tags: project.tags,
 	orgId: project.orgId,
 	orgKey: organization.key,
 	orgName: organization.name,
@@ -123,6 +138,7 @@ function shapeRow(r: ListSelect, taskCount: number): ProjectListRow {
 		color: r.color,
 		icon: r.icon,
 		status: r.status,
+		tags: r.tags ?? [],
 		archived: r.status === 'archived',
 		orgId: r.orgId,
 		orgKey: r.orgKey,
@@ -203,6 +219,7 @@ export type CreateProjectInput = {
 	orgKey?: string | null;
 	color?: string;
 	status?: string;
+	tags?: string[];
 	leadId?: string | null;
 	memberIds?: string[];
 };
@@ -227,6 +244,7 @@ export async function createProject(
 	const color = input.color?.trim() || '#7a9cf0';
 	const icon = (name?.trim()[0] ?? 'P').toUpperCase();
 	const status = input.status ?? 'active';
+	const tags = normalizeTags(input.tags ?? []);
 	const leadId = input.leadId?.trim() || null;
 	const memberIds = (input.memberIds ?? []).map((v) => String(v).trim()).filter(Boolean);
 
@@ -274,6 +292,7 @@ export async function createProject(
 			color,
 			icon,
 			status,
+			tags,
 			leadId,
 			orgId,
 			createdBy: me.id
@@ -304,7 +323,9 @@ export async function createProject(
 		projectId: id,
 		actor: { id: me.id, name: me.name },
 		origin: opts.origin ?? null,
-		data: { project: projectSnapshot({ id, key, name, orgId, status }, opts.origin ?? null) }
+		data: {
+			project: projectSnapshot({ id, key, name, orgId, status, tags }, opts.origin ?? null)
+		}
 	});
 	return { id, key };
 }
@@ -314,10 +335,12 @@ export type UpdateProjectPatch = {
 	description?: string | null;
 	status?: string;
 	color?: string;
+	/** Full replacement list; `[]` clears. */
+	tags?: string[];
 };
 
 /**
- * Update name / description / status / colour (`project.edit`). Partial: only
+ * Update name / description / status / colour / tags (`project.edit`). Partial: only
  * the given fields change; the icon follows the name's first letter like the
  * web action. Activity rows per changed field + audit `project.update`.
  */
@@ -335,7 +358,8 @@ export async function updateProject(
 			name: project.name,
 			description: project.description,
 			status: project.status,
-			color: project.color
+			color: project.color,
+			tags: project.tags
 		})
 		.from(project)
 		.where(eq(project.id, projectId))
@@ -366,6 +390,11 @@ export async function updateProject(
 	if (patch.color !== undefined && String(patch.color).trim()) {
 		color = String(patch.color).trim();
 		if (color !== prior.color) fields.color = color;
+	}
+	let tags = prior.tags ?? [];
+	if (patch.tags !== undefined) {
+		tags = normalizeTags(patch.tags);
+		if (!sameList(tags, prior.tags ?? [])) fields.tags = tags;
 	}
 	if (Object.keys(fields).length === 0) return { changed: false };
 
@@ -400,6 +429,14 @@ export async function updateProject(
 			actorId,
 			type: 'project.color',
 			meta: { from: prior.color, to: color }
+		});
+	}
+	if (fields.tags !== undefined) {
+		logActivityFF({
+			projectId,
+			actorId,
+			type: 'project.tags',
+			meta: { from: prior.tags ?? [], to: tags }
 		});
 	}
 	void recordAudit({

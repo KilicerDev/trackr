@@ -4,6 +4,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import AvatarStack from '../AvatarStack.svelte';
 	import Icon from '../Icon.svelte';
+	import LabelChip from '../LabelChip.svelte';
 	import type { ProjectListItem } from '../../../routes/(app)/projects/+page.server';
 
 	interface Props {
@@ -82,9 +83,22 @@
 		</div>
 	</div>
 
-	<p class="mb-5 line-clamp-2 min-h-[2.4em] text-[14px] leading-snug text-text-3">
+	<p
+		class="line-clamp-2 min-h-[2.4em] text-[14px] leading-snug text-text-3 {project.tags?.length
+			? 'mb-3'
+			: 'mb-5'}"
+	>
 		{project.description ?? m.projects_no_description()}
 	</p>
+
+	{#if project.tags?.length}
+		<div class="mb-4 flex flex-wrap items-center gap-1.5">
+			{#each project.tags.slice(0, 4) as t (t)}<LabelChip id={t} />{/each}
+			{#if project.tags.length > 4}
+				<span class="text-[12px] text-text-3">+{project.tags.length - 4}</span>
+			{/if}
+		</div>
+	{/if}
 
 	<div class="mb-4 h-1 rounded-full" style:background={project.color}></div>
 

@@ -16,6 +16,8 @@ struct ProjectItem: Identifiable, Hashable {
     var color: Color
     var about = ""
     var status: ProjectStatus = .active
+    /// Free-form tags, same vocabulary style as task/ticket tags.
+    var tags: [String] = []
     var lead: UserRef?
     var members: [UserRef] = []
     var updatedAt = Date.now

@@ -13,6 +13,7 @@
 	import FilterTrigger from '../view-panel/FilterTrigger.svelte';
 	import { PROJECT_STATUS } from '$lib/config/taxonomy';
 	import { projectStatusLabel } from '$lib/utils/labels';
+	import { labelMeta } from '$lib/utils/label-meta';
 	import { m } from '$lib/paraglide/messages';
 	import { page } from '$app/state';
 	import { DEFAULT_PROJECT_SORT, type ProjectSort, type ProjectSortBy } from '$lib/utils/sort';
@@ -44,6 +45,8 @@
 		sort?: ProjectSort;
 		setSort?: (s: ProjectSort) => void;
 		orgs: OrgOption[];
+		/** Every tag in use across the loaded projects (filter vocabulary). */
+		tags?: string[];
 		canCreate: boolean;
 		onNew: () => void;
 		viewsMenu?: {
@@ -65,6 +68,7 @@
 		sort = DEFAULT_PROJECT_SORT,
 		setSort,
 		orgs,
+		tags: allTags = [],
 		canCreate,
 		onNew,
 		viewsMenu
@@ -87,6 +91,7 @@
 	const FIELDS: FilterField[] = $derived([
 		{ id: 'status', label: m.projects_filter_status(), icon: 'check' },
 		{ id: 'org', label: m.projects_filter_org(), icon: 'org', searchable: true },
+		{ id: 'tags', label: m.tasks_tags(), icon: 'star', searchable: true },
 		{ id: 'assignee', label: m.projects_filter_assignee(), icon: 'users', searchable: true }
 	]);
 
@@ -124,6 +129,7 @@
 			return orgs.find((o) => o.id === value)?.name ?? value;
 		}
 		if (field === 'assignee') return users.find((u) => u.id === value)?.name ?? value;
+		if (field === 'tags') return labelMeta(value).label;
 		return value;
 	}
 </script>
@@ -171,6 +177,24 @@
 				</span>
 			</button>
 		{/each}
+	{:else if field === 'tags'}
+		{#each allTags.filter((id) => hit(labelMeta(id).label, query)) as id (id)}
+			{@const l = labelMeta(id)}
+			<button
+				type="button"
+				onclick={() => toggleValue('tags', id)}
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
+			>
+				<span class="h-2 w-2 rounded-full" style:background={l.color}></span>
+				<span class="truncate text-[14px]">{l.label}</span>
+				<span class="ml-auto text-accent {values.includes(id) ? 'opacity-100' : 'opacity-0'}">
+					<Icon name="check" size={14} />
+				</span>
+			</button>
+		{/each}
+		{#if allTags.length === 0}
+			<div class="px-2 py-2 text-[12px] text-text-3">{m.common_none()}</div>
+		{/if}
 	{:else if field === 'assignee'}
 		{#each users.filter((u) => u.status !== 'disabled' && hit(u.name, query)) as u (u.id)}
 			<button

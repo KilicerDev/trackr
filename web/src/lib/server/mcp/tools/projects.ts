@@ -83,6 +83,7 @@ export function registerProjectTools(server: McpServer, ctx: McpContext): void {
 						status: z.string(),
 						orgKey: z.string().nullable(),
 						orgName: z.string().nullable(),
+						tags: z.array(z.string()),
 						taskCount: z.number().nullable(),
 						updatedAt: z.string().nullable()
 					})
@@ -144,7 +145,7 @@ export function registerProjectTools(server: McpServer, ctx: McpContext): void {
 		{
 			title: 'Create project',
 			description:
-				'Create a project (requires project.create — internal staff). `key` is 1–5 letters/digits, upper-cased, must be unique (task ids become `KEY-n`). Optional `orgKey` links a client organization (omit for internal work), `description`, `status` (default `active`). You become a member. Templates and member lists are desktop-only.',
+				'Create a project (requires project.create — internal staff). `key` is 1–5 letters/digits, upper-cased, must be unique (task ids become `KEY-n`). Optional `orgKey` links a client organization (omit for internal work), `description`, `status` (default `active`), `tags`. You become a member. Templates and member lists are desktop-only.',
 			inputSchema: z.object({
 				name: z.string().min(1).max(200).describe('Project name.'),
 				key: z
@@ -155,11 +156,12 @@ export function registerProjectTools(server: McpServer, ctx: McpContext): void {
 					.describe('Short unique key (1–5 letters/digits, e.g. `WEB`).'),
 				orgKey: z.string().optional().describe('Client organization key (omit for internal).'),
 				description: z.string().optional().describe('Description (markdown).'),
-				status: statusEnum.default('active').describe('Initial status (default `active`).')
+				status: statusEnum.default('active').describe('Initial status (default `active`).'),
+				tags: z.array(z.string()).max(50).optional().describe('Tags (free-form strings).')
 			}),
 			annotations: WRITE
 		},
-		guarded(async ({ name, key, orgKey, description, status }) => {
+		guarded(async ({ name, key, orgKey, description, status, tags }) => {
 			await assertCan(ctx.locals, 'project.create');
 			let orgId: string | null = null;
 			if (orgKey) {
@@ -171,7 +173,14 @@ export function registerProjectTools(server: McpServer, ctx: McpContext): void {
 			if (await resolveProjectByKey(k)) fail(409, `Project key ${k} is already in use.`);
 			const created = await createProject(
 				ctx.locals,
-				{ name: name.trim(), key: k, description: description?.trim() || null, orgId, status },
+				{
+					name: name.trim(),
+					key: k,
+					description: description?.trim() || null,
+					orgId,
+					status,
+					tags
+				},
 				{ origin: ctx.origin, via: 'mcp' }
 			);
 			const id = typeof created === 'string' ? created : (created as { id: string }).id;
@@ -189,7 +198,7 @@ export function registerProjectTools(server: McpServer, ctx: McpContext): void {
 		{
 			title: 'Update project',
 			description:
-				'Change project `name`, `description` (markdown; empty string clears), `status` or `color` (hex). Requires project.edit on the project. Setting status `archived` hides it and its tasks from lists. Pass only the fields to change.',
+				'Change project `name`, `description` (markdown; empty string clears), `status`, `color` (hex) or `tags` (full list, [] clears). Requires project.edit on the project. Setting status `archived` hides it and its tasks from lists. Pass only the fields to change.',
 			inputSchema: z.object({
 				key: projectKeySchema,
 				name: z.string().min(1).max(200).optional().describe('New name.'),
@@ -199,11 +208,12 @@ export function registerProjectTools(server: McpServer, ctx: McpContext): void {
 					.string()
 					.regex(/^#[0-9a-fA-F]{6}$/, 'Expected #rrggbb')
 					.optional()
-					.describe('Accent color as #rrggbb.')
+					.describe('Accent color as #rrggbb.'),
+				tags: z.array(z.string()).max(50).optional().describe('Full tag list; [] clears.')
 			}),
 			annotations: WRITE_IDEMPOTENT
 		},
-		guarded(async ({ key, name, description, status, color }) => {
+		guarded(async ({ key, name, description, status, color, tags }) => {
 			const k = normalizeKey(key);
 			const ref = await resolveProjectByKey(k);
 			if (!ref) fail(404, `Project ${k} not found.`);
@@ -213,6 +223,7 @@ export function registerProjectTools(server: McpServer, ctx: McpContext): void {
 			if (description !== undefined) patch.description = description.trim() || null;
 			if (status !== undefined) patch.status = status;
 			if (color !== undefined) patch.color = color;
+			if (tags !== undefined) patch.tags = tags;
 			if (Object.keys(patch).length === 0)
 				fail(400, 'Nothing to update — pass at least one field.');
 			await updateProject(ctx.locals, ref.id, patch, { origin: ctx.origin, via: 'mcp' });

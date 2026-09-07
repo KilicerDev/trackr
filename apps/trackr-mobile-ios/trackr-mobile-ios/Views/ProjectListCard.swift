@@ -74,6 +74,20 @@ struct ProjectListCard: View {
                     .lineLimit(2)
             }
 
+            if !project.tags.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(project.tags.prefix(4), id: \.self) { tag in
+                        TagChip(tag: tag)
+                    }
+                    if project.tags.count > 4 {
+                        Text("+\(project.tags.count - 4)")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .lineLimit(1)
+            }
+
             RoundedRectangle(cornerRadius: 2)
                 .fill(project.color)
                 .frame(height: 3)

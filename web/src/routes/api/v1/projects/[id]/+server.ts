@@ -20,6 +20,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 			color: project.color,
 			icon: project.icon,
 			status: project.status,
+			tags: project.tags,
 			orgId: project.orgId,
 			orgName: organization.name,
 			leadId: project.leadId,

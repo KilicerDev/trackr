@@ -18,6 +18,7 @@ import { notifyProjectComment } from '$lib/server/notify/events/project';
 import { assertCan, isTrackrTeam } from '$lib/server/permissions';
 import { listProjectMeetings, listTemplates } from '$lib/server/notes';
 import { m } from '$lib/paraglide/messages';
+import { normalizeTags } from '$lib/server/projects';
 
 // "KEY · Name" for the audit log's target column. Best-effort; returns the id
 // if the project can't be read.
@@ -28,7 +29,8 @@ async function projectForWebhook(id: string) {
 			key: project.key,
 			name: project.name,
 			orgId: project.orgId,
-			status: project.status
+			status: project.status,
+			tags: project.tags
 		})
 		.from(project)
 		.where(eq(project.id, id))
@@ -149,6 +151,7 @@ export const load: ServerLoad = async ({ params, locals }) => {
 			color: row.color,
 			icon: row.icon,
 			status: row.status,
+			tags: row.tags ?? [],
 			leadId: row.leadId,
 			createdAt: row.createdAt,
 			updatedAt: row.updatedAt
@@ -174,6 +177,12 @@ export const actions: Actions = {
 		const description = String(form.get('description') ?? '').trim();
 		const status = String(form.get('status') ?? '').trim();
 		const color = String(form.get('color') ?? '').trim();
+		// Tags arrive as one `tags` field per tag; the modal sends a single
+		// `__clear__` sentinel when the list is empty. No field = unchanged.
+		const tagValues = form.getAll('tags').map(String);
+		const tags = form.has('tags')
+			? normalizeTags(tagValues.filter((v) => v !== '__clear__'))
+			: null;
 
 		if (!name) return fail(400, { message: m.projects_name_required_edit() });
 		if (!ALLOWED_STATUSES.has(status)) return fail(400, { message: m.projects_invalid_status() });
@@ -185,12 +194,16 @@ export const actions: Actions = {
 				name: project.name,
 				description: project.description,
 				status: project.status,
-				color: project.color
+				color: project.color,
+				tags: project.tags
 			})
 			.from(project)
 			.where(eq(project.id, params.id))
 			.limit(1);
 		if (!prior) return fail(404, { message: m.projects_not_found_period() });
+		const tagsChanged =
+			tags !== null &&
+			(tags.length !== (prior.tags ?? []).length || tags.some((t) => !prior.tags?.includes(t)));
 
 		try {
 			await db
@@ -201,6 +214,7 @@ export const actions: Actions = {
 					status,
 					icon,
 					...(color ? { color } : {}),
+					...(tagsChanged ? { tags: tags ?? [] } : {}),
 					updatedAt: new Date()
 				})
 				.where(eq(project.id, params.id));
@@ -237,6 +251,14 @@ export const actions: Actions = {
 				meta: { from: prior.color, to: color }
 			});
 		}
+		if (tagsChanged) {
+			logActivityFF({
+				projectId: params.id,
+				actorId,
+				type: 'project.tags',
+				meta: { from: prior.tags ?? [], to: tags ?? [] }
+			});
+		}
 		void recordAudit({
 			type: 'project.update',
 			actorId,
@@ -244,6 +266,46 @@ export const actions: Actions = {
 			targetId: params.id,
 			targetLabel: name,
 			meta: { status, statusFrom: prior.status }
+		});
+		return { success: true };
+	},
+
+	// Inline tag edit from the project header: replaces the full list
+	// (`__clear__` sentinel or no `tags` field = empty).
+	tags: async ({ request, params, locals }) => {
+		if (!locals.user) throw error(401, m.projects_not_authenticated());
+		if (!params.id) return fail(400, { message: m.projects_missing_id() });
+		await assertCan(locals, 'project.edit', { projectId: params.id });
+
+		const form = await request.formData();
+		const tags = normalizeTags(form.getAll('tags').filter((v) => v !== '__clear__'));
+
+		const [prior] = await db
+			.select({ name: project.name, status: project.status, tags: project.tags })
+			.from(project)
+			.where(eq(project.id, params.id))
+			.limit(1);
+		if (!prior) return fail(404, { message: m.projects_not_found_period() });
+		const before = prior.tags ?? [];
+		const changed = tags.length !== before.length || tags.some((t) => !before.includes(t));
+		if (!changed) return { success: true };
+
+		await db.update(project).set({ tags, updatedAt: new Date() }).where(eq(project.id, params.id));
+
+		const actorId = locals.user.id;
+		logActivityFF({
+			projectId: params.id,
+			actorId,
+			type: 'project.tags',
+			meta: { from: before, to: tags }
+		});
+		void recordAudit({
+			type: 'project.update',
+			actorId,
+			targetType: 'project',
+			targetId: params.id,
+			targetLabel: prior.name,
+			meta: { status: prior.status, statusFrom: prior.status, fields: ['tags'] }
 		});
 		return { success: true };
 	},

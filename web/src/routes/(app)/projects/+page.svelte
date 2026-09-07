@@ -186,6 +186,9 @@
 		if (orgF.length && !orgF.includes(p.org?.id ?? INTERNAL)) return false;
 		const assigneeF = filters.assignee ?? [];
 		if (assigneeF.length && !p.members.some((m) => assigneeF.includes(m.id))) return false;
+		// Any-match over the tag set: a project passes if it carries any selected tag.
+		const tagF = filters.tags ?? [];
+		if (tagF.length && !(p.tags ?? []).some((t) => tagF.includes(t))) return false;
 		if (search) {
 			const q = search.toLowerCase();
 			if (!p.name.toLowerCase().includes(q) && !p.key.toLowerCase().includes(q)) return false;
@@ -194,6 +197,9 @@
 	}
 
 	const visibleProjects = $derived(sortProjects(sourceProjects.filter(matches), sort));
+
+	// Tag vocabulary for the toolbar filter: every tag on a loaded project.
+	const allTags = $derived([...new Set(sourceProjects.flatMap((p) => p.tags ?? []))]);
 
 	// Grouped columns shared by the list (sections) and board (columns) views.
 	const columns = $derived.by<BoardColumn[]>(() => {
@@ -260,6 +266,7 @@
 	{sort}
 	{setSort}
 	orgs={data.orgs}
+	tags={allTags}
 	{canCreate}
 	onNew={() => (createOpen = true)}
 	viewsMenu={{

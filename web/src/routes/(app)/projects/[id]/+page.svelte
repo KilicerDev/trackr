@@ -14,6 +14,8 @@
 	import ProjectHistory from '$lib/components/projects/ProjectHistory.svelte';
 	import NewMeetingDialog from '$lib/components/notes/NewMeetingDialog.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import LabelChip from '$lib/components/LabelChip.svelte';
+	import TagsPopover from '$lib/components/popovers/TagsPopover.svelte';
 	import { PROJECT_STATUS } from '$lib/config/taxonomy';
 	import { projectStatusLabel } from '$lib/utils/labels';
 	import { dueCountdown, formatEstimate, formatDateLong } from '$lib/utils/format';
@@ -162,6 +164,35 @@
 	let openMemberMenu = $state<string | null>(null);
 
 	let settingsOpen = $state(false);
+	let tagsOpen = $state(false);
+	// Optimistic copy of the header tag list while a save is in flight.
+	let tagsDraft = $state<string[] | null>(null);
+	const heroTags = $derived(tagsDraft ?? p.tags ?? []);
+	const projectTagSuggestions = $derived((data as { projectTags?: string[] }).projectTags ?? []);
+
+	async function saveTags(next: string[]) {
+		tagsDraft = next;
+		const body = new FormData();
+		for (const t of next) body.append('tags', t);
+		if (next.length === 0) body.append('tags', '__clear__');
+		try {
+			const res = await fetch('?/tags', {
+				method: 'POST',
+				body,
+				headers: { 'x-sveltekit-action': 'true' }
+			});
+			const result: ActionResult = deserialize(await res.text());
+			if (result.type !== 'success') {
+				showToast('err', m.projects_update_failed());
+				return;
+			}
+			await invalidateAll();
+		} catch {
+			showToast('err', m.projects_update_failed());
+		} finally {
+			tagsDraft = null;
+		}
+	}
 	let editing = $state(false);
 	let importingTasks = $state(false);
 	let historyOpen = $state(false);
@@ -374,6 +405,29 @@
 					{/if}
 					<span class="text-text-4">·</span>
 					<span>{m.projects_updated_relative({ time: relativeTime(p.updatedAt) })}</span>
+				</div>
+				<div class="mt-2 flex flex-wrap items-center gap-1.5">
+					{#each heroTags as t (t)}<LabelChip id={t} />{/each}
+					<div class="relative">
+						<button
+							type="button"
+							onclick={() => (tagsOpen = !tagsOpen)}
+							class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text {tagsOpen
+								? 'ring-2 ring-accent/40'
+								: ''}"
+						>
+							<Icon name="bookmark" size={13} />
+							<span>{heroTags.length > 0 ? m.tasks_add_tag() : m.tasks_add_tags()}</span>
+						</button>
+						{#if tagsOpen}
+							<TagsPopover
+								value={heroTags}
+								suggestions={projectTagSuggestions}
+								onchange={saveTags}
+								onclose={() => (tagsOpen = false)}
+							/>
+						{/if}
+					</div>
 				</div>
 			</div>
 			<div class="flex items-center gap-2">
@@ -845,7 +899,8 @@
 		name: p.name,
 		description: p.description,
 		color: p.color,
-		status: p.status
+		status: p.status,
+		tags: p.tags
 	}}
 />
 

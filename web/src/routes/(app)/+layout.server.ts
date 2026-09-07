@@ -258,6 +258,20 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 		a.localeCompare(b, undefined, { sensitivity: 'base' })
 	);
 
+	// Same for project tags — suggestions for the create/edit project modals.
+	const projectTagRows = await db
+		.select({ tags: projectTable.tags })
+		.from(projectTable)
+		.where(
+			and(
+				sql`cardinality(${projectTable.tags}) > 0`,
+				...(projectAccessFilter ? [projectAccessFilter] : [])
+			)
+		);
+	const projectTags = [...new Set(projectTagRows.flatMap((r) => r.tags))].sort((a, b) =>
+		a.localeCompare(b, undefined, { sensitivity: 'base' })
+	);
+
 	// The current user's starred projects — drives the sidebar's Projects list.
 	const favoriteRows = await db
 		.select({ projectId: projectFavoriteTable.projectId })
@@ -376,6 +390,7 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 		favoriteProjectIds,
 		taskCount,
 		taskTags,
+		projectTags,
 		currentUserId: locals.user.id,
 		orgs,
 		isAdmin: !!locals.isAdmin,

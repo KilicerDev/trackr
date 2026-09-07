@@ -184,6 +184,7 @@
 		'project.description': { icon: 'settings', color: '#9aa4b2' },
 		'project.status': { icon: 'refresh', color: '#7a9cf0' },
 		'project.color': { icon: 'star', color: '#9aa4b2' },
+		'project.tags': { icon: 'bookmark', color: '#9aa4b2' },
 		'member.added': { icon: 'users', color: '#a98cf0' },
 		'member.removed': { icon: 'users', color: '#a98cf0' },
 		'member.role': { icon: 'users', color: '#a98cf0' },
@@ -267,6 +268,8 @@
 			{m.projects_history_to()} <span class="font-medium text-text">{humanize(e.meta?.to)}</span>
 		{:else if e.type === 'project.color'}
 			{m.projects_history_changed_color()}
+		{:else if e.type === 'project.tags'}
+			{m.projects_history_updated_tags()}
 		{:else if e.type === 'member.added'}
 			{m.projects_history_added_as({
 				user: userName(e.meta?.userId),

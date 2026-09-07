@@ -785,6 +785,7 @@
 	"projects_history_to": "to",
 	"projects_history_updated_assignees_of": "updated assignees of",
 	"projects_history_updated_description": "updated the project description",
+	"projects_history_updated_tags": "updated the project tags",
 	"projects_hour_ago_one": "{n} hour ago",
 	"projects_hours_ago": "{n}h ago",
 	"projects_hours_ago_other": "{n} hours ago",

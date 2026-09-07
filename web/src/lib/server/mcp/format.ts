@@ -353,6 +353,7 @@ export type ProjectRowLike = {
 	description?: string | null;
 	status?: string | null;
 	color?: string | null;
+	tags?: string[] | null;
 	orgId?: string | null;
 	orgKey?: string | null;
 	orgName?: string | null;
@@ -369,6 +370,7 @@ export function projectLine(p: ProjectRowLike): string {
 		`**${p.key}** ${truncate(p.name, 80)}`,
 		p.status ?? 'active',
 		p.orgKey ? `org ${p.orgKey}` : p.orgName ? `org ${p.orgName}` : 'internal',
+		p.tags?.length ? `tags ${p.tags.join(', ')}` : null,
 		p.openTaskCount != null
 			? `${p.openTaskCount} open tasks`
 			: p.taskCount != null
@@ -386,6 +388,7 @@ export function projectSummary(p: ProjectRowLike) {
 		status: p.status ?? 'active',
 		orgKey: p.orgKey ?? null,
 		orgName: p.orgName ?? null,
+		tags: p.tags ?? [],
 		taskCount: p.openTaskCount ?? p.taskCount ?? null,
 		updatedAt: iso(p.updatedAt) ?? null
 	};
@@ -398,6 +401,7 @@ export function projectDetailMd(p: ProjectRowLike, dir: UserDirectory, extra?: s
 	out.push(`- Status: ${p.status ?? 'active'}`);
 	out.push(`- Org: ${p.orgName ?? p.orgKey ?? 'internal (no client org)'}`);
 	out.push(`- Lead: ${userName(dir, p.leadId ?? null)}`);
+	if (p.tags?.length) out.push(`- Tags: ${p.tags.join(', ')}`);
 	if (p.openTaskCount != null || p.taskCount != null) {
 		out.push(`- Open tasks: ${p.openTaskCount ?? p.taskCount}`);
 	}

@@ -13,6 +13,9 @@
 	import { PROJECT_STATUS } from '$lib/config/taxonomy';
 	import { projectStatusLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
+	import { page } from '$app/state';
+	import LabelChip from '../LabelChip.svelte';
+	import TagsPopover from '../popovers/TagsPopover.svelte';
 	import type { Project } from '$lib/types';
 
 	interface Props {
@@ -24,6 +27,7 @@
 			description: string | null;
 			color: string;
 			status: string;
+			tags?: string[];
 		};
 	}
 
@@ -56,10 +60,14 @@
 	let description = $state('');
 	let color = $state(PALETTE[0]);
 	let status = $state<Project['status']>('active');
+	let tags = $state<string[]>([]);
 	let submitting = $state(false);
 
 	let formEl = $state<HTMLFormElement>();
-	let pop = $state(false);
+	let pop = $state<'status' | 'tags' | null>(null);
+
+	// Tags already used on other projects — quick picks in the tag popover.
+	const tagSuggestions = $derived((page.data as { projectTags?: string[] }).projectTags ?? []);
 
 	const statusMeta = $derived(PROJECT_STATUS[status] ?? PROJECT_STATUS.active);
 	const icon = $derived((name.trim()[0] ?? 'P').toUpperCase());
@@ -71,8 +79,9 @@
 			description = project.description ?? '';
 			color = project.color;
 			status = (project.status as Project['status']) ?? 'active';
+			tags = [...(project.tags ?? [])];
 			submitting = false;
-			pop = false;
+			pop = null;
 		}
 	});
 
@@ -132,7 +141,7 @@
 		<div class="px-5 pt-5 pb-3">
 			<div class="mb-4 flex items-start gap-3.5">
 				<span
-					class="relative grid shrink-0 place-items-center font-semibold text-white transition-[background] duration-200 size-12"
+					class="relative grid size-12 shrink-0 place-items-center font-semibold text-white transition-[background] duration-200"
 					style:border-radius="13px"
 					style:font-size="22px"
 					style:background="linear-gradient(140deg, {color}, color-mix(in oklch, {color} 70%, #000) 85%)"
@@ -204,43 +213,77 @@
 				</div>
 			</div>
 
-			<div class="relative inline-block">
-				<button
-					type="button"
-					onclick={() => (pop = !pop)}
-					class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
-				>
-					<span class="h-2 w-2 rounded-full" style:background={statusMeta.color}></span>
-					<span>{projectStatusLabel(status)}</span>
-					<Icon name="chevron" size={12} class="text-text-3" />
-				</button>
-				{#if pop}
-					<div
-						use:clickOutside={() => (pop = false)}
-						in:fly={POPOVER_IN}
-						class="absolute top-full z-50 mt-1.5 min-w-[198px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+			<div class="flex flex-wrap gap-2">
+				<div class="relative">
+					<button
+						type="button"
+						onclick={() => (pop = pop === 'status' ? null : 'status')}
+						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
 					>
-						{#each STATUSES as s (s)}
-							{@const meta = PROJECT_STATUS[s]}
-							<button
-								type="button"
-								onclick={() => {
-									status = s;
-									pop = false;
-								}}
-								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
-							>
-								<span class="h-2 w-2 rounded-full" style:background={meta.color}></span>
-								<span class="text-[14px]">{projectStatusLabel(s)}</span>
-								<span class="ml-auto text-accent {status === s ? 'opacity-100' : 'opacity-0'}">
-									<Icon name="check" size={14} />
-								</span>
-							</button>
-						{/each}
-					</div>
-				{/if}
+						<span class="h-2 w-2 rounded-full" style:background={statusMeta.color}></span>
+						<span>{projectStatusLabel(status)}</span>
+						<Icon name="chevron" size={12} class="text-text-3" />
+					</button>
+					{#if pop === 'status'}
+						<div
+							use:clickOutside={() => (pop = null)}
+							in:fly={POPOVER_IN}
+							class="absolute top-full z-50 mt-1.5 min-w-[198px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+						>
+							{#each STATUSES as s (s)}
+								{@const meta = PROJECT_STATUS[s]}
+								<button
+									type="button"
+									onclick={() => {
+										status = s;
+										pop = null;
+									}}
+									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
+								>
+									<span class="h-2 w-2 rounded-full" style:background={meta.color}></span>
+									<span class="text-[14px]">{projectStatusLabel(s)}</span>
+									<span class="ml-auto text-accent {status === s ? 'opacity-100' : 'opacity-0'}">
+										<Icon name="check" size={14} />
+									</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</div>
+
+				<div class="relative">
+					<button
+						type="button"
+						onclick={() => (pop = pop === 'tags' ? null : 'tags')}
+						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors {tags.length >
+						0
+							? 'border border-border bg-surface hover:border-border-strong'
+							: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
+					>
+						{#if tags.length > 0}
+							{#each tags.slice(0, 2) as t (t)}<LabelChip id={t} />{/each}
+							{#if tags.length > 2}<span class="text-text-3">+{tags.length - 2}</span>{/if}
+						{:else}
+							<Icon name="bookmark" size={13} /> {m.tasks_tags()}
+						{/if}
+					</button>
+					{#if pop === 'tags'}
+						<TagsPopover
+							value={tags}
+							suggestions={tagSuggestions}
+							onchange={(v) => (tags = v)}
+							onclose={() => (pop = null)}
+						/>
+					{/if}
+				</div>
 			</div>
 
+			{#each tags as t (t)}
+				<input type="hidden" name="tags" value={t} />
+			{/each}
+			{#if tags.length === 0}
+				<input type="hidden" name="tags" value="__clear__" />
+			{/if}
 			<input type="hidden" name="color" value={color} />
 			<input type="hidden" name="status" value={status} />
 		</div>

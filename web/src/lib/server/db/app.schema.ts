@@ -105,6 +105,8 @@ export const project = pgTable(
 		color: text('color').notNull().default('#7a9cf0'),
 		icon: text('icon').notNull().default('P'),
 		status: text('status').notNull().default('active'),
+		// Free-form tags, same shape as task/ticket tags (normalised strings).
+		tags: text('tags').array().notNull().default([]),
 		orgId: text('org_id').references(() => organization.id, { onDelete: 'set null' }),
 		leadId: text('lead_id').references(() => user.id, { onDelete: 'set null' }),
 		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
@@ -452,6 +454,7 @@ export const PROJECT_ACTIVITY_TYPES = [
 	'project.description',
 	'project.status',
 	'project.color',
+	'project.tags',
 	'member.added',
 	'member.removed',
 	'member.role',

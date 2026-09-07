@@ -25,6 +25,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 			color: project.color,
 			icon: project.icon,
 			status: project.status,
+			tags: project.tags,
 			leadId: project.leadId,
 			updatedAt: project.updatedAt
 		})
@@ -60,6 +61,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 			color: r.color,
 			icon: r.icon,
 			status: r.status,
+			tags: r.tags ?? [],
 			leadId: r.leadId,
 			members: membersByProject.get(r.id) ?? [],
 			updatedAt: r.updatedAt.toISOString()

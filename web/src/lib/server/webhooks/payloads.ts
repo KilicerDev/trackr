@@ -66,6 +66,7 @@ export type ProjectSnapshotInput = {
 	name: string;
 	orgId: string | null;
 	status?: string | null;
+	tags?: string[] | null;
 };
 
 export function projectSnapshot(p: ProjectSnapshotInput, origin?: string | null) {
@@ -75,6 +76,7 @@ export function projectSnapshot(p: ProjectSnapshotInput, origin?: string | null)
 		name: p.name,
 		organizationId: p.orgId,
 		status: p.status ?? null,
+		tags: p.tags ?? [],
 		url: absoluteUrl(`/projects/${p.id}`, origin)
 	};
 }

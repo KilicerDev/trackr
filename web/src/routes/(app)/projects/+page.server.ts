@@ -9,6 +9,7 @@ import { getPreferences } from '$lib/server/preferences';
 import { recordAudit } from '$lib/server/audit';
 import { applyTemplate, listPublishedTemplates } from '$lib/server/project-templates';
 import { m } from '$lib/paraglide/messages';
+import { normalizeTags } from '$lib/server/projects';
 
 interface MemberSummary {
 	id: string;
@@ -25,6 +26,7 @@ export interface ProjectListItem {
 	color: string;
 	icon: string;
 	status: Project['status'];
+	tags: string[];
 	createdAt: Date;
 	updatedAt: Date;
 	lead: MemberSummary | null;
@@ -83,6 +85,7 @@ export const load: ServerLoad = async ({ locals }) => {
 			color: project.color,
 			icon: project.icon,
 			status: project.status,
+			tags: project.tags,
 			leadId: project.leadId,
 			orgId: project.orgId,
 			createdAt: project.createdAt,
@@ -136,6 +139,7 @@ export const load: ServerLoad = async ({ locals }) => {
 		color: r.color,
 		icon: r.icon,
 		status: r.status as Project['status'],
+		tags: r.tags ?? [],
 		createdAt: r.createdAt,
 		updatedAt: r.updatedAt,
 		lead: r.leadId ? (leadById.get(r.leadId) ?? null) : null,
@@ -193,6 +197,7 @@ export const actions: Actions = {
 		const leadId = String(form.get('lead') ?? '') || null;
 		const orgId = String(form.get('orgId') ?? '').trim() || null;
 		const templateId = String(form.get('templateId') ?? '').trim() || null;
+		const tags = normalizeTags(form.getAll('tags').filter((v) => v !== '__clear__'));
 		const memberIds = form
 			.getAll('members')
 			.map((v) => String(v))
@@ -233,6 +238,7 @@ export const actions: Actions = {
 					color,
 					icon,
 					status,
+					tags,
 					leadId,
 					orgId,
 					createdBy: me.id
@@ -287,7 +293,7 @@ export const actions: Actions = {
 			projectId: id,
 			actor: { id: me.id, name: me.name },
 			origin: url.origin,
-			data: { project: projectSnapshot({ id, key, name, orgId, status }, url.origin) }
+			data: { project: projectSnapshot({ id, key, name, orgId, status, tags }, url.origin) }
 		});
 
 		return { success: true, id };

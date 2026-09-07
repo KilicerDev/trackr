@@ -492,6 +492,7 @@ enum Mapper {
             color: Color(css: dto.color, default: Color(hex: 0x7A9CF0)),
             about: dto.description ?? "",
             status: ProjectStatus(api: dto.status) ?? .active,
+            tags: dto.tags ?? [],
             lead: dto.leadId.flatMap { leadId in members.first { $0.serverId == leadId } },
             members: members,
             updatedAt: APIDate.parse(dto.updatedAt) ?? .now,

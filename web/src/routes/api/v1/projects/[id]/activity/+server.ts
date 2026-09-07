@@ -59,6 +59,8 @@ function describe(e: ActivityItem, userName: (id: unknown) => string): string {
 			return `changed status${meta?.from ? ` from ${humanize(meta.from)}` : ''} to ${humanize(meta?.to)}`;
 		case 'project.color':
 			return 'changed the color';
+		case 'project.tags':
+			return 'updated the tags';
 		case 'member.added':
 			return `added ${userName(meta?.userId)} as ${roleLabel(meta?.role)}`;
 		case 'member.removed':

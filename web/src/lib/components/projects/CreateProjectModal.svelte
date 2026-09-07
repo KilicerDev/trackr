@@ -13,6 +13,9 @@
 	import { PROJECT_STATUS } from '$lib/config/taxonomy';
 	import { projectStatusLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
+	import { page } from '$app/state';
+	import LabelChip from '../LabelChip.svelte';
+	import TagsPopover from '../popovers/TagsPopover.svelte';
 	import type { Project } from '$lib/types';
 
 	type OrgOption = { id: string; name: string; slug: string; color: string };
@@ -65,10 +68,14 @@
 	let status = $state<Project['status']>('active');
 	let orgId = $state<string>(''); // empty string = internal (no org)
 	let templateId = $state<string>(''); // empty string = start empty
+	let tags = $state<string[]>([]);
 	let submitting = $state(false);
 
 	let formEl = $state<HTMLFormElement>();
-	let pop = $state<'status' | 'org' | 'template' | null>(null);
+	let pop = $state<'status' | 'org' | 'template' | 'tags' | null>(null);
+
+	// Tags already used on other projects — quick picks in the tag popover.
+	const tagSuggestions = $derived((page.data as { projectTags?: string[] }).projectTags ?? []);
 
 	const statusMeta = $derived(PROJECT_STATUS[status]);
 	const selectedOrg = $derived(orgs.find((o) => o.id === orgId));
@@ -108,6 +115,7 @@
 			status = 'active';
 			orgId = '';
 			templateId = '';
+			tags = [];
 			submitting = false;
 			pop = null;
 		}
@@ -445,8 +453,40 @@
 						</div>
 					{/if}
 				</div>
+
+				<div class="relative">
+					<button
+						type="button"
+						onclick={() => (pop = pop === 'tags' ? null : 'tags')}
+						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors {tags.length >
+						0
+							? 'border border-border bg-surface hover:border-border-strong'
+							: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
+					>
+						{#if tags.length > 0}
+							{#each tags.slice(0, 2) as t (t)}<LabelChip id={t} />{/each}
+							{#if tags.length > 2}<span class="text-text-3">+{tags.length - 2}</span>{/if}
+						{:else}
+							<Icon name="bookmark" size={13} /> {m.tasks_tags()}
+						{/if}
+					</button>
+					{#if pop === 'tags'}
+						<TagsPopover
+							value={tags}
+							suggestions={tagSuggestions}
+							onchange={(v) => (tags = v)}
+							onclose={() => (pop = null)}
+						/>
+					{/if}
+				</div>
 			</div>
 
+			{#each tags as t (t)}
+				<input type="hidden" name="tags" value={t} />
+			{/each}
+			{#if tags.length === 0}
+				<input type="hidden" name="tags" value="__clear__" />
+			{/if}
 			<input type="hidden" name="color" value={color} />
 			<input type="hidden" name="icon" value={icon} />
 			<input type="hidden" name="status" value={status} />

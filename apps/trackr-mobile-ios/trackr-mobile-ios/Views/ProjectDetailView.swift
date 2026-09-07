@@ -177,6 +177,15 @@ struct ProjectDetailView: View {
                     }
                 }
             }
+            if !project.tags.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(project.tags, id: \.self) { tag in
+                            TagChip(tag: tag)
+                        }
+                    }
+                }
+            }
             if !project.about.isEmpty {
                 Text(project.about)
                     .font(.system(size: 15))
