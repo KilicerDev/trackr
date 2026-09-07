@@ -29,6 +29,9 @@
 		// so collapsing one day doesn't collapse that weekday in every week.
 		collapsedDates?: string[];
 		unscheduledCollapsed?: boolean;
+		// Done tasks are hidden from the day lists by default; their time still
+		// counts towards the day/week totals so the capacity picture holds.
+		showDone?: boolean;
 	};
 	// localStorage cache wins over the server snapshot — it's mirrored on
 	// every saveView() call so it always reflects the latest in-tab change,
@@ -67,6 +70,14 @@
 			data.weekDates.map((iso, i) => (collapsedDates.has(iso) ? i : -1)).filter((i) => i >= 0)
 		)
 	);
+	let showDone = $state(saved.showDone === true);
+	function toggleShowDone() {
+		showDone = !showDone;
+		saveView('week', { showDone });
+	}
+	const isDone = (t: Task) => t.status === 'done';
+	const visibleTask = (t: Task) => showDone || !isDone(t);
+
 	let composerDay = $state<number | null>(null);
 	let selectedId = $state<string | null>(null);
 	let selected = $derived(
@@ -182,6 +193,11 @@
 	function groupMinutes(tasks: Task[]): number {
 		return tasks.reduce((sum, t) => sum + (taskTimeMinutes(t) ?? DEFAULT_ESTIMATE), 0);
 	}
+
+	// Done tasks hidden in the week (for the header hint / toggle badge).
+	const hiddenDoneCount = $derived(
+		showDone ? 0 : data.weekDates.reduce((n, _, i) => n + plannedByDay[i].filter(isDone).length, 0)
+	);
 
 	function fmtMins(mins: number): string {
 		return `${Math.floor(mins / 60)}h${mins % 60 > 0 ? `${mins % 60}m` : ''}`;
@@ -343,6 +359,21 @@
 			<span class="hidden font-mono text-[14px] text-text-3 sm:inline">{weekRangeLabel()}</span>
 		</div>
 		<div class="ml-auto flex items-center gap-3">
+			<button
+				type="button"
+				onclick={toggleShowDone}
+				aria-pressed={showDone}
+				title={showDone ? m.week_hide_done() : m.week_show_done()}
+				class="inline-flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-[12px] transition-colors {showDone
+					? 'border-border bg-surface-2 text-text'
+					: 'border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
+			>
+				<Icon name="check" size={13} />
+				<span>{showDone ? m.week_hide_done() : m.week_show_done()}</span>
+				{#if hiddenDoneCount > 0}
+					<span class="font-mono text-[11px] text-text-4">{hiddenDoneCount}</span>
+				{/if}
+			</button>
 			<div class="text-right">
 				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">{m.week_capacity()}</div>
 				<div class="font-mono text-[14px] text-text">{Math.round(weekMinutes / 60)}h / 40h</div>
@@ -407,6 +438,8 @@
 						<div transition:slide={{ duration: 180, easing: cubicOut }}>
 							{#each dayProjectGroups(tasks) as g (g.key)}
 								{@const href = projectHref(g.key)}
+								{@const visible = g.tasks.filter(visibleTask)}
+								{@const hiddenDone = g.tasks.length - visible.length}
 								<div
 									class="flex h-8 items-center gap-2 border-b border-border/60 bg-surface/40 pr-4 pl-5 sm:pr-5"
 								>
@@ -420,12 +453,17 @@
 									{:else}
 										<span class="truncate text-[13px] font-medium text-text-2">{g.name}</span>
 									{/if}
-									<span class="font-mono text-[11px] text-text-4">{g.tasks.length}</span>
+									<span class="font-mono text-[11px] text-text-4">{visible.length}</span>
+									{#if hiddenDone > 0}
+										<span class="text-[11px] text-text-4"
+											>· {m.week_done_hidden({ n: hiddenDone })}</span
+										>
+									{/if}
 									<span class="ml-auto font-mono text-[11px] text-text-4"
 										>{fmtMins(groupMinutes(g.tasks))}</span
 									>
 								</div>
-								{#each g.tasks as t (t.id)}
+								{#each visible as t (t.id)}
 									<TaskRow
 										task={t}
 										selected={selectedId === t.id}
