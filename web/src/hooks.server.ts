@@ -8,6 +8,7 @@ import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { deriveIsAdmin, loadMemberships } from '$lib/server/permissions';
 import { isSuperadmin } from '$lib/roles';
 import { getPreferences, PREF_DEFAULTS } from '$lib/server/preferences';
+import { recordAudit } from '$lib/server/audit';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { cookieName, isLocale } from '$lib/paraglide/runtime';
 
@@ -113,10 +114,35 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 		event.locals.isAdmin = await deriveIsAdmin(memberships);
 	}
 
+	// better-auth's admin plugin (`/api/auth/admin/*`: set-role, impersonate,
+	// set-user-password, remove-user, …) is never used over HTTP — every admin
+	// operation in the app runs server-side through `auth.api.*` from a form
+	// action that enforces the role hierarchy. Over HTTP the plugin would only
+	// check `hasPermission(role)`, so any admin could act on a superadmin.
+	// This has to live here: svelteKitHandler answers /api/auth/* itself and
+	// never calls resolve(), so later handles (handleAdminGuard) don't run.
+	if (event.url.pathname.startsWith('/api/auth/admin/')) {
+		void recordAudit(
+			{
+				type: 'authz.denied',
+				actorId: session?.user.id ?? null,
+				actorLabel: session?.user.email ?? null,
+				meta: { path: event.url.pathname, transport: 'http', reason: 'admin_api_http' }
+			},
+			event
+		);
+		return json(
+			{ message: 'The admin API is not available over HTTP.', code: 'ADMIN_API_HTTP_DISABLED' },
+			{ status: 403 }
+		);
+	}
+
 	return svelteKitHandler({ event, resolve, auth, building });
 };
 
-// Method-agnostic /admin gate. Layout loads don't run for form-action POSTs,
+// Method-agnostic /admin gate (page routes + their form actions; the
+// better-auth admin API under /api/auth/admin is refused in handleBetterAuth).
+// Layout loads don't run for form-action POSTs,
 // so guarding only in /admin/+layout.server.ts leaves every admin action open
 // to any authenticated user. This hook closes that hole class for GET and POST
 // alike; the per-action checks in the page files remain as defense in depth.

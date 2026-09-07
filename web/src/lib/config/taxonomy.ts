@@ -190,6 +190,9 @@ export const LOG_EVENT_TYPES: Record<
 	// auth
 	'login.success': { label: 'Signed in', icon: 'check', color: '#7fc8a9', kind: 'auth' },
 	'login.fail': { label: 'Sign-in failed', icon: 'x', color: '#ef4f5e', kind: 'auth' },
+	// A request refused by the user-management policy (role hierarchy, root
+	// protection, or the better-auth admin API called over HTTP).
+	'authz.denied': { label: 'Access denied', icon: 'shield', color: '#ef4f5e', kind: 'auth' },
 	'user.password_reset': {
 		label: 'Password reset sent',
 		icon: 'refresh',
@@ -207,6 +210,12 @@ export const LOG_EVENT_TYPES: Record<
 		label: 'Impersonation started',
 		icon: 'users',
 		color: '#c08bd6',
+		kind: 'member'
+	},
+	'user.impersonate_stop': {
+		label: 'Impersonation ended',
+		icon: 'users',
+		color: '#9aa4b2',
 		kind: 'member'
 	},
 	// projects

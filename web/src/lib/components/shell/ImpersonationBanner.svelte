@@ -17,7 +17,7 @@
 		if (stopping) return;
 		stopping = true;
 		try {
-			const res = await fetch('/admin/stop-impersonating', { method: 'POST' });
+			const res = await fetch('/stop-impersonating', { method: 'POST' });
 			if (!res.ok) {
 				const data = (await res.json().catch(() => ({}))) as { message?: string };
 				await uiAlert({

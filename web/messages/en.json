@@ -544,6 +544,8 @@
 	"log_event_user_create": "User created",
 	"log_event_user_delete": "User deleted",
 	"log_event_user_impersonate": "Impersonation started",
+	"log_event_user_impersonate_stop": "Impersonation ended",
+	"log_event_authz_denied": "Access denied",
 	"log_event_user_invite_revoke": "Invite revoked",
 	"log_event_user_password_reset": "Password reset sent",
 	"log_event_login_fail": "Sign-in failed",

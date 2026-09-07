@@ -572,6 +572,8 @@
 	"log_event_user_create": "Benutzer erstellt",
 	"log_event_user_delete": "Benutzer gelöscht",
 	"log_event_user_impersonate": "Identitätswechsel gestartet",
+	"log_event_user_impersonate_stop": "Identitätswechsel beendet",
+	"log_event_authz_denied": "Zugriff verweigert",
 	"log_event_user_invite_revoke": "Einladung widerrufen",
 	"log_event_user_password_reset": "Passwort-Zurücksetzung gesendet",
 	"log_event_login_fail": "Anmeldung fehlgeschlagen",

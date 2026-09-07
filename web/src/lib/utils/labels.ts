@@ -163,6 +163,7 @@ export function logEventLabel(type: string): string {
 		{
 			'login.success': m.log_event_login_success,
 			'login.fail': m.log_event_login_fail,
+			'authz.denied': m.log_event_authz_denied,
 			'user.password_reset': m.log_event_user_password_reset,
 			'user.create': m.log_event_user_create,
 			'user.invite': m.log_event_user_invite,
@@ -171,6 +172,7 @@ export function logEventLabel(type: string): string {
 			'user.disable': m.log_event_user_disable,
 			'user.delete': m.log_event_user_delete,
 			'user.impersonate': m.log_event_user_impersonate,
+			'user.impersonate_stop': m.log_event_user_impersonate_stop,
 			'project.create': m.log_event_project_create,
 			'project.update': m.log_event_project_update,
 			'project.archive': m.log_event_project_archive,
