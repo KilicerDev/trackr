@@ -49,6 +49,6 @@ export function buildServer(principal: McpPrincipal, origin: string): McpServer 
 	registerNoteTools(server, ctx);
 	registerResources(server, ctx);
 	registerPrompts(server, ctx);
-	registerUiResources(server, origin);
+	registerUiResources(server);
 	return server;
 }

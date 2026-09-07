@@ -441,13 +441,16 @@ describe('MCP Apps (inline UI)', () => {
 		expect(meta['ui/resourceUri']).toBe(UI_URI);
 	});
 
-	test('the widget is listed as an MCP App resource with a sandbox domain', async () => {
+	test('the widget is listed as an MCP App resource (no host-specific domain)', async () => {
 		const { resources } = await client.listResources();
 		const r = resources.find((x) => x.uri === UI_URI)!;
 		expect(r).toBeDefined();
 		expect(r.mimeType).toBe(UI_MIME);
 		const meta = (r._meta ?? {}) as { ui?: { domain?: string; prefersBorder?: boolean } };
-		expect(meta.ui?.domain).toMatch(/^[0-9a-f]{32}\.claudemcpcontent\.com$/);
+		expect(meta.ui?.prefersBorder).toBe(true);
+		// A `domain` would point Claude Desktop at a sandbox host that only
+		// exists for claude.ai remote connectors — the frame then fails to load.
+		expect(meta.ui?.domain).toBeUndefined();
 	});
 
 	test('reading ui://trackr/tickets returns a self-contained HTML app', async () => {

@@ -16,7 +16,6 @@
 // that helper imports the v1 MCP SDK, which this server (SDK v2) doesn't have,
 // and all it does is write the keys below.
 
-import { createHash } from 'node:crypto';
 import type { McpServer } from '@modelcontextprotocol/server';
 import ticketsHtml from './dist/tickets/index.html?raw';
 
@@ -33,15 +32,6 @@ export function uiToolMeta(resourceUri: string): Record<string, unknown> {
 	return { ui: { resourceUri }, 'ui/resourceUri': resourceUri };
 }
 
-/**
- * Claude serves widgets from a per-server sandbox origin derived from the
- * MCP endpoint URL (documented as sha256(url)[:32] + '.claudemcpcontent.com').
- * Advertising it lets the host validate the origin; other hosts ignore it.
- */
-export function claudeSandboxDomain(mcpUrl: string): string {
-	return `${createHash('sha256').update(mcpUrl).digest('hex').slice(0, 32)}.claudemcpcontent.com`;
-}
-
 const WIDGETS: { uri: string; name: string; title: string; description: string; html: string }[] = [
 	{
 		uri: TICKETS_UI_URI,
@@ -53,9 +43,15 @@ const WIDGETS: { uri: string; name: string; title: string; description: string; 
 	}
 ];
 
-/** Register every widget resource. `origin` is the request origin (for the sandbox domain). */
-export function registerUiResources(server: McpServer, origin: string): void {
-	const domain = claudeSandboxDomain(`${origin}/api/mcp`);
+/**
+ * Register every widget resource. Deliberately no `_meta.ui.domain`: that
+ * field names a host-provisioned sandbox origin (claude.ai derives one per
+ * remote connector); advertising one for a server reached over stdio /
+ * mcp-remote made Claude Desktop try to load the frame from a host that
+ * doesn't exist ("Unable to reach …"). Hosts pick their own sandbox when it
+ * is absent, which is what the official examples do.
+ */
+export function registerUiResources(server: McpServer): void {
 	for (const w of WIDGETS) {
 		server.registerResource(
 			w.name,
@@ -64,7 +60,7 @@ export function registerUiResources(server: McpServer, origin: string): void {
 				title: w.title,
 				description: w.description,
 				mimeType: UI_RESOURCE_MIME_TYPE,
-				_meta: { ui: { domain, prefersBorder: true } }
+				_meta: { ui: { prefersBorder: true } }
 			},
 			async () => ({
 				contents: [{ uri: w.uri, mimeType: UI_RESOURCE_MIME_TYPE, text: w.html }]
