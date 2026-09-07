@@ -305,18 +305,20 @@
 		const result: ActionResult = deserialize(await res.text());
 		if (result.type === 'redirect' || result.type === 'success') {
 			showToast('ok', m.templates_deleted_toast());
-			await goto('/admin/system/templates');
+			await goto('/admin/settings/templates');
 		} else showToast('err', m.templates_action_error());
 	}
 
 	const published = $derived(status === 'published');
 </script>
 
-<svelte:head><title>{name || m.system_tab_templates()} · {m.system_title()}</title></svelte:head>
+<svelte:head
+	><title>{name || m.settings_tab_templates()} · {m.admin_settings_title()}</title></svelte:head
+>
 
 <div class="mx-auto max-w-[880px]">
 	<a
-		href="/admin/system/templates"
+		href="/admin/settings/templates"
 		class="mb-5 inline-flex items-center gap-1 text-[13px] text-text-3 transition-colors hover:text-text"
 	>
 		<span class="rotate-90"><Icon name="chevron" size={12} /></span>

@@ -83,9 +83,12 @@
 				<div class="min-w-0">
 					{#if s.lastDelivery}
 						<span class="flex items-center gap-2">
-							<span class="h-2 w-2 shrink-0 rounded-full {deliveryDot[s.lastDelivery.status]}"></span>
+							<span class="h-2 w-2 shrink-0 rounded-full {deliveryDot[s.lastDelivery.status]}"
+							></span>
 							<span class="text-text-2">{deliveryLabel(s.lastDelivery.status)}</span>
-							<span class="truncate font-mono text-[12px] text-text-4">{fmt.format(s.lastDelivery.at)}</span>
+							<span class="truncate font-mono text-[12px] text-text-4"
+								>{fmt.format(s.lastDelivery.at)}</span
+							>
 						</span>
 					{:else}
 						<span class="text-text-4">{m.webhooks_never()}</span>
@@ -104,4 +107,3 @@
 	}}
 	options={data.options}
 />
-

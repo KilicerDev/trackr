@@ -11,7 +11,9 @@
 		{ href: '/admin/settings', label: m.settings_tab_general(), exact: true },
 		{ href: '/admin/settings/webhooks', label: m.settings_tab_webhooks(), exact: false },
 		{ href: '/admin/settings/api-keys', label: m.settings_tab_api_keys(), exact: false },
-		{ href: '/admin/settings/mcp', label: m.settings_tab_mcp(), exact: false }
+		{ href: '/admin/settings/mcp', label: m.settings_tab_mcp(), exact: false },
+		{ href: '/admin/settings/devices', label: m.settings_tab_devices(), exact: false },
+		{ href: '/admin/settings/templates', label: m.settings_tab_templates(), exact: false }
 	];
 	const isActive = (t: { href: string; exact: boolean }) =>
 		t.exact ? page.url.pathname === t.href : page.url.pathname.startsWith(t.href);

@@ -75,7 +75,12 @@ export const actions: Actions = {
 		const me = await guard(locals);
 		if (!(await setSubscriptionEnabled(params.id, true)))
 			return fail(404, { message: m.webhooks_err_not_found() });
-		void recordAudit({ type: 'webhook.enable', actorId: me.id, targetType: 'webhook', targetId: params.id });
+		void recordAudit({
+			type: 'webhook.enable',
+			actorId: me.id,
+			targetType: 'webhook',
+			targetId: params.id
+		});
 		return { success: true };
 	},
 
@@ -83,7 +88,12 @@ export const actions: Actions = {
 		const me = await guard(locals);
 		if (!(await setSubscriptionEnabled(params.id, false)))
 			return fail(404, { message: m.webhooks_err_not_found() });
-		void recordAudit({ type: 'webhook.disable', actorId: me.id, targetType: 'webhook', targetId: params.id });
+		void recordAudit({
+			type: 'webhook.disable',
+			actorId: me.id,
+			targetType: 'webhook',
+			targetId: params.id
+		});
 		return { success: true };
 	},
 

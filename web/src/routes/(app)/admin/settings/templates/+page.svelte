@@ -48,7 +48,7 @@
 		try {
 			const result = await post('create', { name: name.trim() });
 			if (result.type === 'success' && result.data?.id) {
-				await goto(`/admin/system/templates/${result.data.id}`);
+				await goto(`/admin/settings/templates/${result.data.id}`);
 			} else {
 				showToast('err', m.templates_action_error());
 			}
@@ -87,7 +87,7 @@
 				name: m.templates_copy_suffix({ name: t.name })
 			});
 			if (result.type === 'success' && result.data?.id) {
-				await goto(`/admin/system/templates/${result.data.id}`);
+				await goto(`/admin/settings/templates/${result.data.id}`);
 			} else showToast('err', m.templates_action_error());
 		} catch {
 			showToast('err', m.templates_action_error());
@@ -120,7 +120,7 @@
 	}
 </script>
 
-<svelte:head><title>{m.system_tab_templates()} · {m.system_title()}</title></svelte:head>
+<svelte:head><title>{m.settings_tab_templates()} · {m.admin_settings_title()}</title></svelte:head>
 
 <div class="mb-6 flex items-start gap-4">
 	<div class="min-w-0 flex-1">
@@ -162,7 +162,7 @@
 				style:grid-template-columns={cols}
 			>
 				<a
-					href="/admin/system/templates/{t.id}"
+					href="/admin/settings/templates/{t.id}"
 					class="flex min-w-0 items-center gap-3 after:absolute after:inset-0 after:content-['']"
 				>
 					<span

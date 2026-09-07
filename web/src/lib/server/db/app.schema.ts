@@ -261,7 +261,7 @@ export const projectFavoriteRelations = relations(projectFavorite, ({ one }) => 
 // ─── Project templates ─────────────────────────────────────────────────────
 // Reusable starting points for new projects: a named set of tasks that gets
 // copied into a project at creation time. Managed by superadmins under
-// /admin/system/templates. `status` gates visibility in the create-project
+// /admin/settings/templates. `status` gates visibility in the create-project
 // picker: only 'published' templates are offered; 'draft' rows are still being
 // authored. Task rows are ordered by `sort_order` and carry the same fields a
 // real task starts with (no assignees, no dates — those depend on the project).

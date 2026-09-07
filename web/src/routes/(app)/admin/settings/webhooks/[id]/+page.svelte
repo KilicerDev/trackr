@@ -63,7 +63,8 @@
 				} else if (result.type === 'failure') {
 					showToast(
 						'err',
-						(result.data as { message?: string } | undefined)?.message ?? m.webhooks_err_save_failed()
+						(result.data as { message?: string } | undefined)?.message ??
+							m.webhooks_err_save_failed()
 					);
 				} else if (result.type === 'redirect') {
 					await goto(result.location);
@@ -174,7 +175,9 @@ const ok = crypto.timingSafeEqual(
 	</div>
 
 	<section class="mb-5 rounded-2xl border border-border bg-bg-elev p-5">
-		<div class="mb-3 text-[12px] tracking-[0.08em] text-text-4 uppercase">{m.webhooks_card_endpoint()}</div>
+		<div class="mb-3 text-[12px] tracking-[0.08em] text-text-4 uppercase">
+			{m.webhooks_card_endpoint()}
+		</div>
 		<form
 			method="post"
 			action="?/update"
@@ -198,7 +201,9 @@ const ok = crypto.timingSafeEqual(
 				<WebhookForm options={data.options} initial={sub} />
 			{/key}
 			{#if saveError}
-				<div class="mt-4 rounded-lg border border-prio-urgent/35 bg-prio-urgent/8 px-3 py-2 text-[14px] text-accent">
+				<div
+					class="mt-4 rounded-lg border border-prio-urgent/35 bg-prio-urgent/8 px-3 py-2 text-[14px] text-accent"
+				>
 					{saveError}
 				</div>
 			{/if}
@@ -211,12 +216,15 @@ const ok = crypto.timingSafeEqual(
 	</section>
 
 	<section class="mb-5 rounded-2xl border border-border bg-bg-elev p-5">
-		<div class="mb-3 text-[12px] tracking-[0.08em] text-text-4 uppercase">{m.webhooks_card_secret()}</div>
+		<div class="mb-3 text-[12px] tracking-[0.08em] text-text-4 uppercase">
+			{m.webhooks_card_secret()}
+		</div>
 		{#if rotated}
 			<div class="mb-4"><SecretReveal secret={rotated} /></div>
 		{/if}
 		<div class="flex flex-wrap items-center gap-3">
-			<code class="rounded-md border border-border bg-surface px-2.5 py-1.5 font-mono text-[12.5px] text-text-3"
+			<code
+				class="rounded-md border border-border bg-surface px-2.5 py-1.5 font-mono text-[12.5px] text-text-3"
 				>{sub.secretHint}</code
 			>
 			<form method="post" action="?/rotate" use:enhance={simple(m.webhooks_rotated_toast())}>
@@ -224,7 +232,8 @@ const ok = crypto.timingSafeEqual(
 					type="button"
 					size="sm"
 					disabled={busy}
-					onclick={(e) => askRotate((e.currentTarget as HTMLElement).closest('form') as HTMLFormElement)}
+					onclick={(e) =>
+						askRotate((e.currentTarget as HTMLElement).closest('form') as HTMLFormElement)}
 				>
 					<Icon name="refresh" size={13} />
 					{m.webhooks_rotate()}
@@ -232,8 +241,10 @@ const ok = crypto.timingSafeEqual(
 			</form>
 			<span class="text-[12px] text-text-4">{m.webhooks_secret_hint_desc()}</span>
 		</div>
-		<details class="mt-4 group">
-			<summary class="cursor-pointer text-[13px] text-text-2 hover:text-text">{m.webhooks_how_to_verify()}</summary>
+		<details class="group mt-4">
+			<summary class="cursor-pointer text-[13px] text-text-2 hover:text-text"
+				>{m.webhooks_how_to_verify()}</summary
+			>
 			<div class="mt-2 space-y-2 text-[13px] text-text-3">
 				<p>{m.webhooks_how_to_verify_desc()}</p>
 				<ul class="list-disc space-y-0.5 pl-5 font-mono text-[12px] text-text-2">
@@ -249,11 +260,17 @@ const ok = crypto.timingSafeEqual(
 
 	<section class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
 		<div class="flex items-center justify-between px-5 pt-4 pb-3">
-			<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">{m.webhooks_card_deliveries()}</div>
+			<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
+				{m.webhooks_card_deliveries()}
+			</div>
 			<span class="text-[12px] text-text-4">{m.webhooks_deliveries_retention()}</span>
 		</div>
 		{#if data.deliveries.items.length === 0}
-			<EmptyState icon="send" title={m.webhooks_deliveries_empty()} hint={m.webhooks_deliveries_empty_hint()} />
+			<EmptyState
+				icon="send"
+				title={m.webhooks_deliveries_empty()}
+				hint={m.webhooks_deliveries_empty_hint()}
+			/>
 		{:else}
 			<div
 				class="grid h-9 items-center gap-3 border-y border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
@@ -280,7 +297,9 @@ const ok = crypto.timingSafeEqual(
 							class="col-span-6 -mx-2 grid grid-cols-subgrid items-center gap-3 rounded-md px-2 py-1 transition-colors hover:bg-surface/60"
 						>
 							<span class="truncate font-mono text-[13px] text-text">{d.eventType}</span>
-							<span class="truncate font-mono text-[12px] text-text-3">{fmt.format(d.createdAt)}</span>
+							<span class="truncate font-mono text-[12px] text-text-3"
+								>{fmt.format(d.createdAt)}</span
+							>
 							<span class="flex items-center gap-2">
 								<span class="h-2 w-2 shrink-0 rounded-full {deliveryDot[d.status]}"></span>
 								<span class="truncate text-text-2">{deliveryLabel(d.status)}</span>
@@ -311,9 +330,13 @@ const ok = crypto.timingSafeEqual(
 					</div>
 					{#if open && data.selected}
 						{@const sel = data.selected}
-						<div class="grid gap-4 border-t border-border/40 bg-bg/40 px-5 py-4 text-[13px] lg:grid-cols-2">
+						<div
+							class="grid gap-4 border-t border-border/40 bg-bg/40 px-5 py-4 text-[13px] lg:grid-cols-2"
+						>
 							<div class="min-w-0">
-								<div class="mb-1.5 text-[12px] tracking-[0.08em] text-text-4 uppercase">{m.webhooks_col_attempts()}</div>
+								<div class="mb-1.5 text-[12px] tracking-[0.08em] text-text-4 uppercase">
+									{m.webhooks_col_attempts()}
+								</div>
 								{#if sel.attempts.length === 0}
 									<div class="text-text-4">{m.webhooks_no_attempts()}</div>
 								{:else}
@@ -323,14 +346,19 @@ const ok = crypto.timingSafeEqual(
 												<div class="flex items-center gap-2 font-mono text-[12px]">
 													<span class="text-text-3">#{a.attempt}</span>
 													<span class="text-text-4">{fmt.format(a.at)}</span>
-													<span class={a.statusCode && a.statusCode < 300 ? 'text-emerald-400' : 'text-[#ef7a6d]'}
-														>{a.statusCode ?? 'ERR'}</span
+													<span
+														class={a.statusCode && a.statusCode < 300
+															? 'text-emerald-400'
+															: 'text-[#ef7a6d]'}>{a.statusCode ?? 'ERR'}</span
 													>
 													<span class="text-text-4">{a.durationMs} ms</span>
 												</div>
-												{#if a.error}<div class="mt-0.5 text-[12px] text-text-3">{a.error}</div>{/if}
+												{#if a.error}<div class="mt-0.5 text-[12px] text-text-3">
+														{a.error}
+													</div>{/if}
 												{#if a.responseSnippet}
-													<pre class="mt-1 max-h-24 overflow-auto font-mono text-[11.5px] text-text-4">{a.responseSnippet}</pre>
+													<pre
+														class="mt-1 max-h-24 overflow-auto font-mono text-[11.5px] text-text-4">{a.responseSnippet}</pre>
 												{/if}
 											</div>
 										{/each}
@@ -343,9 +371,15 @@ const ok = crypto.timingSafeEqual(
 								{/if}
 							</div>
 							<div class="min-w-0">
-								<div class="mb-1.5 text-[12px] tracking-[0.08em] text-text-4 uppercase">{m.webhooks_payload()}</div>
+								<div class="mb-1.5 text-[12px] tracking-[0.08em] text-text-4 uppercase">
+									{m.webhooks_payload()}
+								</div>
 								<pre
-									class="max-h-80 overflow-auto rounded-md border border-border bg-surface p-3 font-mono text-[11.5px] leading-relaxed text-text-2">{JSON.stringify(sel.payload, null, 2)}</pre>
+									class="max-h-80 overflow-auto rounded-md border border-border bg-surface p-3 font-mono text-[11.5px] leading-relaxed text-text-2">{JSON.stringify(
+										sel.payload,
+										null,
+										2
+									)}</pre>
 							</div>
 						</div>
 					{/if}
@@ -353,10 +387,13 @@ const ok = crypto.timingSafeEqual(
 			{/each}
 			{#if data.deliveries.hasMore}
 				<div class="border-t border-border/40 px-5 py-2.5 text-center">
-					<a href={olderHref()} data-sveltekit-noscroll class="text-[13px] text-text-3 hover:text-text">{m.webhooks_load_older()}</a>
+					<a
+						href={olderHref()}
+						data-sveltekit-noscroll
+						class="text-[13px] text-text-3 hover:text-text">{m.webhooks_load_older()}</a
+					>
 				</div>
 			{/if}
 		{/if}
 	</section>
 </div>
-

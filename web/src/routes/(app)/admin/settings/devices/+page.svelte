@@ -61,7 +61,7 @@
 	}
 </script>
 
-<svelte:head><title>{m.system_tab_devices()} · {m.system_title()}</title></svelte:head>
+<svelte:head><title>{m.settings_tab_devices()} · {m.admin_settings_title()}</title></svelte:head>
 
 <div class="mb-6">
 	<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.devices_title()}</h1>

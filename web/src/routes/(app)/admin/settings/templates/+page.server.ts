@@ -7,7 +7,7 @@ import {
 	updateTemplate
 } from '$lib/server/project-templates';
 import { recordAudit } from '$lib/server/audit';
-import { isSuperadmin } from '$lib/roles';
+import { isAdminLike } from '$lib/roles';
 import { m } from '$lib/paraglide/messages';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -26,7 +26,7 @@ export const load: PageServerLoad = async () => {
 // Layout loads don't run for action POSTs — every action re-checks the caller
 // (the hooks.server.ts admin guard covers it too; defense in depth).
 function guard(locals: App.Locals) {
-	if (!locals.user || !isSuperadmin(locals.user.role)) {
+	if (!locals.user || !isAdminLike(locals.user.role)) {
 		return fail(403, { message: m.templates_action_error() });
 	}
 	return null;
