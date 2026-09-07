@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import { hashPassword } from 'better-auth/crypto';
 import * as schema from '../../../src/lib/server/db/schema';
 import { ok, info, warn, die, type Db } from './client';
@@ -77,6 +77,7 @@ export async function seedRoot(db: Db): Promise<void> {
 	}
 
 	if (existing) {
+		await ensureSingleRoot(db, existing.id, email);
 		if (existing.role !== 'superadmin') {
 			await db
 				.update(schema.user)
@@ -116,5 +117,43 @@ export async function seedRoot(db: Db): Promise<void> {
 	});
 
 	await ensureTrackrOrgMembership(db, userId);
+	await ensureSingleRoot(db, userId, email);
 	ok(`Seeded root superadmin: ${email}`);
+}
+
+/**
+ * Exactly one row carries `is_root`: the ROOT_EMAIL account. The flag is what
+ * makes root untouchable at runtime ($lib/server/user-policy), so a stale
+ * flag on a previous root (ROOT_EMAIL changed) is cleared here too.
+ */
+async function ensureSingleRoot(db: Db, userId: string, email: string) {
+	const cleared = await db
+		.update(schema.user)
+		.set({ isRoot: false, updatedAt: new Date() })
+		.where(and(eq(schema.user.isRoot, true), ne(schema.user.id, userId)))
+		.returning({ email: schema.user.email });
+	for (const row of cleared) warn(`Removed root flag from ${row.email} (ROOT_EMAIL is ${email}).`);
+
+	const [current] = await db
+		.select({ isRoot: schema.user.isRoot })
+		.from(schema.user)
+		.where(eq(schema.user.id, userId))
+		.limit(1);
+	if (!current?.isRoot) {
+		await db
+			.update(schema.user)
+			.set({ isRoot: true, updatedAt: new Date() })
+			.where(eq(schema.user.id, userId));
+		ok(`Flagged ${email} as the root account.`);
+	}
+
+	const roots = await db
+		.select({ email: schema.user.email })
+		.from(schema.user)
+		.where(eq(schema.user.isRoot, true));
+	if (roots.length !== 1) {
+		die(
+			`Expected exactly one root account, found ${roots.length}: ${roots.map((r) => r.email).join(', ')}`
+		);
+	}
 }

@@ -52,6 +52,13 @@ export const auth = betterAuth({
 	baseURL: env.ORIGIN,
 	secret: env.BETTER_AUTH_SECRET,
 	database: drizzleAdapter(db, { provider: 'pg' }),
+	user: {
+		additionalFields: {
+			// Mirrors the `is_root` column (auth.schema.ts) onto session.user so
+			// every permission check sees it. input:false → no endpoint can set it.
+			isRoot: { type: 'boolean', required: false, defaultValue: false, input: false }
+		}
+	},
 	emailAndPassword: {
 		enabled: true,
 		disableSignUp: true,
