@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "bun run mcp:ui && vite build && bun scripts/build-server.ts",
+		"build": "svelte-kit sync && bun run mcp:ui && vite build && bun scripts/build-server.ts",
 		"mcp:ui": "bun scripts/build-mcp-ui.ts",
 		"start": "bun build/server-entry.js",
 		"preview": "vite preview",
