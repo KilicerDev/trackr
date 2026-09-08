@@ -150,10 +150,7 @@
 					}
 				}),
 				SlashCommand,
-				BlockGutter.configure({
-					addLabel: m.editor_gutter_add(),
-					dragLabel: m.editor_gutter_drag()
-				}),
+				BlockGutter.configure({ addLabel: m.editor_gutter_add() }),
 				ClipboardTaskLists,
 				WikiImageUpload.configure({ entityId: pageId, entityType }),
 				WikiFileUpload.configure({

@@ -1560,7 +1560,6 @@
 	"editor_placeholder_todo": "To-do",
 	"editor_placeholder_list": "List item",
 	"editor_gutter_add": "Add a block below",
-	"editor_gutter_drag": "Drag to move",
 	"wiki_err_not_authenticated": "Not authenticated",
 	"wiki_err_page_not_found": "Page not found",
 	"wiki_err_page_not_found_period": "Page not found.",

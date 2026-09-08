@@ -261,12 +261,11 @@
 	box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
-/* ── Block gutter (block-gutter.ts): "+" and grip on the hovered block ── */
+/* ── Block gutter (block-gutter.ts): "+" on the hovered block ── */
 .wiki-editor .block-gutter {
 	position: absolute;
 	display: flex;
 	align-items: center;
-	gap: 1px;
 	height: 24px;
 	opacity: 0;
 	pointer-events: none;
@@ -290,18 +289,11 @@
 		color 0.12s;
 }
 .wiki-editor .block-gutter__add {
-	width: 22px;
-}
-.wiki-editor .block-gutter__grip {
-	width: 18px;
-	cursor: grab;
+	width: 24px;
 }
 .wiki-editor .block-gutter__btn:hover {
 	background: var(--surface-2);
 	color: var(--text-2);
-}
-.wiki-editor .block-gutter__grip:active {
-	cursor: grabbing;
 }
 
 /* Remote collaborators' cursors / selections (CollaborationCaret). */
