@@ -9,6 +9,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 
 	const result = await queryAuditLog({
 		kind: url.searchParams.get('kind') ?? 'all',
+		channel: url.searchParams.get('channel') ?? 'all',
 		range: url.searchParams.get('range') ?? '30',
 		q: (url.searchParams.get('q') ?? '').trim(),
 		before: url.searchParams.get('before')

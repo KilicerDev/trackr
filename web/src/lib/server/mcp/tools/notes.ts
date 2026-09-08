@@ -341,7 +341,7 @@ export function registerNoteTools(server: McpServer, ctx: McpContext): void {
 			const note = await getNote(noteId);
 			if (!note) fail(404, 'Note not found.');
 			if (note.ownerId !== ctx.locals.user.id) fail(403, 'Only the owner can delete a note.');
-			await deleteNote(noteId);
+			await deleteNote(noteId, ctx.locals.user.id);
 			return text(`Deleted note **${note.title || 'Untitled'}**.`, { id: noteId, deleted: true });
 		})
 	);

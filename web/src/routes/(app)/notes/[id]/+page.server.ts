@@ -81,7 +81,7 @@ export const actions: Actions = {
 		if (!note) return fail(404, { message: m.notes_err_not_found() });
 		// Only the owner can delete a note.
 		if (note.ownerId !== locals.user.id) return fail(403, { message: m.notes_err_no_access() });
-		await deleteNote(params.id);
+		await deleteNote(params.id, locals.user.id);
 		redirect(303, '/notes');
 	},
 

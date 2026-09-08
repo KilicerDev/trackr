@@ -45,6 +45,7 @@ export type AuditRow = {
 	ip: string;
 	device: string;
 	userAgent: string | null;
+	channel: string | null;
 	meta: Record<string, unknown> | null;
 };
 
@@ -52,6 +53,8 @@ export type AuditActor = { id: string; name: string; initials: string; color: st
 
 export type AuditQueryParams = {
 	kind?: string;
+	/** 'all' (default) or one of web | app | api | mcp. */
+	channel?: string;
 	range?: string;
 	q?: string;
 	before?: string | null;
@@ -67,6 +70,7 @@ export type AuditQueryResult = {
 
 export async function queryAuditLog(params: AuditQueryParams): Promise<AuditQueryResult> {
 	const kind = params.kind ?? 'all';
+	const channel = params.channel ?? 'all';
 	const range = params.range ?? '30';
 	const q = (params.q ?? '').trim();
 	const before = params.before ?? null;
@@ -74,6 +78,7 @@ export async function queryAuditLog(params: AuditQueryParams): Promise<AuditQuer
 
 	const conditions = [];
 	if (kind !== 'all') conditions.push(eq(auditLog.kind, kind));
+	if (channel !== 'all') conditions.push(eq(auditLog.channel, channel));
 	const days = RANGE_DAYS[range];
 	if (days) conditions.push(gte(auditLog.createdAt, new Date(Date.now() - days * 86_400_000)));
 	if (q) {
@@ -130,6 +135,7 @@ export async function queryAuditLog(params: AuditQueryParams): Promise<AuditQuer
 		ip: r.ipAddress ?? '—',
 		device: parseDevice(r.userAgent),
 		userAgent: r.userAgent,
+		channel: r.channel,
 		meta: r.meta
 	}));
 

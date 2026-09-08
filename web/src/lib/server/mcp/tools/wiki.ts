@@ -280,7 +280,7 @@ export function registerWikiTools(server: McpServer, ctx: McpContext): void {
 			const descendants = page.isFolder
 				? (await loadWikiTree()).filter((n) => n.parentId === pageId).length
 				: 0;
-			await deleteWikiPage(pageId);
+			await deleteWikiPage(pageId, ctx.locals.user.id);
 			return text(
 				`Deleted wiki ${page.isFolder ? 'folder' : 'page'} **${page.title}**${descendants ? ` and its ${descendants} direct children` : ''}.`,
 				{ id: pageId, deleted: true }

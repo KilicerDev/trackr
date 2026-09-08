@@ -71,7 +71,7 @@ export const actions: Actions = {
 		if (!isTrackrTeam(locals)) return fail(403, { message: m.wiki_err_restricted_short() });
 		const existing = await getWikiPage(params.id);
 		if (!existing) return fail(404, { message: m.wiki_err_page_not_found_period() });
-		await deleteWikiPage(params.id);
+		await deleteWikiPage(params.id, locals.user.id);
 		redirect(303, '/wiki');
 	}
 };

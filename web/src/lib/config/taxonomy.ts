@@ -272,6 +272,8 @@ export const LOG_EVENT_TYPES: Record<
 	// tasks
 	'task.create': { label: 'Task created', icon: 'plus', color: '#7fc8a9', kind: 'task' },
 	'task.import': { label: 'Tasks imported', icon: 'download', color: '#7fc8a9', kind: 'task' },
+	'task.export': { label: 'Tasks exported', icon: 'upload', color: '#9aa4b2', kind: 'task' },
+	'task.update': { label: 'Task updated', icon: 'pencil', color: '#9aa4b2', kind: 'task' },
 	'task.status': {
 		label: 'Task status changed',
 		icon: 'check-square',
@@ -380,6 +382,30 @@ export const LOG_EVENT_TYPES: Record<
 		color: '#ef4f5e',
 		kind: 'settings'
 	},
+	'mcp_connection.create': {
+		label: 'MCP client connected',
+		icon: 'link',
+		color: '#7fc8a9',
+		kind: 'settings'
+	},
+	'wiki.create': { label: 'Wiki page created', icon: 'plus', color: '#7fc8a9', kind: 'content' },
+	'wiki.update': { label: 'Wiki page updated', icon: 'pencil', color: '#9aa4b2', kind: 'content' },
+	'wiki.delete': { label: 'Wiki page deleted', icon: 'trash', color: '#ef7a6d', kind: 'content' },
+	'note.create': { label: 'Note created', icon: 'plus', color: '#7fc8a9', kind: 'content' },
+	'note.update': { label: 'Note updated', icon: 'pencil', color: '#9aa4b2', kind: 'content' },
+	'note.delete': { label: 'Note deleted', icon: 'trash', color: '#ef7a6d', kind: 'content' },
+	'attachment.create': {
+		label: 'File attached',
+		icon: 'paperclip',
+		color: '#7fc8a9',
+		kind: 'content'
+	},
+	'attachment.delete': {
+		label: 'Attachment deleted',
+		icon: 'trash',
+		color: '#ef7a6d',
+		kind: 'content'
+	},
 	'mcp_connection.revoke': {
 		label: 'MCP connection revoked',
 		icon: 'trash',
@@ -395,5 +421,6 @@ export const LOG_KINDS = [
 	{ id: 'project', label: 'Projects' },
 	{ id: 'task', label: 'Tasks' },
 	{ id: 'ticket', label: 'Tickets' },
+	{ id: 'content', label: 'Wiki & notes' },
 	{ id: 'settings', label: 'Settings' }
 ];

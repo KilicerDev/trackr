@@ -8,6 +8,7 @@
 //   - meeting → required project/task link; any team member (or project member)
 //               gets write. The link is the organizing key + forward-compat.
 
+import { recordAudit } from '$lib/server/audit';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { db } from './db';
@@ -44,10 +45,26 @@ export async function getNoteWithBody(id: string) {
  * `markdownToDocHtml`) through the collab layer, creating the linked document
  * first if needed. Returns false when the note doesn't exist.
  */
+async function auditNote(
+	type: 'note.update' | 'note.delete',
+	id: string,
+	actorId: string,
+	meta: Record<string, unknown>,
+	title?: string | null
+): Promise<void> {
+	let label = title ?? null;
+	if (label === null) {
+		const [row] = await db.select({ title: note.title }).from(note).where(eq(note.id, id)).limit(1);
+		label = row?.title ?? null;
+	}
+	await recordAudit({ type, actorId, targetType: 'note', targetId: id, targetLabel: label, meta });
+}
+
 export async function updateNoteBody(id: string, html: string, userId: string): Promise<boolean> {
 	const docId = await ensureDocumentForNote(id);
 	if (!docId) return false;
 	await replaceDocumentHtml(docId, html, userId);
+	void auditNote('note.update', id, userId, { body: true });
 	return true;
 }
 
@@ -190,6 +207,14 @@ export async function createNote(input: CreateNoteInput): Promise<string> {
 			templateId: input.templateId ?? null
 		});
 	});
+	void recordAudit({
+		type: 'note.create',
+		actorId: input.ownerId,
+		targetType: 'note',
+		targetId: id,
+		targetLabel: input.title ?? '',
+		meta: { kind: input.kind, projectId: input.projectId ?? null, taskId: input.taskId ?? null }
+	});
 	return id;
 }
 
@@ -210,6 +235,7 @@ export async function updateNote(
 		.update(note)
 		.set({ ...patch, updatedById })
 		.where(eq(note.id, id));
+	void auditNote('note.update', id, updatedById, { fields: Object.keys(patch) }, patch.title);
 }
 
 export async function setPinned(id: string, pinned: boolean, updatedById: string): Promise<void> {
@@ -218,7 +244,7 @@ export async function setPinned(id: string, pinned: boolean, updatedById: string
 	await db.update(note).set({ pinned, updatedById }).where(eq(note.id, id));
 }
 
-export async function deleteNote(id: string): Promise<void> {
+export async function deleteNote(id: string, actorId?: string | null): Promise<void> {
 	const row = await getNote(id);
 	if (!row) return;
 	await db.transaction(async (tx) => {
@@ -227,6 +253,7 @@ export async function deleteNote(id: string): Promise<void> {
 		if (row.documentId) await tx.delete(document).where(eq(document.id, row.documentId));
 	});
 	await deleteAttachmentsFor('note', id);
+	if (actorId) void auditNote('note.delete', id, actorId, { kind: row.kind }, row.title);
 }
 
 // ─── Sharing ───────────────────────────────────────────────────────────────

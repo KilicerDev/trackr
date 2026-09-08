@@ -14,6 +14,8 @@ import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
 import { sendEmailFireAndForget, passwordResetEmail, EMAIL_PRIORITY } from '$lib/server/jobs';
 import { recordAudit } from '$lib/server/audit';
+import { eq } from 'drizzle-orm';
+import { oauthAccessToken, oauthApplication } from '$lib/server/db/auth.schema';
 
 // Where the native (Tauri) app's sign-in lands after the browser round-trip.
 // Three places must agree on this scheme: this constant, the app's
@@ -47,6 +49,47 @@ function withRequestOrigin(url: string): string {
 	} catch {
 		return url;
 	}
+}
+
+/**
+ * Audit: an MCP client completed the OAuth code exchange — that is the
+ * moment a "connection" (row in oauth_access_token) comes into existence.
+ * The plugin only returns the token, so look the row up to learn who
+ * authorized which client. Refresh grants are silent (same connection).
+ */
+async function auditMcpConnection(ctx: {
+	body?: unknown;
+	headers?: Headers;
+	context: { returned?: unknown };
+}): Promise<void> {
+	const body = ctx.body as { grant_type?: unknown } | undefined;
+	if (body?.grant_type !== 'authorization_code') return;
+	const returned = ctx.context.returned as { access_token?: unknown } | undefined;
+	if (!returned || typeof returned.access_token !== 'string') return;
+	const [row] = await db
+		.select({
+			id: oauthAccessToken.id,
+			userId: oauthAccessToken.userId,
+			clientId: oauthAccessToken.clientId,
+			scopes: oauthAccessToken.scopes,
+			clientName: oauthApplication.name
+		})
+		.from(oauthAccessToken)
+		.leftJoin(oauthApplication, eq(oauthApplication.clientId, oauthAccessToken.clientId))
+		.where(eq(oauthAccessToken.accessToken, returned.access_token))
+		.limit(1);
+	if (!row) return;
+	void recordAudit({
+		type: 'mcp_connection.create',
+		actorId: row.userId ?? null,
+		targetType: 'mcp_connection',
+		targetId: row.id,
+		targetLabel: row.clientName ?? row.clientId ?? null,
+		channel: 'mcp',
+		ipAddress: ipFromHeaders(ctx.headers),
+		userAgent: ctx.headers?.get('user-agent') ?? null,
+		meta: { clientId: row.clientId, clientName: row.clientName, scopes: row.scopes }
+	});
 }
 
 export const auth = betterAuth({
@@ -125,6 +168,10 @@ export const auth = betterAuth({
 			throw ctx.redirect(`/login?${query}`);
 		}),
 		after: createAuthMiddleware(async (ctx) => {
+			if (ctx.path === '/mcp/token') {
+				await auditMcpConnection(ctx);
+				return;
+			}
 			if (ctx.path !== '/sign-in/email') return;
 			const returned = ctx.context.returned;
 			if (!(returned instanceof APIError)) return;

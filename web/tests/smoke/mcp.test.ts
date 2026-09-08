@@ -718,3 +718,149 @@ describe('guidance (instructions + guides)', () => {
 		expect(dup.status).toBe(400);
 	});
 });
+
+describe('audit trail (channel + content events + connections)', () => {
+	// The audit log is admin-only; read it through the log page's JSON feed
+	// with the smoke user's cookie and the same filters the UI uses.
+	let cookie: string;
+	let wikiPageId: string | null = null;
+	let connectionId: string | null = null;
+
+	type LogRow = { type: string; channel: string | null; target: string; targetId: string | null };
+
+	async function logRows(params: Record<string, string>): Promise<LogRow[]> {
+		const res = await fetch(`${BASE_URL}/admin/logs/data?${new URLSearchParams(params)}`, {
+			headers: { cookie },
+			signal: AbortSignal.timeout(30_000)
+		});
+		if (!res.ok) throw new Error(`/admin/logs/data → HTTP ${res.status}`);
+		return ((await res.json()) as { events: LogRow[] }).events;
+	}
+
+	/** recordAudit is fire-and-forget — give the insert a moment. */
+	async function rowsFor(params: Record<string, string>, predicate: (r: LogRow) => boolean) {
+		for (let i = 0; i < 10; i++) {
+			const hit = (await logRows(params)).filter(predicate);
+			if (hit.length) return hit;
+			await new Promise((r) => setTimeout(r, 200));
+		}
+		return [];
+	}
+
+	beforeAll(async () => {
+		cookie = await signInForCookie(DEMO.admin.email, DEMO.admin.password);
+	});
+
+	afterAll(async () => {
+		if (wikiPageId) await call('wiki_delete_page', { id: wikiPageId }).catch(() => {});
+		if (connectionId) {
+			await formAction('/admin/settings/mcp', 'revoke', { id: connectionId }, { cookie });
+		}
+	});
+
+	test('a task created through MCP is logged on the mcp channel', async () => {
+		const title = `${SMOKE_PREFIX} audit task ${run}`;
+		const { key } = structured<{ key: string }>(await ok('create_task', { projectKey, title }));
+		created.taskKeys.add(key);
+		const rows = await rowsFor(
+			{ channel: 'mcp', q: key },
+			(r) => r.type === 'task.create' && r.target.startsWith(key)
+		);
+		expect(rows.length).toBe(1);
+		expect(rows[0].channel).toBe('mcp');
+		// …and does not show up under another channel.
+		const web = await logRows({ channel: 'web', q: key });
+		expect(web.some((r) => r.type === 'task.create')).toBe(false);
+	});
+
+	test('wiki page create/update/delete are audited under "content"', async () => {
+		const title = `${SMOKE_PREFIX} audit wiki ${run}`;
+		const { id } = structured<{ id: string }>(
+			await ok('wiki_create_page', { title, body: 'first version' })
+		);
+		wikiPageId = id;
+		await ok('wiki_update_page', { id, body: 'second version' });
+		const rows = await rowsFor(
+			{ kind: 'content', channel: 'mcp', q: title },
+			(r) => r.targetId === id
+		);
+		expect(rows.map((r) => r.type).sort()).toEqual(['wiki.create', 'wiki.update']);
+		await ok('wiki_delete_page', { id });
+		wikiPageId = null;
+		const deleted = await rowsFor(
+			{ kind: 'content', q: title },
+			(r) => r.targetId === id && r.type === 'wiki.delete'
+		);
+		expect(deleted.length).toBe(1);
+	});
+
+	test('an OAuth code exchange is logged as an MCP connection', async () => {
+		// Dynamic client registration → authorize (session cookie, PKCE) → token.
+		const reg = await fetch(`${BASE_URL}/api/auth/mcp/register`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				client_name: `${SMOKE_PREFIX} oauth ${run}`,
+				redirect_uris: ['http://127.0.0.1:1/callback'],
+				grant_types: ['authorization_code'],
+				response_types: ['code'],
+				token_endpoint_auth_method: 'none'
+			}),
+			signal: AbortSignal.timeout(30_000)
+		});
+		expect(reg.status).toBeLessThan(300);
+		const client = (await reg.json()) as { client_id: string };
+
+		const verifier = 'smoke-verifier-' + run + '-' + 'x'.repeat(32);
+		const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+		const challenge = Buffer.from(digest).toString('base64url');
+		const authz = new URLSearchParams({
+			client_id: client.client_id,
+			redirect_uri: 'http://127.0.0.1:1/callback',
+			response_type: 'code',
+			scope: 'openid profile email offline_access',
+			state: run,
+			code_challenge: challenge,
+			code_challenge_method: 'S256'
+		});
+		const auth = await fetch(`${BASE_URL}/api/auth/mcp/authorize?${authz}`, {
+			headers: { cookie },
+			redirect: 'manual',
+			signal: AbortSignal.timeout(30_000)
+		});
+		const location = auth.headers.get('location') ?? '';
+		const code = new URL(location, BASE_URL).searchParams.get('code');
+		expect(code, `authorize answered ${auth.status} → ${location}`).toBeTruthy();
+
+		const tok = await fetch(`${BASE_URL}/api/auth/mcp/token`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/x-www-form-urlencoded' },
+			body: new URLSearchParams({
+				grant_type: 'authorization_code',
+				code: code!,
+				redirect_uri: 'http://127.0.0.1:1/callback',
+				client_id: client.client_id,
+				code_verifier: verifier
+			}),
+			signal: AbortSignal.timeout(30_000)
+		});
+		expect(tok.status).toBe(200);
+		const tokens = (await tok.json()) as { access_token: string };
+		expect(tokens.access_token).toBeString();
+
+		const rows = await rowsFor(
+			{ channel: 'mcp', q: `oauth ${run}` },
+			(r) => r.type === 'mcp_connection.create'
+		);
+		expect(rows.length).toBe(1);
+		expect(rows[0].target).toContain(`oauth ${run}`);
+		connectionId = rows[0].targetId;
+		expect(connectionId).toBeTruthy();
+
+		// The token actually works against the MCP endpoint.
+		const c = connect(tokens.access_token);
+		await c.client.connect(c.transport);
+		expect(c.client.getServerVersion()?.name).toBe('trackr');
+		await c.client.close().catch(() => {});
+	});
+});

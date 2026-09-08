@@ -4,6 +4,7 @@
 // English `label` strings are only a fallback. UI code must resolve display
 // labels through these functions so they react to the active locale. Each
 // function calls a Paraglide message (evaluated per render via getLocale()).
+import { LOG_EVENT_TYPES } from '$lib/config/taxonomy';
 import { m } from '$lib/paraglide/messages';
 import type { Locale } from '$lib/paraglide/runtime';
 
@@ -152,6 +153,7 @@ export function logKindLabel(id: string): string {
 			project: m.log_kind_project,
 			task: m.log_kind_task,
 			ticket: m.log_kind_ticket,
+			content: m.log_kind_content,
 			settings: m.log_kind_settings
 		},
 		id
@@ -193,9 +195,43 @@ export function logEventLabel(type: string): string {
 			'project_template.create': m.log_event_project_template_create,
 			'project_template.publish': m.log_event_project_template_publish,
 			'project_template.unpublish': m.log_event_project_template_unpublish,
-			'project_template.delete': m.log_event_project_template_delete
+			'project_template.delete': m.log_event_project_template_delete,
+			'webhook.create': m.log_event_webhook_create,
+			'webhook.update': m.log_event_webhook_update,
+			'webhook.delete': m.log_event_webhook_delete,
+			'webhook.rotate_secret': m.log_event_webhook_rotate_secret,
+			'webhook.enable': m.log_event_webhook_enable,
+			'webhook.disable': m.log_event_webhook_disable,
+			'api_key.create': m.log_event_api_key_create,
+			'api_key.revoke': m.log_event_api_key_revoke,
+			'api_key.delete': m.log_event_api_key_delete,
+			'mcp_access.enable': m.log_event_mcp_access_enable,
+			'mcp_access.disable': m.log_event_mcp_access_disable,
+			'mcp_connection.create': m.log_event_mcp_connection_create,
+			'mcp_connection.revoke': m.log_event_mcp_connection_revoke,
+			'mcp_instructions.update': m.log_event_mcp_instructions_update,
+			'mcp_guide.create': m.log_event_mcp_guide_create,
+			'mcp_guide.update': m.log_event_mcp_guide_update,
+			'mcp_guide.delete': m.log_event_mcp_guide_delete,
+			'task.import': m.log_event_task_import,
+			'task.export': m.log_event_task_export,
+			'task.update': m.log_event_task_update,
+			'ticket.priority': m.log_event_ticket_priority,
+			'ticket.category': m.log_event_ticket_category,
+			'ticket.assign': m.log_event_ticket_assign,
+			'ticket.edit': m.log_event_ticket_edit,
+			'wiki.create': m.log_event_wiki_create,
+			'wiki.update': m.log_event_wiki_update,
+			'wiki.delete': m.log_event_wiki_delete,
+			'note.create': m.log_event_note_create,
+			'note.update': m.log_event_note_update,
+			'note.delete': m.log_event_note_delete,
+			'attachment.create': m.log_event_attachment_create,
+			'attachment.delete': m.log_event_attachment_delete
 		},
-		type
+		type,
+		// Unlocalised fallback: the catalog's English label beats a raw type key.
+		LOG_EVENT_TYPES[type]?.label
 	);
 }
 

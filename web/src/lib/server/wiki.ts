@@ -1,3 +1,4 @@
+import { recordAudit } from '$lib/server/audit';
 import { asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from './db';
 import { document, wikiPage } from './db/app.schema';
@@ -55,6 +56,7 @@ export async function updateWikiBody(id: string, html: string, userId: string): 
 	const docId = await ensureDocumentForPage(id);
 	if (!docId) return false;
 	await replaceDocumentHtml(docId, html, userId);
+	void auditWiki('wiki.update', id, userId, { body: true });
 	return true;
 }
 
@@ -145,7 +147,42 @@ export async function createWikiPage(input: CreateWikiInput) {
 			sortOrder
 		});
 	});
+	void recordAudit({
+		type: 'wiki.create',
+		actorId: input.authorId,
+		targetType: 'wiki_page',
+		targetId: id,
+		targetLabel: input.title,
+		meta: { isFolder: input.isFolder, parentId: input.parentId }
+	});
 	return id;
+}
+
+/** Audit helper: looks the title up so the row reads well in the log. */
+async function auditWiki(
+	type: 'wiki.update' | 'wiki.delete',
+	id: string,
+	actorId: string,
+	meta: Record<string, unknown>,
+	title?: string | null
+): Promise<void> {
+	let label = title ?? null;
+	if (label === undefined || label === null) {
+		const [row] = await db
+			.select({ title: wikiPage.title })
+			.from(wikiPage)
+			.where(eq(wikiPage.id, id))
+			.limit(1);
+		label = row?.title ?? null;
+	}
+	await recordAudit({
+		type,
+		actorId,
+		targetType: 'wiki_page',
+		targetId: id,
+		targetLabel: label,
+		meta
+	});
 }
 
 export type UpdateWikiInput = Partial<{
@@ -164,15 +201,23 @@ export async function updateWikiPage(
 		.update(wikiPage)
 		.set({ ...patch, updatedById })
 		.where(eq(wikiPage.id, id));
+	void auditWiki('wiki.update', id, updatedById, { fields: Object.keys(patch) }, patch.title);
 }
 
-export async function deleteWikiPage(id: string): Promise<void> {
+export async function deleteWikiPage(id: string, actorId?: string | null): Promise<void> {
 	// Deleting a page cascades to its child pages (parent_id FK). Collect the
 	// linked documents across the whole subtree first so they don't orphan, then
 	// delete the root (cascading the rows) and finally the documents.
 	const all = await db
-		.select({ id: wikiPage.id, parentId: wikiPage.parentId, documentId: wikiPage.documentId })
+		.select({
+			id: wikiPage.id,
+			parentId: wikiPage.parentId,
+			documentId: wikiPage.documentId,
+			title: wikiPage.title,
+			isFolder: wikiPage.isFolder
+		})
 		.from(wikiPage);
+	const root = all.find((r) => r.id === id);
 
 	const subtree = new Set<string>([id]);
 	const stack = [id];
@@ -194,6 +239,15 @@ export async function deleteWikiPage(id: string): Promise<void> {
 	// Remove embedded-image attachments for every page in the deleted subtree.
 	// (wiki attachments are not FK-linked, so they don't cascade.)
 	for (const pageId of subtree) await deleteAttachmentsFor('wiki_page', pageId);
+	if (actorId && root) {
+		void auditWiki(
+			'wiki.delete',
+			id,
+			actorId,
+			{ isFolder: root.isFolder, deletedPages: subtree.size },
+			root.title
+		);
+	}
 }
 
 export type MoveWikiInput = {
@@ -247,4 +301,5 @@ export async function moveWikiPage(input: MoveWikiInput): Promise<void> {
 			await tx.execute(sql`update wiki_page set sort_order = ${i} where id = ${orderedIds[i]}`);
 		}
 	});
+	void auditWiki('wiki.update', id, updatedById, { moved: true, parentId });
 }

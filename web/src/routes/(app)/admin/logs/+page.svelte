@@ -20,6 +20,7 @@
 	// loads (filter change / navigation). Changing kind/range/search navigates,
 	// which re-runs the server load.
 	let kind = $state(data.filters.kind);
+	let channel = $state(data.filters.channel);
 	let range = $state(data.filters.range);
 	let search = $state(data.filters.q);
 
@@ -34,6 +35,7 @@
 	$effect(() => {
 		// Re-sync to the freshly loaded page (depends on the new data identity).
 		kind = data.filters.kind;
+		channel = data.filters.channel;
 		range = data.filters.range;
 		search = data.filters.q;
 		appended = [];
@@ -48,6 +50,7 @@
 	function queryString(extra?: Record<string, string>): string {
 		const parts: string[] = [];
 		if (kind !== 'all') parts.push(`kind=${encodeURIComponent(kind)}`);
+		if (channel !== 'all') parts.push(`channel=${encodeURIComponent(channel)}`);
 		if (range !== '30') parts.push(`range=${encodeURIComponent(range)}`);
 		if (search.trim()) parts.push(`q=${encodeURIComponent(search.trim())}`);
 		if (extra)
@@ -90,6 +93,25 @@
 	}
 
 	const exportHref = $derived(`/admin/logs/export?${queryString()}`);
+
+	// Surface the action came through (audit_log.channel). Older rows may have
+	// none; those show a dash.
+	const CHANNELS = [
+		{ id: 'all', label: () => m.admin_logs_channel_all() },
+		{ id: 'web', label: () => m.admin_logs_channel_web() },
+		{ id: 'app', label: () => m.admin_logs_channel_app() },
+		{ id: 'api', label: () => m.admin_logs_channel_api() },
+		{ id: 'mcp', label: () => m.admin_logs_channel_mcp() }
+	];
+	const CHANNEL_STYLE: Record<string, string> = {
+		web: 'border-border text-text-3',
+		app: 'border-[#7a9cf0]/40 text-[#7a9cf0]',
+		api: 'border-[#e9c46a]/40 text-[#e9c46a]',
+		mcp: 'border-[#c08bd6]/40 text-[#c08bd6]'
+	};
+	function channelLabel(c: string | null): string {
+		return CHANNELS.find((x) => x.id === c)?.label() ?? m.admin_logs_channel_unknown();
+	}
 </script>
 
 <svelte:head><title>{m.admin_logs_page_title()}</title></svelte:head>
@@ -134,6 +156,23 @@
 			</div>
 			<div class="h-5 w-px bg-border"></div>
 			<div class="inline-flex h-8 items-center rounded-lg border border-border bg-surface p-0.5">
+				{#each CHANNELS as c (c.id)}
+					<button
+						type="button"
+						onclick={() => {
+							channel = c.id;
+							navigate();
+						}}
+						class="h-full rounded-md px-2.5 text-[14px] {channel === c.id
+							? 'bg-bg-elev text-text shadow-sm'
+							: 'text-text-3 hover:text-text'}"
+					>
+						{c.id === 'all' ? m.log_kind_all() : c.label()}
+					</button>
+				{/each}
+			</div>
+			<div class="h-5 w-px bg-border"></div>
+			<div class="inline-flex h-8 items-center rounded-lg border border-border bg-surface p-0.5">
 				{#each [{ id: '1', label: m.admin_logs_range_24h() }, { id: '7', label: m.admin_logs_range_7days() }, { id: '30', label: m.admin_logs_range_30days() }, { id: 'all', label: m.admin_logs_range_all_time() }] as r (r.id)}
 					<button
 						type="button"
@@ -169,11 +208,12 @@
 			{:else}
 				<div
 					class="grid h-9 items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
-					style:grid-template-columns="1.6fr 1fr 2fr 1.4fr 1.2fr 30px"
+					style:grid-template-columns="1.6fr 1fr 2fr 0.7fr 1.4fr 1.2fr 30px"
 				>
 					<span>{m.admin_logs_col_event()}</span>
 					<span>{m.admin_logs_col_actor()}</span>
 					<span>{m.admin_logs_col_target()}</span>
+					<span>{m.admin_logs_col_channel()}</span>
 					<span>{m.admin_logs_col_ip_device()}</span>
 					<span>{m.admin_logs_col_when()}</span>
 					<span></span>
@@ -190,7 +230,7 @@
 						type="button"
 						onclick={() => (selected = e)}
 						class="group grid w-full items-center gap-3 border-b border-border/40 px-5 py-2.5 text-left text-[14px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)]"
-						style:grid-template-columns="1.6fr 1fr 2fr 1.4fr 1.2fr 30px"
+						style:grid-template-columns="1.6fr 1fr 2fr 0.7fr 1.4fr 1.2fr 30px"
 					>
 						<span class="flex min-w-0 items-center gap-2">
 							<span
@@ -215,6 +255,17 @@
 							{/if}
 						</span>
 						<span class="truncate text-text-2">{e.target}</span>
+						<span class="min-w-0">
+							{#if e.channel}
+								<span
+									class="inline-flex h-[20px] items-center rounded-md border px-1.5 font-mono text-[11px] uppercase {CHANNEL_STYLE[
+										e.channel
+									] ?? 'border-border text-text-3'}">{channelLabel(e.channel)}</span
+								>
+							{:else}
+								<span class="text-text-4">{m.admin_logs_channel_unknown()}</span>
+							{/if}
+						</span>
 						<span class="min-w-0 text-text-3">
 							<span class="font-mono">{e.ip}</span>
 							<span class="block truncate text-[12px] text-text-4">{e.device}</span>
@@ -282,6 +333,8 @@
 				<div class="break-all text-text">{selected.target || '—'}</div>
 				<div class="text-text-4">{m.admin_logs_timestamp()}</div>
 				<div class="font-mono text-text">{selected.at}</div>
+				<div class="text-text-4">{m.admin_logs_col_channel()}</div>
+				<div class="font-mono uppercase">{channelLabel(selected.channel)}</div>
 				<div class="text-text-4">{m.admin_logs_ip()}</div>
 				<div class="font-mono">{selected.ip}</div>
 				<div class="text-text-4">{m.admin_logs_device()}</div>

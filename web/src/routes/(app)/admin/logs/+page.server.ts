@@ -8,10 +8,11 @@ export const load: ServerLoad = async ({ locals, url }) => {
 	await assertCan(locals, 'admin.logs.view');
 
 	const kind = url.searchParams.get('kind') ?? 'all';
+	const channel = url.searchParams.get('channel') ?? 'all';
 	const range = url.searchParams.get('range') ?? '30';
 	const q = (url.searchParams.get('q') ?? '').trim();
 
-	const result = await queryAuditLog({ kind, range, q });
+	const result = await queryAuditLog({ kind, channel, range, q });
 
-	return { ...result, filters: { kind, range, q } };
+	return { ...result, filters: { kind, channel, range, q } };
 };

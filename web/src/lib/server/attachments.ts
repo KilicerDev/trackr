@@ -13,6 +13,7 @@
  * lookups; every route calls `authorizeAttachmentAccess` before touching bytes.
  */
 
+import { recordAudit } from '$lib/server/audit';
 import { randomUUID } from 'node:crypto';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import sharp from 'sharp';
@@ -158,6 +159,13 @@ export interface CreateAttachmentInput {
  * thumbnail + thumbhash. The entity row is expected to already exist; we store
  * the original first, then the thumbnail, then insert the metadata row.
  */
+/** Audit category for an attachment event: follows the parent entity. */
+function auditKindFor(entityType: AttachmentEntityType): string {
+	if (entityType.startsWith('ticket')) return 'ticket';
+	if (entityType.startsWith('task')) return 'task';
+	return 'content';
+}
+
 export async function createAttachment(input: CreateAttachmentInput): Promise<AttachmentPublic> {
 	if (input.bytes.length === 0) throw new AttachmentError('File is empty.', 'empty');
 	if (input.bytes.length > MAX_UPLOAD_BYTES) {
@@ -212,6 +220,24 @@ export async function createAttachment(input: CreateAttachmentInput): Promise<At
 			thumbhash: thumbhash ?? null
 		})
 		.returning();
+	if (input.uploadedBy) {
+		void recordAudit({
+			type: 'attachment.create',
+			kind: auditKindFor(input.entityType),
+			actorId: input.uploadedBy,
+			targetType: 'attachment',
+			targetId: id,
+			targetLabel: input.filename,
+			orgId: input.orgId,
+			meta: {
+				entityType: input.entityType,
+				entityId: input.entityId,
+				projectId: input.projectId,
+				bytes: input.bytes.length,
+				mimeType
+			}
+		});
+	}
 	return toPublic(row);
 }
 
@@ -382,9 +408,25 @@ export async function getAttachment(id: string): Promise<Attachment | null> {
  * removed once no live row references them anymore. Idempotent.
  */
 export async function deleteAttachment(
-	row: Pick<Attachment, 'id' | 'storageKey' | 'hasThumbnail'>
+	row: Pick<Attachment, 'id' | 'storageKey' | 'hasThumbnail'> &
+		Partial<Pick<Attachment, 'filename' | 'entityType' | 'entityId' | 'orgId'>>,
+	actorId?: string | null
 ) {
 	await db.update(attachment).set({ deletedAt: new Date() }).where(eq(attachment.id, row.id));
+	// Direct deletes are audited; cascades from a parent delete are not (the
+	// parent's own event covers them).
+	if (actorId) {
+		void recordAudit({
+			type: 'attachment.delete',
+			kind: row.entityType ? auditKindFor(row.entityType) : 'content',
+			actorId,
+			targetType: 'attachment',
+			targetId: row.id,
+			targetLabel: row.filename ?? null,
+			orgId: row.orgId ?? null,
+			meta: { entityType: row.entityType ?? null, entityId: row.entityId ?? null }
+		});
+	}
 	const [stillReferenced] = await db
 		.select({ id: attachment.id })
 		.from(attachment)

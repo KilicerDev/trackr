@@ -1572,11 +1572,15 @@ export const auditLog = pgTable(
 		orgId: text('org_id'),
 		ipAddress: text('ip_address'),
 		userAgent: text('user_agent'),
+		// Surface the action came through: web | app | api | mcp (null when the
+		// writer had no request context, e.g. auth hooks). See audit/index.ts.
+		channel: text('channel'),
 		meta: jsonb('meta').$type<Record<string, unknown>>(),
 		createdAt: timestamp('created_at').defaultNow().notNull()
 	},
 	(t) => [
 		index('audit_log_created_idx').on(t.createdAt),
+		index('audit_log_channel_created_idx').on(t.channel, t.createdAt),
 		index('audit_log_kind_created_idx').on(t.kind, t.createdAt),
 		index('audit_log_type_idx').on(t.type),
 		index('audit_log_actor_idx').on(t.actorId)

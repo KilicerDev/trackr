@@ -84,6 +84,6 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		return json({ message: 'You do not have permission to delete this file.' }, { status: 403 });
 	}
 
-	await deleteAttachment(row);
+	await deleteAttachment(row, locals.user.id);
 	return new Response(null, { status: 204 });
 };

@@ -10,9 +10,30 @@ import { db } from '../db';
 import { auditLog } from '../db/app.schema';
 import { LOG_EVENT_TYPES } from '$lib/config/taxonomy';
 
+/**
+ * Surface an action came through. Derived from the request when the writer
+ * does not pass one: the MCP endpoint → 'mcp'; a `trk_` API key → 'api'; a
+ * bearer session token (the native app's credential) → 'app'; a cookie
+ * session → 'web'. Stored as its own column so the log can filter on it.
+ */
+export type AuditChannel = 'web' | 'app' | 'api' | 'mcp';
+export const AUDIT_CHANNELS: readonly AuditChannel[] = ['web', 'app', 'api', 'mcp'];
+
+export function channelFromEvent(event: RequestEvent): AuditChannel {
+	if (event.url.pathname === '/api/mcp') return 'mcp';
+	if (event.locals.authKind === 'api_key') return 'api';
+	if (event.request.headers.get('authorization')?.startsWith('Bearer ')) return 'app';
+	return 'web';
+}
+
 export type AuditInput = {
 	// Event key from the shared catalog (LOG_EVENT_TYPES), e.g. 'user.invite'.
 	type: string;
+	// Category override; defaults to the catalog's kind for `type`. Used where
+	// one event type spans categories (attachments on tasks vs tickets).
+	kind?: string;
+	// Surface override; defaults to what the current request implies.
+	channel?: AuditChannel | null;
 	// Who performed it. null = anonymous/unknown (e.g. a failed login).
 	actorId?: string | null;
 	// Name/email snapshot — survives user deletion and names anonymous actors.
@@ -29,7 +50,11 @@ export type AuditInput = {
 	userAgent?: string | null;
 };
 
-function requestContext(event?: RequestEvent): { ip: string | null; ua: string | null } {
+function requestContext(event?: RequestEvent): {
+	ip: string | null;
+	ua: string | null;
+	channel: AuditChannel | null;
+} {
 	try {
 		const e = event ?? getRequestEvent();
 		let ip: string | null = null;
@@ -38,14 +63,14 @@ function requestContext(event?: RequestEvent): { ip: string | null; ua: string |
 		} catch {
 			ip = null;
 		}
-		return { ip, ua: e.request.headers.get('user-agent') };
+		return { ip, ua: e.request.headers.get('user-agent'), channel: channelFromEvent(e) };
 	} catch {
-		return { ip: null, ua: null };
+		return { ip: null, ua: null, channel: null };
 	}
 }
 
 export async function recordAudit(input: AuditInput, event?: RequestEvent): Promise<void> {
-	const kind = LOG_EVENT_TYPES[input.type]?.kind ?? 'settings';
+	const kind = input.kind ?? LOG_EVENT_TYPES[input.type]?.kind ?? 'settings';
 	const ctx = requestContext(event);
 	try {
 		await db.insert(auditLog).values({
@@ -60,6 +85,7 @@ export async function recordAudit(input: AuditInput, event?: RequestEvent): Prom
 			orgId: input.orgId ?? null,
 			ipAddress: input.ipAddress ?? ctx.ip,
 			userAgent: input.userAgent ?? ctx.ua,
+			channel: input.channel === undefined ? ctx.channel : input.channel,
 			meta: input.meta ?? null
 		});
 	} catch (err) {

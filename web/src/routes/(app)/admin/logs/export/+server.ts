@@ -3,7 +3,16 @@ import { assertCan } from '$lib/server/permissions';
 import { queryAuditLog, type AuditRow, type AuditActor } from '$lib/server/audit/query';
 
 const MAX_ROWS = 10_000; // safety cap so an export can't run unbounded
-const COLUMNS = ['timestamp', 'type', 'kind', 'actor', 'target', 'ip', 'device'] as const;
+const COLUMNS = [
+	'timestamp',
+	'type',
+	'kind',
+	'channel',
+	'actor',
+	'target',
+	'ip',
+	'device'
+] as const;
 
 function csvCell(v: string): string {
 	return `"${v.replace(/"/g, '""')}"`;
@@ -15,6 +24,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	await assertCan(locals, 'admin.logs.view');
 
 	const kind = url.searchParams.get('kind') ?? 'all';
+	const channel = url.searchParams.get('channel') ?? 'all';
 	const range = url.searchParams.get('range') ?? '30';
 	const q = (url.searchParams.get('q') ?? '').trim();
 
@@ -22,7 +32,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	let actors: Record<string, AuditActor> = {};
 	let before: string | null = null;
 	while (rows.length < MAX_ROWS) {
-		const result = await queryAuditLog({ kind, range, q, before, limit: 500 });
+		const result = await queryAuditLog({ kind, channel, range, q, before, limit: 500 });
 		rows.push(...result.events);
 		actors = { ...actors, ...result.actors };
 		if (!result.hasMore || !result.nextCursor) break;
@@ -35,7 +45,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 			? (actors[r.actor]?.name ?? r.actorLabel ?? r.actor)
 			: (r.actorLabel ?? 'Anonymous');
 		lines.push(
-			[r.at, r.type, r.kind, actor, r.target, r.ip, r.device]
+			[r.at, r.type, r.kind, r.channel ?? '', actor, r.target, r.ip, r.device]
 				.map((v) => csvCell(String(v ?? '')))
 				.join(',')
 		);
