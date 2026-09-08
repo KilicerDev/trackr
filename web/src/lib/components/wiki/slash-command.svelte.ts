@@ -11,6 +11,8 @@ type RunArgs = { editor: Editor; range: Range };
 const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 	{
 		id: 'h1',
+		section: 'basic',
+		shortcut: '#',
 		get label() {
 			return m.wiki_slash_h1_label();
 		},
@@ -23,6 +25,8 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 	},
 	{
 		id: 'h2',
+		section: 'basic',
+		shortcut: '##',
 		get label() {
 			return m.wiki_slash_h2_label();
 		},
@@ -35,6 +39,8 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 	},
 	{
 		id: 'h3',
+		section: 'basic',
+		shortcut: '###',
 		get label() {
 			return m.wiki_slash_h3_label();
 		},
@@ -47,6 +53,7 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 	},
 	{
 		id: 'p',
+		section: 'basic',
 		get label() {
 			return m.wiki_slash_text_label();
 		},
@@ -58,6 +65,8 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 	},
 	{
 		id: 'ul',
+		section: 'basic',
+		shortcut: '-',
 		get label() {
 			return m.wiki_slash_ul_label();
 		},
@@ -69,6 +78,8 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 	},
 	{
 		id: 'ol',
+		section: 'basic',
+		shortcut: '1.',
 		get label() {
 			return m.wiki_slash_ol_label();
 		},
@@ -80,6 +91,8 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 	},
 	{
 		id: 'task',
+		section: 'basic',
+		shortcut: '[ ]',
 		get label() {
 			return m.wiki_slash_task_label();
 		},
@@ -91,6 +104,8 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 	},
 	{
 		id: 'quote',
+		section: 'basic',
+		shortcut: '>',
 		get label() {
 			return m.wiki_slash_quote_label();
 		},
@@ -102,6 +117,8 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 	},
 	{
 		id: 'code',
+		section: 'basic',
+		shortcut: '```',
 		get label() {
 			return m.wiki_slash_code_label();
 		},
@@ -113,6 +130,8 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 	},
 	{
 		id: 'hr',
+		section: 'basic',
+		shortcut: '---',
 		get label() {
 			return m.wiki_slash_hr_label();
 		},
@@ -124,6 +143,7 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 	},
 	{
 		id: 'image',
+		section: 'media',
 		get label() {
 			return m.wiki_slash_image_label();
 		},
@@ -140,6 +160,7 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 	},
 	{
 		id: 'file',
+		section: 'media',
 		get label() {
 			return m.wiki_slash_file_label();
 		},
@@ -186,7 +207,7 @@ export const SlashCommand = Extension.create({
 					// keystroke; `onSelect` must run the LATEST one, otherwise it deletes
 					// only the range captured at onStart (just the "/") and leaves the query.
 					let latestProps: Props | null = null;
-					let state = $state<{
+					const state = $state<{
 						items: typeof ITEMS;
 						activeIndex: number;
 						rect: { left: number; top: number; bottom: number };
