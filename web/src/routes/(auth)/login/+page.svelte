@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { brandName } from '$lib/brand';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/state';
 	import BrandMark from '$lib/components/auth/BrandMark.svelte';
@@ -29,7 +30,9 @@
 
 <svelte:head>
 	<title>
-		{oauth ? m.mcp_login_page_title({ client: oauth.clientName }) : m.auth_login_page_title()}
+		{oauth
+			? m.mcp_login_page_title({ client: oauth.clientName })
+			: m.auth_login_page_title({ brand: brandName() })}
 	</title>
 </svelte:head>
 
@@ -256,7 +259,7 @@
 		</div>
 
 		<p class="mt-5 text-center text-[13px] text-text-4">
-			{m.auth_footer_internal()}
+			{m.auth_footer_internal({ brand: brandName() })}
 		</p>
 	</div>
 </div>

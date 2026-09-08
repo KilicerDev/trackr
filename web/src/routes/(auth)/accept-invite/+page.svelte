@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { brandName } from '$lib/brand';
 	import { enhance } from '$app/forms';
 	import BrandMark from '$lib/components/auth/BrandMark.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -29,7 +30,7 @@
 </script>
 
 <svelte:head>
-	<title>{m.auth_invite_page_title()}</title>
+	<title>{m.auth_invite_page_title({ brand: brandName() })}</title>
 </svelte:head>
 
 <div class="relative flex min-h-screen items-center justify-center px-4 py-10">
@@ -46,7 +47,7 @@
 				class="rounded-[14px] border border-border bg-bg-elev px-7 pt-7 pb-6 text-center shadow-card"
 			>
 				<div
-					class="mx-auto grid h-11 w-11 place-items-center rounded-full text-prio-urgent bg-prio-urgent/12"
+					class="mx-auto grid h-11 w-11 place-items-center rounded-full bg-prio-urgent/12 text-prio-urgent"
 				>
 					<svg
 						xmlns="http://www.w3.org/2000/svg"
@@ -77,14 +78,12 @@
 				</a>
 			</div>
 		{:else}
-			<div
-				class="rounded-[14px] border border-border bg-bg-elev px-7 pt-7 pb-6 shadow-card"
-			>
+			<div class="rounded-[14px] border border-border bg-bg-elev px-7 pt-7 pb-6 shadow-card">
 				<h1 class="text-[22px] font-semibold tracking-[-0.012em] text-text">
 					{m.auth_invite_welcome({ name: data.invitation.name.split(' ')[0] })}
 				</h1>
 				<p class="mt-1 text-[14px] leading-relaxed text-text-3">
-					{m.auth_invite_subtitle()}
+					{m.auth_invite_subtitle({ brand: brandName() })}
 				</p>
 
 				<div
@@ -205,7 +204,7 @@
 
 					{#if clientError || form?.message}
 						<div
-							class="rounded-[8px] border border-prio-urgent/35 px-3 py-2 text-[14px] text-prio-urgent bg-prio-urgent/8"
+							class="rounded-[8px] border border-prio-urgent/35 bg-prio-urgent/8 px-3 py-2 text-[14px] text-prio-urgent"
 						>
 							{clientError ?? form?.message}
 						</div>

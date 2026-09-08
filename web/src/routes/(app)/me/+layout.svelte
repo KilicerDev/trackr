@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { page } from '$app/state';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
@@ -18,7 +19,7 @@
 	);
 </script>
 
-<svelte:head><title>Trackr · {currentLabel}</title></svelte:head>
+<svelte:head><title>{pageTitle(currentLabel)}</title></svelte:head>
 
 <Topbar
 	crumbs={[{ label: m.settings_nav_account_short(), href: '/me/profile' }, { label: currentLabel }]}

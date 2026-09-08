@@ -262,7 +262,7 @@ export const actions: Actions = {
 				origin: event.url.origin
 			});
 			await sendEmail(
-				invitationEmail({
+				await invitationEmail({
 					to: invitation.email,
 					name: invitation.name,
 					inviterName: event.locals.user?.name,
@@ -315,7 +315,7 @@ export const actions: Actions = {
 				origin: event.url.origin
 			});
 			await sendEmail(
-				invitationEmail({
+				await invitationEmail({
 					to: invitation.email,
 					name: invitation.name,
 					inviterName: event.locals.user?.name,

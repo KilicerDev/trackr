@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { brandName } from '$lib/brand';
 	import { fly, fade } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import Icon from './Icon.svelte';
@@ -311,7 +312,7 @@
 				</div>
 				<div class="ml-auto flex items-center gap-1.5 font-mono text-[12px] text-text-4">
 					<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
-					Trackr
+					{brandName()}
 				</div>
 			</div>
 		</div>

@@ -67,7 +67,13 @@ export function escapeHtml(value: string): string {
 
 type Button = { label: string; url: string };
 
+/** Instance branding for the email header/footer. `logoUrl` must be absolute
+ *  (mail clients have no document base); null renders the built-in mark. */
+export type EmailBrand = { name: string; logoUrl: string | null };
+
 export type EmailLayoutOptions = {
+	/** Instance branding (name + optional absolute logo URL). */
+	brand: EmailBrand;
 	/** Inbox preview line (hidden in the body). */
 	preheader: string;
 	/** html lang attribute — matches the recipient's locale. */
@@ -98,23 +104,27 @@ export type EmailLayoutOptions = {
 	footerLink?: Button;
 };
 
-// The app brand mark: three vertical coral bars (the exact sidebar logo), next
-// to the "Trackr" wordmark. Built from table cells + divs, not SVG — Gmail and
-// Outlook strip <svg>. Each bar is a coral div; Outlook keeps it as a solid
-// fill, so the mark survives even where backgrounds get touched.
-function brandMark(): string {
+// The brand mark: the uploaded instance logo when set, else the built-in
+// three coral bars (the exact sidebar logo), next to the wordmark. The bars are
+// table cells + divs, not SVG — Gmail and Outlook strip <svg>. Each bar is a
+// coral div; Outlook keeps it as a solid fill, so the mark survives even where
+// backgrounds get touched.
+function brandMark(brand: EmailBrand): string {
 	const bar = (last: boolean) =>
 		`<td width="4" valign="middle" style="${last ? '' : 'padding-right:3px;'}font-size:0;line-height:0;"><div style="width:4px;height:18px;background-color:${LOGO};border-radius:1px;font-size:0;line-height:18px;">&nbsp;</div></td>`;
+	const mark = brand.logoUrl
+		? `<img src="${escapeHtml(brand.logoUrl)}" width="24" height="24" alt="" style="display:block;width:24px;height:24px;border:0;outline:none;text-decoration:none;" />`
+		: `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+					<tr>${bar(false)}${bar(false)}${bar(true)}</tr>
+				</table>`;
 	return `
 	<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
 		<tr>
 			<td valign="middle" style="font-size:0;line-height:0;">
-				<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
-					<tr>${bar(false)}${bar(false)}${bar(true)}</tr>
-				</table>
+				${mark}
 			</td>
 			<td width="10" style="font-size:0;line-height:0;">&nbsp;</td>
-			<td valign="middle" class="em-heading" style="font-family:${FONT};font-size:17px;font-weight:700;letter-spacing:-0.02em;color:${HEADING};">Trackr</td>
+			<td valign="middle" class="em-heading" style="font-family:${FONT};font-size:17px;font-weight:700;letter-spacing:-0.02em;color:${HEADING};">${escapeHtml(brand.name)}</td>
 		</tr>
 	</table>`;
 }
@@ -226,7 +236,8 @@ export function renderEmail(opts: EmailLayoutOptions): string {
 			: '';
 
 	const footerText = escapeHtml(
-		opts.footerText ?? 'Trackr · You received this email because of activity on your account.'
+		opts.footerText ??
+			`${opts.brand.name} · You received this email because of activity on your account.`
 	);
 	const footerLink = opts.footerLink
 		? `<br /><a href="${escapeHtml(opts.footerLink.url)}" target="_blank" class="em-link" style="color:${ACCENT_LINK};text-decoration:none;">${escapeHtml(opts.footerLink.label)}</a>`
@@ -290,7 +301,7 @@ export function renderEmail(opts: EmailLayoutOptions): string {
 		<tr>
 			<td align="center" class="em-canvas" bgcolor="${PAGE_BG}" style="padding:0 16px;background-color:${PAGE_BG};">
 				<table role="presentation" width="452" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:452px;">
-					<tr><td align="center" class="em-canvas" bgcolor="${PAGE_BG}" style="padding:44px 0 24px;background-color:${PAGE_BG};">${brandMark()}</td></tr>
+					<tr><td align="center" class="em-canvas" bgcolor="${PAGE_BG}" style="padding:44px 0 24px;background-color:${PAGE_BG};">${brandMark(opts.brand)}</td></tr>
 					<tr>
 						<td class="em-card" bgcolor="${CARD_BG}" style="background-color:${CARD_BG};border:1px solid ${CARD_BORDER};border-radius:16px;padding:26px 28px 24px;box-shadow:${CARD_SHADOW};">
 							<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">

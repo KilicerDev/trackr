@@ -11,10 +11,20 @@
 import { defineJob } from '../core';
 import { m } from '$lib/paraglide/messages';
 import type { Locale } from '$lib/paraglide/runtime';
-import { escapeHtml, renderEmail } from './mail-layout';
+import { escapeHtml, renderEmail, type EmailBrand } from './mail-layout';
 import { markdownToEmailHtml } from '$lib/utils/markdown';
+import { absoluteLogoUrl, getBranding, publicBranding } from '$lib/server/branding';
 
-const PRODUCT_NAME = 'Trackr';
+/**
+ * Instance branding for one email. The logo needs an absolute URL; it is
+ * derived from the email's own link (`reference`), which points at the
+ * deployment the recipient will open. Without an absolute link the built-in
+ * mark is used.
+ */
+async function emailBrand(reference: string | null | undefined): Promise<EmailBrand> {
+	const brand = publicBranding(await getBranding());
+	return { name: brand.name, logoUrl: absoluteLogoUrl(brand, reference) };
+}
 
 /** The `mail.send` payload — a fully-rendered email. Mirrors the Go `mail.Message`. */
 export type MailPayload = {
@@ -67,13 +77,14 @@ export function sendEmailFireAndForget(message: MailPayload, options: SendEmailO
 
 // --- Templates: functions that render a MailPayload (branded HTML + text) -----
 
-export function invitationEmail(opts: {
+export async function invitationEmail(opts: {
 	to: string;
 	name: string;
 	inviterName?: string | null;
 	acceptUrl: string;
 	expiresAt: Date;
-}): MailPayload {
+}): Promise<MailPayload> {
+	const brand = await emailBrand(opts.acceptUrl);
 	const inviter = opts.inviterName?.trim() || 'An administrator';
 	const expires = opts.expiresAt.toLocaleString('en-GB', {
 		dateStyle: 'medium',
@@ -83,7 +94,7 @@ export function invitationEmail(opts: {
 	const text = [
 		`Hi ${opts.name},`,
 		'',
-		`${inviter} has invited you to the ${PRODUCT_NAME} workspace.`,
+		`${inviter} has invited you to the ${brand.name} workspace.`,
 		'',
 		'Set your password to activate your account:',
 		opts.acceptUrl,
@@ -94,11 +105,12 @@ export function invitationEmail(opts: {
 	].join('\n');
 
 	const html = renderEmail({
-		preheader: `${inviter} invited you to ${PRODUCT_NAME}.`,
-		heading: `You've been invited to ${PRODUCT_NAME}`,
+		brand,
+		preheader: `${inviter} invited you to ${brand.name}.`,
+		heading: `You've been invited to ${brand.name}`,
 		paragraphs: [
 			`Hi ${escapeHtml(opts.name)},`,
-			`${escapeHtml(inviter)} has invited you to the ${PRODUCT_NAME} workspace. Set your password to activate your account.`
+			`${escapeHtml(inviter)} has invited you to the ${brand.name} workspace. Set your password to activate your account.`
 		],
 		button: { label: 'Activate your account', url: opts.acceptUrl },
 		fallbackUrl: opts.acceptUrl,
@@ -110,7 +122,7 @@ export function invitationEmail(opts: {
 
 	return {
 		to: opts.to,
-		subject: `You've been invited to ${PRODUCT_NAME}`,
+		subject: `You've been invited to ${brand.name}`,
 		text,
 		html
 	};
@@ -139,26 +151,28 @@ export type NotificationEmailContent = {
 	ctaLabel: string;
 };
 
-export function notificationEmail(opts: {
+export async function notificationEmail(opts: {
 	to: string;
 	content: NotificationEmailContent;
 	url: string;
 	/** Absolute link to the recipient's notification settings, if resolvable. */
 	settingsUrl?: string | null;
 	locale?: Locale;
-}): MailPayload {
+}): Promise<MailPayload> {
+	const brand = await emailBrand(opts.url);
 	const c = opts.content;
 	const subject = c.ref
-		? `[${PRODUCT_NAME}] ${c.ref} · ${c.subjectLabel}`
-		: `[${PRODUCT_NAME}] ${c.subjectLabel}`;
+		? `[${brand.name}] ${c.ref} · ${c.subjectLabel}`
+		: `[${brand.name}] ${c.subjectLabel}`;
 
 	const lines = [c.eyebrow + (c.ref ? ` · ${c.ref}` : ''), c.heading];
 	for (const row of c.meta) lines.push(`${row.label}: ${row.value}`);
 	if (c.quote) lines.push('', c.quote);
 	lines.push('', `${c.ctaLabel}: ${opts.url}`);
-	lines.push('', `— ${PRODUCT_NAME}`);
+	lines.push('', `— ${brand.name}`);
 
 	const html = renderEmail({
+		brand,
 		preheader: c.quote?.trim() || c.heading,
 		lang: opts.locale,
 		eyebrow: { label: c.eyebrow, ref: c.ref ?? undefined },
@@ -168,7 +182,7 @@ export function notificationEmail(opts: {
 		button: { label: c.ctaLabel, url: opts.url },
 		// Deliberately no fallbackUrl: a raw UUID link is the #1 phishing signal
 		// for normal recipients. The footer settings link covers "is this real?".
-		footerText: `${PRODUCT_NAME} · ${m.email_footer_activity(undefined, { locale: opts.locale })}`,
+		footerText: `${brand.name} · ${m.email_footer_activity({ brand: brand.name }, { locale: opts.locale })}`,
 		footerLink: opts.settingsUrl
 			? { label: m.email_footer_manage(undefined, { locale: opts.locale }), url: opts.settingsUrl }
 			: undefined
@@ -179,13 +193,14 @@ export function notificationEmail(opts: {
 
 // Legacy flat notification email — kept for callers without structured
 // content (e.g. the task-import summary). Same layout, no meta/eyebrow.
-export function plainNotificationEmail(opts: {
+export async function plainNotificationEmail(opts: {
 	to: string;
 	title: string;
 	body?: string | null;
 	url: string;
 	locale?: Locale;
-}): MailPayload {
+}): Promise<MailPayload> {
+	const brand = await emailBrand(opts.url);
 	const openLabel = m.notify_email_open(undefined, { locale: opts.locale });
 
 	const lines = [opts.title];
@@ -193,7 +208,7 @@ export function plainNotificationEmail(opts: {
 		lines.push('', opts.body);
 	}
 	lines.push('', `${openLabel}: ${opts.url}`);
-	lines.push('', `— ${PRODUCT_NAME}`);
+	lines.push('', `— ${brand.name}`);
 
 	const paragraphs: string[] = [];
 	if (opts.body) {
@@ -202,27 +217,32 @@ export function plainNotificationEmail(opts: {
 	}
 
 	const html = renderEmail({
+		brand,
 		preheader: opts.body?.trim() || opts.title,
 		lang: opts.locale,
 		heading: opts.title,
 		paragraphs: paragraphs.length ? paragraphs : undefined,
 		button: { label: openLabel, url: opts.url },
-		footerText: `${PRODUCT_NAME} · ${m.email_footer_activity(undefined, { locale: opts.locale })}`
+		footerText: `${brand.name} · ${m.email_footer_activity({ brand: brand.name }, { locale: opts.locale })}`
 	});
 
 	return {
 		to: opts.to,
-		subject: `[${PRODUCT_NAME}] ${opts.title}`,
+		subject: `[${brand.name}] ${opts.title}`,
 		text: lines.join('\n'),
 		html
 	};
 }
 
-export function passwordResetEmail(opts: { to: string; resetUrl: string }): MailPayload {
+export async function passwordResetEmail(opts: {
+	to: string;
+	resetUrl: string;
+}): Promise<MailPayload> {
+	const brand = await emailBrand(opts.resetUrl);
 	const text = [
 		'Hi,',
 		'',
-		`Someone requested a password reset for your ${PRODUCT_NAME} account.`,
+		`Someone requested a password reset for your ${brand.name} account.`,
 		'',
 		'Set a new password:',
 		opts.resetUrl,
@@ -231,10 +251,11 @@ export function passwordResetEmail(opts: { to: string; resetUrl: string }): Mail
 	].join('\n');
 
 	const html = renderEmail({
-		preheader: `Reset your ${PRODUCT_NAME} password.`,
+		brand,
+		preheader: `Reset your ${brand.name} password.`,
 		heading: 'Reset your password',
 		paragraphs: [
-			`Someone requested a password reset for your ${PRODUCT_NAME} account. Click below to choose a new one.`
+			`Someone requested a password reset for your ${brand.name} account. Click below to choose a new one.`
 		],
 		button: { label: 'Set a new password', url: opts.resetUrl },
 		fallbackUrl: opts.resetUrl,
@@ -245,7 +266,7 @@ export function passwordResetEmail(opts: { to: string; resetUrl: string }): Mail
 
 	return {
 		to: opts.to,
-		subject: `Reset your ${PRODUCT_NAME} password`,
+		subject: `Reset your ${brand.name} password`,
 		text,
 		html
 	};

@@ -9,6 +9,7 @@ import { deriveIsAdmin, loadMemberships } from '$lib/server/permissions';
 import { isSuperadmin } from '$lib/roles';
 import { getPreferences, PREF_DEFAULTS } from '$lib/server/preferences';
 import { recordAudit } from '$lib/server/audit';
+import { getBranding } from '$lib/server/branding';
 import { paraglideMiddleware } from '$lib/paraglide/server';
 import { cookieName, isLocale } from '$lib/paraglide/runtime';
 
@@ -202,9 +203,23 @@ const handleLocale: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
+function escapeAttr(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;');
+}
+
 const handleParaglide: Handle = ({ event, resolve }) =>
-	paraglideMiddleware(event.request, ({ request, locale }) => {
+	paraglideMiddleware(event.request, async ({ request, locale }) => {
 		event.request = request;
+		// Instance branding for the static head of app.html (<title> before any
+		// page sets its own, and the favicon). Pages get the same values from
+		// the root layout load.
+		const brand = await getBranding();
+		const brandName = escapeAttr(brand.name);
+		const brandIcon = escapeAttr(brand.logoUrl ?? '/favicon.svg');
 		// Inject the saved theme/density into the SSR'd <html> so the first paint
 		// already matches the user's preference — same no-flash approach as the
 		// locale above. The client effect in (app)/+layout re-applies the same
@@ -216,7 +231,12 @@ const handleParaglide: Handle = ({ event, resolve }) =>
 		const density = p?.density ?? PREF_DEFAULTS.density;
 		return resolve(event, {
 			transformPageChunk: ({ html }) =>
-				html.replace('%lang%', locale).replace('%theme%', theme).replace('%density%', density)
+				html
+					.replace('%lang%', locale)
+					.replace('%theme%', theme)
+					.replace('%density%', density)
+					.replace('%brand.name%', brandName)
+					.replace('%brand.icon%', brandIcon)
 		});
 	});
 

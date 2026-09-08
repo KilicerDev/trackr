@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { brandName } from '$lib/brand';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import type { ActionResult } from '@sveltejs/kit';
@@ -156,7 +157,10 @@
 	}
 </script>
 
-<svelte:head><title>{m.admin_org_detail_page_title({ name: data.org.name })}</title></svelte:head>
+<svelte:head
+	><title>{m.admin_org_detail_page_title({ name: data.org.name, brand: brandName() })}</title
+	></svelte:head
+>
 
 <!-- Chrome (Topbar, scroll container, tabs) comes from the Directory layout. -->
 <a

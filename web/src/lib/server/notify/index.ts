@@ -288,7 +288,7 @@ export async function notify(input: NotifyInput): Promise<void> {
 			const locale = localeOf.get(u.id) ?? baseLocale;
 			const structured = emailContentFor(locale);
 			const payload = structured
-				? notificationEmail({
+				? await notificationEmail({
 						to: u.email,
 						content: {
 							...structured,
@@ -300,7 +300,7 @@ export async function notify(input: NotifyInput): Promise<void> {
 						settingsUrl: settingsUrl.startsWith('http') ? settingsUrl : null,
 						locale
 					})
-				: plainNotificationEmail({
+				: await plainNotificationEmail({
 						to: u.email,
 						title: contentFor(u.id).title,
 						body: contentFor(u.id).body,

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { brandName } from '$lib/brand';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Button from '$lib/components/Button.svelte';
@@ -421,11 +422,13 @@
 	}
 </script>
 
-<svelte:head><title>{m.projects_detail_title({ name: p.name })}</title></svelte:head>
+<svelte:head
+	><title>{m.projects_detail_title({ name: p.name, brand: brandName() })}</title></svelte:head
+>
 
 <Topbar
 	crumbs={[
-		{ label: m.projects_breadcrumb_workspace(), href: '/tasks' },
+		{ label: m.projects_breadcrumb_workspace({ brand: brandName() }), href: '/tasks' },
 		{ label: m.projects_breadcrumb_projects(), href: '/projects' },
 		{ label: p.name }
 	]}

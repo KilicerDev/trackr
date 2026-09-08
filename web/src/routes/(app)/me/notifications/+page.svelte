@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { enhance } from '$app/forms';
 	import { goto, invalidate } from '$app/navigation';
 	import { page } from '$app/state';
@@ -72,7 +73,7 @@
 	}
 </script>
 
-<svelte:head><title>Trackr · {m.notif_inbox_title()}</title></svelte:head>
+<svelte:head><title>{pageTitle(m.notif_inbox_title())}</title></svelte:head>
 
 <header class="mb-6 flex items-end justify-between gap-4">
 	<div>

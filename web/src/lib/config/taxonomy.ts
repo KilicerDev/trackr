@@ -226,6 +226,12 @@ export const LOG_EVENT_TYPES: Record<
 	},
 	// projects
 	'project.create': { label: 'Project created', icon: 'folder', color: '#7fc8a9', kind: 'project' },
+	'settings.branding': {
+		label: 'Branding changed',
+		icon: 'sparkle',
+		color: '#c08bd6',
+		kind: 'settings'
+	},
 	'project_template.create': {
 		label: 'Template created',
 		icon: 'list',

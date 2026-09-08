@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { brandName } from '$lib/brand';
 	import { page } from '$app/state';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import Modal from './Modal.svelte';
@@ -135,7 +136,7 @@
 				placeholder={kind === 'bug'
 					? m.shell_feedback_placeholder_bug()
 					: kind === 'idea'
-						? m.shell_feedback_placeholder_idea()
+						? m.shell_feedback_placeholder_idea({ brand: brandName() })
 						: m.shell_feedback_placeholder_general()}
 				rows="6"
 				maxlength="4000"

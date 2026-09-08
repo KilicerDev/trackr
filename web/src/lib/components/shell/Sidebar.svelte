@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import Icon from '../Icon.svelte';
+	import BrandLogo from '../BrandLogo.svelte';
+	import { brandName } from '$lib/brand';
 	import { m } from '$lib/paraglide/messages';
 	import { getSidebar } from '$lib/stores/sidebar.svelte';
 	import type { CapabilityManifest } from '$lib/permissions';
@@ -116,19 +118,9 @@
 		class="relative flex items-center gap-2.5 px-[20px] pt-[20px] pb-[15px] text-[15px] font-semibold tracking-[-0.01em]"
 	>
 		<span class="grid h-6 w-6 shrink-0 place-items-center" aria-hidden="true">
-			<svg
-				width="22"
-				height="22"
-				viewBox="0 0 16 16"
-				fill="none"
-				xmlns="http://www.w3.org/2000/svg"
-			>
-				<rect x="1.26971" y="1.2627" width="3.65721" height="13.4566" rx="1" fill="#FF4867" />
-				<rect x="6.146" y="1.2627" width="3.65721" height="13.4566" rx="1" fill="#FF4867" />
-				<rect x="11.0223" y="1.2627" width="3.65721" height="13.4566" rx="1" fill="#FF4867" />
-			</svg>
+			<BrandLogo size={22} />
 		</span>
-		<span class={fade}>Trackr</span>
+		<span class="truncate {fade}">{brandName()}</span>
 		<span class="ml-auto font-mono text-[12px] font-normal text-text-3 {fade}">v2</span>
 	</div>
 

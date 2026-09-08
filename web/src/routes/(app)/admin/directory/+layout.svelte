@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { brandName } from '$lib/brand';
 	import { page } from '$app/state';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -17,7 +18,7 @@
 	// the crumbs still name the record being edited.
 	const detailOrg = $derived((page.data as { org?: { name?: string } }).org);
 	const crumbs = $derived([
-		{ label: m.admin_crumb_workspace(), href: '/tasks' },
+		{ label: m.admin_crumb_workspace({ brand: brandName() }), href: '/tasks' },
 		...(detailOrg?.name
 			? [
 					{ label: m.directory_title(), href: '/admin/directory/users' },

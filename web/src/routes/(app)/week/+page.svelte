@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { brandName, pageTitle } from '$lib/brand';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Button from '$lib/components/Button.svelte';
@@ -320,9 +321,14 @@
 	}
 </script>
 
-<svelte:head><title>Trackr · {m.week_title()}</title></svelte:head>
+<svelte:head><title>{pageTitle(m.week_title())}</title></svelte:head>
 
-<Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: m.week_title() }]} />
+<Topbar
+	crumbs={[
+		{ label: m.admin_crumb_workspace({ brand: brandName() }), href: '/tasks' },
+		{ label: m.week_title() }
+	]}
+/>
 
 <div class="min-h-0 flex-1 overflow-y-auto">
 	<div class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-4 py-3 sm:px-6">

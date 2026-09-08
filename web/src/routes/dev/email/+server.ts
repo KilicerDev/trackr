@@ -18,7 +18,7 @@ import type { RequestHandler } from './$types';
 const SAMPLE_URL = 'https://kilohertz.trackr.dev/tickets/0fffd4eb-c2da-4571-82c2-3cc6c7777b6e';
 const SETTINGS_URL = 'https://kilohertz.trackr.dev/me/settings';
 
-function sample(t: string, locale: Locale): { subject: string; html?: string } {
+async function sample(t: string, locale: Locale): Promise<{ subject: string; html?: string }> {
 	const de = locale === 'de';
 	const meta = (rows: [string, string][]) => rows.map(([label, value]) => ({ label, value }));
 	const commonMeta: [string, string][] = [
@@ -144,7 +144,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			{ headers: { 'content-type': 'text/html; charset=utf-8' } }
 		);
 	}
-	const { subject, html } = sample(t, locale);
+	const { subject, html } = await sample(t, locale);
 	// Show the subject line above the rendered email.
 	const frame = (html ?? '').replace('<body', `<!-- subject: ${subject} --><body`);
 	return new Response(frame, {

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { brandName } from '$lib/brand';
 	import { enhance } from '$app/forms';
 	import BrandMark from '$lib/components/auth/BrandMark.svelte';
 	import Icon from '$lib/components/Icon.svelte';
@@ -16,7 +17,7 @@
 </script>
 
 <svelte:head>
-	<title>{m.auth_forgot_page_title()}</title>
+	<title>{m.auth_forgot_page_title({ brand: brandName() })}</title>
 </svelte:head>
 
 <div class="relative flex min-h-screen items-center justify-center px-4 py-10">
@@ -28,12 +29,10 @@
 	<div class="relative w-full max-w-[440px]">
 		<BrandMark />
 
-		<div
-			class="rounded-[14px] border border-border bg-bg-elev px-7 pt-7 pb-6 shadow-card"
-		>
+		<div class="rounded-[14px] border border-border bg-bg-elev px-7 pt-7 pb-6 shadow-card">
 			{#if form?.sent}
 				<div
-					class="mx-auto grid h-11 w-11 place-items-center rounded-full text-status-done bg-status-done/12"
+					class="mx-auto grid h-11 w-11 place-items-center rounded-full bg-status-done/12 text-status-done"
 				>
 					<Icon name="check" size={22} stroke={2} />
 				</div>
@@ -85,7 +84,7 @@
 
 					{#if form?.message}
 						<div
-							class="rounded-[8px] border border-prio-urgent/35 px-3 py-2 text-[14px] text-prio-urgent bg-prio-urgent/8"
+							class="rounded-[8px] border border-prio-urgent/35 bg-prio-urgent/8 px-3 py-2 text-[14px] text-prio-urgent"
 						>
 							{form.message}
 						</div>

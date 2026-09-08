@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { brandName, pageTitle } from '$lib/brand';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Toolbar from '$lib/components/tasks/Toolbar.svelte';
 	import ListView from '$lib/components/tasks/ListView.svelte';
@@ -237,9 +238,14 @@
 	const canCreate = $derived((data.effectivePermissions ?? []).includes('project.tasks.create'));
 </script>
 
-<svelte:head><title>Trackr · {m.tasks_title()}</title></svelte:head>
+<svelte:head><title>{pageTitle(m.tasks_title())}</title></svelte:head>
 
-<Topbar crumbs={[{ label: 'Trackr Workspace', href: '/tasks' }, { label: m.tasks_title() }]} />
+<Topbar
+	crumbs={[
+		{ label: m.admin_crumb_workspace({ brand: brandName() }), href: '/tasks' },
+		{ label: m.tasks_title() }
+	]}
+/>
 <Toolbar
 	{view}
 	{setView}

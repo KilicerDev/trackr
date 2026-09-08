@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
@@ -58,7 +59,7 @@
 	}
 </script>
 
-<svelte:head><title>Trackr · {meta.title}</title></svelte:head>
+<svelte:head><title>{pageTitle(meta.title)}</title></svelte:head>
 
 <Topbar crumbs={[{ label: m.shell_workspace_crumb(), href: '/tasks' }, { label: meta.title }]} />
 

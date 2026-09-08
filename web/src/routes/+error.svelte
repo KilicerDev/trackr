@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
@@ -52,7 +53,7 @@
 	);
 </script>
 
-<svelte:head><title>Trackr · {meta.title}</title></svelte:head>
+<svelte:head><title>{pageTitle(meta.title)}</title></svelte:head>
 
 <div class="grid min-h-screen place-items-center bg-bg px-6 py-12 text-text">
 	<div class="flex max-w-md flex-col items-center text-center">

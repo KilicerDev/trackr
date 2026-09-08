@@ -1869,3 +1869,24 @@ export const mcpGuide = pgTable(
 );
 
 export type McpGuide = typeof mcpGuide.$inferSelect;
+
+// Instance branding (white-label): the display name and logo that replace the
+// built-in "Trackr" wordmark and three-bar mark across the sidebar, sign-in
+// pages, browser tab/favicon and outgoing emails. One-row table (id 'default');
+// no row means stock branding. The logo is kept inline (bytea) — it is a small
+// normalized image, served from /brand/logo with the content hash as a
+// cache-busting `?v=`. Managed under /admin/settings (admin.settings.manage).
+
+export const instanceBranding = pgTable('instance_branding', {
+	id: text('id').primaryKey(),
+	name: text('name').notNull().default('Trackr'),
+	logoMime: text('logo_mime'),
+	logoData: bytea('logo_data'),
+	// Short content hash of logo_data; part of the public URL so browsers and
+	// mail clients can cache the image forever and still see a replacement.
+	logoVersion: text('logo_version'),
+	updatedById: text('updated_by_id').references(() => user.id, { onDelete: 'set null' }),
+	updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export type InstanceBranding = typeof instanceBranding.$inferSelect;

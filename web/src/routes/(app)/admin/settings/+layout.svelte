@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { brandName } from '$lib/brand';
 	import { page } from '$app/state';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -21,7 +22,7 @@
 
 <Topbar
 	crumbs={[
-		{ label: m.admin_crumb_workspace(), href: '/tasks' },
+		{ label: m.admin_crumb_workspace({ brand: brandName() }), href: '/tasks' },
 		{ label: m.admin_settings_title() }
 	]}
 />

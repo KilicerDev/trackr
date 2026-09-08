@@ -117,7 +117,7 @@ export const auth = betterAuth({
 			const callbackURL = encodeURIComponent('/reset-password');
 			const path = `/api/auth/reset-password/${token}?callbackURL=${callbackURL}`;
 			sendEmailFireAndForget(
-				passwordResetEmail({ to: user.email, resetUrl: withRequestOrigin(path) }),
+				await passwordResetEmail({ to: user.email, resetUrl: withRequestOrigin(path) }),
 				{ priority: EMAIL_PRIORITY.high }
 			);
 		}
