@@ -2,7 +2,6 @@
 	import { invalidateAll, goto } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import type { ActionResult } from '@sveltejs/kit';
-	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import IconButton from '$lib/components/IconButton.svelte';
@@ -357,206 +356,194 @@
 	let showPassword = $state(false);
 </script>
 
-<svelte:head><title>{m.admin_users_page_title()}</title></svelte:head>
+<svelte:head><title>{m.admin_users_title()} · {m.directory_title()}</title></svelte:head>
 
-<Topbar
-	crumbs={[{ label: m.admin_crumb_workspace(), href: '/tasks' }, { label: m.admin_users_title() }]}
-/>
+<!-- Chrome (Topbar, scroll container, tabs) comes from the Directory layout. -->
+<div class="mb-6 flex items-end gap-4">
+	<div>
+		<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.admin_users_title()}</h1>
+		<p class="mt-1 text-[14px] text-text-3">
+			{m.admin_users_subtitle({
+				total: counts.all,
+				active: counts.active,
+				invited: counts.invited
+			})}
+		</p>
+	</div>
+	<div class="ml-auto flex items-center gap-2">
+		<Button variant="default" size="sm" onclick={() => (createOpen = true)}>
+			<Icon name="user" size={14} />
+			{m.admin_users_create()}
+		</Button>
+		<Button variant="primary" size="sm" onclick={() => (inviteOpen = true)}>
+			<Icon name="plus" size={14} />
+			{m.admin_users_invite()}
+		</Button>
+	</div>
+</div>
 
-<div class="min-h-0 flex-1 overflow-y-auto">
-	<div class="px-6 py-6">
-		<div class="mb-6 flex items-end gap-4">
-			<div>
-				<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.admin_users_title()}</h1>
-				<p class="mt-1 text-[14px] text-text-3">
-					{m.admin_users_subtitle({
-						total: counts.all,
-						active: counts.active,
-						invited: counts.invited
-					})}
-				</p>
-			</div>
-			<div class="ml-auto flex items-center gap-2">
-				<Button variant="default" size="sm" onclick={() => (createOpen = true)}>
-					<Icon name="user" size={14} />
-					{m.admin_users_create()}
-				</Button>
-				<Button variant="primary" size="sm" onclick={() => (inviteOpen = true)}>
-					<Icon name="plus" size={14} />
-					{m.admin_users_invite()}
-				</Button>
-			</div>
-		</div>
-
-		<div class="mb-4 flex items-center gap-2.5">
-			<div class="inline-flex h-8 items-center rounded-lg border border-border bg-surface p-0.5">
-				{#each tabs as t (t.id)}
-					<button
-						type="button"
-						onclick={() => (filter = t.id)}
-						class="inline-flex h-full items-center gap-1.5 rounded-md px-2.5 text-[14px] transition-colors {filter ===
-						t.id
-							? 'bg-bg-elev text-text'
-							: 'text-text-3 hover:text-text'}"
-					>
-						{t.label}
-						<span class="font-mono text-[12px] text-text-3">
-							{counts[t.id]}
-						</span>
-					</button>
-				{/each}
-			</div>
-			<div class="relative ml-auto">
-				<span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-3">
-					<Icon name="search" size={14} />
-				</span>
-				<input
-					type="text"
-					bind:value={search}
-					placeholder={m.admin_users_search_placeholder()}
-					class="h-8 w-64 rounded-lg border border-border bg-surface pr-3 pl-8 text-[14px] outline-none focus:border-border-strong"
-				/>
-			</div>
-		</div>
-
-		{#if data.invitations.length > 0}
-			<div class="mb-5">
-				<div class="mb-2 px-1 text-[12px] tracking-[0.08em] text-text-4 uppercase">
-					{m.admin_users_pending_invitations({ count: data.invitations.length })}
-				</div>
-				<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
-					{#each data.invitations as inv (inv.id)}
-						{@const meta =
-							ORG_ROLE_META[inv.orgRole ?? ''] ?? ROLE_META[inv.role as Role] ?? ROLE_META.user}
-						{@const metaLabel =
-							inv.orgRole && ORG_ROLE_META[inv.orgRole]
-								? orgRoleLabel(inv.orgRole)
-								: metaRoleLabel((inv.role as Role) ?? 'user')}
-						{@const expired = new Date(inv.expiresAt).getTime() < Date.now()}
-						<div
-							class="flex items-center gap-3 border-b border-border/40 px-5 py-3 last:border-b-0"
-						>
-							<span
-								class="grid h-8 w-8 place-items-center rounded-lg border border-border bg-surface text-text-3"
-							>
-								<Icon name="msg" size={15} />
-							</span>
-							<div class="min-w-0 flex-1">
-								<div class="flex items-center gap-2">
-									<span class="truncate text-[14px] font-medium text-text">{inv.email}</span>
-									<span
-										class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] font-medium"
-										style:background={meta.color + '22'}
-										style:color={meta.color}
-									>
-										<span class="h-1 w-1 rounded-full" style:background={meta.color}></span>
-										{metaLabel}
-									</span>
-								</div>
-								<div class="mt-0.5 text-[12px] text-text-3">
-									{m.admin_users_invited_as()} <span class="text-text-2">{inv.name}</span>
-									{' · '}
-									<span class={expired ? 'text-prio-urgent' : ''}>{fmtRelative(inv.expiresAt)}</span
-									>
-								</div>
-							</div>
-							<div class="flex items-center gap-1">
-								<IconButton
-									size={31}
-									ariaLabel={m.admin_users_resend_invitation()}
-									onclick={() => handleResend(inv)}
-								>
-									{#if pendingAction === `resend:${inv.id}`}
-										<span
-											class="h-3 w-3 animate-spin rounded-full border-2 border-text-3 border-t-transparent"
-										></span>
-									{:else}
-										<Icon name="refresh" size={14} />
-									{/if}
-								</IconButton>
-								<IconButton
-									size={31}
-									ariaLabel={m.admin_users_revoke_invitation()}
-									onclick={() => handleRevoke(inv)}
-								>
-									<Icon name="x" size={14} />
-								</IconButton>
-							</div>
-						</div>
-					{/each}
-				</div>
-			</div>
-		{/if}
-
-		<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
-			<div
-				class="grid h-9 items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
-				style:grid-template-columns="2fr 1fr 1fr 1fr 36px"
+<div class="mb-4 flex items-center gap-2.5">
+	<div class="inline-flex h-8 items-center rounded-lg border border-border bg-surface p-0.5">
+		{#each tabs as t (t.id)}
+			<button
+				type="button"
+				onclick={() => (filter = t.id)}
+				class="inline-flex h-full items-center gap-1.5 rounded-md px-2.5 text-[14px] transition-colors {filter ===
+				t.id
+					? 'bg-bg-elev text-text'
+					: 'text-text-3 hover:text-text'}"
 			>
-				<span>{m.admin_users_col_user()}</span>
-				<span>{m.admin_users_col_role()}</span>
-				<span>{m.admin_users_col_status()}</span>
-				<span>{m.admin_users_col_joined()}</span>
-				<span></span>
-			</div>
-			{#if users.length === 0}
-				<div class="px-5 py-10 text-center text-[14px] text-text-3">
-					{m.admin_users_no_match()}
-				</div>
-			{/if}
-			{#each users as u (u.id)}
-				{@const meta = ROLE_META[(u.role ?? 'user') as Role] ?? ROLE_META.user}
-				{@const banned = !!u.banned}
-				{@const isSelf = u.id === data.currentUserId}
-				<button
-					type="button"
-					onclick={() => (selected = u)}
-					class="grid w-full items-center gap-3 border-b border-border/40 px-5 py-2.5 text-left text-[14px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)] {banned
-						? 'opacity-55 hover:opacity-100'
-						: ''}"
-					style:grid-template-columns="2fr 1fr 1fr 1fr 36px"
-				>
-					<span class="flex min-w-0 items-center gap-2.5">
-						<Avatar user={makeAvatar(u)} size={31} />
-						<span class="min-w-0">
-							<span class="block truncate font-medium text-text">
-								{u.name ?? '—'}
-								{#if isSelf}
-									<span class="ml-1 font-mono text-[12px] text-text-4">{m.admin_users_you()}</span>
-								{/if}
-							</span>
-							<span class="block truncate font-mono text-[12px] text-text-3">{u.email}</span>
-						</span>
-					</span>
-					<span class="flex items-center gap-1.5">
-						<span class="h-1.5 w-1.5 rounded-full" style:background={meta.color}></span>
-						<span style:color={meta.color}>{metaRoleLabel(u.role ?? 'user')}</span>
-					</span>
-					<span>
-						{#if banned}
-							<span
-								class="inline-flex items-center gap-1.5 rounded-full bg-prio-urgent/16 px-2 py-0.5 text-[12px] text-prio-urgent"
-							>
-								<span class="h-1.5 w-1.5 rounded-full bg-prio-urgent"></span>
-								{m.admin_users_status_banned()}
-							</span>
-						{:else}
-							<span
-								class="inline-flex items-center gap-1.5 rounded-full bg-status-done/16 px-2 py-0.5 text-[12px] text-status-done"
-							>
-								<span class="h-1.5 w-1.5 rounded-full bg-status-done"></span>
-								{m.admin_users_status_active()}
-							</span>
-						{/if}
-					</span>
-					<span class="font-mono text-[13px] text-text-3">{fmtDate(u.createdAt)}</span>
-					<span class="grid place-items-center text-text-3"
-						><Icon name="chevron-r" size={13} /></span
+				{t.label}
+				<span class="font-mono text-[12px] text-text-3">
+					{counts[t.id]}
+				</span>
+			</button>
+		{/each}
+	</div>
+	<div class="relative ml-auto">
+		<span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-3">
+			<Icon name="search" size={14} />
+		</span>
+		<input
+			type="text"
+			bind:value={search}
+			placeholder={m.admin_users_search_placeholder()}
+			class="h-8 w-64 rounded-lg border border-border bg-surface pr-3 pl-8 text-[14px] outline-none focus:border-border-strong"
+		/>
+	</div>
+</div>
+
+{#if data.invitations.length > 0}
+	<div class="mb-5">
+		<div class="mb-2 px-1 text-[12px] tracking-[0.08em] text-text-4 uppercase">
+			{m.admin_users_pending_invitations({ count: data.invitations.length })}
+		</div>
+		<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
+			{#each data.invitations as inv (inv.id)}
+				{@const meta =
+					ORG_ROLE_META[inv.orgRole ?? ''] ?? ROLE_META[inv.role as Role] ?? ROLE_META.user}
+				{@const metaLabel =
+					inv.orgRole && ORG_ROLE_META[inv.orgRole]
+						? orgRoleLabel(inv.orgRole)
+						: metaRoleLabel((inv.role as Role) ?? 'user')}
+				{@const expired = new Date(inv.expiresAt).getTime() < Date.now()}
+				<div class="flex items-center gap-3 border-b border-border/40 px-5 py-3 last:border-b-0">
+					<span
+						class="grid h-8 w-8 place-items-center rounded-lg border border-border bg-surface text-text-3"
 					>
-				</button>
+						<Icon name="msg" size={15} />
+					</span>
+					<div class="min-w-0 flex-1">
+						<div class="flex items-center gap-2">
+							<span class="truncate text-[14px] font-medium text-text">{inv.email}</span>
+							<span
+								class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[12px] font-medium"
+								style:background={meta.color + '22'}
+								style:color={meta.color}
+							>
+								<span class="h-1 w-1 rounded-full" style:background={meta.color}></span>
+								{metaLabel}
+							</span>
+						</div>
+						<div class="mt-0.5 text-[12px] text-text-3">
+							{m.admin_users_invited_as()} <span class="text-text-2">{inv.name}</span>
+							{' · '}
+							<span class={expired ? 'text-prio-urgent' : ''}>{fmtRelative(inv.expiresAt)}</span>
+						</div>
+					</div>
+					<div class="flex items-center gap-1">
+						<IconButton
+							size={31}
+							ariaLabel={m.admin_users_resend_invitation()}
+							onclick={() => handleResend(inv)}
+						>
+							{#if pendingAction === `resend:${inv.id}`}
+								<span
+									class="h-3 w-3 animate-spin rounded-full border-2 border-text-3 border-t-transparent"
+								></span>
+							{:else}
+								<Icon name="refresh" size={14} />
+							{/if}
+						</IconButton>
+						<IconButton
+							size={31}
+							ariaLabel={m.admin_users_revoke_invitation()}
+							onclick={() => handleRevoke(inv)}
+						>
+							<Icon name="x" size={14} />
+						</IconButton>
+					</div>
+				</div>
 			{/each}
 		</div>
 	</div>
+{/if}
+
+<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
+	<div
+		class="grid h-9 items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
+		style:grid-template-columns="2fr 1fr 1fr 1fr 36px"
+	>
+		<span>{m.admin_users_col_user()}</span>
+		<span>{m.admin_users_col_role()}</span>
+		<span>{m.admin_users_col_status()}</span>
+		<span>{m.admin_users_col_joined()}</span>
+		<span></span>
+	</div>
+	{#if users.length === 0}
+		<div class="px-5 py-10 text-center text-[14px] text-text-3">
+			{m.admin_users_no_match()}
+		</div>
+	{/if}
+	{#each users as u (u.id)}
+		{@const meta = ROLE_META[(u.role ?? 'user') as Role] ?? ROLE_META.user}
+		{@const banned = !!u.banned}
+		{@const isSelf = u.id === data.currentUserId}
+		<button
+			type="button"
+			onclick={() => (selected = u)}
+			class="grid w-full items-center gap-3 border-b border-border/40 px-5 py-2.5 text-left text-[14px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)] {banned
+				? 'opacity-55 hover:opacity-100'
+				: ''}"
+			style:grid-template-columns="2fr 1fr 1fr 1fr 36px"
+		>
+			<span class="flex min-w-0 items-center gap-2.5">
+				<Avatar user={makeAvatar(u)} size={31} />
+				<span class="min-w-0">
+					<span class="block truncate font-medium text-text">
+						{u.name ?? '—'}
+						{#if isSelf}
+							<span class="ml-1 font-mono text-[12px] text-text-4">{m.admin_users_you()}</span>
+						{/if}
+					</span>
+					<span class="block truncate font-mono text-[12px] text-text-3">{u.email}</span>
+				</span>
+			</span>
+			<span class="flex items-center gap-1.5">
+				<span class="h-1.5 w-1.5 rounded-full" style:background={meta.color}></span>
+				<span style:color={meta.color}>{metaRoleLabel(u.role ?? 'user')}</span>
+			</span>
+			<span>
+				{#if banned}
+					<span
+						class="inline-flex items-center gap-1.5 rounded-full bg-prio-urgent/16 px-2 py-0.5 text-[12px] text-prio-urgent"
+					>
+						<span class="h-1.5 w-1.5 rounded-full bg-prio-urgent"></span>
+						{m.admin_users_status_banned()}
+					</span>
+				{:else}
+					<span
+						class="inline-flex items-center gap-1.5 rounded-full bg-status-done/16 px-2 py-0.5 text-[12px] text-status-done"
+					>
+						<span class="h-1.5 w-1.5 rounded-full bg-status-done"></span>
+						{m.admin_users_status_active()}
+					</span>
+				{/if}
+			</span>
+			<span class="font-mono text-[13px] text-text-3">{fmtDate(u.createdAt)}</span>
+			<span class="grid place-items-center text-text-3"><Icon name="chevron-r" size={13} /></span>
+		</button>
+	{/each}
 </div>
 
 <!-- Toast -->
@@ -637,7 +624,7 @@
 						{#each memberships as om (om.id)}
 							{@const roleMeta = ORG_ROLE_META[om.role] ?? { color: '#7c7c84' }}
 							<a
-								href="/admin/organizations/{om.id}"
+								href="/admin/directory/organizations/{om.id}"
 								class="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2 transition-colors hover:border-border-strong hover:bg-surface"
 							>
 								<span

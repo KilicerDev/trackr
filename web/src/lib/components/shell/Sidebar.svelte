@@ -62,17 +62,12 @@
 	]);
 
 	const adminItems = $derived([
+		// Directory = users + organizations, opening on users.
 		{
-			key: 'orgs',
-			label: m.shell_admin_organizations(),
-			icon: 'org',
-			href: '/admin/organizations'
-		},
-		{
-			key: 'users',
-			label: m.shell_admin_user_management(),
+			key: 'directory',
+			label: m.shell_admin_directory(),
 			icon: 'users',
-			href: '/admin/users'
+			href: '/admin/directory/users'
 		},
 		{
 			key: 'settings',

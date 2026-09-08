@@ -363,7 +363,7 @@
 							{#if orgs.length === 0}
 								<div class="px-2 py-2 text-[12px] text-text-3">
 									{m.projects_no_orgs_hint_before()}
-									<a href="/admin/organizations" class="text-accent hover:underline"
+									<a href="/admin/directory/organizations" class="text-accent hover:underline"
 										>{m.projects_admin_orgs_link()}</a
 									>.
 								</div>

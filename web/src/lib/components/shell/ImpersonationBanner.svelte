@@ -29,7 +29,7 @@
 				return;
 			}
 			await invalidateAll();
-			await goto('/admin/users', { invalidateAll: true });
+			await goto('/admin/directory/users', { invalidateAll: true });
 		} catch {
 			await uiAlert({
 				title: m.shell_impersonation_stop_error_title(),

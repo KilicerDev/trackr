@@ -96,7 +96,7 @@
 	<form
 		bind:this={formEl}
 		method="POST"
-		action="/admin/organizations?/create"
+		action="/admin/directory/organizations?/create"
 		use:enhance={() => {
 			submitting = true;
 			serverError = null;

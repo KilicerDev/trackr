@@ -43,7 +43,7 @@
 				{memberCount}
 				<span class="text-text-3"
 					>{m.admin_settings_manage_in()}
-					<a href="/admin/users" class="text-accent hover:underline">{m.admin_users_title()}</a
+					<a href="/admin/directory/users" class="text-accent hover:underline">{m.admin_users_title()}</a
 					></span
 				>
 			</div>

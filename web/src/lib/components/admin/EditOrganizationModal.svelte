@@ -94,7 +94,7 @@
 	<form
 		bind:this={formEl}
 		method="POST"
-		action="/admin/organizations/{org.id}?/update"
+		action="/admin/directory/organizations/{org.id}?/update"
 		use:enhance={() => {
 			saving = true;
 			serverError = null;

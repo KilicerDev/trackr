@@ -110,7 +110,7 @@ describe('better-auth admin API over HTTP', () => {
 	});
 
 	test('the admin pages themselves still load for an admin', async () => {
-		for (const p of ['/admin/users', '/admin/settings/api-keys', '/admin/settings/mcp']) {
+		for (const p of ['/admin/directory/users', '/admin/settings/api-keys', '/admin/settings/mcp']) {
 			const res = await fetch(`${BASE_URL}${p}`, { headers: { cookie: adminCookie } });
 			expect(res.status, p).toBe(200);
 		}
@@ -120,7 +120,7 @@ describe('better-auth admin API over HTTP', () => {
 describe('impersonation', () => {
 	test('admin cannot impersonate anyone', async () => {
 		const r = await formAction(
-			'/admin/users',
+			'/admin/directory/users',
 			'impersonateUser',
 			{ userId },
 			{ cookie: adminCookie }
@@ -131,7 +131,7 @@ describe('impersonation', () => {
 
 	rootOnly('root impersonates a user, then stops', async () => {
 		const r = await formAction(
-			'/admin/users',
+			'/admin/directory/users',
 			'impersonateUser',
 			{ userId },
 			{ cookie: rootCookie }
@@ -149,18 +149,20 @@ describe('impersonation', () => {
 
 	rootOnly('root impersonating an admin sees the users page (reads allowed)', async () => {
 		const r = await formAction(
-			'/admin/users',
+			'/admin/directory/users',
 			'impersonateUser',
 			{ userId: admin2Id },
 			{ cookie: rootCookie }
 		);
 		expect(r.type).toBe('success');
 		const impersonated = joinCookies(r.setCookie);
-		const page = await fetch(`${BASE_URL}/admin/users`, { headers: { cookie: impersonated } });
+		const page = await fetch(`${BASE_URL}/admin/directory/users`, {
+			headers: { cookie: impersonated }
+		});
 		expect(page.status).toBe(200);
 		// …but cannot perform admin mutations from inside the impersonation.
 		const del = await formAction(
-			'/admin/users',
+			'/admin/directory/users',
 			'deleteUser',
 			{ userId },
 			{ cookie: impersonated }
@@ -175,7 +177,7 @@ describe('impersonation', () => {
 
 	rootOnly('root cannot impersonate itself', async () => {
 		const r = await formAction(
-			'/admin/users',
+			'/admin/directory/users',
 			'impersonateUser',
 			{ userId: rootId },
 			{ cookie: rootCookie }
@@ -186,7 +188,7 @@ describe('impersonation', () => {
 
 	rootOnly('an admin naming root gets 403 (superadmin required), never a session', async () => {
 		const r = await formAction(
-			'/admin/users',
+			'/admin/directory/users',
 			'impersonateUser',
 			{ userId: rootId },
 			{ cookie: admin2Cookie }
@@ -248,7 +250,7 @@ describe('user management', () => {
 	rootOnly('admin cannot delete or reset root (invisible → 404)', async () => {
 		for (const action of ['deleteUser', 'sendPasswordReset']) {
 			const r = await formAction(
-				'/admin/users',
+				'/admin/directory/users',
 				action,
 				{ userId: rootId },
 				{ cookie: adminCookie }
@@ -260,7 +262,7 @@ describe('user management', () => {
 
 	rootOnly('root cannot delete itself', async () => {
 		const r = await formAction(
-			'/admin/users',
+			'/admin/directory/users',
 			'deleteUser',
 			{ userId: rootId },
 			{ cookie: rootCookie }
@@ -271,7 +273,7 @@ describe('user management', () => {
 });
 
 describe('internal-org membership', () => {
-	const org = `/admin/organizations/${INTERNAL_ORG}`;
+	const org = `/admin/directory/organizations/${INTERNAL_ORG}`;
 
 	test('admin cannot make themselves org.superadmin', async () => {
 		const r = await formAction(
@@ -323,7 +325,9 @@ describe('internal-org membership', () => {
 		);
 		expect(down.type).toBe('success');
 		// Maja is now tier `user`: her admin pages must be gone.
-		const asMaja = await fetch(`${BASE_URL}/admin/users`, { headers: { cookie: admin2Cookie } });
+		const asMaja = await fetch(`${BASE_URL}/admin/directory/users`, {
+			headers: { cookie: admin2Cookie }
+		});
 		expect(asMaja.status).toBe(403);
 		const up = await formAction(
 			org,
@@ -332,7 +336,9 @@ describe('internal-org membership', () => {
 			{ cookie: adminCookie }
 		);
 		expect(up.type).toBe('success');
-		const again = await fetch(`${BASE_URL}/admin/users`, { headers: { cookie: admin2Cookie } });
+		const again = await fetch(`${BASE_URL}/admin/directory/users`, {
+			headers: { cookie: admin2Cookie }
+		});
 		expect(again.status).toBe(200);
 	});
 
