@@ -37,6 +37,12 @@
 		onStatus?: (status: WebSocketStatus) => void;
 		/** Live collaborators currently connected to this document (incl. self). */
 		onPresence?: (users: PresenceUser[]) => void;
+		/**
+		 * Notes only: convert the hovered to-do into a task. When set, the block
+		 * gutter shows a task icon on to-do rows and calls this with the
+		 * taskItem's start position and its text.
+		 */
+		onConvertTodo?: (pos: number, text: string) => void;
 	}
 	let {
 		documentId,
@@ -48,7 +54,8 @@
 		onUpdate,
 		onReady,
 		onStatus,
-		onPresence
+		onPresence,
+		onConvertTodo
 	}: Props = $props();
 
 	let host: HTMLDivElement | undefined = $state();
@@ -150,7 +157,12 @@
 					}
 				}),
 				SlashCommand,
-				BlockGutter.configure({ addLabel: m.editor_gutter_add() }),
+				BlockGutter.configure({
+					addLabel: m.editor_gutter_add(),
+					todo: onConvertTodo
+						? { label: m.notes_todo_to_task(), onConvert: onConvertTodo }
+						: undefined
+				}),
 				ClipboardTaskLists,
 				WikiImageUpload.configure({ entityId: pageId, entityType }),
 				WikiFileUpload.configure({

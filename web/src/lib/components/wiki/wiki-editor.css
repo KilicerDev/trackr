@@ -261,11 +261,12 @@
 	box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
-/* ── Block gutter (block-gutter.ts): "+" on the hovered block ── */
+/* ── Block gutter (block-gutter.ts): "+" (+ a task icon on to-do rows) ── */
 .wiki-editor .block-gutter {
 	position: absolute;
 	display: flex;
 	align-items: center;
+	gap: 1px;
 	height: 24px;
 	opacity: 0;
 	pointer-events: none;
@@ -288,8 +289,15 @@
 		background-color 0.12s,
 		color 0.12s;
 }
-.wiki-editor .block-gutter__add {
+.wiki-editor .block-gutter__add,
+.wiki-editor .block-gutter__task {
 	width: 24px;
+}
+.wiki-editor .block-gutter__task {
+	color: var(--text-3);
+}
+.wiki-editor .block-gutter__task:hover {
+	color: var(--accent);
 }
 .wiki-editor .block-gutter__btn:hover {
 	background: var(--surface-2);

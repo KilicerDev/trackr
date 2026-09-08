@@ -1,7 +1,9 @@
 // Notion-style block gutter for the live editor: hovering a block reveals a
-// "+" that inserts a block below and opens the slash menu. Presentation-only —
-// a plugin view, no schema — so it stays client-side, never in the shared
-// collab extensions.
+// "+" that inserts a block below and opens the slash menu, plus — when the
+// hovered block is a to-do and a `todo` handler is supplied (notes only) — a
+// task icon that converts that to-do into a task. Presentation-only: a plugin
+// view, no schema, so it stays client-side, never in the shared collab
+// extensions.
 
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
@@ -15,16 +17,25 @@ const HIDE_DELAY = 120;
 
 const PLUS_SVG =
 	'<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>';
+const TASK_SVG =
+	'<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>';
 
 type Block = { pos: number; node: PMNode; dom: HTMLElement };
 
 export type BlockGutterOptions = {
 	addLabel: string;
+	/**
+	 * Notes only: convert the hovered to-do into a task. When set, a task icon
+	 * joins the "+" on to-do rows and calls this with the taskItem's start
+	 * position and its text. Absent (wiki) → no task icon.
+	 */
+	todo?: { label: string; onConvert: (pos: number, text: string) => void };
 };
 
 class GutterView {
 	private el: HTMLDivElement;
 	private add: HTMLButtonElement;
+	private task: HTMLButtonElement | null = null;
 	private host: HTMLElement;
 	private block: Block | null = null;
 	private hideTimer: ReturnType<typeof setTimeout> | undefined;
@@ -45,6 +56,18 @@ class GutterView {
 		this.add.setAttribute('aria-label', opts.addLabel);
 		this.add.innerHTML = PLUS_SVG;
 		this.el.append(this.add);
+		if (opts.todo) {
+			this.task = document.createElement('button');
+			this.task.type = 'button';
+			this.task.className = 'block-gutter__btn block-gutter__task';
+			this.task.title = opts.todo.label;
+			this.task.setAttribute('aria-label', opts.todo.label);
+			this.task.innerHTML = TASK_SVG;
+			this.task.hidden = true;
+			this.task.addEventListener('mousedown', (e) => e.preventDefault());
+			this.task.addEventListener('click', this.onConvert);
+			this.el.append(this.task);
+		}
 		this.host.appendChild(this.el);
 
 		this.host.addEventListener('mousemove', this.onMove);
@@ -117,13 +140,17 @@ class GutterView {
 	private place() {
 		const b = this.block;
 		if (!b || !b.dom.isConnected) return this.hide();
+		if (this.task) this.task.hidden = b.node.type.name !== 'taskItem';
 		const rect = b.dom.getBoundingClientRect();
 		const host = this.host.getBoundingClientRect();
 		const root = this.view.dom.getBoundingClientRect();
 		const line = parseFloat(getComputedStyle(b.dom).lineHeight) || 24;
 		const padTop = parseFloat(getComputedStyle(b.dom).paddingTop) || 0;
 		this.el.style.top = `${rect.top - host.top + padTop + Math.max(0, (line - 24) / 2)}px`;
-		this.el.style.left = `${root.left - host.left - GUTTER_WIDTH}px`;
+		// Right-anchor the strip just left of the content column; width grows when
+		// the task icon is showing, so measure after toggling it.
+		const width = this.el.offsetWidth || GUTTER_WIDTH;
+		this.el.style.left = `${root.left - host.left - width - 4}px`;
 		this.el.classList.add('is-visible');
 	}
 
@@ -167,6 +194,15 @@ class GutterView {
 		tr.setSelection(TextSelection.create(tr.doc, caret)).insertText('/').scrollIntoView();
 		this.view.dispatch(tr);
 		this.view.focus();
+		this.hide();
+	};
+
+	/** Task icon — hand the hovered to-do's position + text to the note page. */
+	private onConvert = (e: MouseEvent) => {
+		e.preventDefault();
+		const b = this.block;
+		if (!b || b.node.type.name !== 'taskItem' || !this.opts.todo) return;
+		this.opts.todo.onConvert(b.pos, b.node.textContent.trim());
 		this.hide();
 	};
 }
