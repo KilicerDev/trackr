@@ -6,7 +6,17 @@
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
-import { API_KEY, BASE_URL, requireServer, SMOKE_PREFIX, stamp, USER_EMAIL } from './helpers';
+import {
+	API_KEY,
+	BASE_URL,
+	DEMO,
+	formAction,
+	requireServer,
+	signInForCookie,
+	SMOKE_PREFIX,
+	stamp,
+	USER_EMAIL
+} from './helpers';
 
 const MCP_URL = `${BASE_URL}/api/mcp`;
 
@@ -23,6 +33,7 @@ const EXPECTED_TOOLS = [
 	'delete_task',
 	'delete_ticket',
 	'get_attachment',
+	'get_guide',
 	'get_inbox',
 	'get_note',
 	'get_project',
@@ -152,7 +163,7 @@ describe('tool contract', () => {
 	test('resource templates cover ticket, task, wiki, note and attachment', async () => {
 		const { resourceTemplates } = await client.listResourceTemplates();
 		const uris = resourceTemplates.map((r) => r.uriTemplate);
-		for (const kind of ['ticket', 'task', 'wiki', 'note', 'attachment']) {
+		for (const kind of ['ticket', 'task', 'wiki', 'note', 'attachment', 'guide']) {
 			expect(
 				uris.some((u) => u.startsWith(`trackr://${kind}/`)),
 				kind
@@ -585,5 +596,125 @@ describe('MCP Apps (inline UI)', () => {
 		expect(d.ticket.url).toContain('/tickets/');
 		expect(Array.isArray(d.ticket.messages)).toBe(true);
 		expect(Array.isArray(d.ticket.checklist)).toBe(true);
+	});
+});
+
+describe('guidance (instructions + guides)', () => {
+	// Admin-side setup goes through the Settings → MCP form actions with the
+	// smoke user's cookie (Max is an admin); the MCP side is checked with a
+	// fresh client because instructions are only delivered on initialize.
+	const slug = `smoke-guide-${run}`;
+	let cookie: string;
+	let guideId: string | null = null;
+
+	beforeAll(async () => {
+		cookie = await signInForCookie(DEMO.admin.email, DEMO.admin.password);
+	});
+
+	afterAll(async () => {
+		if (guideId) {
+			await formAction('/admin/settings/mcp', 'guideDelete', { id: guideId }, { cookie });
+		}
+		await formAction('/admin/settings/mcp', 'saveInstructions', { instructions: '' }, { cookie });
+	});
+
+	async function freshInstructions(): Promise<string> {
+		const c = connect(API_KEY);
+		await c.client.connect(c.transport);
+		const text = c.client.getInstructions() ?? '';
+		await c.client.close().catch(() => {});
+		return text;
+	}
+
+	test('built-in instructions tell the model not to pad tasks and tickets', () => {
+		const text = client.getInstructions() ?? '';
+		expect(text).toContain('Writing tasks and tickets');
+		expect(text).toContain('Never invent steps');
+	});
+
+	test('get_guide with an unknown slug is a 404 tool error', async () => {
+		const res = await call('get_guide', { slug: `nope-${run}` });
+		expect(res.isError).toBe(true);
+		expect(textOf(res)).toContain('404');
+	});
+
+	test('admin instructions are appended for new connections', async () => {
+		const marker = `${SMOKE_PREFIX} house rule ${run}: always answer in haiku`;
+		const saved = await formAction(
+			'/admin/settings/mcp',
+			'saveInstructions',
+			{ instructions: marker },
+			{ cookie }
+		);
+		expect(saved.type).toBe('success');
+		const text = await freshInstructions();
+		expect(text).toContain('Workspace instructions from the admins');
+		expect(text).toContain(marker);
+		expect(text.indexOf('Writing tasks and tickets')).toBeLessThan(text.indexOf(marker));
+	});
+
+	test('a guide is readable through get_guide, the resource and the index', async () => {
+		const title = `${SMOKE_PREFIX} guide ${run}`;
+		const body = `# Rack the server\n\n1. Mount rails\n2. Cable power\n\nStamp ${run}.`;
+		const saved = await formAction(
+			'/admin/settings/mcp/guides/new',
+			'save',
+			{ title, slug, summary: 'Steps for racking a server', body, enabled: 'on', fetched: '0' },
+			{ cookie }
+		);
+		expect(saved.type).toBe('redirect');
+		const match = /\/admin\/settings\/mcp\/guides\/([^/?]+)/.exec(saved.location ?? '');
+		expect(match).not.toBeNull();
+		guideId = match![1];
+
+		const res = await ok('get_guide', { slug });
+		const data = structured<{ slug: string; title: string; markdown: string }>(res);
+		expect(data.slug).toBe(slug);
+		expect(data.title).toBe(title);
+		expect(data.markdown).toContain('1. Mount rails');
+		expect(textOf(res)).toContain(`Stamp ${run}`);
+
+		const c = connect(API_KEY);
+		await c.client.connect(c.transport);
+		try {
+			expect(c.client.getInstructions() ?? '').toContain(`\`${slug}\` — ${title}`);
+			const tool = (await c.client.listTools()).tools.find((t) => t.name === 'get_guide');
+			expect(tool?.description).toContain(slug);
+			const { resources } = await c.client.listResources();
+			expect(resources.some((r) => r.uri === `trackr://guide/${slug}`)).toBe(true);
+			const read = await c.client.readResource({ uri: `trackr://guide/${slug}` });
+			const first = read.contents[0] as { text?: string; mimeType?: string };
+			expect(first.mimeType).toBe('text/markdown');
+			expect(first.text).toContain('2. Cable power');
+		} finally {
+			await c.client.close().catch(() => {});
+		}
+	});
+
+	test('a disabled guide disappears from get_guide', async () => {
+		expect(guideId).not.toBeNull();
+		const off = await formAction(
+			'/admin/settings/mcp',
+			'guideDisable',
+			{ id: guideId! },
+			{ cookie }
+		);
+		expect(off.type).toBe('success');
+		const res = await call('get_guide', { slug });
+		expect(res.isError).toBe(true);
+		const on = await formAction('/admin/settings/mcp', 'guideEnable', { id: guideId! }, { cookie });
+		expect(on.type).toBe('success');
+		expect((await ok('get_guide', { slug })).isError).toBeFalsy();
+	});
+
+	test('a duplicate slug is rejected', async () => {
+		const dup = await formAction(
+			'/admin/settings/mcp/guides/new',
+			'save',
+			{ title: 'dup', slug, body: '', enabled: 'on', fetched: '0' },
+			{ cookie }
+		);
+		expect(dup.type).toBe('failure');
+		expect(dup.status).toBe(400);
 	});
 });

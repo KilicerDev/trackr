@@ -372,6 +372,13 @@
       "when": 1788814784740,
       "tag": "0052_is_root",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1788856941809,
+      "tag": "0053_mcp_guidance",
+      "breakpoints": true
     }
   ]
 }

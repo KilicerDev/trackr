@@ -13,6 +13,13 @@
 	let { data }: { data: PageData } = $props();
 	let busyId = $state<string | null>(null);
 	let copied = $state<string | null>(null);
+	// Writable derived: the draft follows the server value until edited, and
+	// re-syncs after a save invalidates the page data.
+	let instructions = $derived(data.instructions);
+	let instructionsSaving = $state(false);
+	let instructionsError = $state<string | null>(null);
+	const instructionsDirty = $derived(instructions.trim() !== data.instructions.trim());
+	const instructionsOver = $derived(instructions.trim().length > data.instructionsMax);
 
 	const userCols = '2fr 0.9fr 1.1fr 0.9fr 96px';
 	const connCols = '1.6fr 1.6fr 1.1fr 1.4fr 48px';
@@ -20,6 +27,8 @@
 
 	type Conn = PageData['connections'][number];
 	type Row = PageData['users'][number];
+	type Guide = PageData['guides'][number];
+	const guideCols = '2fr 1.4fr 1fr 0.9fr 120px';
 
 	async function copy(text: string, key: string) {
 		try {
@@ -59,6 +68,40 @@
 			icon: 'shield'
 		});
 		if (ok) form.requestSubmit();
+	}
+
+	function onSaveInstructions() {
+		instructionsSaving = true;
+		instructionsError = null;
+		return async ({ result }: { result: ActionResult }) => {
+			instructionsSaving = false;
+			if (result.type === 'success') {
+				showToast('ok', m.mcp_instructions_saved_toast());
+				await invalidateAll();
+			} else if (result.type === 'failure') {
+				instructionsError =
+					(result.data as { message?: string } | undefined)?.message ?? m.mcp_err_save_failed();
+			}
+		};
+	}
+
+	async function askDeleteGuide(g: Guide, form: HTMLFormElement) {
+		const ok = await confirm({
+			title: m.mcp_guide_delete_title(),
+			message: m.mcp_guide_delete_message({ title: g.title }),
+			confirmLabel: m.mcp_guide_delete(),
+			tone: 'danger',
+			icon: 'trash'
+		});
+		if (ok) form.requestSubmit();
+	}
+
+	function hostOf(url: string): string {
+		try {
+			return new URL(url).hostname;
+		} catch {
+			return url;
+		}
 	}
 
 	async function askRevoke(c: Conn, form: HTMLFormElement) {
@@ -118,6 +161,178 @@
 		</ul>
 	</div>
 </section>
+
+<!-- Instructions -->
+<section class="mb-5 rounded-2xl border border-border bg-bg-elev p-5">
+	<h2 class="text-[15px] font-semibold text-text">{m.mcp_instructions_title()}</h2>
+	<p class="mt-0.5 max-w-2xl text-[13px] text-text-3">{m.mcp_instructions_hint()}</p>
+	<form method="post" action="?/saveInstructions" use:enhance={onSaveInstructions} class="mt-4">
+		<textarea
+			name="instructions"
+			bind:value={instructions}
+			rows="7"
+			spellcheck="false"
+			placeholder={m.mcp_instructions_placeholder()}
+			class="w-full resize-y rounded-lg border border-border bg-surface px-3 py-2.5 font-mono text-[13px] leading-relaxed text-text outline-none placeholder:text-text-3 focus:border-border-strong"
+		></textarea>
+		<div class="mt-2 flex flex-wrap items-center gap-3">
+			<span class="text-[12px] {instructionsOver ? 'text-[#ef7a6d]' : 'text-text-4'}">
+				{m.mcp_instructions_chars({
+					count: instructions.trim().length.toLocaleString(getLocale()),
+					max: data.instructionsMax.toLocaleString(getLocale())
+				})}
+			</span>
+			<span class="text-[12px] text-text-4">· {m.mcp_instructions_note_reconnect()}</span>
+			{#if instructionsError}
+				<span class="text-[12px] text-[#ef7a6d]">{instructionsError}</span>
+			{/if}
+			<div class="ml-auto flex items-center gap-2">
+				{#if data.instructionsUpdatedAt}
+					<span class="text-[12px] text-text-4"
+						>{m.mcp_instructions_updated({ date: fmt.format(data.instructionsUpdatedAt) })}</span
+					>
+				{/if}
+				<button
+					type="submit"
+					disabled={instructionsSaving || !instructionsDirty || instructionsOver}
+					class="inline-flex h-8 items-center rounded-lg border border-transparent bg-accent px-3 text-[13px] font-medium text-white shadow-btn transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					{instructionsSaving ? m.common_saving() : m.mcp_instructions_save()}
+				</button>
+			</div>
+		</div>
+	</form>
+	<p class="mt-3 flex gap-2 text-[12px] text-text-4">
+		<Icon name="sparkle" size={12} class="mt-0.5 shrink-0" />
+		<span>{m.mcp_instructions_builtin_note()}</span>
+	</p>
+</section>
+
+<!-- Guides -->
+<div class="mb-3 flex items-end gap-3">
+	<div class="min-w-0 flex-1">
+		<h2 class="text-[15px] font-semibold text-text">{m.mcp_guides_title()}</h2>
+		<p class="mt-0.5 max-w-2xl text-[13px] text-text-3">{m.mcp_guides_hint()}</p>
+	</div>
+	<a
+		href="/admin/settings/mcp/guides/new"
+		class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-transparent bg-accent px-3 text-[13px] font-medium text-white shadow-btn hover:bg-accent-strong"
+	>
+		<Icon name="plus" size={13} />
+		{m.mcp_guides_new()}
+	</a>
+</div>
+<div class="mb-6 overflow-hidden rounded-2xl border border-border bg-bg-elev">
+	{#if data.guides.length === 0}
+		<EmptyState icon="book" title={m.mcp_guides_empty_title()} hint={m.mcp_guides_empty_hint()} />
+	{:else}
+		<div
+			class="grid h-9 items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
+			style:grid-template-columns={guideCols}
+		>
+			<span>{m.mcp_guides_col_title()}</span>
+			<span>{m.mcp_guides_col_source()}</span>
+			<span>{m.mcp_guides_col_updated()}</span>
+			<span>{m.mcp_guides_col_status()}</span>
+			<span></span>
+		</div>
+		{#each data.guides as g (g.id)}
+			<div
+				class="grid items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[14px] last:border-b-0"
+				style:grid-template-columns={guideCols}
+			>
+				<div class="min-w-0">
+					<a
+						href="/admin/settings/mcp/guides/{g.id}"
+						class="block truncate font-medium text-text hover:underline">{g.title}</a
+					>
+					<span class="block truncate font-mono text-[12px] text-text-4">{g.slug}</span>
+				</div>
+				<div class="min-w-0 text-[12px] text-text-3">
+					{#if g.sourceUrl}
+						<a
+							href={g.sourceUrl}
+							target="_blank"
+							rel="noopener noreferrer"
+							class="block truncate hover:text-text hover:underline">{hostOf(g.sourceUrl)}</a
+						>
+						<span class="block truncate text-text-4">
+							{g.fetchedAt ? m.mcp_guide_fetched_at({ date: fmt.format(g.fetchedAt) }) : ''}
+						</span>
+					{:else}
+						<span class="block truncate">{m.mcp_guide_source_manual()}</span>
+						<span class="block truncate text-text-4"
+							>{m.mcp_guide_chars_short({
+								count: g.bodyChars.toLocaleString(getLocale())
+							})}</span
+						>
+					{/if}
+				</div>
+				<div class="truncate font-mono text-[12px] text-text-3">{fmt.format(g.updatedAt)}</div>
+				<div class="flex items-center gap-2">
+					<span class="h-2 w-2 rounded-full {g.enabled ? 'bg-emerald-400' : 'bg-text-4'}"></span>
+					<span class="text-text-2"
+						>{g.enabled ? m.mcp_guide_enabled() : m.mcp_guide_disabled()}</span
+					>
+				</div>
+				<div class="flex items-center justify-end gap-1">
+					{#if g.sourceUrl}
+						<form
+							method="post"
+							action="?/guideRefresh"
+							use:enhance={simple(m.mcp_guide_fetched_toast(), 'id')}
+						>
+							<input type="hidden" name="id" value={g.id} />
+							<button
+								type="submit"
+								disabled={busyId === g.id}
+								title={m.mcp_guide_refresh()}
+								aria-label={m.mcp_guide_refresh()}
+								class="grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text disabled:opacity-50"
+							>
+								<Icon name="refresh" size={14} class={busyId === g.id ? 'animate-spin' : ''} />
+							</button>
+						</form>
+					{/if}
+					<form
+						method="post"
+						action={g.enabled ? '?/guideDisable' : '?/guideEnable'}
+						use:enhance={simple(
+							g.enabled ? m.mcp_guide_disabled_toast() : m.mcp_guide_enabled_toast(),
+							'id'
+						)}
+					>
+						<input type="hidden" name="id" value={g.id} />
+						<button
+							type="submit"
+							disabled={busyId === g.id}
+							class="inline-flex h-8 items-center rounded-lg border border-border bg-surface px-2.5 text-[13px] text-text-2 transition-colors hover:text-text disabled:opacity-50"
+						>
+							{g.enabled ? m.mcp_guide_disable() : m.mcp_guide_enable()}
+						</button>
+					</form>
+					<form
+						method="post"
+						action="?/guideDelete"
+						use:enhance={simple(m.mcp_guide_deleted_toast(), 'id')}
+					>
+						<input type="hidden" name="id" value={g.id} />
+						<button
+							type="button"
+							disabled={busyId === g.id}
+							onclick={(e) => askDeleteGuide(g, e.currentTarget.form!)}
+							title={m.mcp_guide_delete()}
+							aria-label={m.mcp_guide_delete()}
+							class="grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-[#ef7a6d]"
+						>
+							<Icon name="trash" size={14} />
+						</button>
+					</form>
+				</div>
+			</div>
+		{/each}
+	{/if}
+</div>
 
 <!-- Users -->
 <div class="mb-3">

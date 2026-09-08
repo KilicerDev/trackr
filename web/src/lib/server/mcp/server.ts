@@ -18,6 +18,8 @@ import { registerNoteTools } from './tools/notes';
 import { registerResources } from './tools/resources';
 import { registerPrompts } from './tools/prompts';
 import { registerUiResources } from './ui';
+import { registerGuideTools, guideIndexLines } from './tools/guides';
+import type { Guidance } from './guidance';
 
 export const MCP_SERVER_NAME = 'trackr';
 export const MCP_SERVER_VERSION = '1.0.0';
@@ -42,11 +44,35 @@ Writing tasks and tickets — record what the user said, do not expand it:
 
 Not available here: posting ticket replies or task comments, chat, share links — tell the user to do those in the app.`;
 
-export function buildServer(principal: McpPrincipal, origin: string): McpServer {
+/**
+ * Built-in instructions + the admin's additions (Settings → MCP) + an index
+ * of enabled guides. Exported for tests; `buildServer` is the only caller.
+ */
+export function composeInstructions(guidance: Guidance): string {
+	const parts = [INSTRUCTIONS];
+	if (guidance.guides.length) {
+		parts.push(
+			[
+				'Guides — reference documents the admins wrote for you. Read the relevant one with `get_guide` (or trackr://guide/{slug}) BEFORE planning or breaking down work on a topic it covers; take the steps from the guide, not from memory:',
+				...guideIndexLines(guidance.guides)
+			].join('\n')
+		);
+	}
+	if (guidance.instructions) {
+		parts.push(`Workspace instructions from the admins:\n\n${guidance.instructions}`);
+	}
+	return parts.join('\n\n');
+}
+
+export function buildServer(
+	principal: McpPrincipal,
+	origin: string,
+	guidance: Guidance = { instructions: '', guides: [] }
+): McpServer {
 	const ctx: McpContext = { locals: localsFromPrincipal(principal), origin, principal };
 	const server = new McpServer(
 		{ name: MCP_SERVER_NAME, version: MCP_SERVER_VERSION },
-		{ instructions: INSTRUCTIONS }
+		{ instructions: composeInstructions(guidance) }
 	);
 	registerGeneralTools(server, ctx);
 	registerTicketTools(server, ctx);
@@ -57,6 +83,7 @@ export function buildServer(principal: McpPrincipal, origin: string): McpServer 
 	registerNoteTools(server, ctx);
 	registerResources(server, ctx);
 	registerPrompts(server, ctx);
+	registerGuideTools(server, guidance.guides);
 	registerUiResources(server);
 	return server;
 }

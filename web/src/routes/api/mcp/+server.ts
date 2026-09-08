@@ -10,18 +10,20 @@
 import { createMcpHandler } from '@modelcontextprotocol/server';
 import { authenticateMcpRequest, type McpPrincipal } from '$lib/server/mcp/auth';
 import { buildServer } from '$lib/server/mcp/server';
+import { loadGuidance } from '$lib/server/mcp/guidance';
 import type { RequestHandler } from './$types';
 
 type Extra = { principal: McpPrincipal; origin: string };
 
 const handler = createMcpHandler(
-	({ authInfo }) => {
+	async ({ authInfo }) => {
 		const extra = authInfo?.extra as Extra | undefined;
 		if (!extra?.principal) {
 			// Only reachable if the route below is bypassed — never serve unauthenticated.
 			throw new Error('MCP request without an authenticated principal');
 		}
-		return buildServer(extra.principal, extra.origin);
+		// Admin instructions + guide index (memoised; see guidance.ts).
+		return buildServer(extra.principal, extra.origin, await loadGuidance());
 	},
 	{ responseMode: 'json' }
 );

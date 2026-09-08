@@ -356,6 +356,30 @@ export const LOG_EVENT_TYPES: Record<
 		color: '#e9c46a',
 		kind: 'settings'
 	},
+	'mcp_instructions.update': {
+		label: 'MCP instructions updated',
+		icon: 'pencil',
+		color: '#7a9cf0',
+		kind: 'settings'
+	},
+	'mcp_guide.create': {
+		label: 'MCP guide created',
+		icon: 'plus',
+		color: '#7fc8a9',
+		kind: 'settings'
+	},
+	'mcp_guide.update': {
+		label: 'MCP guide updated',
+		icon: 'pencil',
+		color: '#7a9cf0',
+		kind: 'settings'
+	},
+	'mcp_guide.delete': {
+		label: 'MCP guide deleted',
+		icon: 'trash',
+		color: '#ef4f5e',
+		kind: 'settings'
+	},
 	'mcp_connection.revoke': {
 		label: 'MCP connection revoked',
 		icon: 'trash',

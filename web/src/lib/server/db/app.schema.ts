@@ -1787,3 +1787,43 @@ export const mcpAccess = pgTable('mcp_access', {
 });
 
 export type McpAccess = typeof mcpAccess.$inferSelect;
+
+// Admin-authored guidance for MCP clients. `mcp_settings` is a one-row table
+// (id 'default') holding extra server instructions appended to the built-in
+// block on `initialize`; `mcp_guide` rows are longer markdown documents (how-to
+// notes, hardware install tutorials…) the assistant reads on demand through
+// the `get_guide` tool / trackr://guide/{slug}. Both are readable by anyone
+// with MCP access — they describe how to work, they are not secrets.
+
+export const mcpSettings = pgTable('mcp_settings', {
+	id: text('id').primaryKey(),
+	instructions: text('instructions').notNull().default(''),
+	updatedById: text('updated_by_id').references(() => user.id, { onDelete: 'set null' }),
+	updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export type McpSettings = typeof mcpSettings.$inferSelect;
+
+export const mcpGuide = pgTable(
+	'mcp_guide',
+	{
+		id: text('id').primaryKey(),
+		slug: text('slug').notNull(),
+		title: text('title').notNull(),
+		// One line shown in the guide index so the assistant knows when to read it.
+		summary: text('summary').notNull().default(''),
+		body: text('body').notNull().default(''),
+		// When set, `body` is a snapshot converted from this page; refreshable.
+		sourceUrl: text('source_url'),
+		fetchedAt: timestamp('fetched_at'),
+		enabled: boolean('enabled').notNull().default(true),
+		position: integer('position').notNull().default(0),
+		createdById: text('created_by_id').references(() => user.id, { onDelete: 'set null' }),
+		updatedById: text('updated_by_id').references(() => user.id, { onDelete: 'set null' }),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at').defaultNow().notNull()
+	},
+	(t) => [uniqueIndex('mcp_guide_slug_idx').on(t.slug)]
+);
+
+export type McpGuide = typeof mcpGuide.$inferSelect;
