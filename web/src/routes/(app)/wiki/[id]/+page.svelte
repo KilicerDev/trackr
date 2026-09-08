@@ -386,8 +386,11 @@
 		<article class="max-w-[792px] min-w-0">
 			<!-- Document title block -->
 			<div class="mb-5 flex items-start gap-3.5">
-				<span class="wiki-doc__icon shrink-0">
-					<Icon name={pg.isFolder ? 'folder' : 'file'} size={22} stroke={1.75} />
+				<!-- Icon centered against the title's first line (see note page). -->
+				<span class="flex h-[46px] shrink-0 items-center">
+					<span class="wiki-doc__icon">
+						<Icon name={pg.isFolder ? 'folder' : 'file'} size={22} stroke={1.75} />
+					</span>
 				</span>
 				<input
 					bind:value={titleDraft}
@@ -551,7 +554,6 @@
 		background: color-mix(in oklab, var(--accent) 12%, var(--bg-elev));
 		border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--border));
 		box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
-		margin-top: 2px;
 	}
 
 	/* Live status pill */

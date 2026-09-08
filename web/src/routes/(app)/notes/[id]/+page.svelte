@@ -572,8 +572,12 @@
 
 	<div class="mx-auto max-w-[848px] px-14 pt-14 pb-28">
 		<div class="mb-6 flex items-start gap-3.5">
-			<span class="notes-doc__icon shrink-0">
-				<Icon name={note.icon || 'file'} size={22} stroke={1.75} />
+			<!-- Icon centered against the title's first line (h = title line-height),
+			     so it stays with line 1 when a long title wraps. -->
+			<span class="flex h-[46px] shrink-0 items-center">
+				<span class="notes-doc__icon">
+					<Icon name={note.icon || 'file'} size={22} stroke={1.75} />
+				</span>
 			</span>
 			<input
 				bind:value={titleDraft}
@@ -707,6 +711,5 @@
 		color: var(--accent);
 		background: color-mix(in oklab, var(--accent) 12%, var(--bg-elev));
 		border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--border));
-		margin-top: 2px;
 	}
 </style>
