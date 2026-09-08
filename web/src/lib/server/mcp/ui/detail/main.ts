@@ -2,9 +2,13 @@
 // log_time / checklist_toggle and get_ticket / create_ticket / update_ticket
 // (ui://trackr/detail.html). Renders the full record the tool returned
 // (`structuredContent.task` or `.ticket`, see taskDetailDto / ticketDetailDto
-// in $lib/server/mcp/format.ts) and lets the user act on it through the host:
-// checklist toggles call `checklist_toggle`, the status select calls
-// `update_task` / `update_ticket`, links and attachments open in trackr.
+// in $lib/server/mcp/format.ts).
+//
+// Tasks are interactive: checklist toggles call `checklist_toggle`, the status
+// select calls `update_task`. Tickets are a read-only view laid out like the
+// app's ticket page (header line, title, properties rail, opening message,
+// details, activity timeline) — the only actions are the links, which open
+// in trackr through the host.
 
 import {
 	badge,
@@ -30,6 +34,7 @@ import {
 	TICKET_STATUS,
 	type StatusMeta
 } from '../shared/taxonomy';
+import { avatar, avatarStack, icon, taskStatusDot } from '../shared/ui';
 import { renderMarkdown } from './markdown';
 
 type Person = { id: string; name: string };
@@ -81,6 +86,7 @@ type Ticket = {
 	subject: string;
 	orgKey: string;
 	orgName: string;
+	orgColor: string;
 	status: string;
 	priority: string;
 	category: string;
@@ -90,6 +96,8 @@ type Ticket = {
 	createdBy: Person | null;
 	createdAt: string;
 	updatedAt: string;
+	firstResponseAt: string | null;
+	resolvedAt: string | null;
 	tags: string[];
 	description: string;
 	checklist: ChecklistItem[];
@@ -347,93 +355,310 @@ function renderTask(t: Task): HTMLElement[] {
 	].filter((n): n is HTMLElement => n !== null);
 }
 
-function renderTicket(t: Ticket): HTMLElement[] {
-	const category = TICKET_CATEGORY[t.category];
+// ─── Ticket ─────────────────────────────────────────────────────────────────
+
+const CHANNEL_LABEL: Record<string, string> = {
+	web_form: 'Web form',
+	email: 'Email',
+	chat: 'Chat',
+	api: 'API'
+};
+
+type TicketMessage = Ticket['messages'][number];
+/** Timeline entries: a message, or a run of consecutive system events. */
+type TimelineGroup =
+	| { kind: 'message'; m: TicketMessage }
+	| { kind: 'events'; items: TicketMessage[] };
+
+/** Folded event runs the user has opened, by the first event's id; survives re-render. */
+const openedRuns = new Set<string>();
+
+function fullDate(iso: string | null | undefined): string {
+	if (!iso) return '—';
+	const t = new Date(iso);
+	return Number.isFinite(t.getTime()) ? t.toLocaleDateString() : iso;
+}
+
+function label(title: string, count?: number | string): HTMLElement {
+	return el(
+		'div',
+		{ class: 'label' },
+		title,
+		count !== undefined && count !== '' ? el('span', { class: 'count' }, String(count)) : null
+	);
+}
+
+/** A read-only property chip of the rail: marker + text. */
+function pill(marker: Node | null, text: string, cls = 'pill'): HTMLElement {
+	return el('span', { class: cls }, marker, el('span', {}, text));
+}
+
+/** A row that opens something in trackr: leading marker, text, trailing cells. */
+function linkRow(url: string, ...cells: (Node | string | null)[]): HTMLElement {
+	const b = el(
+		'button',
+		{ type: 'button', class: 'rowlink' },
+		...cells,
+		icon('arrow-up-right', 13)
+	);
+	b.onclick = () => open(url);
+	return b;
+}
+
+function ticketChecklist(items: ChecklistItem[]): HTMLElement[] {
+	const done = items.filter((i) => i.done).length;
 	return [
 		el(
+			'ul',
+			{ class: 'checklist static' },
+			...items.map((entry) =>
+				el(
+					'li',
+					{ class: entry.done ? 'done' : undefined },
+					icon(entry.done ? 'check-square' : 'square', 14),
+					el('span', {}, entry.text)
+				)
+			)
+		),
+		el('div', { class: 'muted' }, `${done} of ${items.length} done`)
+	];
+}
+
+function groupTimeline(messages: TicketMessage[]): TimelineGroup[] {
+	const out: TimelineGroup[] = [];
+	for (const m of messages) {
+		if (m.kind !== 'system') {
+			out.push({ kind: 'message', m });
+			continue;
+		}
+		const last = out[out.length - 1];
+		if (last?.kind === 'events') last.items.push(m);
+		else out.push({ kind: 'events', items: [m] });
+	}
+	return out;
+}
+
+/** What a run of system events touched, from the plain-English lines format.ts writes. */
+function eventKinds(items: TicketMessage[]): string {
+	const kinds = new Set<string>();
+	for (const { body } of items) {
+		if (/^status:/.test(body)) kinds.add('status');
+		else if (/^priority:/.test(body)) kinds.add('priority');
+		else if (/^category:/.test(body)) kinds.add('category');
+		else if (/^(un)?assigned\b/.test(body)) kinds.add('assignees');
+		else if (/^subject:/.test(body)) kinds.add('subject');
+		else if (/^tags:/.test(body)) kinds.add('tags');
+		else kinds.add('other');
+	}
+	return [...kinds].join(', ');
+}
+
+function eventLine(m: TicketMessage): HTMLElement {
+	return el(
+		'div',
+		{ class: 'event' },
+		el('span', { class: 'evdot' }),
+		el(
 			'div',
-			{ class: 'head' },
-			el('span', { class: 'mono key' }, t.key),
-			el('h1', {}, t.subject),
-			el('div', { class: 'actions' }, statusSelect(t.status, TICKET_STATUS), openButton(t.url))
+			{ class: 'text' },
+			el('span', { class: 'who' }, m.author?.name ?? 'system'),
+			' ',
+			m.body,
+			' ',
+			el('span', { class: 'mono when' }, `· ${relative(m.createdAt)}`)
+		)
+	);
+}
+
+function eventRun(items: TicketMessage[]): HTMLElement[] {
+	if (items.length === 1) return [eventLine(items[0])];
+	const id = items[0].id;
+	const opened = openedRuns.has(id);
+	const toggle = el(
+		'button',
+		{ type: 'button', class: 'fold', 'aria-expanded': String(opened) },
+		icon('chevron', 14),
+		`${items.length} changes on ${fullDate(items[0].createdAt)}`,
+		el('span', { class: 'muted' }, ` · ${eventKinds(items)}`)
+	);
+	toggle.onclick = () => {
+		if (opened) openedRuns.delete(id);
+		else openedRuns.add(id);
+		render();
+	};
+	const head = el('div', { class: 'event' }, el('span', { class: 'evdot' }), toggle);
+	return opened ? [head, ...items.map(eventLine)] : [head];
+}
+
+function messageEntry(m: TicketMessage): HTMLElement {
+	const author = m.author;
+	return el(
+		'div',
+		{ class: 'entry' },
+		el(
+			'span',
+			{ class: 'bullet' },
+			author ? avatar(author, 18) : el('span', { class: 'avatar', '--size': '18px' }, '?')
 		),
 		el(
 			'div',
-			{ class: 'meta' },
-			metaCell('Organization', `${t.orgName} (${t.orgKey})`),
-			metaCell(
-				'Priority',
-				el('span', {}, priorityBars(t.priority), ' ', PRIORITY[t.priority]?.label ?? t.priority)
-			),
-			metaCell(
-				'Category',
-				category ? el('span', { style: `color:${category.color}` }, category.label) : t.category
-			),
-			metaCell('Customer', t.customer?.name ?? null),
-			metaCell('Assignees', people(t.assignees) || '—'),
-			metaCell('Tags', tagList(t.tags)),
-			metaCell('Channel', t.channel),
-			metaCell('Created', `${t.createdBy?.name ?? '—'} · ${relative(t.createdAt)}`),
-			metaCell('Updated', relative(t.updatedAt))
+			{ class: 'byline' },
+			el('span', { class: 'who' }, author?.name ?? '—'),
+			m.internal ? ' added an ' : ' replied ',
+			m.internal ? el('span', { class: 'internal' }, 'internal note') : null,
+			' ',
+			el('span', { class: 'mono when' }, `· ${relative(m.createdAt)}`)
 		),
-		section('Description', markdown(t.description)),
-		section('Checklist', ...checklist(t.checklist)),
-		t.attachments.length ? section('Attachments', files(t.attachments)) : null,
+		el('div', { class: m.internal ? 'bubble internal' : 'bubble' }, markdown(m.body)),
+		m.attachments.length ? files(m.attachments) : null
+	);
+}
+
+function renderTicket(t: Ticket): HTMLElement[] {
+	const status = statusMeta(TICKET_STATUS, t.status);
+	const category = TICKET_CATEGORY[t.category];
+	const opener = t.createdBy ?? t.customer;
+	const channel = CHANNEL_LABEL[t.channel] ?? t.channel;
+	const messages = t.messages.filter((m) => m.kind !== 'system').length;
+
+	const blocks: (HTMLElement | null)[] = [
 		t.linkedTasks.length
-			? section(
-					'Linked tasks',
+			? el(
+					'div',
+					{ class: 'block' },
+					label('Linked tasks', t.linkedTasks.length),
 					el(
 						'div',
-						{ class: 'linked' },
-						...t.linkedTasks.map((lt) => {
-							const b = el(
-								'button',
-								{ type: 'button', class: 'btn' },
-								el('span', { class: 'mono' }, lt.key),
-								lt.title,
-								badge(statusMeta(TASK_STATUS, lt.status))
-							);
-							b.onclick = () => open(lt.url);
-							return b;
-						})
+						{ class: 'rows' },
+						...t.linkedTasks.map((lt) =>
+							linkRow(
+								lt.url,
+								taskStatusDot(lt.status),
+								el('span', { class: 'mono key' }, lt.key),
+								el('span', { class: 'text' }, lt.title)
+							)
+						)
 					)
 				)
 			: null,
-		section(
-			`Timeline (${t.messages.filter((m) => m.kind === 'comment').length} messages)`,
+		t.attachments.length
+			? el(
+					'div',
+					{ class: 'block' },
+					label('Attachments', t.attachments.length),
+					el(
+						'div',
+						{ class: 'rows' },
+						...t.attachments.map((a) =>
+							linkRow(
+								a.url,
+								icon('paperclip', 14),
+								el('span', { class: 'text', title: a.mimeType }, a.filename),
+								el('span', { class: 'muted' }, formatBytes(a.sizeBytes))
+							)
+						)
+					)
+				)
+			: null,
+		t.checklist.length
+			? el(
+					'div',
+					{ class: 'block' },
+					label('Checklist', `${t.checklist.filter((c) => c.done).length}/${t.checklist.length}`),
+					...ticketChecklist(t.checklist)
+				)
+			: null
+	];
+	const details = blocks.filter((n): n is HTMLElement => n !== null);
+
+	const nodes: (HTMLElement | null)[] = [
+		el(
+			'div',
+			{ class: 'tk-head' },
+			el('span', { class: 'mono key' }, t.key),
+			el('span', { class: 'org' }, el('span', { class: 'gdot', '--dot': t.orgColor }), t.orgName),
+			el('div', { class: 'actions' }, openButton(t.url))
+		),
+		el('h1', { class: 'tk-title' }, t.subject),
+		el(
+			'div',
+			{ class: 'rail' },
+			pill(el('span', { class: 'dot', '--dot': status.dot }), status.label),
+			pill(priorityBars(t.priority), PRIORITY[t.priority]?.label ?? t.priority),
+			category ? pill(el('span', { class: 'dot', '--dot': category.color }), category.label) : null,
+			t.assignees.length
+				? el(
+						'span',
+						{ class: 'pill' },
+						avatarStack(t.assignees, 20),
+						el('span', { class: 'names' }, people(t.assignees)),
+						el(
+							'span',
+							{ class: 'count' },
+							t.assignees.length === 1 ? t.assignees[0].name : `${t.assignees.length} assignees`
+						)
+					)
+				: pill(icon('user', 14), 'Unassigned', 'pill dashed'),
+			...t.tags.map((tag) => el('span', { class: 'pill tag' }, tag))
+		),
+		el(
+			'div',
+			{ class: 'opening' },
+			el(
+				'div',
+				{ class: 'byline' },
+				opener ? avatar(opener, 18) : null,
+				el('span', { class: 'who' }, opener?.name ?? '—'),
+				` opened this via ${channel === 'API' ? channel : channel.toLowerCase()} `,
+				el('span', { class: 'mono when' }, `· ${fullDate(t.createdAt)}`)
+			),
+			markdown(t.description)
+		),
+		details.length ? el('div', { class: 'details' }, ...details) : null,
+		el(
+			'div',
+			{ class: 'activity' },
+			label('Activity', messages ? `${messages} ${messages === 1 ? 'message' : 'messages'}` : ''),
 			t.messages.length
 				? el(
 						'div',
 						{ class: 'timeline' },
-						...t.messages.map((m) =>
-							m.kind === 'system'
-								? el(
-										'div',
-										{ class: 'event' },
-										`${relative(m.createdAt)} · ${m.author?.name ?? 'system'} · ${m.body}`
-									)
-								: el(
-										'div',
-										{ class: m.internal ? 'msg internal' : 'msg' },
-										el(
-											'div',
-											{ class: 'who' },
-											el('b', {}, m.author?.name ?? '—'),
-											el('span', {}, relative(m.createdAt)),
-											m.internal ? el('span', { class: 'flag' }, 'internal note') : null
-										),
-										markdown(m.body),
-										m.attachments.length ? files(m.attachments) : null
-									)
+						...groupTimeline(t.messages).flatMap((g) =>
+							g.kind === 'message' ? [messageEntry(g.m)] : eventRun(g.items)
 						)
 					)
-				: el('div', { class: 'muted' }, 'No messages yet.')
+				: el('div', { class: 'muted' }, 'No activity yet.')
+		),
+		el(
+			'div',
+			{ class: 'tk-foot' },
+			el('span', {}, 'Reporter ', el('span', { class: 'v' }, t.customer?.name ?? '—')),
+			el('span', {}, 'Channel ', el('span', { class: 'v' }, channel)),
+			el('span', {}, 'Created ', el('span', { class: 'mono v' }, fullDate(t.createdAt))),
+			t.firstResponseAt
+				? el(
+						'span',
+						{},
+						'First response ',
+						el('span', { class: 'mono v' }, fullDate(t.firstResponseAt))
+					)
+				: null,
+			t.resolvedAt
+				? el('span', {}, 'Resolved ', el('span', { class: 'mono v' }, fullDate(t.resolvedAt)))
+				: null,
+			el('span', {}, 'Updated ', el('span', { class: 'mono v' }, relative(t.updatedAt)))
 		)
-	].filter((n): n is HTMLElement => n !== null);
+	];
+	return nodes.filter((n): n is HTMLElement => n !== null);
 }
 
 function openButton(url: string): HTMLElement {
-	const b = el('button', { type: 'button', class: 'btn' }, 'Open in trackr ↗');
+	const b = el(
+		'button',
+		{ type: 'button', class: 'btn' },
+		'Open in trackr',
+		icon('arrow-up-right', 14)
+	);
 	b.onclick = () => open(url);
 	return b;
 }

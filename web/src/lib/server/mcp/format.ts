@@ -545,6 +545,7 @@ export type TicketDetailDto = {
 	subject: string;
 	orgKey: string;
 	orgName: string;
+	orgColor: string;
 	status: string;
 	priority: string;
 	category: string;
@@ -592,6 +593,7 @@ export function ticketDetailDto(input: {
 		subject: t.subject,
 		orgKey: t.displayId.slice(0, t.displayId.lastIndexOf('-')),
 		orgName: t.orgName,
+		orgColor: t.orgColor,
 		status: t.status,
 		priority: t.priority,
 		category: t.category,

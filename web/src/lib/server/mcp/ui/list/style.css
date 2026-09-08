@@ -122,27 +122,6 @@
 	font-variant-numeric: tabular-nums;
 }
 
-/* Status marker (tasks: ring that fills as work progresses; tickets: solid). */
-.sdot {
-	width: 12px;
-	height: 12px;
-	border-radius: 50%;
-	border: 1.5px solid var(--dot, var(--text-3));
-	flex: none;
-	background: transparent;
-}
-.sdot.half {
-	background: conic-gradient(var(--dot) 0 50%, transparent 50% 100%);
-}
-.sdot.full {
-	background: var(--dot, var(--text-3));
-}
-.sdot.small {
-	width: 10px;
-	height: 10px;
-	border: 0;
-}
-
 /* Type badge (icon only, tinted), like the app's TypeBadge. */
 .tbadge {
 	display: inline-grid;
@@ -248,41 +227,6 @@
 	flex: none;
 }
 
-/* Avatars. */
-.avatar {
-	display: inline-grid;
-	place-items: center;
-	width: var(--size, 24px);
-	height: var(--size, 24px);
-	border-radius: 50%;
-	background: var(--color, var(--surface-2));
-	color: #fff;
-	font-size: calc(var(--size, 24px) * 0.4);
-	font-weight: 600;
-	user-select: none;
-	flex: none;
-}
-.avatar.more {
-	background: var(--surface-2);
-	color: var(--text-2);
-}
-.avatars {
-	display: inline-flex;
-	flex: none;
-}
-.avatars .avatar {
-	box-shadow: 0 0 0 2px var(--bg-elev);
-}
-.avatars .avatar + .avatar {
-	margin-left: -6px;
-}
-.avatar-none {
-	width: var(--size, 22px);
-	height: var(--size, 22px);
-	border-radius: 50%;
-	border: 1px dashed var(--border-strong);
-	flex: none;
-}
 .people {
 	width: 24px;
 	display: flex;
