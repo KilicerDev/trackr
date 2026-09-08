@@ -67,11 +67,19 @@ export function registerProjectTools(server: McpServer, ctx: McpContext): void {
 		'list_projects',
 		{
 			title: 'List projects',
-			description:
-				'Projects you can see (internal staff: all; others: projects you are a member of). Archived projects are hidden unless `includeArchived` is true. Rows: key (use it for `list_tasks` / `create_task` / `get_project`), name, status, client org, open task count. Text only — `show_items` with project keys renders them visually.',
+			description: `Projects you can see (internal staff: all; others: projects you are a member of). Archived projects are hidden unless \`includeArchived\` is true. Filters: \`status\` (one value or an array, ${PROJECT_STATUSES.join(' | ')}); \`orgKey\` (client organization). Rows: key (use it for \`list_tasks\` / \`create_task\` / \`get_project\`), name, status, client org, open task count. Text only — \`show_items\` with project keys renders them visually.`,
 			inputSchema: z.object({
 				includeArchived: z.boolean().default(false).describe('Include archived projects.'),
-				status: statusEnum.optional().describe('Only projects in this status.'),
+				status: z
+					.union([statusEnum, z.array(statusEnum)])
+					.optional()
+					.describe(
+						`Only these statuses — one value or an array (${PROJECT_STATUSES.join(' | ')}).`
+					),
+				orgKey: z
+					.string()
+					.optional()
+					.describe('Only projects for this client organization (org key).'),
 				limit: limitSchema
 			}),
 			outputSchema: z.object({
@@ -95,10 +103,18 @@ export function registerProjectTools(server: McpServer, ctx: McpContext): void {
 			}),
 			annotations: READ_ONLY
 		},
-		guarded(async ({ includeArchived, status, limit }) => {
+		guarded(async ({ includeArchived, status, orgKey, limit }) => {
 			let rows: ProjectRowLike[] = await listProjectsFor(ctx.locals);
 			if (!includeArchived) rows = rows.filter((p) => (p.status ?? 'active') !== 'archived');
-			if (status) rows = rows.filter((p) => (p.status ?? 'active') === status);
+			if (status) {
+				const wanted = new Set<string>(Array.isArray(status) ? status : [status]);
+				rows = rows.filter((p) => wanted.has(p.status ?? 'active'));
+			}
+			if (orgKey) {
+				const org = await resolveOrgByKey(orgKey);
+				if (!org) fail(404, `Organization ${normalizeKey(orgKey)} not found.`);
+				rows = rows.filter((p) => p.orgId === org.id);
+			}
 			rows.sort((a, b) => a.key.localeCompare(b.key));
 			const total = rows.length;
 			const page = rows.slice(0, limit);

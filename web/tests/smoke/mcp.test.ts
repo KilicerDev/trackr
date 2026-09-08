@@ -205,6 +205,30 @@ describe('read tools', () => {
 		expect(tasks.total).toBeGreaterThan(0);
 	});
 
+	test('list_tasks filters: array status, unassigned, and never exceed the unfiltered total', async () => {
+		type T = { total: number; tasks: { status: string; assignees: { id: string }[] }[] };
+		const all = structured<T>(await ok('list_tasks', { scope: 'all', limit: 200 }));
+		// A multi-value status filter keeps only those statuses.
+		const open = structured<T>(
+			await ok('list_tasks', { scope: 'all', status: ['todo', 'in_progress'], limit: 200 })
+		);
+		expect(open.total).toBeLessThanOrEqual(all.total);
+		expect(open.tasks.every((t) => t.status === 'todo' || t.status === 'in_progress')).toBe(true);
+		// `unassigned` returns only tasks with no assignees.
+		const none = structured<T>(
+			await ok('list_tasks', { scope: 'all', assignee: 'unassigned', limit: 200 })
+		);
+		expect(none.tasks.every((t) => t.assignees.length === 0)).toBe(true);
+	});
+
+	test('list_tickets filters: unassigned returns only unassigned', async () => {
+		type T = { total: number; tickets: { assignees: { id: string }[] }[] };
+		const none = structured<T>(
+			await ok('list_tickets', { segment: 'all', assignee: 'unassigned', limit: 200 })
+		);
+		expect(none.tickets.every((t) => t.assignees.length === 0)).toBe(true);
+	});
+
 	test('get_project resolves a key case-insensitively', async () => {
 		const res = await ok('get_project', { key: projectKey.toLowerCase() });
 		expect(textOf(res)).toContain(projectKey);

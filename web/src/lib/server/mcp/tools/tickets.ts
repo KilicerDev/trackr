@@ -211,14 +211,26 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 		'list_tickets',
 		{
 			title: 'List tickets',
-			description:
-				'List support tickets you can see. `segment`: `mine` (customer, creator or assignee — default), `watched` (pinned by you), `all` (everything your roles allow). Filter by `status` and/or `orgKey`. Rows are compact (key, subject, status, priority, assignees, last activity), newest activity first; call `get_ticket` for the full conversation.',
+			description: `List support tickets you can see. \`segment\`: \`mine\` (customer, creator or assignee — default), \`watched\` (pinned by you), \`all\` (everything your roles allow). Filters: \`status\` (one value or an array, ${TICKET_STATUSES.join(' | ')}); \`priority\` (${TICKET_PRIORITIES.join(' | ')}); \`orgKey\`; \`assignee\` (agent id or email, or the literal \`unassigned\`). Rows are compact (key, subject, status, priority, assignees, last activity), newest activity first; call \`get_ticket\` for the full conversation.`,
 			inputSchema: z.object({
 				segment: z
 					.enum(['mine', 'watched', 'all'])
 					.default('mine')
 					.describe('Which slice to list (default `mine`).'),
-				status: statusEnum.optional().describe('Only tickets in this status.'),
+				status: z
+					.union([statusEnum, z.array(statusEnum)])
+					.optional()
+					.describe(
+						`Only these statuses — one value or an array (${TICKET_STATUSES.join(' | ')}).`
+					),
+				priority: z
+					.enum(TICKET_PRIORITIES)
+					.optional()
+					.describe(`Only this priority (${TICKET_PRIORITIES.join(' | ')}).`),
+				assignee: z
+					.string()
+					.optional()
+					.describe('Only tickets assigned to this agent (id or email), or `unassigned`.'),
 				orgKey: z.string().optional().describe('Only tickets of this organization (org key).'),
 				limit: limitSchema
 			}),
@@ -247,14 +259,34 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 			}),
 			annotations: READ_ONLY
 		},
-		guarded(async ({ segment, status, orgKey, limit }) => {
+		guarded(async ({ segment, status, priority, assignee, orgKey, limit }) => {
 			const uid = ctx.locals.user.id;
 			let rows: TicketRow[];
 			if (segment === 'watched') rows = await loadAccessibleTickets(ctx, { pinnedByUserId: uid });
 			else if (segment === 'all') rows = await loadAccessibleTickets(ctx);
 			else rows = await loadAccessibleTickets(ctx, { ownerUserId: uid });
 
-			if (status) rows = rows.filter((t) => t.status === status);
+			if (status) {
+				const wanted = new Set<string>(Array.isArray(status) ? status : [status]);
+				rows = rows.filter((t) => wanted.has(t.status));
+			}
+			if (priority) rows = rows.filter((t) => t.priority === priority);
+			if (assignee) {
+				if (/^(unassigned|none)$/i.test(assignee.trim())) {
+					rows = rows.filter((t) => t.assignees.length === 0);
+				} else {
+					const candidates = await loadAssignableUsers([]);
+					const { ids, unknown } = resolveUserRefs([assignee], candidates);
+					if (unknown.length) {
+						fail(
+							400,
+							`Unknown assignee(s): ${unknown.join(', ')}. Tickets are assigned to internal agents:\n${describeCandidates(candidates)}`
+						);
+					}
+					const wanted = new Set<string>(ids);
+					rows = rows.filter((t) => t.assignees.some((a) => wanted.has(a)));
+				}
+			}
 			if (orgKey) {
 				const org = await resolveOrgByKey(orgKey);
 				if (!org) fail(404, `Organization ${orgKey.toUpperCase()} not found.`);

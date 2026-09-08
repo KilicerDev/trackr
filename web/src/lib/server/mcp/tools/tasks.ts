@@ -168,13 +168,26 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 		'list_tasks',
 		{
 			title: 'List tasks',
-			description:
-				'List project tasks you can see. `scope`: `mine` (assigned to you or created by you — default) or `all`. Optional filters: `projectKey`, `status`, `assignee` (user id or email). Archived tasks and tasks of archived projects are excluded. Rows are compact (key, title, status, priority, type, assignees, due, updated); call `get_task` for description, checklist, comments and time logs. Text only — to show the user a visual list, call `show_items` with the keys once you know which tasks matter.',
+			description: `List project tasks you can see. \`scope\`: \`mine\` (assigned to you or created by you — default) or \`all\`. Optional filters: \`projectKey\`; \`status\` (one value or an array, e.g. all non-done statuses for "still open": ${TASK_STATUSES.join(' | ')}); \`priority\` (${TASK_PRIORITIES.join(' | ')}); \`type\` (${TASK_TYPES.join(' | ')}); \`assignee\` (user id or email, or the literal \`unassigned\` for tasks with nobody assigned). Archived tasks and tasks of archived projects are excluded. Rows are compact (key, title, status, priority, type, assignees, due, updated); call \`get_task\` for description, checklist, comments and time logs. Text only — to show the user a visual list, call \`show_items\` with the keys once you know which tasks matter.`,
 			inputSchema: z.object({
 				scope: z.enum(['mine', 'all']).default('mine').describe('`mine` (default) or `all`.'),
 				projectKey: z.string().optional().describe('Only tasks of this project (project key).'),
-				status: statusEnum.optional().describe(`Only this status (${TASK_STATUSES.join(' | ')}).`),
-				assignee: z.string().optional().describe('Only tasks assigned to this user (id or email).'),
+				status: z
+					.union([statusEnum, z.array(statusEnum)])
+					.optional()
+					.describe(`Only these statuses — one value or an array (${TASK_STATUSES.join(' | ')}).`),
+				priority: z
+					.enum(TASK_PRIORITIES)
+					.optional()
+					.describe(`Only this priority (${TASK_PRIORITIES.join(' | ')}).`),
+				type: z
+					.enum(TASK_TYPES)
+					.optional()
+					.describe(`Only this type (${TASK_TYPES.join(' | ')}).`),
+				assignee: z
+					.string()
+					.optional()
+					.describe('Only tasks assigned to this user (id or email), or `unassigned`.'),
 				limit: limitSchema
 			}),
 			outputSchema: z.object({
@@ -200,7 +213,7 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 			}),
 			annotations: READ_ONLY
 		},
-		guarded(async ({ scope, projectKey, status, assignee, limit }) => {
+		guarded(async ({ scope, projectKey, status, priority, type, assignee, limit }) => {
 			const uid = ctx.locals.user.id;
 			let rows: Task[];
 			if (projectKey) {
@@ -215,10 +228,19 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 			if (scope === 'mine') {
 				rows = rows.filter((t) => (t.assignees ?? []).includes(uid) || t.createdBy === uid);
 			}
-			if (status) rows = rows.filter((t) => t.status === status);
+			if (status) {
+				const wanted = new Set<string>(Array.isArray(status) ? status : [status]);
+				rows = rows.filter((t) => wanted.has(t.status));
+			}
+			if (priority) rows = rows.filter((t) => t.priority === priority);
+			if (type) rows = rows.filter((t) => t.type === type);
 			if (assignee) {
-				const [id] = await resolveTaskAssignees([assignee]);
-				rows = rows.filter((t) => (t.assignees ?? []).includes(id));
+				if (/^(unassigned|none)$/i.test(assignee.trim())) {
+					rows = rows.filter((t) => (t.assignees ?? []).length === 0);
+				} else {
+					const [id] = await resolveTaskAssignees([assignee]);
+					rows = rows.filter((t) => (t.assignees ?? []).includes(id));
+				}
 			}
 			const total = rows.length;
 			const page = rows.slice(0, limit);
