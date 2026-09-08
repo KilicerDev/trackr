@@ -158,7 +158,7 @@ export const checklistSchema = z
 	.array(checklistItemSchema)
 	.max(100)
 	.describe(
-		'Full checklist (whole-array REPLACE: items not listed are removed; reuse `id` to keep an existing item). Use `checklist_toggle` to flip a single item.'
+		'Full checklist (whole-array REPLACE: items not listed are removed; reuse `id` to keep an existing item). Use `checklist_toggle` to flip a single item. Only include steps the user gave or asked you to work out — never pad with generic steps.'
 	);
 
 export const userRefsSchema = z

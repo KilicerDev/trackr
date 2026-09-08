@@ -301,14 +301,26 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 		{
 			title: 'Create ticket',
 			description:
-				'Create a support ticket in an organization (`orgKey`, see `list_orgs`). `description` is markdown. Agents (org.tickets.edit.any) may set `assignees`; for everyone else the ticket is filed with you as the customer and assignees are ignored. Optional `checklist`, `tags`, and `attachmentUrls` (fetched server-side). Returns the new ticket key. Notifies and audits exactly like the app.',
+				'Create a support ticket in an organization (`orgKey`, see `list_orgs`). `description` is markdown. Agents (org.tickets.edit.any) may set `assignees`; for everyone else the ticket is filed with you as the customer and assignees are ignored. Optional `checklist`, `tags`, and `attachmentUrls` (fetched server-side). Keep it to what the user said: a subject, and a description/checklist/tags only when they supplied that content. Returns the new ticket key. Notifies and audits exactly like the app.',
 			inputSchema: z.object({
 				orgKey: z.string().describe('Organization key the ticket belongs to (e.g. `TRACK`).'),
-				subject: z.string().min(1).max(300).describe('Short subject line.'),
-				description: z.string().optional().describe('Body in markdown.'),
+				subject: z
+					.string()
+					.min(1)
+					.max(300)
+					.describe('Short subject line, in the user’s own words.'),
+				description: z
+					.string()
+					.optional()
+					.describe(
+						'Body in markdown. Only the details the user gave; omit when the subject says it all.'
+					),
 				priority: priorityEnum.default('medium').describe('Priority (default `medium`).'),
 				category: categoryEnum.default('general').describe('Category (default `general`).'),
-				tags: z.array(z.string()).optional().describe('Free-form tags.'),
+				tags: z
+					.array(z.string())
+					.optional()
+					.describe('Free-form tags. Only when the user named them or the org already uses them.'),
 				assignees: z
 					.array(z.string())
 					.optional()
@@ -375,11 +387,16 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 		{
 			title: 'Update ticket',
 			description:
-				'Change ticket fields (requires org.tickets.edit.any on the ticket’s org). Pass only the fields to change: `subject`, `description` (markdown, replaces), `status`, `priority`, `category`, `tags` (full list, [] clears), `assignees` (full list of ids/emails, [] unassigns), `checklist` (full replace — see `checklist_toggle` for one item). Status/priority/category/assignee changes appear in the ticket timeline and notify like the app.',
+				'Change ticket fields (requires org.tickets.edit.any on the ticket’s org). Pass only the fields the user asked to change (leave everything else untouched): `subject`, `description` (markdown, replaces), `status`, `priority`, `category`, `tags` (full list, [] clears), `assignees` (full list of ids/emails, [] unassigns), `checklist` (full replace — see `checklist_toggle` for one item). Status/priority/category/assignee changes appear in the ticket timeline and notify like the app.',
 			inputSchema: z.object({
 				key: ticketKeySchema,
 				subject: z.string().min(1).max(300).optional().describe('New subject.'),
-				description: z.string().optional().describe('New description in markdown (replaces).'),
+				description: z
+					.string()
+					.optional()
+					.describe(
+						'New description in markdown (replaces the whole body — read the ticket first and keep what the user did not ask to change).'
+					),
 				status: statusEnum.optional().describe(`New status (${TICKET_STATUSES.join(' | ')}).`),
 				priority: priorityEnum.optional().describe('New priority.'),
 				category: categoryEnum.optional().describe('New category.'),

@@ -242,11 +242,16 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 		{
 			title: 'Create task',
 			description:
-				'Create a task in a project (`projectKey`, see `list_projects`; requires project.tasks.create). `description` is markdown. Defaults: status `todo`, priority `none`, type `task`. `assignees` are internal team members (ids or emails); when omitted or none valid, the task is assigned to you. Optional `due` (YYYY-MM-DD), `estimateMinutes`, `tags`, `checklist`, `attachmentUrls`. Returns the new task key.',
+				'Create a task in a project (`projectKey`, see `list_projects`; requires project.tasks.create). `description` is markdown. Defaults: status `todo`, priority `none`, type `task`. `assignees` are internal team members (ids or emails); when omitted or none valid, the task is assigned to you. Optional `due` (YYYY-MM-DD), `estimateMinutes`, `tags`, `checklist`, `attachmentUrls`. Keep it to what the user said: a title, and a description/checklist/tags only when they supplied that content. Returns the new task key.',
 			inputSchema: z.object({
 				projectKey: z.string().describe('Project key (e.g. `WEB`).'),
-				title: z.string().min(1).max(300).describe('Task title.'),
-				description: z.string().optional().describe('Body in markdown.'),
+				title: z.string().min(1).max(300).describe('Task title, in the user’s own words.'),
+				description: z
+					.string()
+					.optional()
+					.describe(
+						'Body in markdown. Only the details the user gave; omit when the title says it all.'
+					),
 				status: statusEnum
 					.default('todo')
 					.describe(`Status (default \`todo\`; ${TASK_STATUSES.join(' | ')}).`),
@@ -261,7 +266,9 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 				tags: z
 					.array(z.string())
 					.optional()
-					.describe('Tags (normalized to lowercase, max 24 chars).'),
+					.describe(
+						'Tags (normalized to lowercase, max 24 chars). Only when the user named them or the project already uses them.'
+					),
 				assignees: z
 					.array(z.string())
 					.optional()
@@ -325,11 +332,16 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 		{
 			title: 'Update task',
 			description:
-				'Change task fields. Requires project.tasks.edit.any, or being the creator with project.tasks.edit.own. Pass only the fields to change: `title`, `description` (markdown, replaces; empty string clears), `status`, `priority`, `type`, `due` (YYYY-MM-DD; null clears), `estimateMinutes` (null clears), `tags` (full list), `assignees` (full list of internal user ids/emails), `checklist` (full replace — see `checklist_toggle`), `plannedFor` (plan into YOUR week: YYYY-MM-DD, null removes; only needs read access). Status changes notify and log activity like the app.',
+				'Change task fields. Requires project.tasks.edit.any, or being the creator with project.tasks.edit.own. Pass only the fields the user asked to change (leave everything else untouched): `title`, `description` (markdown, replaces; empty string clears), `status`, `priority`, `type`, `due` (YYYY-MM-DD; null clears), `estimateMinutes` (null clears), `tags` (full list), `assignees` (full list of internal user ids/emails), `checklist` (full replace — see `checklist_toggle`), `plannedFor` (plan into YOUR week: YYYY-MM-DD, null removes; only needs read access). Status changes notify and log activity like the app.',
 			inputSchema: z.object({
 				key: taskKeySchema,
 				title: z.string().min(1).max(300).optional().describe('New title.'),
-				description: z.string().optional().describe('New description (markdown, replaces).'),
+				description: z
+					.string()
+					.optional()
+					.describe(
+						'New description (markdown, replaces the whole body — read the task first and keep what the user did not ask to change).'
+					),
 				status: statusEnum.optional().describe(`New status (${TASK_STATUSES.join(' | ')}).`),
 				priority: priorityEnum.optional().describe('New priority.'),
 				type: typeEnum.optional().describe('New type.'),

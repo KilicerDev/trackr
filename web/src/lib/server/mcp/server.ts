@@ -32,6 +32,14 @@ Identifiers:
 
 Content: all bodies are markdown, both in and out (ticket/task descriptions, wiki pages, notes). Checklists on update are whole-array replaces — use \`checklist_toggle\` for a single item. Lists are compact and capped (\`limit\`, max 200) and report \`total\`; use the \`get_*\` tool for details.
 
+Writing tasks and tickets — record what the user said, do not expand it:
+- Title: the user's own words, trimmed to one line. Do not reword what they meant.
+- Description: only what the user actually told you (context, links, error text, constraints). If the title already says it all, leave the description empty. Never add background, motivation, "acceptance criteria" or how-to steps the user did not give you.
+- Checklist: only when the user listed steps themselves, or asked you to break the work down. Never invent steps like "open the editor", "read the documentation", "test it" — the user knows their job. Reading a guide or existing task to learn the real steps is fine; guessing is not.
+- Tags, priority, due date, estimate, assignees: set only when the user said so or it is unambiguous from the request. Otherwise keep the defaults; an empty field is correct, not a gap to fill.
+- Updates: pass only the fields the user asked to change. Do not "improve" the rest of the task while you are there.
+- When unsure whether something belongs in the task, ask or leave it out. A short task the user recognises beats a complete one they have to clean up.
+
 Not available here: posting ticket replies or task comments, chat, share links — tell the user to do those in the app.`;
 
 export function buildServer(principal: McpPrincipal, origin: string): McpServer {
