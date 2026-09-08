@@ -2,7 +2,7 @@
 // "load more" JSON endpoint, and the CSV export. One query path so filtering and
 // row shaping stay consistent across all three.
 
-import { and, desc, eq, gte, inArray, lt, or, sql } from 'drizzle-orm';
+import { and, desc, gte, inArray, lt, or, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { auditLog } from '../db/app.schema';
 import { user as userTable } from '../db/auth.schema';
@@ -51,10 +51,26 @@ export type AuditRow = {
 
 export type AuditActor = { id: string; name: string; initials: string; color: string };
 
+/** Comma-separated multi-value filter from the URL ('all' or '' = no filter). */
+export function parseFilterList(raw: string | null | undefined): string[] {
+	if (!raw || raw === 'all') return [];
+	return [
+		...new Set(
+			raw
+				.split(',')
+				.map((v) => v.trim())
+				.filter(Boolean)
+		)
+	];
+}
+
 export type AuditQueryParams = {
-	kind?: string;
-	/** 'all' (default) or one of web | app | api | mcp. */
-	channel?: string;
+	/** Log categories (audit_log.kind); empty = all. */
+	kind?: string[];
+	/** Surfaces (audit_log.channel: web | app | api | mcp); empty = all. */
+	channel?: string[];
+	/** Actor user ids; empty = all. */
+	actor?: string[];
 	range?: string;
 	q?: string;
 	before?: string | null;
@@ -69,16 +85,18 @@ export type AuditQueryResult = {
 };
 
 export async function queryAuditLog(params: AuditQueryParams): Promise<AuditQueryResult> {
-	const kind = params.kind ?? 'all';
-	const channel = params.channel ?? 'all';
+	const kind = params.kind ?? [];
+	const channel = params.channel ?? [];
+	const actor = params.actor ?? [];
 	const range = params.range ?? '30';
 	const q = (params.q ?? '').trim();
 	const before = params.before ?? null;
 	const limit = params.limit ?? AUDIT_PAGE_SIZE;
 
 	const conditions = [];
-	if (kind !== 'all') conditions.push(eq(auditLog.kind, kind));
-	if (channel !== 'all') conditions.push(eq(auditLog.channel, channel));
+	if (kind.length) conditions.push(inArray(auditLog.kind, kind));
+	if (channel.length) conditions.push(inArray(auditLog.channel, channel));
+	if (actor.length) conditions.push(inArray(auditLog.actorId, actor));
 	const days = RANGE_DAYS[range];
 	if (days) conditions.push(gte(auditLog.createdAt, new Date(Date.now() - days * 86_400_000)));
 	if (q) {

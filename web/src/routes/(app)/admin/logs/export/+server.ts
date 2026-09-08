@@ -1,6 +1,11 @@
 import type { RequestHandler } from '@sveltejs/kit';
 import { assertCan } from '$lib/server/permissions';
-import { queryAuditLog, type AuditRow, type AuditActor } from '$lib/server/audit/query';
+import {
+	parseFilterList,
+	queryAuditLog,
+	type AuditRow,
+	type AuditActor
+} from '$lib/server/audit/query';
 
 const MAX_ROWS = 10_000; // safety cap so an export can't run unbounded
 const COLUMNS = [
@@ -23,8 +28,9 @@ function csvCell(v: string): string {
 export const GET: RequestHandler = async ({ locals, url }) => {
 	await assertCan(locals, 'admin.logs.view');
 
-	const kind = url.searchParams.get('kind') ?? 'all';
-	const channel = url.searchParams.get('channel') ?? 'all';
+	const kind = parseFilterList(url.searchParams.get('kind'));
+	const channel = parseFilterList(url.searchParams.get('channel'));
+	const actor = parseFilterList(url.searchParams.get('actor'));
 	const range = url.searchParams.get('range') ?? '30';
 	const q = (url.searchParams.get('q') ?? '').trim();
 
@@ -32,7 +38,7 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 	let actors: Record<string, AuditActor> = {};
 	let before: string | null = null;
 	while (rows.length < MAX_ROWS) {
-		const result = await queryAuditLog({ kind, channel, range, q, before, limit: 500 });
+		const result = await queryAuditLog({ kind, channel, actor, range, q, before, limit: 500 });
 		rows.push(...result.events);
 		actors = { ...actors, ...result.actors };
 		if (!result.hasMore || !result.nextCursor) break;

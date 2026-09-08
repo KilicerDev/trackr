@@ -1,5 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import ViewPanel from '$lib/components/view-panel/ViewPanel.svelte';
+	import PanelSection from '$lib/components/view-panel/PanelSection.svelte';
+	import SelectRow from '$lib/components/view-panel/SelectRow.svelte';
+	import FilterSection, { type FilterField } from '$lib/components/view-panel/FilterSection.svelte';
+	import FilterTrigger from '$lib/components/view-panel/FilterTrigger.svelte';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Button from '$lib/components/Button.svelte';
@@ -19,10 +25,20 @@
 	// Filter state, seeded from the loaded query and re-synced whenever a new page
 	// loads (filter change / navigation). Changing kind/range/search navigates,
 	// which re-runs the server load.
-	let kind = $state(data.filters.kind);
-	let channel = $state(data.filters.channel);
+	// Multi-value filters (category, channel, actor) live in one record so the
+	// shared FilterSection can drive them; range is a single select.
+	let filters = $state<Record<string, string[]>>(filtersFrom(data.filters));
 	let range = $state(data.filters.range);
 	let search = $state(data.filters.q);
+	let panelOpen = $state(false);
+
+	function filtersFrom(f: PageData['filters']): Record<string, string[]> {
+		const out: Record<string, string[]> = {};
+		if (f.kind.length) out.kind = f.kind;
+		if (f.channel.length) out.channel = f.channel;
+		if (f.actor.length) out.actor = f.actor;
+		return out;
+	}
 
 	// Appended pages from "Load more" (the first page comes from `data`).
 	let appended = $state<Row[]>([]);
@@ -34,8 +50,7 @@
 
 	$effect(() => {
 		// Re-sync to the freshly loaded page (depends on the new data identity).
-		kind = data.filters.kind;
-		channel = data.filters.channel;
+		filters = filtersFrom(data.filters);
 		range = data.filters.range;
 		search = data.filters.q;
 		appended = [];
@@ -49,8 +64,10 @@
 
 	function queryString(extra?: Record<string, string>): string {
 		const parts: string[] = [];
-		if (kind !== 'all') parts.push(`kind=${encodeURIComponent(kind)}`);
-		if (channel !== 'all') parts.push(`channel=${encodeURIComponent(channel)}`);
+		for (const key of ['kind', 'channel', 'actor'] as const) {
+			const values = filters[key] ?? [];
+			if (values.length) parts.push(`${key}=${encodeURIComponent(values.join(','))}`);
+		}
 		if (range !== '30') parts.push(`range=${encodeURIComponent(range)}`);
 		if (search.trim()) parts.push(`q=${encodeURIComponent(search.trim())}`);
 		if (extra)
@@ -96,13 +113,7 @@
 
 	// Surface the action came through (audit_log.channel). Older rows may have
 	// none; those show a dash.
-	const CHANNELS = [
-		{ id: 'all', label: () => m.admin_logs_channel_all() },
-		{ id: 'web', label: () => m.admin_logs_channel_web() },
-		{ id: 'app', label: () => m.admin_logs_channel_app() },
-		{ id: 'api', label: () => m.admin_logs_channel_api() },
-		{ id: 'mcp', label: () => m.admin_logs_channel_mcp() }
-	];
+	const CHANNELS = ['web', 'app', 'api', 'mcp'] as const;
 	const CHANNEL_STYLE: Record<string, string> = {
 		web: 'border-border text-text-3',
 		app: 'border-[#7a9cf0]/40 text-[#7a9cf0]',
@@ -110,9 +121,107 @@
 		mcp: 'border-[#c08bd6]/40 text-[#c08bd6]'
 	};
 	function channelLabel(c: string | null): string {
-		return CHANNELS.find((x) => x.id === c)?.label() ?? m.admin_logs_channel_unknown();
+		switch (c) {
+			case 'web':
+				return m.admin_logs_channel_web();
+			case 'app':
+				return m.admin_logs_channel_app();
+			case 'api':
+				return m.admin_logs_channel_api();
+			case 'mcp':
+				return m.admin_logs_channel_mcp();
+			default:
+				return m.admin_logs_channel_unknown();
+		}
+	}
+
+	// ── Side panel (same components as the tasks / tickets toolbars) ──────────
+	type LayoutUser = { id: string; name: string; initials: string; color: string };
+	const users = $derived(((page.data as { users?: LayoutUser[] }).users ?? []) as LayoutUser[]);
+
+	const RANGES = $derived([
+		{ id: '1', label: m.admin_logs_range_24h() },
+		{ id: '7', label: m.admin_logs_range_7days() },
+		{ id: '30', label: m.admin_logs_range_30days() },
+		{ id: 'all', label: m.admin_logs_range_all_time() }
+	]);
+	const FIELDS = $derived<FilterField[]>([
+		{ id: 'kind', label: m.admin_logs_category(), icon: 'logs' },
+		{ id: 'channel', label: m.admin_logs_col_channel(), icon: 'link' },
+		{ id: 'actor', label: m.admin_logs_col_actor(), icon: 'users', searchable: true }
+	]);
+	const activeFilterCount = $derived(
+		Object.values(filters).reduce((n, v) => n + (v?.length ?? 0), 0) + (range !== '30' ? 1 : 0)
+	);
+	const hit = (label: string, query: string) => !query || label.toLowerCase().includes(query);
+
+	function setFilters(next: Record<string, string[]>) {
+		filters = next;
+		navigate();
+	}
+	function toggleValue(field: string, value: string) {
+		const cur = filters[field] ?? [];
+		const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
+		const merged = { ...filters, [field]: next };
+		if (next.length === 0) delete merged[field];
+		setFilters(merged);
+	}
+	function valueLabel(field: string, v: string): string {
+		if (field === 'kind') return logKindLabel(v);
+		if (field === 'channel') return channelLabel(v);
+		if (field === 'actor') return users.find((u) => u.id === v)?.name ?? v;
+		return v;
 	}
 </script>
+
+{#snippet valuesList(field: string, query: string)}
+	{@const values = filters[field] ?? []}
+	{#if field === 'kind'}
+		{#each LOG_KINDS.filter((k) => k.id !== 'all' && hit(logKindLabel(k.id), query)) as k (k.id)}
+			<button
+				type="button"
+				onclick={() => toggleValue('kind', k.id)}
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
+			>
+				<span class="text-[14px]">{logKindLabel(k.id)}</span>
+				<span class="ml-auto text-accent {values.includes(k.id) ? 'opacity-100' : 'opacity-0'}">
+					<Icon name="check" size={14} />
+				</span>
+			</button>
+		{/each}
+	{:else if field === 'channel'}
+		{#each CHANNELS.filter((c) => hit(channelLabel(c), query)) as c (c)}
+			<button
+				type="button"
+				onclick={() => toggleValue('channel', c)}
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
+			>
+				<span
+					class="inline-flex h-[20px] items-center rounded-md border px-1.5 font-mono text-[11px] uppercase {CHANNEL_STYLE[
+						c
+					]}">{channelLabel(c)}</span
+				>
+				<span class="ml-auto text-accent {values.includes(c) ? 'opacity-100' : 'opacity-0'}">
+					<Icon name="check" size={14} />
+				</span>
+			</button>
+		{/each}
+	{:else if field === 'actor'}
+		{#each users.filter((u) => hit(u.name, query)) as u (u.id)}
+			<button
+				type="button"
+				onclick={() => toggleValue('actor', u.id)}
+				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
+			>
+				<Avatar user={u} size={20} />
+				<span class="truncate text-[14px]">{u.name}</span>
+				<span class="ml-auto text-accent {values.includes(u.id) ? 'opacity-100' : 'opacity-0'}">
+					<Icon name="check" size={14} />
+				</span>
+			</button>
+		{/each}
+	{/if}
+{/snippet}
 
 <svelte:head><title>{m.admin_logs_page_title()}</title></svelte:head>
 
@@ -138,56 +247,11 @@
 		</div>
 
 		<div class="mb-4 flex flex-wrap items-center gap-2.5">
-			<div class="inline-flex h-8 items-center rounded-lg border border-border bg-surface p-0.5">
-				{#each LOG_KINDS as k (k.id)}
-					<button
-						type="button"
-						onclick={() => {
-							kind = k.id;
-							navigate();
-						}}
-						class="h-full rounded-md px-2.5 text-[14px] {kind === k.id
-							? 'bg-bg-elev text-text shadow-sm'
-							: 'text-text-3 hover:text-text'}"
-					>
-						{logKindLabel(k.id)}
-					</button>
-				{/each}
-			</div>
-			<div class="h-5 w-px bg-border"></div>
-			<div class="inline-flex h-8 items-center rounded-lg border border-border bg-surface p-0.5">
-				{#each CHANNELS as c (c.id)}
-					<button
-						type="button"
-						onclick={() => {
-							channel = c.id;
-							navigate();
-						}}
-						class="h-full rounded-md px-2.5 text-[14px] {channel === c.id
-							? 'bg-bg-elev text-text shadow-sm'
-							: 'text-text-3 hover:text-text'}"
-					>
-						{c.id === 'all' ? m.log_kind_all() : c.label()}
-					</button>
-				{/each}
-			</div>
-			<div class="h-5 w-px bg-border"></div>
-			<div class="inline-flex h-8 items-center rounded-lg border border-border bg-surface p-0.5">
-				{#each [{ id: '1', label: m.admin_logs_range_24h() }, { id: '7', label: m.admin_logs_range_7days() }, { id: '30', label: m.admin_logs_range_30days() }, { id: 'all', label: m.admin_logs_range_all_time() }] as r (r.id)}
-					<button
-						type="button"
-						onclick={() => {
-							range = r.id;
-							navigate();
-						}}
-						class="h-full rounded-md px-2.5 text-[14px] {range === r.id
-							? 'bg-bg-elev text-text shadow-sm'
-							: 'text-text-3 hover:text-text'}"
-					>
-						{r.label}
-					</button>
-				{/each}
-			</div>
+			<FilterTrigger
+				open={panelOpen}
+				count={activeFilterCount}
+				onclick={() => (panelOpen = !panelOpen)}
+			/>
 			<div class="relative ml-auto">
 				<span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-3">
 					<Icon name="search" size={14} />
@@ -357,3 +421,26 @@
 		</div>
 	{/if}
 </Drawer>
+
+<ViewPanel
+	open={panelOpen}
+	onclose={() => (panelOpen = false)}
+	title={m.view_options_title()}
+	count={activeFilterCount}
+>
+	<PanelSection title={m.view_layout()}>
+		<div class="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+			<SelectRow
+				label={m.admin_logs_range()}
+				options={RANGES}
+				value={range}
+				onchange={(r) => {
+					range = r;
+					navigate();
+				}}
+			/>
+		</div>
+	</PanelSection>
+
+	<FilterSection fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
+</ViewPanel>

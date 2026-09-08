@@ -310,6 +310,7 @@
 	"admin_logs_range_30days": "30 Tage",
 	"admin_logs_range_7days": "7 Tage",
 	"admin_logs_range_all_time": "Gesamter Zeitraum",
+	"admin_logs_range": "Zeitraum",
 	"admin_logs_raw_payload": "Rohdaten",
 	"admin_logs_search_placeholder": "Ereignisse suchen…",
 	"admin_logs_subtitle": "Jede Mitgliederaktion im gesamten Workspace. 90 Tage lang gespeichert.",

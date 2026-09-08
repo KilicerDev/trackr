@@ -282,6 +282,7 @@
 	"admin_logs_range_30days": "30 days",
 	"admin_logs_range_7days": "7 days",
 	"admin_logs_range_all_time": "All time",
+	"admin_logs_range": "Time range",
 	"admin_logs_raw_payload": "Raw payload",
 	"admin_logs_search_placeholder": "Search events…",
 	"admin_logs_subtitle": "Every member action across the workspace. Retained for 90 days.",
