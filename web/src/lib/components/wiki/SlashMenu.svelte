@@ -17,7 +17,7 @@
 	type State = {
 		items: SlashItem[];
 		activeIndex: number;
-		rect: { left: number; bottom: number };
+		rect: { left: number; top: number; bottom: number };
 		onSelect: (index: number) => void;
 	};
 
@@ -44,21 +44,35 @@
 		return out;
 	});
 
-	const styleStr = $derived(
-		`position: fixed; left: ${state.rect.left}px; top: ${state.rect.bottom + 6}px;`
-	);
+	// Plain bindings: the effects depend on reactive props (rect, items,
+	// activeIndex), and both elements are set on mount before those change.
+	let panelEl: HTMLDivElement | undefined;
+	let listEl: HTMLDivElement | undefined;
+
+	// Position after render, measuring the panel's real height so a short
+	// (filtered) list sits just under the caret instead of flipping far above.
+	$effect(() => {
+		const p = panelEl;
+		if (!p) return;
+		const { left, top, bottom } = state.rect;
+		void state.items; // re-place when filtering changes the height
+		const h = p.offsetHeight;
+		const w = p.offsetWidth;
+		const gap = 6;
+		const placeTop =
+			bottom + gap + h + 8 > window.innerHeight ? Math.max(8, top - h - gap) : bottom + gap;
+		p.style.top = `${placeTop}px`;
+		p.style.left = `${Math.max(8, Math.min(left, window.innerWidth - w - 8))}px`;
+	});
 
 	// Keep the highlighted row in view as the arrows move it.
-	// Plain binding: the effect below re-runs on activeIndex (a reactive prop),
-	// and listEl is set on mount before any arrow key moves the selection.
-	let listEl: HTMLDivElement | undefined;
 	$effect(() => {
 		const i = state.activeIndex;
 		listEl?.querySelector<HTMLElement>(`[data-i="${i}"]`)?.scrollIntoView({ block: 'nearest' });
 	});
 </script>
 
-<div class="slash" style={styleStr} role="listbox">
+<div bind:this={panelEl} class="slash" role="listbox">
 	{#if state.items.length === 0}
 		<div class="slash-empty">{m.wiki_slash_no_matches()}</div>
 	{:else}
@@ -101,6 +115,7 @@
 
 <style>
 	.slash {
+		position: fixed;
 		z-index: 60;
 		width: 300px;
 		border-radius: 12px;

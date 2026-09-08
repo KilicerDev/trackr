@@ -220,19 +220,11 @@ export const SlashCommand = Extension.create({
 					});
 
 					function setRect(props: Props) {
+						// Store the caret's raw rect; SlashMenu measures its own height and
+						// decides whether to sit below or flip above (a hardcoded height
+						// mis-flips once the query narrows the list).
 						const r = props.clientRect?.();
-						if (r) {
-							// Clamp to viewport so menu doesn't escape on narrow screens.
-							const menuHeight = 360;
-							let top = r.top;
-							let bottom = r.bottom;
-							if (bottom + menuHeight + 10 > window.innerHeight) {
-								// Flip above caret if not enough room below.
-								bottom = r.top - menuHeight - 6;
-								top = bottom;
-							}
-							state.rect = { left: r.left, top, bottom };
-						}
+						if (r) state.rect = { left: r.left, top: r.top, bottom: r.bottom };
 					}
 
 					return {
