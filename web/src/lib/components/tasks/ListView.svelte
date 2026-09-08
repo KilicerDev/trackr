@@ -139,8 +139,6 @@
 <div class="flex min-h-0 flex-1 flex-col overflow-auto">
 	{#each groups as g (g.id)}
 		{@const isCollapsed = collapsed.has(g.id)}
-		{@const done = g.tasks.filter((t) => t.status === 'done' || t.status === 'in_review').length}
-		{@const pct = g.tasks.length === 0 ? 0 : Math.round((done / g.tasks.length) * 100)}
 		<div>
 			{#if g.label}
 				{@const href = group === 'project' ? projectHref(g.id) : undefined}
@@ -176,10 +174,6 @@
 						class="flex h-full min-w-0 flex-1 items-center gap-2.5 text-left"
 					>
 						<span class="font-mono text-[12px] text-text-3">{g.tasks.length}</span>
-						<div class="h-1 w-24 overflow-hidden rounded-full bg-surface">
-							<div class="h-full" style:width="{pct}%" style:background={g.dot}></div>
-						</div>
-						<span class="font-mono text-[11px] text-text-4">{pct}%</span>
 					</button>
 					{#if group === 'project'}
 						<IconButton
