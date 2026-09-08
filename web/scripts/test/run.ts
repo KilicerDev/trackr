@@ -11,6 +11,8 @@
  *
  * Tiers (the `test:*` package scripts are shorthands for `--only <tier>`):
  *   unit        `bun test src` — pure TypeScript modules, no database.
+ *   build       tests/bundle/bundle.test.ts — the production bundle in build/
+ *               (module identity across chunks); skipped without a build.
  *   go          `go test ./...` in cli/ and services/ (worker, shared,
  *               scheduler), rendered from `-json`.
  *   smoke:api   tests/smoke/api.test.ts — the /api/v1 surface, live server.
@@ -35,6 +37,7 @@
  */
 
 import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { rm, readFile } from 'node:fs/promises';
 
@@ -44,8 +47,8 @@ const SPAWN_PORT = 5199;
 const DEV_URL = 'http://127.0.0.1:5173';
 
 // ── CLI ─────────────────────────────────────────────────────────────────────
-type Tier = 'unit' | 'go' | 'smoke:api' | 'smoke:mcp' | 'smoke:authz';
-const TIERS: Tier[] = ['unit', 'go', 'smoke:api', 'smoke:mcp', 'smoke:authz'];
+type Tier = 'unit' | 'build' | 'go' | 'smoke:api' | 'smoke:mcp' | 'smoke:authz';
+const TIERS: Tier[] = ['unit', 'build', 'go', 'smoke:api', 'smoke:mcp', 'smoke:authz'];
 const ALIASES: Record<string, Tier[]> = { smoke: ['smoke:api', 'smoke:mcp', 'smoke:authz'] };
 
 function tierArg(name: string): Set<Tier> | null {
@@ -253,6 +256,17 @@ async function bunTest(name: string, target: string, env: Record<string, string>
 		ms: Date.now() - started,
 		note: !ok && !failed ? 'suite did not run cleanly (see output above)' : undefined
 	});
+}
+
+// ── Build ───────────────────────────────────────────────────────────────────
+/** The bundle tests need `bun run build` output; without it the tier is skipped. */
+async function tierBuild() {
+	if (!existsSync(join(WEB, 'build/server/chunks'))) {
+		heading('build');
+		skipStep('build', 'no production build in web/build (run `bun run build`)');
+		return;
+	}
+	await bunTest('build', 'tests/bundle/bundle.test.ts');
 }
 
 // ── Go ──────────────────────────────────────────────────────────────────────
@@ -463,6 +477,7 @@ async function tierSmoke(tiers: Tier[]) {
 // ── Main ────────────────────────────────────────────────────────────────────
 const startedAll = Date.now();
 if (wants('unit')) await bunTest('unit', 'src');
+if (wants('build')) await tierBuild();
 if (wants('go')) await tierGo();
 const smokeTiers = (['smoke:api', 'smoke:mcp', 'smoke:authz'] as Tier[]).filter(wants);
 if (smokeTiers.length) await tierSmoke(smokeTiers);

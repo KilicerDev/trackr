@@ -29,6 +29,7 @@
 		"db:seed": "bun run scripts/db/seed/index.ts",
 		"test": "bun run scripts/test/run.ts",
 		"test:unit": "bun run scripts/test/run.ts --only unit",
+		"test:build": "bun run scripts/test/run.ts --only build",
 		"test:go": "bun run scripts/test/run.ts --only go",
 		"test:smoke": "bun run scripts/test/run.ts --only smoke",
 		"test:smoke:api": "bun run scripts/test/run.ts --only smoke:api",
@@ -86,6 +87,7 @@
 		"@tiptap/extension-task-item": "^3.23.4",
 		"@tiptap/extension-task-list": "^3.23.4",
 		"@tiptap/html": "^3.23.4",
+		"@tiptap/pm": "^3.23.4",
 		"@tiptap/starter-kit": "^3.23.4",
 		"@tiptap/suggestion": "^3.23.4",
 		"better-auth": "~1.4.21",
@@ -101,6 +103,7 @@
 		"turndown": "^7.2.4",
 		"turndown-plugin-gfm": "^1.0.2",
 		"ws": "^8.21.0",
+		"y-prosemirror": "^1.3.7",
 		"yjs": "^13",
 		"zod": "^4.2"
 	}
