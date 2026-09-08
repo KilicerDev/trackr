@@ -21,6 +21,9 @@ import {
 	sanitizeTaskChecklist
 } from '$lib/server/tasks'; // W2: applyTaskUpdate, createTaskWithEffects, deleteTaskFully, logTaskTime, resolveProjectByKey, resolveTaskByDisplayId, sanitizeTaskChecklist
 import { loadAssignableUsers } from '$lib/server/tickets';
+import { db } from '$lib/server/db';
+import { project } from '$lib/server/db/app.schema';
+import { inArray } from 'drizzle-orm';
 import { attachFromUrl } from '$lib/server/attachments-fetch'; // W2
 import { DETAIL_UI_URI, LIST_UI_URI, uiToolMeta } from '../ui';
 import { normalizeTag } from '$lib/utils/label-meta';
@@ -75,6 +78,19 @@ export async function loadAccessibleProject(ctx: McpContext, projectKey: string)
 		fail(404, `Project ${key} not found.`);
 	}
 	return project;
+}
+
+/** Name + accent colour of projects by key (only the keys that exist). */
+async function projectMetaByKey(
+	keys: readonly string[]
+): Promise<Map<string, { name: string; color: string }>> {
+	const distinct = [...new Set(keys)];
+	if (distinct.length === 0) return new Map();
+	const rows = await db
+		.select({ key: project.key, name: project.name, color: project.color })
+		.from(project)
+		.where(inArray(project.key, distinct));
+	return new Map(rows.map((r) => [r.key, { name: r.name, color: r.color }]));
 }
 
 /** Task ref the caller may read, or 404 (unknown and no-access look the same). */
@@ -171,6 +187,8 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 						priority: z.string(),
 						type: z.string(),
 						projectKey: z.string(),
+						projectName: z.string(),
+						projectColor: z.string(),
 						assignees: z.array(z.object({ id: z.string(), name: z.string() })),
 						due: z.string().nullable(),
 						tags: z.array(z.string()),
@@ -206,6 +224,9 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 			const total = rows.length;
 			const page = rows.slice(0, limit);
 			const users = await userDirectory(page.flatMap((t) => t.assignees ?? []));
+			// The list widget groups rows under a project header (name + colour
+			// dot), like the tasks page does.
+			const projects = await projectMetaByKey(page.map((t) => t.project));
 			const lines = page.map((t) => taskLine(t, users));
 			return text(
 				listMd(
@@ -215,7 +236,15 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 				),
 				{
 					total,
-					tasks: page.map((t) => ({ ...taskSummary(t, users), url: taskUrl(ctx.origin, t.id) }))
+					tasks: page.map((t) => {
+						const meta = projects.get(t.project);
+						return {
+							...taskSummary(t, users),
+							projectName: meta?.name ?? t.project,
+							projectColor: meta?.color ?? '#7a9cf0',
+							url: taskUrl(ctx.origin, t.id)
+						};
+					})
 				}
 			);
 		})

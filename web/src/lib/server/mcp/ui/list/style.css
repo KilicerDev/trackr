@@ -1,96 +1,315 @@
+/* List widget: the app's list views, condensed. Rows are flex lines with
+   fixed-width trailing cells so the columns line up across a group; the text
+   cell takes the slack and truncates. */
 .app {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
-	padding: 10px;
 }
-.toolbar {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 8px;
-}
-.search {
-	flex: 1 1 160px;
-	min-width: 140px;
-}
-.chips {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 4px;
-}
-.count {
-	margin-left: auto;
-	color: var(--text-3);
-	font-size: 12px;
-	white-space: nowrap;
-}
-.scroll {
-	overflow-x: auto;
+.groups {
 	border: 1px solid var(--border);
 	border-radius: 10px;
 	background: var(--bg-elev);
+	overflow: hidden;
 }
-.table {
+.group + .group .ghead {
+	border-top: 1px solid var(--border);
+}
+
+/* Group header: chevron, colour dot, label, count. */
+.ghead {
+	display: flex;
+	align-items: center;
+	gap: 10px;
 	width: 100%;
-	border-collapse: collapse;
-	min-width: 520px;
-}
-.table th,
-.table td {
-	padding: 7px 10px;
-	text-align: left;
+	height: 38px;
+	padding: 0 12px 0 14px;
+	border: 0;
 	border-bottom: 1px solid var(--border);
-	white-space: nowrap;
-	vertical-align: middle;
-}
-.table th {
+	background: var(--surface);
+	color: var(--text);
+	text-align: left;
+	cursor: pointer;
 	position: sticky;
 	top: 0;
-	background: var(--bg-elev);
+	z-index: 2;
+}
+.ghead .chev {
 	color: var(--text-3);
-	font-size: 11px;
+	transition: transform 0.15s ease;
+}
+.group[data-collapsed] .ghead .chev {
+	transform: rotate(-90deg);
+}
+.ghead .gdot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--dot, var(--text-3));
+	flex: none;
+}
+.ghead .glabel {
+	font-size: 13.5px;
 	font-weight: 600;
-	letter-spacing: 0.06em;
-	text-transform: uppercase;
-	cursor: pointer;
-	user-select: none;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
-.table th[aria-sort='ascending']::after {
-	content: ' ↑';
+.ghead .gcount {
+	color: var(--text-3);
+	font-size: 12px;
 }
-.table th[aria-sort='descending']::after {
-	content: ' ↓';
+.group[data-collapsed] .rows {
+	display: none;
 }
-.table tbody tr {
-	cursor: pointer;
-}
-.table tbody tr:hover {
-	background: var(--row-hover);
-}
-.table tbody tr:last-child td {
+.group:last-child .rows .row:last-child,
+.group:last-child[data-collapsed] .ghead {
 	border-bottom: 0;
 }
-/* The text column takes the slack and truncates, so the fixed columns stay
-   visible instead of the table overflowing the host's frame. */
-.table td.grow {
-	width: 100%;
-	min-width: 220px;
-	max-width: 0;
+
+/* Row. */
+.row {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-height: 40px;
+	padding: 0 14px 0 14px;
+	border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+	color: var(--text);
+	font-size: 13.5px;
+	cursor: pointer;
+}
+.row:hover {
+	background: var(--row-hover);
+}
+.row:focus-visible {
+	outline: none;
+	box-shadow: var(--focus-ring) inset;
+}
+.row > * {
+	flex: none;
+}
+.row .key {
+	width: 84px;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	color: var(--text);
+	white-space: nowrap;
+	color: var(--text-3);
+}
+.row .main {
+	flex: 1 1 auto;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+.row .main .title {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.row .main .sub {
+	color: var(--text-3);
+	font-size: 12px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.row .muted {
+	color: var(--text-3);
+}
+.row .num {
+	font-variant-numeric: tabular-nums;
+}
+
+/* Status marker (tasks: ring that fills as work progresses; tickets: solid). */
+.sdot {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	border: 1.5px solid var(--dot, var(--text-3));
+	flex: none;
+	background: transparent;
+}
+.sdot.half {
+	background: conic-gradient(var(--dot) 0 50%, transparent 50% 100%);
+}
+.sdot.full {
+	background: var(--dot, var(--text-3));
+}
+.sdot.small {
+	width: 10px;
+	height: 10px;
+	border: 0;
+}
+
+/* Type badge (icon only, tinted), like the app's TypeBadge. */
+.tbadge {
+	display: inline-grid;
+	place-items: center;
+	width: 22px;
+	height: 20px;
+	border-radius: 6px;
+	border: 1px solid color-mix(in srgb, var(--color) 25%, transparent);
+	background: color-mix(in srgb, var(--color) 8%, transparent);
+	color: var(--color);
+	flex: none;
+}
+
+/* Small inline signals: checklist, message count, due. */
+.sig {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	color: var(--text-3);
+	font-size: 12px;
+	white-space: nowrap;
+}
+.sig.ok {
+	color: #7fc8a9;
+}
+.due {
+	width: 68px;
+	font-size: 12.5px;
+	white-space: nowrap;
+	color: var(--text-3);
+}
+.due.overdue {
+	color: var(--danger);
 	font-weight: 500;
 }
-.table td.grow .sub {
-	display: block;
-	overflow: hidden;
-	text-overflow: ellipsis;
+.due.urgent {
+	color: var(--accent);
+}
+.due.soon {
+	color: #d8a24a;
+}
+.when {
+	width: 52px;
+	text-align: right;
 	color: var(--text-3);
-	font-weight: 400;
-	font-size: 12px;
+	font-size: 12.5px;
+	white-space: nowrap;
+}
+.priocell {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	width: 88px;
+	color: var(--text-3);
+	font-size: 12.5px;
+	white-space: nowrap;
+}
+.priocell .dash {
+	color: var(--text-4);
 }
 .tags {
 	display: inline-flex;
 	gap: 4px;
+	flex: none;
+}
+
+/* Org / project chips on ticket and project rows. */
+.orgchip {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	max-width: 160px;
+	padding: 1px 7px;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--surface);
+	color: var(--text-3);
+	font-size: 12px;
+}
+.orgchip .gdot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: var(--dot, var(--text-3));
+	flex: none;
+}
+.orgchip span:last-child {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.ptile {
+	display: inline-grid;
+	place-items: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 6px;
+	background: linear-gradient(140deg, var(--color), color-mix(in srgb, var(--color) 70%, #000) 85%);
+	box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset;
+	color: #fff;
+	font-size: 11px;
+	font-weight: 600;
+	flex: none;
+}
+
+/* Avatars. */
+.avatar {
+	display: inline-grid;
+	place-items: center;
+	width: var(--size, 24px);
+	height: var(--size, 24px);
+	border-radius: 50%;
+	background: var(--color, var(--surface-2));
+	color: #fff;
+	font-size: calc(var(--size, 24px) * 0.4);
+	font-weight: 600;
+	user-select: none;
+	flex: none;
+}
+.avatar.more {
+	background: var(--surface-2);
+	color: var(--text-2);
+}
+.avatars {
+	display: inline-flex;
+	flex: none;
+}
+.avatars .avatar {
+	box-shadow: 0 0 0 2px var(--bg-elev);
+}
+.avatars .avatar + .avatar {
+	margin-left: -6px;
+}
+.avatar-none {
+	width: var(--size, 22px);
+	height: var(--size, 22px);
+	border-radius: 50%;
+	border: 1px dashed var(--border-strong);
+	flex: none;
+}
+.people {
+	width: 24px;
+	display: flex;
+	justify-content: flex-end;
+}
+.people.wide {
+	width: auto;
+	min-width: 24px;
+}
+
+.foot {
+	padding: 8px 4px 0;
+	color: var(--text-3);
+	font-size: 12px;
+}
+
+/* Narrow frames: keep the essentials (status, title, due, who). */
+@media (max-width: 600px) {
+	.row .key,
+	.row .when,
+	.row .tags,
+	.priocell .plabel,
+	.row .orgchip,
+	.row .hide-narrow {
+		display: none;
+	}
+	.priocell {
+		width: auto;
+	}
 }

@@ -86,6 +86,8 @@ export function registerProjectTools(server: McpServer, ctx: McpContext): void {
 						orgKey: z.string().nullable(),
 						orgName: z.string().nullable(),
 						tags: z.array(z.string()),
+						color: z.string().nullable(),
+						icon: z.string().nullable(),
 						taskCount: z.number().nullable(),
 						updatedAt: z.string().nullable(),
 						url: z.string().nullable()

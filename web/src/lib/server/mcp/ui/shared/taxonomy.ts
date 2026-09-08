@@ -53,12 +53,12 @@ export const PRIORITY: Record<string, { label: string; bars: number; color: stri
 	urgent: { label: 'Urgent', bars: 4, color: '#ef4f5e' }
 };
 
-export const TASK_TYPE: Record<string, { label: string; color: string }> = {
-	task: { label: 'Task', color: '#7a9cf0' },
-	bug: { label: 'Bug', color: '#ef7a6d' },
-	improvement: { label: 'Improvement', color: '#ef7a6d' },
-	feature: { label: 'Feature', color: '#7fc8a9' },
-	chore: { label: 'Chore', color: '#c08bd6' }
+export const TASK_TYPE: Record<string, { label: string; color: string; icon: string }> = {
+	task: { label: 'Task', color: '#7a9cf0', icon: 'square' },
+	bug: { label: 'Bug', color: '#ef7a6d', icon: 'bug' },
+	improvement: { label: 'Improvement', color: '#ef7a6d', icon: 'triangle' },
+	feature: { label: 'Feature', color: '#7fc8a9', icon: 'sparkles' },
+	chore: { label: 'Chore', color: '#c08bd6', icon: 'settings' }
 };
 
 export const TICKET_CATEGORY: Record<string, { label: string; color: string }> = {

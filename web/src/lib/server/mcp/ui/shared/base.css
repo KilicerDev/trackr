@@ -1,46 +1,55 @@
 /* Shared look of the trackr MCP App widgets (list + detail). Rendered by the
-   MCP host inside a sandboxed iframe. Colours mirror src/lib/config/taxonomy.ts.
+   MCP host inside a sandboxed iframe. Tokens mirror src/app.css (theme) and
+   src/lib/config/taxonomy.ts (status / priority colours).
    Theme: the host tells us light/dark (data-theme on <html>); fall back to
    prefers-color-scheme. */
 
 :root {
-	--bg: #ffffff;
-	--bg-elev: #f7f7f8;
-	--surface: #ffffff;
-	--surface-2: #eeeef1;
-	--border: #e6e6ea;
-	--text: #1c1c21;
-	--text-2: #4a4a52;
-	--text-3: #7c7c84;
-	--accent: #7a9cf0;
+	--bg: oklch(0.985 0.003 80);
+	--bg-elev: oklch(0.97 0.003 80);
+	--surface: oklch(0.955 0.003 80);
+	--surface-2: oklch(0.93 0.003 80);
+	--border: oklch(0.89 0.004 80);
+	--border-strong: oklch(0.82 0.005 80);
+	--text: oklch(0.22 0.008 270);
+	--text-2: oklch(0.43 0.008 270);
+	--text-3: oklch(0.58 0.008 270);
+	--text-4: oklch(0.66 0.008 270);
+	--accent: #ff4867;
+	--accent-soft: color-mix(in srgb, var(--accent) 14%, transparent);
 	--danger: #ef4f5e;
-	--row-hover: #f2f4f8;
+	--row-hover: rgba(0, 0, 0, 0.025);
+	--focus-ring: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
 	color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) {
-		--bg: #131316;
-		--bg-elev: #1b1b20;
-		--surface: #1f1f25;
-		--surface-2: #2a2a31;
-		--border: #2b2b33;
-		--text: #ececf1;
-		--text-2: #b8b8c2;
-		--text-3: #8a8a94;
-		--row-hover: #24242b;
+		--bg: oklch(0.16 0.005 270);
+		--bg-elev: oklch(0.195 0.006 270);
+		--surface: oklch(0.215 0.007 270);
+		--surface-2: oklch(0.245 0.008 270);
+		--border: oklch(0.285 0.008 270);
+		--border-strong: oklch(0.34 0.01 270);
+		--text: oklch(0.97 0.005 270);
+		--text-2: oklch(0.74 0.008 270);
+		--text-3: oklch(0.54 0.008 270);
+		--text-4: oklch(0.42 0.008 270);
+		--row-hover: rgba(255, 255, 255, 0.035);
 		color-scheme: dark;
 	}
 }
 :root[data-theme='dark'] {
-	--bg: #131316;
-	--bg-elev: #1b1b20;
-	--surface: #1f1f25;
-	--surface-2: #2a2a31;
-	--border: #2b2b33;
-	--text: #ececf1;
-	--text-2: #b8b8c2;
-	--text-3: #8a8a94;
-	--row-hover: #24242b;
+	--bg: oklch(0.16 0.005 270);
+	--bg-elev: oklch(0.195 0.006 270);
+	--surface: oklch(0.215 0.007 270);
+	--surface-2: oklch(0.245 0.008 270);
+	--border: oklch(0.285 0.008 270);
+	--border-strong: oklch(0.34 0.01 270);
+	--text: oklch(0.97 0.005 270);
+	--text-2: oklch(0.74 0.008 270);
+	--text-3: oklch(0.54 0.008 270);
+	--text-4: oklch(0.42 0.008 270);
+	--row-hover: rgba(255, 255, 255, 0.035);
 	color-scheme: dark;
 }
 
@@ -112,6 +121,10 @@ button {
 }
 .prio i.on {
 	background: var(--color);
+}
+.icon {
+	flex: none;
+	vertical-align: middle;
 }
 .prio i:nth-child(1) {
 	height: 4px;

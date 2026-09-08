@@ -234,6 +234,7 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 						category: z.string(),
 						orgKey: z.string(),
 						orgName: z.string(),
+						orgColor: z.string(),
 						assignees: z.array(z.object({ id: z.string(), name: z.string() })),
 						customer: z.object({ id: z.string(), name: z.string() }).nullable(),
 						messageCount: z.number(),

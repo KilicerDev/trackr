@@ -44,7 +44,7 @@ const WIDGETS: { uri: string; name: string; title: string; description: string; 
 		name: 'list',
 		title: 'List',
 		description:
-			'Interactive table for list_tickets / list_tasks / list_projects / search results: badges, filtering, sorting, click to open in trackr.',
+			'Grouped list for list_tickets / list_tasks / list_projects / search results, styled like the trackr list views (tasks under their project, tickets under their organization); click a row to open it in trackr.',
 		html: listHtml
 	},
 	{

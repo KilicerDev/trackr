@@ -98,6 +98,7 @@ export type TicketRowSummary = {
 	category: string;
 	orgKey: string;
 	orgName: string;
+	orgColor: string;
 	assignees: { id: string; name: string }[];
 	customer: { id: string; name: string } | null;
 	messageCount: number;
@@ -115,6 +116,7 @@ export function ticketSummary(t: TicketRow, dir: UserDirectory): TicketRowSummar
 		category: t.category,
 		orgKey: t.displayId.slice(0, t.displayId.lastIndexOf('-')),
 		orgName: t.orgName,
+		orgColor: t.orgColor,
 		assignees: t.assignees.map((id) => ({ id, name: userName(dir, id) })),
 		customer: t.customerId ? { id: t.customerId, name: userName(dir, t.customerId) } : null,
 		messageCount: t.messageCount,
@@ -353,6 +355,7 @@ export type ProjectRowLike = {
 	description?: string | null;
 	status?: string | null;
 	color?: string | null;
+	icon?: string | null;
 	tags?: string[] | null;
 	orgId?: string | null;
 	orgKey?: string | null;
@@ -390,6 +393,8 @@ export function projectSummary(p: ProjectRowLike, origin?: string) {
 		orgKey: p.orgKey ?? null,
 		orgName: p.orgName ?? null,
 		tags: p.tags ?? [],
+		color: p.color ?? null,
+		icon: p.icon ?? null,
 		taskCount: p.openTaskCount ?? p.taskCount ?? null,
 		updatedAt: iso(p.updatedAt) ?? null,
 		url: origin ? projectUrl(origin, p.id) : null
