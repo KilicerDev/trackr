@@ -1,10 +1,10 @@
-// List widget — the MCP App behind list_tickets, list_tasks, list_projects and
-// search (ui://trackr/list.html). The tool result's `structuredContent` tells
-// us which kind we got (`tickets` / `tasks` / `projects` / `results`). Rows
-// render like the app's list views — tasks grouped under their project,
-// tickets under their organization, search hits by type — with no toolbar:
-// the model already filtered, so the widget just shows. A row click asks the
-// host to open the item in trackr.
+// List widget — the MCP App behind show_items (ui://trackr/list.html). The
+// tool result's `structuredContent` carries any of `tasks` / `tickets` /
+// `projects` (and `results`, kept for search-shaped payloads); every kind
+// present renders, in that order. Rows look like the app's list views — tasks
+// grouped under their project, tickets under their organization — with no
+// toolbar: the model chose the items, so the widget just shows them. A row
+// click asks the host to open the item in trackr.
 
 import {
 	badge,
@@ -256,8 +256,12 @@ function showError(msg: string) {
 	dom.error.hidden = false;
 }
 
-function groupRows(kind: Kind, rows: Row[]): Group[] {
-	if (!kind.group) return [{ id: '', label: '', dot: '', rows }];
+/** Groups of one kind; a flat kind gets a labelled group when it shares the widget with others. */
+function groupRows(kind: Kind, rows: Row[], mixed: boolean): Group[] {
+	if (!kind.group) {
+		const label = mixed ? kind.noun[0].toUpperCase() + kind.noun.slice(1) : '';
+		return [{ id: kind.id, label, dot: 'var(--text-3)', rows }];
+	}
 	const groups = new Map<string, Group>();
 	for (const r of rows) {
 		const key = kind.group(r);
@@ -311,28 +315,34 @@ function renderGroup(kind: Kind, g: Group): HTMLElement {
 	return group;
 }
 
-function render(kind: Kind, rows: Row[], total: number) {
-	dom.groups.replaceChildren(...groupRows(kind, rows).map((g) => renderGroup(kind, g)));
-	dom.groups.hidden = rows.length === 0;
-	dom.empty.hidden = rows.length > 0;
-	const truncated = total > rows.length;
-	dom.foot.textContent = truncated ? `Showing ${rows.length} of ${total} ${kind.noun}.` : '';
+function render(parts: { kind: Kind; rows: Row[] }[], total: number) {
+	const mixed = parts.length > 1;
+	const shown = parts.reduce((n, p) => n + p.rows.length, 0);
+	dom.groups.replaceChildren(
+		...parts.flatMap((p) => groupRows(p.kind, p.rows, mixed).map((g) => renderGroup(p.kind, g)))
+	);
+	dom.groups.hidden = shown === 0;
+	dom.empty.hidden = shown > 0;
+	const truncated = total > shown;
+	const noun = mixed ? 'items' : (parts[0]?.kind.noun ?? 'items');
+	dom.foot.textContent = truncated ? `Showing ${shown} of ${total} ${noun}.` : '';
 	dom.foot.hidden = !truncated;
 	queueMicrotask(reportSize);
 }
 
 function accept(result: ToolResultLike) {
 	type Payload = { total?: number } & Partial<Record<Kind['id'], Row[]>>;
-	const ids = ['tickets', 'tasks', 'projects', 'results'] as const;
+	const ids = ['tasks', 'tickets', 'projects', 'results'] as const;
 	const payload = payloadOf<Payload>(result, (v) => ids.some((k) => Array.isArray(v[k])));
 	if (!payload) {
 		showError('No list data in the tool result.');
 		return;
 	}
-	const id = ids.find((k) => Array.isArray(payload[k]))!;
-	const rows = payload[id] ?? [];
+	const parts = ids
+		.filter((k) => Array.isArray(payload[k]) && payload[k]!.length > 0)
+		.map((k) => ({ kind: KINDS[k], rows: payload[k]! }));
 	dom.error.hidden = true;
-	render(KINDS[id], rows, payload.total ?? rows.length);
+	render(parts, payload.total ?? parts.reduce((n, p) => n + p.rows.length, 0));
 }
 
 connectApp({ name: 'trackr-list', onResult: accept, onError: showError });

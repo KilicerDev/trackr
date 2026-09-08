@@ -47,6 +47,7 @@ const EXPECTED_TOOLS = [
 	'list_users',
 	'log_time',
 	'search',
+	'show_items',
 	'update_note',
 	'update_project',
 	'update_task',
@@ -444,7 +445,9 @@ describe('MCP Apps (inline UI)', () => {
 	const LIST_URI = 'ui://trackr/list.html';
 	const DETAIL_URI = 'ui://trackr/detail.html';
 	const UI_MIME = 'text/html;profile=mcp-app';
-	const LIST_TOOLS = ['list_tickets', 'list_tasks', 'list_projects', 'search'];
+	const LIST_TOOLS = ['show_items'];
+	// Finding tools stay text-only so the host folds them away while the model works.
+	const TEXT_ONLY_TOOLS = ['list_tickets', 'list_tasks', 'list_projects', 'search', 'delete_task'];
 	const DETAIL_TOOLS = [
 		'get_task',
 		'create_task',
@@ -468,7 +471,7 @@ describe('MCP Apps (inline UI)', () => {
 		};
 		for (const name of LIST_TOOLS) expect(uriOf(name), name).toBe(LIST_URI);
 		for (const name of DETAIL_TOOLS) expect(uriOf(name), name).toBe(DETAIL_URI);
-		expect(uriOf('delete_task')).toBeUndefined();
+		for (const name of TEXT_ONLY_TOOLS) expect(uriOf(name), name).toBeUndefined();
 	});
 
 	test('both widgets are listed as MCP App resources (no host-specific domain)', async () => {
@@ -517,6 +520,41 @@ describe('MCP Apps (inline UI)', () => {
 		for (const p of projects.projects) expect(p.url).toBe(`${BASE_URL}/projects/${p.id}`);
 		const hits = structured<{ results: { url: string }[] }>(await ok('search', { query: 'in' }));
 		for (const r of hits.results) expect(r.url).toStartWith(`${BASE_URL}/`);
+	});
+
+	test('show_items renders the named tasks, tickets and projects together', async () => {
+		const [ticket] = structured<{ tickets: { key: string }[] }>(
+			await ok('list_tickets', { segment: 'all', limit: 1 })
+		).tickets;
+		const [task] = structured<{ tasks: { key: string }[] }>(
+			await ok('list_tasks', { scope: 'all', limit: 1 })
+		).tasks;
+		const [project] = structured<{ projects: { key: string }[] }>(
+			await ok('list_projects', { limit: 1 })
+		).projects;
+		type Shown = {
+			total: number;
+			notFound: string[];
+			tasks?: { key: string; projectName: string; url: string }[];
+			tickets?: { key: string; orgName: string; url: string }[];
+			projects?: { key: string; url: string | null }[];
+		};
+		const res = await ok('show_items', {
+			keys: [task.key.toLowerCase(), ticket.key, project.key.toLowerCase(), 'NOPE-999', task.key]
+		});
+		const shown = structured<Shown>(res);
+		expect(shown.total).toBe(3);
+		expect(shown.notFound).toEqual(['NOPE-999']);
+		expect(shown.tasks?.map((t) => t.key)).toEqual([task.key]);
+		expect(shown.tasks?.[0].projectName).toBeTruthy();
+		expect(shown.tickets?.map((t) => t.key)).toEqual([ticket.key]);
+		expect(shown.tickets?.[0].orgName).toBeTruthy();
+		expect(shown.projects?.map((p) => p.key)).toEqual([project.key]);
+		const md = textOf(res);
+		expect(md).toContain('## Tasks (1)');
+		expect(md).toContain('## Tickets (1)');
+		expect(md).toContain('## Projects (1)');
+		expect(md).toContain('NOPE-999');
 	});
 
 	test('task write tools return the full task for the detail widget', async () => {

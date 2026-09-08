@@ -25,7 +25,7 @@ export const UI_RESOURCE_MIME_TYPE = 'text/html;profile=mcp-app';
 
 // `ui://<server>/<file>.html` is the convention every official example uses
 // and Claude Desktop only mounts the frame when the path has the extension.
-/** Table of tickets / tasks / projects / search hits (list_* and search). */
+/** Grouped list of the tasks / tickets / projects passed to show_items. */
 export const LIST_UI_URI = 'ui://trackr/list.html';
 /** One task or ticket in full (get_*, create_*, update_*, checklist_toggle, log_time). */
 export const DETAIL_UI_URI = 'ui://trackr/detail.html';
@@ -44,7 +44,7 @@ const WIDGETS: { uri: string; name: string; title: string; description: string; 
 		name: 'list',
 		title: 'List',
 		description:
-			'Grouped list for list_tickets / list_tasks / list_projects / search results, styled like the trackr list views (tasks under their project, tickets under their organization); click a row to open it in trackr.',
+			'Grouped list of the items passed to show_items, styled like the trackr list views (tasks under their project, tickets under their organization, then projects); click a row to open it in trackr.',
 		html: listHtml
 	},
 	{

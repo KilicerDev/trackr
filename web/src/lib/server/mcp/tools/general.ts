@@ -21,7 +21,6 @@ import { attachBytes, attachFromUrl, decodeInlineUpload } from '$lib/server/atta
 import { storage } from '$lib/server/storage';
 import { formatBytes, MAX_INLINE_UPLOAD_BYTES } from '$lib/config/attachments';
 import { attachmentDownloadUrl, iso, listMd } from '../format';
-import { LIST_UI_URI, uiToolMeta } from '../ui';
 import { isUuid, normalizeKey } from '../ids';
 import {
 	fail,
@@ -163,7 +162,7 @@ export function registerGeneralTools(server: McpServer, ctx: McpContext): void {
 		{
 			title: 'Search',
 			description:
-				'Permission-scoped title search across tickets, tasks, projects, wiki pages and notes (max 10 hits per type). Typing a display id like `TRACK-108` or `WEB-1` also matches by key/number. Optional `types` restricts result kinds; `orgKey` restricts tickets to one organization. Results carry the display id (tickets/tasks/projects) or uuid (wiki/notes) to pass to the matching `get_*` tool.',
+				'Permission-scoped title search across tickets, tasks, projects, wiki pages and notes (max 10 hits per type). Typing a display id like `TRACK-108` or `WEB-1` also matches by key/number. Optional `types` restricts result kinds; `orgKey` restricts tickets to one organization. Results carry the display id (tickets/tasks/projects) or uuid (wiki/notes) to pass to the matching `get_*` tool. Text only — pass the relevant ticket/task ids to `show_items` to show them.',
 			inputSchema: z.object({
 				query: z.string().min(1).describe('Search text (2+ chars unless `types` is set).'),
 				types: z
@@ -185,8 +184,7 @@ export function registerGeneralTools(server: McpServer, ctx: McpContext): void {
 					})
 				)
 			}),
-			annotations: READ_ONLY,
-			_meta: uiToolMeta(LIST_UI_URI)
+			annotations: READ_ONLY
 		},
 		guarded(async ({ query, types, orgKey }) => {
 			let orgId: string | undefined;

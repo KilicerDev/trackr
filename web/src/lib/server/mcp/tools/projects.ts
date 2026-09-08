@@ -22,7 +22,6 @@ import {
 	projectSummary,
 	type ProjectRowLike
 } from '../format';
-import { LIST_UI_URI, uiToolMeta } from '../ui';
 import {
 	fail,
 	guarded,
@@ -69,7 +68,7 @@ export function registerProjectTools(server: McpServer, ctx: McpContext): void {
 		{
 			title: 'List projects',
 			description:
-				'Projects you can see (internal staff: all; others: projects you are a member of). Archived projects are hidden unless `includeArchived` is true. Rows: key (use it for `list_tasks` / `create_task` / `get_project`), name, status, client org, open task count.',
+				'Projects you can see (internal staff: all; others: projects you are a member of). Archived projects are hidden unless `includeArchived` is true. Rows: key (use it for `list_tasks` / `create_task` / `get_project`), name, status, client org, open task count. Text only — `show_items` with project keys renders them visually.',
 			inputSchema: z.object({
 				includeArchived: z.boolean().default(false).describe('Include archived projects.'),
 				status: statusEnum.optional().describe('Only projects in this status.'),
@@ -94,8 +93,7 @@ export function registerProjectTools(server: McpServer, ctx: McpContext): void {
 					})
 				)
 			}),
-			annotations: READ_ONLY,
-			_meta: uiToolMeta(LIST_UI_URI)
+			annotations: READ_ONLY
 		},
 		guarded(async ({ includeArchived, status, limit }) => {
 			let rows: ProjectRowLike[] = await listProjectsFor(ctx.locals);

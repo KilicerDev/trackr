@@ -30,7 +30,7 @@ import {
 import { listLinkedTasks } from '$lib/server/tasks';
 import { listAttachments, listAttachmentsForMany } from '$lib/server/attachments';
 import { attachFromUrl } from '$lib/server/attachments-fetch'; // W2
-import { DETAIL_UI_URI, LIST_UI_URI, uiToolMeta } from '../ui';
+import { DETAIL_UI_URI, uiToolMeta } from '../ui';
 import { describeCandidates, normalizeDisplayId, resolveUserRefs } from '../ids';
 import {
 	type TicketMessageWithFiles,
@@ -245,10 +245,7 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 					})
 				)
 			}),
-			annotations: READ_ONLY,
-			// MCP Apps: hosts that support inline UI render this result with the
-			// ticket table widget (src/lib/server/mcp/ui); others show the text.
-			_meta: uiToolMeta(LIST_UI_URI)
+			annotations: READ_ONLY
 		},
 		guarded(async ({ segment, status, orgKey, limit }) => {
 			const uid = ctx.locals.user.id;

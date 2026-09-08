@@ -25,7 +25,7 @@ import { db } from '$lib/server/db';
 import { project } from '$lib/server/db/app.schema';
 import { inArray } from 'drizzle-orm';
 import { attachFromUrl } from '$lib/server/attachments-fetch'; // W2
-import { DETAIL_UI_URI, LIST_UI_URI, uiToolMeta } from '../ui';
+import { DETAIL_UI_URI, uiToolMeta } from '../ui';
 import { normalizeTag } from '$lib/utils/label-meta';
 import type { Task } from '$lib/types';
 import { describeCandidates, normalizeDisplayId, normalizeKey, resolveUserRefs } from '../ids';
@@ -81,7 +81,7 @@ export async function loadAccessibleProject(ctx: McpContext, projectKey: string)
 }
 
 /** Name + accent colour of projects by key (only the keys that exist). */
-async function projectMetaByKey(
+export async function projectMetaByKey(
 	keys: readonly string[]
 ): Promise<Map<string, { name: string; color: string }>> {
 	const distinct = [...new Set(keys)];
@@ -169,7 +169,7 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 		{
 			title: 'List tasks',
 			description:
-				'List project tasks you can see. `scope`: `mine` (assigned to you or created by you — default) or `all`. Optional filters: `projectKey`, `status`, `assignee` (user id or email). Archived tasks and tasks of archived projects are excluded. Rows are compact (key, title, status, priority, type, assignees, due, updated); call `get_task` for description, checklist, comments and time logs.',
+				'List project tasks you can see. `scope`: `mine` (assigned to you or created by you — default) or `all`. Optional filters: `projectKey`, `status`, `assignee` (user id or email). Archived tasks and tasks of archived projects are excluded. Rows are compact (key, title, status, priority, type, assignees, due, updated); call `get_task` for description, checklist, comments and time logs. Text only — to show the user a visual list, call `show_items` with the keys once you know which tasks matter.',
 			inputSchema: z.object({
 				scope: z.enum(['mine', 'all']).default('mine').describe('`mine` (default) or `all`.'),
 				projectKey: z.string().optional().describe('Only tasks of this project (project key).'),
@@ -198,8 +198,7 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 					})
 				)
 			}),
-			annotations: READ_ONLY,
-			_meta: uiToolMeta(LIST_UI_URI)
+			annotations: READ_ONLY
 		},
 		guarded(async ({ scope, projectKey, status, assignee, limit }) => {
 			const uid = ctx.locals.user.id;
