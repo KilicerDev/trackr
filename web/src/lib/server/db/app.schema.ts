@@ -857,11 +857,16 @@ export const noteTemplate = pgTable('note_template', {
 
 export type NoteTemplate = typeof noteTemplate.$inferSelect;
 
+// Quick notes form a tree per owner (Notion-style: any note can hold sub-notes;
+// `parent_id` self-references, null = root, `sort_order` orders siblings).
+// Meeting notes stay flat — they are organized by date and project instead.
 export const note = pgTable(
 	'note',
 	{
 		id: text('id').primaryKey(),
 		kind: text('kind').notNull().default('quick'), // 'quick' | 'meeting'
+		parentId: text('parent_id').references((): AnyPgColumn => note.id, { onDelete: 'cascade' }),
+		sortOrder: integer('sort_order').notNull().default(0),
 		title: text('title').notNull().default(''),
 		icon: text('icon').notNull().default('file-text'),
 		documentId: text('document_id').references(() => document.id, { onDelete: 'set null' }),
@@ -881,7 +886,8 @@ export const note = pgTable(
 	},
 	(t) => [
 		index('note_owner_idx').on(t.ownerId, t.updatedAt),
-		index('note_kind_date_idx').on(t.kind, t.meetingDate)
+		index('note_kind_date_idx').on(t.kind, t.meetingDate),
+		index('note_parent_idx').on(t.parentId, t.sortOrder)
 	]
 );
 
@@ -929,6 +935,11 @@ export const noteRelations = relations(note, ({ one, many }) => ({
 	document: one(document, {
 		fields: [note.documentId],
 		references: [document.id]
+	}),
+	parent: one(note, {
+		fields: [note.parentId],
+		references: [note.id],
+		relationName: 'note_parent'
 	}),
 	owner: one(user, {
 		fields: [note.ownerId],

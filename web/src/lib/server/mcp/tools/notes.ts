@@ -135,7 +135,7 @@ export function registerNoteTools(server: McpServer, ctx: McpContext): void {
 		{
 			title: 'List notes',
 			description:
-				'Your quick notes and the team’s meeting notes (staff only). `kind`: `quick`, `meeting` or `all` (default). `projectKey` narrows meeting notes to one project (linked directly or via its tasks). Rows carry the uuid to pass to `get_note`.',
+				'Your quick notes and the team’s meeting notes (staff only). `kind`: `quick`, `meeting` or `all` (default). `projectKey` narrows meeting notes to one project (linked directly or via its tasks). Rows carry the uuid to pass to `get_note`; quick notes also carry `parentId` (sub-notes nest under other quick notes).',
 			inputSchema: z.object({
 				kind: z
 					.enum(['quick', 'meeting', 'all'])
@@ -181,6 +181,7 @@ export function registerNoteTools(server: McpServer, ctx: McpContext): void {
 						kind: n.kind,
 						title: n.title,
 						pinned: n.pinned,
+						parentId: n.parentId,
 						meetingDate: iso(n.meetingDate),
 						projectId: n.projectId,
 						taskId: n.taskId,
@@ -214,18 +215,34 @@ export function registerNoteTools(server: McpServer, ctx: McpContext): void {
 				'Create a personal quick note owned by you (staff only) with a markdown `body`. Returns the note id. For project-bound meeting notes use `create_meeting_note`.',
 			inputSchema: z.object({
 				title: z.string().min(1).max(200).describe('Note title.'),
-				body: z.string().default('').describe('Body in markdown.')
+				body: z.string().default('').describe('Body in markdown.'),
+				parentId: z
+					.string()
+					.optional()
+					.describe('Nest under one of your quick notes (its uuid). Omit for top level.')
 			}),
 			annotations: WRITE
 		},
-		guarded(async ({ title, body }) => {
+		guarded(async ({ title, body, parentId }) => {
 			requireStaff(ctx);
 			const uid = ctx.locals.user.id;
-			const id = await createNote({ kind: 'quick', title: title.trim(), ownerId: uid });
+			let id: string;
+			try {
+				id = await createNote({
+					kind: 'quick',
+					title: title.trim(),
+					ownerId: uid,
+					parentId: parentId ? requireUuid(parentId) : null
+				});
+			} catch (e) {
+				if (e instanceof Error && e.message === 'Parent note not found.') fail(404, e.message);
+				throw e;
+			}
 			if (body.trim()) await updateNoteBody(id, markdownToDocHtml(body), uid);
 			return text(`Created quick note **${title.trim()}** — id \`${id}\`.`, {
 				id,
-				title: title.trim()
+				title: title.trim(),
+				parentId: parentId ?? null
 			});
 		})
 	);

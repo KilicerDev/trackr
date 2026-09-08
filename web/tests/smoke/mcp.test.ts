@@ -308,12 +308,39 @@ describe('note lifecycle', () => {
 		expect(textOf(res)).not.toContain('- [ ] todo');
 	});
 
-	test('delete_note removes it', async () => {
+	test('create_note with parentId nests a sub-note; list_notes reports the parent', async () => {
+		const child = structured<{ id: string; parentId: string | null }>(
+			await ok('create_note', { title: `${title} child`, parentId: id })
+		);
+		expect(child.parentId).toBe(id);
+		created.noteIds.add(child.id);
+		const list = structured<{ notes: { id: string; parentId: string | null }[] }>(
+			await ok('list_notes', { kind: 'quick', limit: 200 })
+		);
+		expect(list.notes.find((n) => n.id === child.id)?.parentId).toBe(id);
+		expect(list.notes.find((n) => n.id === id)?.parentId).toBeNull();
+		// A note that isn't yours (or doesn't exist) can't be a parent.
+		const bad = await call('create_note', {
+			title: `${title} orphan`,
+			parentId: '00000000-0000-0000-0000-000000000000'
+		});
+		expect(bad.isError).toBe(true);
+	});
+
+	test('delete_note removes it and its sub-notes', async () => {
+		const before = structured<{ notes: { id: string; parentId: string | null }[] }>(
+			await ok('list_notes', { kind: 'quick', limit: 200 })
+		);
+		const childIds = before.notes.filter((n) => n.parentId === id).map((n) => n.id);
+		expect(childIds.length).toBe(1);
 		const res = structured<{ deleted: boolean }>(await ok('delete_note', { id }));
 		expect(res.deleted).toBe(true);
 		created.noteIds.delete(id);
+		for (const c of childIds) created.noteIds.delete(c);
 		const again = await call('get_note', { id });
 		expect(again.isError).toBe(true);
+		const childAgain = await call('get_note', { id: childIds[0] });
+		expect(childAgain.isError).toBe(true);
 	});
 });
 

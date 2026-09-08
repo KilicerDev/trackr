@@ -148,7 +148,7 @@
 		{/if}
 	{/if}
 	<div class="flex min-w-0 items-center gap-2 overflow-hidden text-[14px] whitespace-nowrap">
-		{#each crumbs as c, i (c.label)}
+		{#each crumbs as c, i (`${i}:${c.label}`)}
 			{#if i > 0}<span class="text-text-4">/</span>{/if}
 			{#if c.href}
 				<a href={c.href} class="text-text-3 hover:text-text">{c.label}</a>

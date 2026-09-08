@@ -10,7 +10,7 @@
 
 import { recordAudit } from '$lib/server/audit';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { db } from './db';
 import { document, note, noteAccess, noteShareLink, noteTemplate } from './db/app.schema';
 import { deleteAttachmentsFor } from './attachments';
@@ -74,6 +74,8 @@ export type NoteListItem = {
 	title: string;
 	icon: string;
 	pinned: boolean;
+	parentId: string | null;
+	sortOrder: number;
 	updatedAt: Date;
 	meetingDate: Date | null;
 	projectId: string | null;
@@ -86,19 +88,22 @@ const listColumns = {
 	title: note.title,
 	icon: note.icon,
 	pinned: note.pinned,
+	parentId: note.parentId,
+	sortOrder: note.sortOrder,
 	updatedAt: note.updatedAt,
 	meetingDate: note.meetingDate,
 	projectId: note.projectId,
 	taskId: note.taskId
 };
 
-// Owner's quick notes — pinned first, then most-recently edited.
+// Owner's quick notes in tree order (siblings by sort_order, then creation).
+// The sidebar nests them by parentId; pinned ones surface in Favorites.
 export async function listQuickNotes(ownerId: string): Promise<NoteListItem[]> {
 	return db
 		.select(listColumns)
 		.from(note)
 		.where(and(eq(note.kind, 'quick'), eq(note.ownerId, ownerId)))
-		.orderBy(desc(note.pinned), desc(note.createdAt));
+		.orderBy(asc(note.sortOrder), asc(note.createdAt));
 }
 
 // Quick notes shared with this user via a (non-revoked) redeemed link, excluding
@@ -167,6 +172,8 @@ export type CreateNoteInput = {
 	ownerId: string;
 	title?: string;
 	icon?: string;
+	// quick-only: nest under one of the owner's own quick notes.
+	parentId?: string | null;
 	// meeting-only
 	meetingDate?: Date;
 	projectId?: string | null;
@@ -174,9 +181,40 @@ export type CreateNoteInput = {
 	templateId?: string | null;
 };
 
+/**
+ * A quick note may only nest under another quick note of the same owner.
+ * Throws for anything else (missing, foreign, meeting) so callers surface a
+ * 400 rather than silently creating a root note.
+ */
+async function requireOwnParent(parentId: string, ownerId: string): Promise<void> {
+	const parent = await getNote(parentId);
+	if (!parent || parent.ownerId !== ownerId || parent.kind !== 'quick') {
+		throw new Error('Parent note not found.');
+	}
+}
+
+async function nextSortOrder(ownerId: string, parentId: string | null): Promise<number> {
+	const [row] = await db
+		.select({ max: sql<number | null>`max(${note.sortOrder})` })
+		.from(note)
+		.where(
+			and(
+				eq(note.kind, 'quick'),
+				eq(note.ownerId, ownerId),
+				parentId ? eq(note.parentId, parentId) : isNull(note.parentId)
+			)
+		);
+	return (row?.max ?? -1) + 1;
+}
+
 export async function createNote(input: CreateNoteInput): Promise<string> {
 	const id = randomUUID();
 	const docId = randomUUID();
+
+	const parentId = input.kind === 'quick' ? (input.parentId ?? null) : null;
+	if (parentId) await requireOwnParent(parentId, input.ownerId);
+	// New notes land at the end of their sibling group (root = top level).
+	const sortOrder = input.kind === 'quick' ? await nextSortOrder(input.ownerId, parentId) : 0;
 
 	// Apply a template by seeding the document's body_html; Hocuspocus'
 	// onLoadDocument builds the ydoc from it on first open (same path as legacy
@@ -201,6 +239,8 @@ export async function createNote(input: CreateNoteInput): Promise<string> {
 			documentId: docId,
 			ownerId: input.ownerId,
 			updatedById: input.ownerId,
+			parentId,
+			sortOrder,
 			meetingDate: input.kind === 'meeting' ? (input.meetingDate ?? new Date()) : null,
 			projectId: input.projectId ?? null,
 			taskId: input.taskId ?? null,
@@ -213,7 +253,12 @@ export async function createNote(input: CreateNoteInput): Promise<string> {
 		targetType: 'note',
 		targetId: id,
 		targetLabel: input.title ?? '',
-		meta: { kind: input.kind, projectId: input.projectId ?? null, taskId: input.taskId ?? null }
+		meta: {
+			kind: input.kind,
+			parentId,
+			projectId: input.projectId ?? null,
+			taskId: input.taskId ?? null
+		}
 	});
 	return id;
 }
@@ -244,16 +289,95 @@ export async function setPinned(id: string, pinned: boolean, updatedById: string
 	await db.update(note).set({ pinned, updatedById }).where(eq(note.id, id));
 }
 
+export type MoveNoteInput = {
+	id: string;
+	/** New parent (must be the owner's own quick note) or null for top level. */
+	parentId: string | null;
+	/** Sibling ids under `parentId` in their final order (including `id`). */
+	orderedIds: string[];
+	ownerId: string;
+};
+
+/**
+ * Reparent and/or reorder one of the owner's quick notes (sidebar drag & drop).
+ * Every id involved must be a quick note of the same owner; cycles are
+ * rejected. Sibling renumbering bypasses $onUpdate so `updatedAt` (and with it
+ * the Recent section) doesn't churn on a pure reorder.
+ */
+export async function moveNote(input: MoveNoteInput): Promise<void> {
+	const { id, parentId, ownerId } = input;
+	const mine = await db
+		.select({ id: note.id, parentId: note.parentId })
+		.from(note)
+		.where(and(eq(note.kind, 'quick'), eq(note.ownerId, ownerId)));
+	const own = new Set(mine.map((r) => r.id));
+	if (!own.has(id)) throw new Error('Note not found.');
+
+	if (parentId) {
+		if (parentId === id) throw new Error('Cannot move a note into itself.');
+		if (!own.has(parentId)) throw new Error('Parent note not found.');
+		const descendants = new Set<string>();
+		const stack = [id];
+		while (stack.length) {
+			const cur = stack.pop()!;
+			for (const r of mine)
+				if (r.parentId === cur && !descendants.has(r.id)) {
+					descendants.add(r.id);
+					stack.push(r.id);
+				}
+		}
+		if (descendants.has(parentId)) throw new Error('Cannot move a note into its own sub-notes.');
+	}
+
+	const orderedIds = input.orderedIds.filter((sid) => own.has(sid));
+	await db.transaction(async (tx) => {
+		await tx.update(note).set({ parentId, updatedById: ownerId }).where(eq(note.id, id));
+		for (let i = 0; i < orderedIds.length; i++) {
+			await tx.execute(sql`update note set sort_order = ${i} where id = ${orderedIds[i]}`);
+		}
+	});
+	void auditNote('note.update', id, ownerId, { moved: true, parentId });
+}
+
 export async function deleteNote(id: string, actorId?: string | null): Promise<void> {
 	const row = await getNote(id);
 	if (!row) return;
+
+	// Sub-notes cascade via the parent_id FK; collect the subtree first so each
+	// note's document and attachments go with it (neither is FK-linked).
+	const subtree = new Map<string, string | null>([[id, row.documentId]]);
+	if (row.kind === 'quick') {
+		const mine = await db
+			.select({ id: note.id, parentId: note.parentId, documentId: note.documentId })
+			.from(note)
+			.where(and(eq(note.kind, 'quick'), eq(note.ownerId, row.ownerId ?? '')));
+		const stack = [id];
+		while (stack.length) {
+			const cur = stack.pop()!;
+			for (const r of mine)
+				if (r.parentId === cur && !subtree.has(r.id)) {
+					subtree.set(r.id, r.documentId);
+					stack.push(r.id);
+				}
+		}
+	}
+	const docIds = [...subtree.values()].filter((d): d is string => !!d);
+
 	await db.transaction(async (tx) => {
-		// note_share_link / note_access cascade via FK; drop the note then its doc.
+		// note_share_link / note_access cascade via FK; drop the note then its docs.
 		await tx.delete(note).where(eq(note.id, id));
-		if (row.documentId) await tx.delete(document).where(eq(document.id, row.documentId));
+		if (docIds.length) await tx.delete(document).where(inArray(document.id, docIds));
 	});
-	await deleteAttachmentsFor('note', id);
-	if (actorId) void auditNote('note.delete', id, actorId, { kind: row.kind }, row.title);
+	for (const noteId of subtree.keys()) await deleteAttachmentsFor('note', noteId);
+	if (actorId) {
+		void auditNote(
+			'note.delete',
+			id,
+			actorId,
+			{ kind: row.kind, deletedNotes: subtree.size },
+			row.title
+		);
+	}
 }
 
 // ─── Sharing ───────────────────────────────────────────────────────────────

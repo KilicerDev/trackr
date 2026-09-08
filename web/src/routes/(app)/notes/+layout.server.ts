@@ -38,11 +38,17 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 			.where(isNull(task.deletedAt))
 			.orderBy(asc(task.projectId), asc(task.number))
 	]);
-	// Persisted sidebar tab — seeded into the sidebar so SSR renders the right
-	// tab (no client-side notes→meetings flicker on reload).
+	// Persisted sidebar state (collapsed sections, expanded sub-note parents) —
+	// seeded here so SSR renders the sidebar in its final shape with no
+	// client-side reflow on reload.
 	const prefs = locals.preferences ?? (await getPreferences(userId));
-	const notesView = (prefs.viewState?.notes ?? {}) as { tab?: string };
-	const viewTab: 'notes' | 'meetings' = notesView.tab === 'meetings' ? 'meetings' : 'notes';
+	const notesView = (prefs.viewState?.notes ?? {}) as { collapsed?: unknown; expanded?: unknown };
+	const strings = (v: unknown): string[] =>
+		Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+	const sidebar = {
+		collapsed: strings(notesView.collapsed),
+		expanded: strings(notesView.expanded)
+	};
 
 	return {
 		mine,
@@ -50,6 +56,6 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		meetings,
 		templates: templates.map((t) => ({ id: t.id, name: t.name, icon: t.icon })),
 		tasks,
-		viewTab
+		sidebar
 	};
 };

@@ -16,6 +16,8 @@ const serialize = (n: NoteListItem) => ({
 	title: n.title,
 	icon: n.icon,
 	pinned: n.pinned,
+	parentId: n.parentId,
+	sortOrder: n.sortOrder,
 	updatedAt: new Date(n.updatedAt).toISOString(),
 	meetingDate: n.meetingDate ? new Date(n.meetingDate).toISOString().slice(0, 10) : null
 });

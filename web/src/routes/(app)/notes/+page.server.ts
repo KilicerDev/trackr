@@ -5,13 +5,20 @@ import { m } from '$lib/paraglide/messages';
 import type { Actions } from './$types';
 
 export const actions: Actions = {
-	// Instant blank quick note — no title/folder prompt; the caller redirects to
-	// the editor on success.
-	create: async ({ locals }) => {
+	// Instant blank quick note — no title prompt; the caller redirects to the
+	// editor on success. `parentId` nests it under one of the caller's notes.
+	create: async ({ request, locals }) => {
 		if (!locals.user) return fail(401, { message: m.notes_err_not_authenticated() });
 		if (!isTrackrTeam(locals)) return fail(403, { message: m.notes_err_restricted_short() });
-		const id = await createNote({ kind: 'quick', ownerId: locals.user.id });
-		return { success: true, id };
+		const form = await request.formData();
+		const parentRaw = form.get('parentId');
+		const parentId = typeof parentRaw === 'string' && parentRaw ? parentRaw : null;
+		try {
+			const id = await createNote({ kind: 'quick', ownerId: locals.user.id, parentId });
+			return { success: true, id };
+		} catch {
+			return fail(400, { message: m.notes_err_parent_not_found() });
+		}
 	},
 
 	createMeeting: async ({ request, locals }) => {
