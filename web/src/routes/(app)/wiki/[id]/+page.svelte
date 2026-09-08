@@ -317,7 +317,7 @@
 				<div class="flex items-center -space-x-1.5">
 					{#each others.slice(0, 4) as u (u.clientId)}
 						<span
-							class="grid place-items-center rounded-full text-[11px] font-semibold text-white select-none size-[24px]"
+							class="grid size-[24px] place-items-center rounded-full text-[11px] font-semibold text-white select-none"
 							style:background={u.color}
 							style:box-shadow="0 0 0 2px var(--bg), 0 0 0 3.5px {u.color}55"
 							title={m.wiki_collaborators_now({ name: u.name })}
@@ -327,7 +327,7 @@
 					{/each}
 					{#if others.length > 4}
 						<span
-							class="grid place-items-center rounded-full bg-surface-2 text-[11px] font-semibold text-text-3 size-[24px] ring-2 ring-bg"
+							class="grid size-[24px] place-items-center rounded-full bg-surface-2 text-[11px] font-semibold text-text-3 ring-2 ring-bg"
 						>
 							+{others.length - 4}
 						</span>
@@ -396,7 +396,7 @@
 					oninput={onTitleInput}
 					onblur={onTitleBlur}
 					onkeydown={onTitleKeydown}
-					class="w-full border-0 bg-transparent pt-1 text-[35px] leading-[1.12] font-semibold tracking-[-0.02em] text-text outline-none placeholder:text-text-4"
+					class="w-full border-0 bg-transparent text-[40px] leading-[1.15] font-bold tracking-[-0.025em] text-text outline-none placeholder:text-text-4"
 				/>
 			</div>
 

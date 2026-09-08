@@ -612,8 +612,8 @@
 		</div>
 	</header>
 
-	<div class="mx-auto max-w-[836px] px-8 pt-12 pb-28">
-		<div class="mb-8 flex items-start gap-3.5">
+	<div class="mx-auto max-w-[848px] px-14 pt-14 pb-28">
+		<div class="mb-6 flex items-start gap-3.5">
 			<span class="notes-doc__icon shrink-0">
 				<Icon name={note.icon || 'file'} size={22} stroke={1.75} />
 			</span>
@@ -625,7 +625,7 @@
 				oninput={onTitleInput}
 				onblur={() => void saveTitle()}
 				onkeydown={onTitleKeydown}
-				class="w-full border-0 bg-transparent pt-1 text-[35px] leading-[1.12] font-semibold tracking-[-0.02em] text-text outline-none placeholder:text-text-4 read-only:cursor-default"
+				class="w-full border-0 bg-transparent text-[40px] leading-[1.15] font-bold tracking-[-0.025em] text-text outline-none placeholder:text-text-4 read-only:cursor-default"
 			/>
 		</div>
 

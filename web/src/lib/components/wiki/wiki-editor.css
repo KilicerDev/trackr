@@ -1,78 +1,116 @@
-/* Shared ProseMirror/TipTap styling for the wiki editors (read-only WikiEditor
-   and the live CollaborativeWikiEditor). Selectors are global. */
+/* Shared ProseMirror/TipTap styling for the wiki + notes editors (read-only
+   WikiEditor and the live CollaborativeWikiEditor). Selectors are global.
+
+   Rhythm follows Notion: 16px text on a 1.5 line, every block is a row with
+   3px vertical padding, so consecutive paragraphs sit 6px apart and headings
+   carry their own top margin. Colors come from the app tokens. */
 
 .wiki-editor {
-	color: var(--text-2);
-	font-size: 14.5px;
-	line-height: 1.7;
+	position: relative;
+	color: color-mix(in oklab, var(--text) 92%, var(--text-2));
+	font-size: 16px;
+	line-height: 1.5;
+	caret-color: var(--accent);
 }
 .wiki-editor .ProseMirror {
 	outline: none;
 	min-height: 200px;
+	padding-bottom: 20vh;
 }
-.wiki-editor .ProseMirror > * + * {
-	margin-top: 0.6em;
+.wiki-editor .ProseMirror ::selection {
+	background: color-mix(in srgb, var(--accent) 24%, transparent);
 }
 .wiki-editor .ProseMirror :is(h1, h2, h3) {
 	scroll-margin-top: 76px;
 }
-.wiki-editor .ProseMirror h1 {
-	font-size: 26px;
-	font-weight: 600;
-	letter-spacing: -0.012em;
-	color: var(--text);
-	margin: 1.2em 0 0.4em;
-	line-height: 1.25;
+
+/* ── Blocks ── */
+.wiki-editor .ProseMirror > * {
+	margin: 0;
+	padding: 3px 2px;
 }
-.wiki-editor .ProseMirror h1:first-child {
-	margin-top: 0;
+.wiki-editor .ProseMirror h1 {
+	font-size: 30px;
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	color: var(--text);
+	line-height: 1.25;
+	margin-top: 1.6em;
+	margin-bottom: 2px;
 }
 .wiki-editor .ProseMirror h2 {
-	font-size: 19px;
-	font-weight: 600;
-	letter-spacing: -0.008em;
+	font-size: 24px;
+	font-weight: 650;
+	letter-spacing: -0.015em;
 	color: var(--text);
-	margin: 1.1em 0 0.35em;
 	line-height: 1.3;
+	margin-top: 1.3em;
+	margin-bottom: 1px;
 }
 .wiki-editor .ProseMirror h3 {
-	font-size: 16px;
+	font-size: 20px;
 	font-weight: 600;
+	letter-spacing: -0.01em;
 	color: var(--text);
-	margin: 1em 0 0.3em;
+	line-height: 1.3;
+	margin-top: 1em;
+}
+.wiki-editor .ProseMirror > :is(h1, h2, h3):first-child {
+	margin-top: 0;
 }
 .wiki-editor .ProseMirror p {
-	margin: 0.4em 0;
+	margin: 0;
+}
+.wiki-editor .ProseMirror strong {
+	font-weight: 650;
+	color: var(--text);
+}
+
+/* ── Lists ── */
+.wiki-editor .ProseMirror ul,
+.wiki-editor .ProseMirror ol {
+	padding-left: 1.6em;
+	margin: 0;
 }
 .wiki-editor .ProseMirror ul {
-	padding-left: 1.4em;
-	margin: 0.4em 0;
 	list-style-type: disc;
 }
 .wiki-editor .ProseMirror ol {
-	padding-left: 1.4em;
-	margin: 0.4em 0;
 	list-style-type: decimal;
 }
+.wiki-editor .ProseMirror ul ul {
+	list-style-type: circle;
+}
 .wiki-editor .ProseMirror li {
-	margin: 0.15em 0;
+	padding: 3px 2px;
 }
 .wiki-editor .ProseMirror li > p {
 	margin: 0;
 }
+.wiki-editor .ProseMirror li > ul,
+.wiki-editor .ProseMirror li > ol {
+	padding-left: 1.5em;
+}
 .wiki-editor .ProseMirror ul li::marker,
 .wiki-editor .ProseMirror ol li::marker {
-	color: var(--text-4);
+	color: var(--text-3);
 }
+/* Nested blocks inside a list/task item keep the row rhythm, not the page's. */
+.wiki-editor .ProseMirror li > :is(ul, ol) {
+	padding-top: 0;
+	padding-bottom: 0;
+}
+
+/* ── To-dos ── */
 .wiki-editor ul[data-type='taskList'] {
 	list-style: none !important;
-	padding-left: 0.2em;
+	padding-left: 2px;
 }
 .wiki-editor ul[data-type='taskList'] li {
 	display: flex;
-	gap: 8px;
+	gap: 10px;
 	align-items: flex-start;
-	margin: 0.15em 0;
+	padding: 3px 2px;
 }
 .wiki-editor ul[data-type='taskList'] li > label {
 	flex: 0 0 auto;
@@ -80,8 +118,8 @@
 	user-select: none;
 	display: inline-flex;
 	align-items: center;
-	/* Match text line height so the checkbox vertically centers with the first text line. */
-	height: 1.7em;
+	/* Match the text line so the box centers on the first line. */
+	height: 1.5em;
 }
 .wiki-editor ul[data-type='taskList'] li > div {
 	flex: 1 1 auto;
@@ -89,88 +127,181 @@
 }
 .wiki-editor ul[data-type='taskList'] li > div > p {
 	margin: 0;
+	transition: color 0.15s;
 }
-.wiki-editor ul[data-type='taskList'] li[data-checked='true'] > div {
+.wiki-editor ul[data-type='taskList'] li[data-checked='true'] > div > p {
 	color: var(--text-4);
 	text-decoration: line-through;
+	text-decoration-color: color-mix(in oklab, var(--text-4) 70%, transparent);
+}
+.wiki-editor ul[data-type='taskList'] ul[data-type='taskList'] {
+	padding-left: 26px;
 }
 .wiki-editor input[type='checkbox'] {
 	-webkit-appearance: none !important;
 	appearance: none !important;
-	width: 15px;
-	height: 15px;
+	width: 16px;
+	height: 16px;
 	margin: 0;
 	padding: 0;
 	border: 1.5px solid var(--border-strong);
 	border-radius: 4px;
-	background: var(--surface);
+	background: transparent;
 	cursor: pointer;
 	position: relative;
 	transition:
-		background 0.12s,
-		border-color 0.12s;
+		background 0.15s,
+		border-color 0.15s,
+		transform 0.12s;
 }
 .wiki-editor input[type='checkbox']:hover {
 	border-color: var(--text-3);
+	background: var(--surface);
+}
+.wiki-editor input[type='checkbox']:active {
+	transform: scale(0.92);
 }
 .wiki-editor input[type='checkbox']:checked {
 	background-color: var(--accent);
 	border-color: var(--accent);
-	background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'><path d='M3 7.5l2.8 2.8L11 5' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+	background-image: url("data:image/svg+xml;utf8,<svg viewBox='0 0 14 14' xmlns='http://www.w3.org/2000/svg'><path d='M3 7.5l2.8 2.8L11 5' fill='none' stroke='white' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
 	background-repeat: no-repeat;
 	background-position: center;
 	background-size: 11px 11px;
 }
+.wiki-editor input[type='checkbox']:focus-visible {
+	outline: 2px solid var(--accent-soft);
+	outline-offset: 1px;
+}
+
+/* ── Inline ── */
 .wiki-editor .ProseMirror a {
-	color: var(--accent);
+	color: inherit;
 	text-decoration: underline;
-	text-decoration-color: color-mix(in oklab, var(--accent) 35%, transparent);
+	text-decoration-color: var(--text-4);
 	text-underline-offset: 3px;
+	text-decoration-thickness: 1px;
 	cursor: pointer;
+	transition:
+		color 0.12s,
+		text-decoration-color 0.12s;
 }
 .wiki-editor .ProseMirror a:hover {
+	color: var(--accent);
 	text-decoration-color: var(--accent);
 }
 .wiki-editor .ProseMirror code {
-	background: var(--surface);
-	border: 1px solid var(--border);
-	padding: 1px 5px;
-	border-radius: 5px;
-	font-size: 12.5px;
+	background: color-mix(in oklab, var(--text-3) 16%, transparent);
+	color: color-mix(in oklab, var(--accent) 80%, var(--text));
+	padding: 2px 5px;
+	border-radius: 4px;
+	font-size: 0.85em;
 	font-family: var(--font-mono);
 }
 .wiki-editor .ProseMirror pre {
 	background: var(--surface);
 	border: 1px solid var(--border);
-	padding: 12px 14px;
-	border-radius: 10px;
+	padding: 14px 16px;
+	border-radius: 8px;
 	overflow-x: auto;
-	margin: 0.7em 0;
+	margin: 6px 0;
+	line-height: 1.55;
+	tab-size: 2;
 }
 .wiki-editor .ProseMirror pre code {
 	background: transparent;
 	border: 0;
 	padding: 0;
-	font-size: 12.5px;
+	font-size: 13.5px;
 	color: var(--text);
 }
 .wiki-editor .ProseMirror blockquote {
-	border-left: 3px solid var(--border-strong);
-	padding-left: 12px;
-	color: var(--text-3);
-	margin: 0.7em 0;
+	border-left: 3px solid var(--text);
+	padding-left: 14px;
+	padding-right: 0;
+	margin: 4px 0;
+	color: var(--text);
+}
+.wiki-editor .ProseMirror blockquote > p {
+	padding: 2px 0;
 }
 .wiki-editor .ProseMirror hr {
 	border: 0;
-	border-top: 1px solid var(--border);
-	margin: 1.4em 0;
+	border-top: 1px solid var(--border-strong);
+	margin: 8px 0;
+	padding: 0;
 }
-.wiki-editor .ProseMirror p.is-editor-empty:first-child::before {
+.wiki-editor .ProseMirror hr.ProseMirror-selectednode {
+	border-top-color: var(--accent);
+}
+
+/* ── Placeholders: the first line of an empty doc, plus the empty block the
+   caret is in (Placeholder runs with showOnlyCurrent + includeChildren). ── */
+.wiki-editor .ProseMirror :is(p, h1, h2, h3).is-empty::before {
 	color: var(--text-4);
 	content: attr(data-placeholder);
 	float: left;
 	height: 0;
 	pointer-events: none;
+	font-weight: inherit;
+}
+.wiki-editor .ProseMirror:not(.ProseMirror-focused) :is(p, h1, h2, h3).is-empty::before {
+	content: none;
+}
+.wiki-editor .ProseMirror:not(.ProseMirror-focused) p.is-editor-empty:first-child::before {
+	content: attr(data-placeholder);
+}
+
+/* ── Drop cursor / drag state ── */
+.wiki-editor .ProseMirror-dropcursor {
+	background: var(--accent) !important;
+}
+.wiki-editor .ProseMirror-selectednode:not(img):not(hr) {
+	border-radius: 4px;
+	box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* ── Block gutter (block-gutter.ts): "+" and grip on the hovered block ── */
+.wiki-editor .block-gutter {
+	position: absolute;
+	display: flex;
+	align-items: center;
+	gap: 1px;
+	height: 24px;
+	opacity: 0;
+	pointer-events: none;
+	transition:
+		opacity 0.12s ease,
+		top 0.08s ease;
+	z-index: 5;
+}
+.wiki-editor .block-gutter.is-visible {
+	opacity: 1;
+	pointer-events: auto;
+}
+.wiki-editor .block-gutter__btn {
+	display: grid;
+	place-items: center;
+	height: 24px;
+	border-radius: 5px;
+	color: var(--text-4);
+	transition:
+		background-color 0.12s,
+		color 0.12s;
+}
+.wiki-editor .block-gutter__add {
+	width: 22px;
+}
+.wiki-editor .block-gutter__grip {
+	width: 18px;
+	cursor: grab;
+}
+.wiki-editor .block-gutter__btn:hover {
+	background: var(--surface-2);
+	color: var(--text-2);
+}
+.wiki-editor .block-gutter__grip:active {
+	cursor: grabbing;
 }
 
 /* Remote collaborators' cursors / selections (CollaborationCaret). */

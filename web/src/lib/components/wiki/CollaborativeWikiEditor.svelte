@@ -13,6 +13,8 @@
 	import { WikiFileUpload } from './file-upload';
 	import { FileAttachmentWithControls, WikiImageWithControls } from './media-node-views';
 	import { MarkdownPaste } from './markdown-paste';
+	import { BlockGutter } from './block-gutter';
+	import { ClipboardTaskLists } from './clipboard-tasks';
 	import { NOTE_FILE_EXTENSIONS, type AttachmentEntityType } from '$lib/config/attachments';
 	import { m } from '$lib/paraglide/messages';
 	import './wiki-editor.css';
@@ -131,8 +133,28 @@
 				FileAttachmentWithControls,
 				Collaboration.configure({ document: ydoc, field: COLLAB_FIELD }),
 				CollaborationCaret.configure({ provider, user }),
-				Placeholder.configure({ placeholder }),
+				Placeholder.configure({
+					// The empty first line carries the page's own prompt; any other empty
+					// block the caret sits in hints at its type / the slash menu, like
+					// Notion. Children included so items inside lists get one too.
+					includeChildren: true,
+					placeholder: ({ editor, node, pos }) => {
+						if (node.type.name === 'heading') {
+							return m.editor_placeholder_heading({ level: String(node.attrs.level) });
+						}
+						if (editor.isEmpty) return placeholder;
+						const parent = editor.state.doc.resolve(pos).parent;
+						if (parent.type.name === 'taskItem') return m.editor_placeholder_todo();
+						if (parent.type.name === 'listItem') return m.editor_placeholder_list();
+						return m.wiki_editor_placeholder_commands();
+					}
+				}),
 				SlashCommand,
+				BlockGutter.configure({
+					addLabel: m.editor_gutter_add(),
+					dragLabel: m.editor_gutter_drag()
+				}),
+				ClipboardTaskLists,
 				WikiImageUpload.configure({ entityId: pageId, entityType }),
 				WikiFileUpload.configure({
 					entityId: pageId,
