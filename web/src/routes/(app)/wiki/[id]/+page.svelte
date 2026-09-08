@@ -554,6 +554,7 @@
 		background: color-mix(in oklab, var(--accent) 12%, var(--bg-elev));
 		border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--border));
 		box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+			transform: translateY(6px);
 	}
 
 	/* Live status pill */

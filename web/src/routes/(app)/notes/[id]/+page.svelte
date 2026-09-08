@@ -711,5 +711,6 @@
 		color: var(--accent);
 		background: color-mix(in oklab, var(--accent) 12%, var(--bg-elev));
 		border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--border));
+			transform: translateY(6px);
 	}
 </style>
