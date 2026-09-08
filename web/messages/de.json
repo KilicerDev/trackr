@@ -1241,6 +1241,7 @@
 	"tickets_copy_link": "Link kopieren",
 	"tickets_description": "Beschreibung",
 	"tickets_field_assignee": "Zugewiesen an",
+	"tickets_n_assignees": "{n} Zugewiesene",
 	"tickets_group_assignee": "Zugewiesen an",
 	"tickets_link_copied": "Link kopiert",
 	"tickets_link_copy_failed": "Link konnte nicht kopiert werden",

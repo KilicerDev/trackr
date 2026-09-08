@@ -126,11 +126,19 @@ export const load: ServerLoad = async ({ locals }) => {
 	const preferences = await getPreferences(locals.user.id);
 	const savedView = (preferences.viewState?.tickets ?? {}) as Record<string, unknown>;
 
-	// Assignee candidates for the Inspector: members of every org whose tickets
-	// the viewer can edit (team → every loaded ticket's org; client-side editor →
-	// their editable orgs), plus internal platform agents. The picker scopes this
-	// to the selected ticket's org via each row's `orgIds` / `internal` flags.
-	const assignOrgIds = trackrTeam ? [...new Set(tickets.map((t) => t.orgId))] : editableOrgIds;
+	// Assignee candidates for the Inspector and the create modal: members of
+	// every org whose tickets the viewer can edit (team → every active org, so a
+	// ticket can be assigned at creation even for an org with no tickets yet;
+	// client-side editor → their editable orgs), plus internal platform agents.
+	// The pickers scope this to one org via each row's `orgIds` / `internal` flags.
+	const assignOrgIds = trackrTeam
+		? (
+				await db
+					.select({ id: organization.id })
+					.from(organization)
+					.where(isNull(organization.archivedAt))
+			).map((o) => o.id)
+		: editableOrgIds;
 	const pickerUsers = isAgent ? await loadAssignableUsers(assignOrgIds) : [];
 	// Resolution directory for the assignee/customer names actually referenced by
 	// this page of tickets. Non-agent clients get no `assignableUsers` picker set
@@ -214,7 +222,16 @@ export const actions: Actions = {
 		// and no assignee.
 		const isAgent = await can(locals, 'org.tickets.edit.any', { orgId });
 		const customerId = isAgent ? customerIdRaw || me.id : me.id;
-		const assigneeIds = isAgent ? assigneeIdsRaw : [];
+		const assigneeIds = isAgent ? [...new Set(assigneeIdsRaw)] : [];
+		// Same boundary as the update action: only this org's members or internal
+		// platform agents may be assigned. The modal scopes its picker, but never
+		// trust the posted ids.
+		if (assigneeIds.length) {
+			const allowed = new Set((await loadAssignableUsers([orgId])).map((u) => u.id));
+			if (!assigneeIds.every((aid) => allowed.has(aid))) {
+				return fail(400, { message: m.tickets_invalid_assignee() });
+			}
+		}
 
 		try {
 			const { id, displayId, assignedIds } = await createTicket({

@@ -409,5 +409,7 @@
 		onclose={() => (createOpen = false)}
 		{orgs}
 		prefillOrgId={createPrefillOrg}
+		users={assignable}
+		assignableOrgIds={data.isTrackrTeam ? orgs.map((o) => o.id) : (data.editableOrgIds ?? [])}
 	/>
 {/if}

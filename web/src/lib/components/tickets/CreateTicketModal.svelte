@@ -9,6 +9,9 @@
 	import Button from '../Button.svelte';
 	import Kbd from '../Kbd.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
+	import Avatar from '../Avatar.svelte';
+	import AvatarStack from '../AvatarStack.svelte';
+	import AssigneePopover from '../popovers/AssigneePopover.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
@@ -20,6 +23,16 @@
 	import { priorityLabel, ticketCategoryLabel } from '$lib/utils/labels';
 
 	type OrgOption = { id: string; name: string; slug: string; color: string };
+	type AssignableUser = {
+		id: string;
+		name: string;
+		email?: string;
+		initials: string;
+		color: string;
+		status?: string;
+		internal?: boolean;
+		orgIds?: string[];
+	};
 
 	interface Props {
 		open: boolean;
@@ -31,9 +44,23 @@
 		// Preselect an org but leave the picker editable (used when opening the
 		// modal from an org-grouped board column).
 		prefillOrgId?: string | null;
+		// Assignee candidates (org members + internal platform agents, each row
+		// tagged with its `orgIds` / `internal`). Scoped to the selected org here.
+		users?: AssignableUser[];
+		// Orgs where the viewer may assign on create (edit.any). The picker is
+		// hidden for other orgs — the server drops assignees there anyway.
+		assignableOrgIds?: string[];
 	}
 
-	let { open, onclose, orgs = [], lockedOrgId = null, prefillOrgId = null }: Props = $props();
+	let {
+		open,
+		onclose,
+		orgs = [],
+		lockedOrgId = null,
+		prefillOrgId = null,
+		users = [],
+		assignableOrgIds = []
+	}: Props = $props();
 
 	type Priority = (typeof TICKET_PRIORITIES)[number]['id'];
 	type Category = (typeof TICKET_CATEGORIES)[number]['id'];
@@ -43,12 +70,13 @@
 	let orgId = $state<string>('');
 	let priority = $state<Priority>('medium');
 	let category = $state<Category>('general');
+	let assignees = $state<string[]>([]);
 	let submitting = $state(false);
 
 	let formEl = $state<HTMLFormElement>();
 	let fileInput = $state<HTMLInputElement>();
 	let stagedFiles = $state<File[]>([]);
-	let pop = $state<'org' | 'priority' | 'category' | null>(null);
+	let pop = $state<'org' | 'priority' | 'category' | 'assignee' | null>(null);
 
 	function addFiles(incoming: File[]) {
 		const { accepted, errors } = selectStageable(incoming, stagedFiles.length);
@@ -66,6 +94,30 @@
 	const priorityMeta = $derived(TICKET_PRIORITIES.find((p) => p.id === priority)!);
 	const categoryMeta = $derived(TICKET_CATEGORIES.find((c) => c.id === category)!);
 
+	const canAssign = $derived(!!orgId && assignableOrgIds.includes(orgId));
+	// Candidates for the selected org: its members plus internal platform agents
+	// (assignable on every org). Mirrors the list-page Inspector scoping.
+	const assignableForOrg = $derived(
+		canAssign
+			? users.filter(
+					(u) => u.status !== 'disabled' && (u.internal || (u.orgIds ?? []).includes(orgId))
+				)
+			: []
+	);
+	const assigneeUsers = $derived(
+		assignees
+			.map((id) => assignableForOrg.find((u) => u.id === id))
+			.filter((u): u is AssignableUser => !!u)
+	);
+
+	// Switching org drops any picked assignee who isn't a candidate there.
+	$effect(() => {
+		const allowed = new Set(assignableForOrg.map((u) => u.id));
+		if (assignees.some((id) => !allowed.has(id))) {
+			assignees = assignees.filter((id) => allowed.has(id));
+		}
+	});
+
 	$effect(() => {
 		if (open) {
 			subject = '';
@@ -73,6 +125,7 @@
 			orgId = lockedOrgId ?? prefillOrgId ?? orgs[0]?.id ?? '';
 			priority = 'medium';
 			category = 'general';
+			assignees = [];
 			submitting = false;
 			stagedFiles = [];
 			pop = null;
@@ -290,12 +343,50 @@
 							</div>
 						{/if}
 					</div>
+
+					<!-- Assignee picker (agents only) -->
+					{#if canAssign}
+						<div class="relative">
+							<button
+								type="button"
+								onclick={() => (pop = pop === 'assignee' ? null : 'assignee')}
+								class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong hover:text-text {assigneeUsers.length
+									? 'border border-border bg-surface'
+									: 'border border-dashed border-border text-text-3'} {pop === 'assignee'
+									? 'ring-2 ring-accent/40'
+									: ''}"
+							>
+								{#if assigneeUsers.length === 1}
+									<Avatar user={assigneeUsers[0]} size={18} />
+									<span>{assigneeUsers[0].name}</span>
+								{:else if assigneeUsers.length > 1}
+									<AvatarStack users={assigneeUsers} size={18} max={3} overlap={6} />
+									<span>{m.tickets_n_assignees({ n: assigneeUsers.length })}</span>
+								{:else}
+									<Icon name="user" size={14} />
+									<span>{m.common_unassigned()}</span>
+								{/if}
+								<Icon name="chevron" size={12} class="text-text-3" />
+							</button>
+							{#if pop === 'assignee'}
+								<AssigneePopover
+									value={assignees}
+									users={assignableForOrg}
+									onchange={(v) => (assignees = v)}
+									onclose={() => (pop = null)}
+								/>
+							{/if}
+						</div>
+					{/if}
 				</div>
 
 				<input type="hidden" name="orgId" value={orgId} />
 				<input type="hidden" name="priority" value={priority} />
 				<input type="hidden" name="category" value={category} />
 				<input type="hidden" name="channel" value="web_form" />
+				{#each assignees as id (id)}
+					<input type="hidden" name="assignees" value={id} />
+				{/each}
 
 				<!-- Attachments -->
 				<div class="mt-4 space-y-2">
