@@ -818,11 +818,11 @@ describe('audit trail (channel + content events + connections)', () => {
 	type LogRow = { type: string; channel: string | null; target: string; targetId: string | null };
 
 	async function logRows(params: Record<string, string>): Promise<LogRow[]> {
-		const res = await fetch(`${BASE_URL}/admin/logs/data?${new URLSearchParams(params)}`, {
+		const res = await fetch(`${BASE_URL}/admin/system/logs/data?${new URLSearchParams(params)}`, {
 			headers: { cookie },
 			signal: AbortSignal.timeout(30_000)
 		});
-		if (!res.ok) throw new Error(`/admin/logs/data → HTTP ${res.status}`);
+		if (!res.ok) throw new Error(`/admin/system/logs/data → HTTP ${res.status}`);
 		return ((await res.json()) as { events: LogRow[] }).events;
 	}
 

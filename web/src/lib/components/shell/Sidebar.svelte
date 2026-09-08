@@ -21,7 +21,6 @@
 	// the single source shared with the settings page and the mobile app.
 	const surfaces = $derived((page.data as LayoutShape).capabilities?.surfaces);
 	const isAdmin = $derived(!!surfaces?.admin);
-	const isSuperadmin = $derived(!!(page.data as LayoutShape).isSuperadmin);
 	const showWikiNotes = $derived(!!surfaces?.wiki);
 	const canChat = $derived(!!surfaces?.chat);
 
@@ -33,9 +32,7 @@
 			icon: 'ticket',
 			href: '/tickets'
 		},
-		...(canChat
-			? [{ key: 'chat', label: m.shell_nav_chat(), icon: 'msg', href: '/chat' }]
-			: []),
+		...(canChat ? [{ key: 'chat', label: m.shell_nav_chat(), icon: 'msg', href: '/chat' }] : []),
 		{
 			key: 'projects',
 			label: m.shell_nav_projects(),
@@ -84,18 +81,14 @@
 			icon: 'settings',
 			href: '/admin/settings'
 		},
-		{ key: 'logs', label: m.shell_admin_logs(), icon: 'logs', href: '/admin/logs' },
-		// System (jobs + schedules) is root-tier only — superadmins, not admins.
-		...(isSuperadmin
-			? [
-					{
-						key: 'system',
-						label: m.shell_admin_system(),
-						icon: 'sliders',
-						href: '/admin/system/jobs'
-					}
-				]
-			: [])
+		// System opens on the audit log (every admin); its jobs + schedules tabs
+		// are root-tier only and hidden inside the section for regular admins.
+		{
+			key: 'system',
+			label: m.shell_admin_system(),
+			icon: 'sliders',
+			href: '/admin/system/logs'
+		}
 	]);
 
 	function isActive(href: string): boolean {

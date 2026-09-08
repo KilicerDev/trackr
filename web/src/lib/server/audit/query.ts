@@ -1,4 +1,4 @@
-// Read model for the audit log, shared by the /admin/logs page loader, its
+// Read model for the audit log, shared by the /admin/system/logs page loader, its
 // "load more" JSON endpoint, and the CSV export. One query path so filtering and
 // row shaping stay consistent across all three.
 

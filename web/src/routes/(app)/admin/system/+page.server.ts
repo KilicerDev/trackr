@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
-// The system section opens on the jobs view.
+// The system section opens on the audit log.
 export const load: PageServerLoad = () => {
-	redirect(307, '/admin/system/jobs');
+	redirect(307, '/admin/system/logs');
 };

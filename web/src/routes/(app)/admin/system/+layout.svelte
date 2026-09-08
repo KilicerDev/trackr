@@ -5,10 +5,18 @@
 
 	let { children } = $props();
 
-	const tabs = [
-		{ href: '/admin/system/jobs', label: m.system_tab_jobs() },
-		{ href: '/admin/system/schedules', label: m.system_tab_schedules() }
-	];
+	// Logs is the section's home and open to every admin; the job queue and
+	// schedules stay root-tier (the server gate mirrors this split).
+	const isSuperadmin = $derived(!!(page.data as { isSuperadmin?: boolean }).isSuperadmin);
+	const tabs = $derived([
+		{ href: '/admin/system/logs', label: m.system_tab_logs() },
+		...(isSuperadmin
+			? [
+					{ href: '/admin/system/jobs', label: m.system_tab_jobs() },
+					{ href: '/admin/system/schedules', label: m.system_tab_schedules() }
+				]
+			: [])
+	]);
 	const isActive = (href: string) => page.url.pathname.startsWith(href);
 </script>
 
