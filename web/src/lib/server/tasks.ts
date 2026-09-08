@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { db } from './db';
 import {
 	project,
@@ -6,6 +6,7 @@ import {
 	thread,
 	task,
 	taskAssignee,
+	taskDependency,
 	taskPlanning,
 	taskTimeLog,
 	ticket,
@@ -16,7 +17,7 @@ import { user, user as userTable } from './db/auth.schema';
 import { error } from '@sveltejs/kit';
 import { logActivity, logActivityFF } from './activity';
 import { syncTicketChecklistFromTask, ticketDisplayId } from './tickets';
-import type { Task } from '$lib/types';
+import type { Task, TaskLink } from '$lib/types';
 import { deleteAttachmentsFor, listAttachmentsForMany } from './attachments';
 import { can } from './permissions';
 import { notifyTaskAssigned, notifyTaskStatusChanged } from './notify/events/task';
@@ -144,6 +145,72 @@ export async function loadTasks(opts?: {
 		assigneesByTask.set(r.taskId, list);
 	}
 
+	// Dependencies in both directions for this page. Prerequisites and
+	// dependents often live off-page (the week view and project page load
+	// subsets, and archived tasks are excluded above), so resolve display info
+	// for any referenced task we didn't load. Soft-deleted tasks drop out here
+	// and therefore never block.
+	const depEdges = taskIds.length
+		? await db
+				.select({ taskId: taskDependency.taskId, dependsOnId: taskDependency.dependsOnId })
+				.from(taskDependency)
+				.where(
+					or(inArray(taskDependency.taskId, taskIds), inArray(taskDependency.dependsOnId, taskIds))
+				)
+		: [];
+	const pageIds = new Set(taskIds);
+	const linkById = new Map<string, TaskLink>();
+	for (const t of taskRows) {
+		linkById.set(t.id, {
+			uuid: t.id,
+			id: `${t.projectKey}-${t.number}`,
+			title: t.title,
+			status: t.status as TaskLink['status']
+		});
+	}
+	const offPageIds = [
+		...new Set(depEdges.flatMap((e) => [e.taskId, e.dependsOnId]).filter((id) => !pageIds.has(id)))
+	];
+	if (offPageIds.length) {
+		const rows = await db
+			.select({
+				id: task.id,
+				number: task.number,
+				title: task.title,
+				status: task.status,
+				projectKey: project.key
+			})
+			.from(task)
+			.innerJoin(project, eq(project.id, task.projectId))
+			.where(and(inArray(task.id, offPageIds), isNull(task.deletedAt)));
+		for (const r of rows) {
+			linkById.set(r.id, {
+				uuid: r.id,
+				id: `${r.projectKey}-${r.number}`,
+				title: r.title,
+				status: r.status as TaskLink['status']
+			});
+		}
+	}
+	const dependsOnByTask = new Map<string, TaskLink[]>();
+	const dependentsByTask = new Map<string, TaskLink[]>();
+	for (const e of depEdges) {
+		const prerequisite = linkById.get(e.dependsOnId);
+		const dependent = linkById.get(e.taskId);
+		if (prerequisite && pageIds.has(e.taskId)) {
+			const list = dependsOnByTask.get(e.taskId) ?? [];
+			list.push(prerequisite);
+			dependsOnByTask.set(e.taskId, list);
+		}
+		if (dependent && pageIds.has(e.dependsOnId)) {
+			const list = dependentsByTask.get(e.dependsOnId) ?? [];
+			list.push(dependent);
+			dependentsByTask.set(e.dependsOnId, list);
+		}
+	}
+	const byRef = (a: TaskLink, b: TaskLink) =>
+		a.id.localeCompare(b.id, undefined, { numeric: true });
+
 	// Comments live in `message`, under each task's thread (subjectType='task').
 	// Same output shape as before so the Inspector is unchanged.
 	const commentRows = taskIds.length
@@ -263,6 +330,8 @@ export async function loadTasks(opts?: {
 
 	return taskRows.map<Task>((t) => {
 		const assigneeIds = assigneesByTask.get(t.id) ?? [];
+		const dependsOn = (dependsOnByTask.get(t.id) ?? []).sort(byRef);
+		const dependents = (dependentsByTask.get(t.id) ?? []).sort(byRef);
 		return {
 			id: `${t.projectKey}-${t.number}`,
 			uuid: t.id,
@@ -291,7 +360,10 @@ export async function loadTasks(opts?: {
 			timeLogs: logsByTask.get(t.id) ?? [],
 			plannedFor: planByTask.has(t.id) ? planByTask.get(t.id) || null : null,
 			inMyPlan: planByTask.has(t.id),
-			sourceTicket: t.sourceTicketId ? (sourceTicketById.get(t.sourceTicketId) ?? null) : null
+			sourceTicket: t.sourceTicketId ? (sourceTicketById.get(t.sourceTicketId) ?? null) : null,
+			dependsOn: dependsOn.length ? dependsOn : undefined,
+			dependents: dependents.length ? dependents : undefined,
+			blocked: dependsOn.some((d) => d.status !== 'done')
 		};
 	});
 }
@@ -321,6 +393,11 @@ export type CreateTaskInput = {
 	sourceTicketId?: string | null;
 	/** Creating surface (default `web`). */
 	channel?: TaskChannel;
+	/**
+	 * Prerequisite task ids. Callers validate (see `validateTaskDependencies`);
+	 * the insert still drops ids outside the project defensively.
+	 */
+	dependsOnIds?: string[];
 };
 
 /**
@@ -389,6 +466,27 @@ export async function createTask(
 			});
 		}
 
+		// A brand-new task has no dependents, so a cycle is impossible; only
+		// keep prerequisites that are live tasks of the same project.
+		const wantedDeps = [...new Set((input.dependsOnIds ?? []).filter(Boolean))];
+		if (wantedDeps.length > 0) {
+			const deps = await tx
+				.select({ id: task.id })
+				.from(task)
+				.where(
+					and(
+						inArray(task.id, wantedDeps),
+						eq(task.projectId, input.projectId),
+						isNull(task.deletedAt)
+					)
+				);
+			if (deps.length > 0) {
+				await tx
+					.insert(taskDependency)
+					.values(deps.map((d) => ({ taskId: id, dependsOnId: d.id })));
+			}
+		}
+
 		displayId = `${input.projectKey}-${number}`;
 		assignedIds = validAssignees;
 
@@ -417,6 +515,8 @@ export type BulkTaskInput = {
 	assigneeIds?: string[];
 	/** Plan the task into `plannedForUserId`'s week (YYYY-MM-DD). */
 	plannedFor?: string | null;
+	/** Prerequisite task ids in the same project (validated by the caller). */
+	dependsOnIds?: string[];
 };
 
 /**
@@ -507,6 +607,34 @@ export async function createTasks(input: {
 				: [];
 		});
 		if (planningRows.length > 0) await tx.insert(taskPlanning).values(planningRows);
+
+		// Prerequisites (import): one query validates every requested id against
+		// the project's live tasks, then the edges go in as a single insert.
+		const wantedDeps = [
+			...new Set(input.tasks.flatMap((t) => t.dependsOnIds ?? []).filter(Boolean))
+		];
+		if (wantedDeps.length > 0) {
+			const live = new Set(
+				(
+					await tx
+						.select({ id: task.id })
+						.from(task)
+						.where(
+							and(
+								inArray(task.id, wantedDeps),
+								eq(task.projectId, input.projectId),
+								isNull(task.deletedAt)
+							)
+						)
+				).map((d) => d.id)
+			);
+			const edges = rows.flatMap((r, i) =>
+				[...new Set(input.tasks[i].dependsOnIds ?? [])]
+					.filter((d) => live.has(d))
+					.map((dependsOnId) => ({ taskId: r.id, dependsOnId }))
+			);
+			if (edges.length > 0) await tx.insert(taskDependency).values(edges);
+		}
 
 		for (let i = 0; i < results.length; i++) {
 			await logActivity(tx, {
@@ -667,9 +795,121 @@ export type TaskUpdatePatch = {
 	/** Whole-array replace; sanitized via `sanitizeTaskChecklist`. */
 	checklist?: unknown;
 	assigneeIds?: string[];
+	/** Prerequisite task uuids, whole-array replace ([] clears). Same project only. */
+	dependsOnIds?: string[];
 	/** YYYY-MM-DD plans the task into the caller's week; null/'' removes it. */
 	plannedFor?: string | null;
 };
+
+// ─── Dependencies ────────────────────────────────────────────────────────────
+// Prerequisites are a whole-array replace, validated before the caller's
+// transaction (read-only) and written inside it. Both the web action and
+// applyTaskUpdate share these so the rules can't drift.
+
+/** Thrown by validateTaskDependencies; callers map it to their own 400. */
+export class TaskDependencyError extends Error {}
+
+/**
+ * Validate a replacement prerequisite set for `target`: every id exists (not
+ * deleted), sits in the same project, isn't the task itself, and adding it
+ * creates no cycle — walking depends_on edges out from each wanted task must
+ * never reach the target. Returns the deduped id list.
+ */
+export async function validateTaskDependencies(
+	target: { id: string; projectId: string; projectKey: string },
+	wantedIds: string[]
+): Promise<string[]> {
+	const wanted = [...new Set(wantedIds.map((v) => String(v).trim()).filter(Boolean))];
+	if (wanted.includes(target.id)) throw new TaskDependencyError(m.tasks_err_dependency_self());
+	if (wanted.length === 0) return [];
+
+	const rows = await db
+		.select({ id: task.id, projectId: task.projectId })
+		.from(task)
+		.where(and(inArray(task.id, wanted), isNull(task.deletedAt)));
+	if (rows.length !== wanted.length) {
+		throw new TaskDependencyError(m.tasks_err_dependency_not_found());
+	}
+	if (rows.some((r) => r.projectId !== target.projectId)) {
+		throw new TaskDependencyError(m.tasks_err_dependency_other_project());
+	}
+
+	// Cycle walk: breadth-first over "X depends on Y" edges starting from the
+	// wanted set, remembering which wanted task each visited node came from so
+	// the error can name the offender. Dependency graphs are tiny; one query
+	// per level is fine.
+	const origin = new Map<string, string>(wanted.map((id) => [id, id]));
+	let frontier = wanted;
+	while (frontier.length) {
+		const edges = await db
+			.select({ taskId: taskDependency.taskId, dependsOnId: taskDependency.dependsOnId })
+			.from(taskDependency)
+			.where(inArray(taskDependency.taskId, frontier));
+		const next: string[] = [];
+		for (const e of edges) {
+			const from = origin.get(e.taskId) ?? e.taskId;
+			if (e.dependsOnId === target.id) {
+				const [row] = await db
+					.select({ number: task.number })
+					.from(task)
+					.where(eq(task.id, from))
+					.limit(1);
+				const ref = row ? `${target.projectKey}-${row.number}` : from;
+				throw new TaskDependencyError(m.tasks_err_dependency_cycle({ ref }));
+			}
+			if (origin.has(e.dependsOnId)) continue;
+			origin.set(e.dependsOnId, from);
+			next.push(e.dependsOnId);
+		}
+		frontier = next;
+	}
+	return wanted;
+}
+
+/** Current prerequisite ids of a task. */
+export async function loadTaskDependencyIds(taskId: string): Promise<string[]> {
+	const rows = await db
+		.select({ dependsOnId: taskDependency.dependsOnId })
+		.from(taskDependency)
+		.where(eq(taskDependency.taskId, taskId));
+	return rows.map((r) => r.dependsOnId);
+}
+
+/** Replace the prerequisite set inside the caller's transaction; returns the diff. */
+export async function writeTaskDependencies(
+	tx: Tx,
+	taskId: string,
+	next: string[],
+	prior: readonly string[]
+): Promise<{ added: string[]; removed: string[] }> {
+	const priorSet = new Set(prior);
+	const added = next.filter((id) => !priorSet.has(id));
+	const removed = prior.filter((id) => !next.includes(id));
+	if (removed.length) {
+		await tx
+			.delete(taskDependency)
+			.where(and(eq(taskDependency.taskId, taskId), inArray(taskDependency.dependsOnId, removed)));
+	}
+	if (added.length) {
+		await tx.insert(taskDependency).values(added.map((dependsOnId) => ({ taskId, dependsOnId })));
+	}
+	return { added, removed };
+}
+
+/**
+ * Display refs (WEB-12) for a set of task ids, for activity meta. Uses the
+ * tasks' own project keys so the refs stay right even for cross-project rows.
+ */
+export async function taskRefsFor(ids: readonly string[]): Promise<Record<string, string>> {
+	const distinct = [...new Set(ids)];
+	if (distinct.length === 0) return {};
+	const rows = await db
+		.select({ id: task.id, number: task.number, projectKey: project.key })
+		.from(task)
+		.innerJoin(project, eq(project.id, task.projectId))
+		.where(inArray(task.id, distinct));
+	return Object.fromEntries(rows.map((r) => [r.id, `${r.projectKey}-${r.number}`]));
+}
 
 /**
  * Apply an edit to a task. Permission mirrors the web update action:
@@ -762,6 +1002,18 @@ export async function applyTaskUpdate(
 		}
 		assigneesUpdate = [...new Set(body.assigneeIds)];
 	}
+	let dependsUpdate: string[] | null = null;
+	if (body.dependsOnIds !== undefined) {
+		if (!Array.isArray(body.dependsOnIds) || body.dependsOnIds.some((x) => typeof x !== 'string')) {
+			error(400, 'dependsOnIds must be a string array.');
+		}
+		try {
+			dependsUpdate = await validateTaskDependencies(target, body.dependsOnIds);
+		} catch (err) {
+			if (err instanceof TaskDependencyError) error(400, err.message);
+			throw err;
+		}
+	}
 	// plannedFor plans the task into the caller's own week (a date string) or
 	// removes it (null). Web planSet parity: per-user planning row, read access
 	// is enough — it never touches the task row itself.
@@ -777,7 +1029,8 @@ export async function applyTaskUpdate(
 		}
 	}
 
-	const hasEdits = Object.keys(patch).length > 0 || assigneesUpdate !== null;
+	const hasEdits =
+		Object.keys(patch).length > 0 || assigneesUpdate !== null || dependsUpdate !== null;
 	if (hasEdits && !allowed) error(403, m.tasks_err_cannot_edit());
 	if (!hasEdits && plannedUpdate !== null) {
 		// Planning-only calls need read access; answer 404 (not 403) so the
@@ -811,8 +1064,12 @@ export async function applyTaskUpdate(
 		.from(taskAssignee)
 		.where(eq(taskAssignee.taskId, target.id));
 	const priorAssignees = new Set(priorAssigneeRows.map((r) => r.userId));
+	const priorDeps = await loadTaskDependencyIds(target.id);
 
 	const assigneeOut: { next: string[] | null } = { next: null };
+	const depsOut: { added: string[]; removed: string[] } | null = dependsUpdate
+		? { added: [], removed: [] }
+		: null;
 	await db.transaction(async (tx) => {
 		if (Object.keys(patch).length > 0) {
 			await tx.update(task).set(patch).where(eq(task.id, target.id));
@@ -838,6 +1095,11 @@ export async function applyTaskUpdate(
 				assigneeOut.next = [];
 			}
 		}
+		if (dependsUpdate !== null && depsOut) {
+			const diff = await writeTaskDependencies(tx, target.id, dependsUpdate, priorDeps);
+			depsOut.added = diff.added;
+			depsOut.removed = diff.removed;
+		}
 	});
 
 	// Mirror checklist completion back to the source ticket (items copied on
@@ -851,6 +1113,7 @@ export async function applyTaskUpdate(
 
 	const displayId = `${target.projectKey}-${target.number}`;
 	const currentAssignees = assigneeOut.next ?? [...priorAssignees];
+	const currentDeps = dependsUpdate ?? priorDeps;
 	const actor = { id: me.id, name: me.name };
 
 	const taskCtx = {
@@ -898,11 +1161,17 @@ export async function applyTaskUpdate(
 					assigneeIds: removed,
 					origin: opts.origin,
 					data: {
-						task: taskSnapshot({ ...taskCtx, assigneeIds: currentAssignees }, opts.origin),
+						task: taskSnapshot(
+							{ ...taskCtx, assigneeIds: currentAssignees, dependsOnIds: currentDeps },
+							opts.origin
+						),
 						removedAssigneeIds: removed
 					}
 				});
 			}
+		}
+		if (depsOut && (depsOut.added.length || depsOut.removed.length)) {
+			changes.dependsOnIds = { from: priorDeps, to: currentDeps };
 		}
 		if (Object.keys(changes).length > 0) {
 			emitWebhookEvent({
@@ -913,11 +1182,32 @@ export async function applyTaskUpdate(
 				assigneeIds: currentAssignees,
 				origin: opts.origin,
 				data: {
-					task: taskSnapshot({ ...taskCtx, assigneeIds: currentAssignees }, opts.origin),
+					task: taskSnapshot(
+						{ ...taskCtx, assigneeIds: currentAssignees, dependsOnIds: currentDeps },
+						opts.origin
+					),
 					changes
 				}
 			});
 		}
+	}
+	if (depsOut && (depsOut.added.length || depsOut.removed.length)) {
+		void taskRefsFor([...depsOut.added, ...depsOut.removed])
+			.then((refs) =>
+				logActivity(db, {
+					projectId: target.projectId,
+					taskId: target.id,
+					actorId: me.id,
+					type: 'task.dependency',
+					meta: {
+						taskRef: displayId,
+						taskTitle: target.title,
+						added: depsOut.added.map((id) => refs[id] ?? id),
+						removed: depsOut.removed.map((id) => refs[id] ?? id)
+					}
+				})
+			)
+			.catch((err) => console.error('logActivity failed', err));
 	}
 	if (statusChanged) {
 		void notifyTaskStatusChanged({
@@ -965,7 +1255,11 @@ export async function applyTaskUpdate(
 		orgId: target.projectOrgId,
 		meta: {
 			projectId: target.projectId,
-			fields: [...Object.keys(patch), ...(assigneesUpdate !== null ? ['assignees'] : [])],
+			fields: [
+				...Object.keys(patch),
+				...(assigneesUpdate !== null ? ['assignees'] : []),
+				...(dependsUpdate !== null ? ['dependsOn'] : [])
+			],
 			via: opts.via
 		}
 	});
@@ -1104,6 +1398,8 @@ export type CreateTaskWithEffectsInput = {
 	checklist?: unknown;
 	/** YYYY-MM-DD: plan the new task into the creator's week. */
 	plannedFor?: string | null;
+	/** Prerequisite task uuids (same project). */
+	dependsOnIds?: string[];
 	/** Ignored — the creator is always `locals.user`. Accepted for call-site symmetry. */
 	createdBy?: string;
 };
@@ -1181,6 +1477,27 @@ export async function createTaskWithEffects(
 		error(403, 'You do not have permission to perform this action.');
 	}
 
+	// Prerequisites: same rules as an update (exists, same project); the new
+	// task has no id yet, so the self/cycle checks are vacuous.
+	let dependsOnIds: string[] = [];
+	if (input.dependsOnIds !== undefined) {
+		if (
+			!Array.isArray(input.dependsOnIds) ||
+			input.dependsOnIds.some((x) => typeof x !== 'string')
+		) {
+			error(400, 'dependsOnIds must be a string array.');
+		}
+		try {
+			dependsOnIds = await validateTaskDependencies(
+				{ id: '', projectId: proj.id, projectKey: proj.key },
+				input.dependsOnIds
+			);
+		} catch (err) {
+			if (err instanceof TaskDependencyError) error(400, err.message);
+			throw err;
+		}
+	}
+
 	const description = input.description?.trim() || null;
 	const created = await createTask({
 		projectId: proj.id,
@@ -1198,7 +1515,8 @@ export async function createTaskWithEffects(
 		createdBy: me.id,
 		plannedForUserId: me.id,
 		plannedFor,
-		channel: opts.via === 'mcp' ? 'mcp' : 'api'
+		channel: opts.via === 'mcp' ? 'mcp' : 'api',
+		dependsOnIds
 	});
 	logActivityFF({
 		projectId: proj.id,
@@ -1225,7 +1543,10 @@ export async function createTaskWithEffects(
 		assigneeIds: created.assignedIds,
 		origin: opts.origin,
 		data: {
-			task: taskSnapshot({ ...createdCtx, assigneeIds: created.assignedIds, dueDate }, opts.origin),
+			task: taskSnapshot(
+				{ ...createdCtx, assigneeIds: created.assignedIds, dueDate, dependsOnIds },
+				opts.origin
+			),
 			description,
 			attachments: []
 		}

@@ -8,6 +8,7 @@
 	import Icon from '../Icon.svelte';
 	import { formatDateLong, formatDateShort, formatEstimate, dueCountdown } from '$lib/utils/format';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
+	import { statusLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
@@ -21,6 +22,11 @@
 	// Same nearing/overdue indicator as the list view; suppressed for done tasks.
 	let dueDate = $derived(task.endDate ?? task.due);
 	let due = $derived(task.status === 'done' ? null : dueCountdown(dueDate));
+	// Open prerequisites: the link indicator replaces the status dot (same as
+	// the list row); the status stays in its tooltip.
+	let openDeps = $derived(
+		task.blocked ? (task.dependsOn ?? []).filter((d) => d.status !== 'done').length : 0
+	);
 	const DUE_TONE: Record<string, string> = {
 		overdue: 'text-[#ef4f5e] font-medium',
 		urgent: 'text-accent',
@@ -34,14 +40,26 @@
 	class="group block w-full rounded-xl border border-border bg-bg-elev px-3 py-2.5 text-left shadow-[0_1px_0_rgba(255,255,255,0.02)_inset] transition-colors hover:bg-surface"
 >
 	<div class="mb-1.5 flex items-center gap-2">
-		<StatusDot status={task.status} />
+		{#if openDeps > 0}
+			<span
+				class="inline-flex items-center gap-0.5 text-[var(--color-status-paused)]"
+				title="{openDeps === 1
+					? m.tasks_blocked_badge_title_one()
+					: m.tasks_blocked_badge_title({ n: openDeps })} · {statusLabel(task.status)}"
+			>
+				<Icon name="link" size={13} />
+				<span class="font-mono text-[12px]">{openDeps}</span>
+			</span>
+		{:else}
+			<StatusDot status={task.status} />
+		{/if}
 		{#if task.type}
 			<TypeBadge type={task.type} />
 		{/if}
 		<span class="font-mono text-[12px] text-text-3">{task.id}</span>
 		{#if task.plannedFor || task.inMyPlan}
 			<span
-				class="ml-auto inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[12px] text-accent bg-accent-soft"
+				class="ml-auto inline-flex items-center gap-1.5 rounded-md bg-accent-soft px-2 py-0.5 text-[12px] text-accent"
 				title={task.plannedFor
 					? m.tasks_planned_for({ date: formatDateShort(task.plannedFor) })
 					: m.tasks_in_your_week_no_date()}

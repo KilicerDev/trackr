@@ -303,6 +303,16 @@ export function taskDetailMd(input: { task: Task; users: UserDirectory; origin: 
 		out.push(`- Start: ${t.startDate ?? '—'} · End: ${t.endDate ?? '—'}`);
 	if (t.inMyPlan) out.push(`- In your plan: ${t.plannedFor ?? 'undated'}`);
 	if (t.sourceTicket) out.push(`- Source ticket: ${t.sourceTicket.displayId}`);
+	if (t.dependsOn?.length) {
+		const open = t.dependsOn.filter((d) => d.status !== 'done').length;
+		out.push(`- Depends on: ${t.dependsOn.map((d) => `${d.id} (${d.status})`).join(', ')}`);
+		out.push(
+			`- Blocked: ${open ? `yes — ${open} of ${t.dependsOn.length} prerequisites still open` : 'no — every prerequisite is done'}`
+		);
+	}
+	if (t.dependents?.length) {
+		out.push(`- Needed by: ${t.dependents.map((d) => `${d.id} (${d.status})`).join(', ')}`);
+	}
 	out.push('');
 	out.push('## Description');
 	out.push('');
@@ -480,6 +490,11 @@ export type TaskDetailDto = {
 	plannedFor: string | null;
 	inMyPlan: boolean;
 	sourceTicket: { id: string; displayId: string } | null;
+	/** Prerequisites (same project). `blocked` = any of them not done. */
+	dependsOn: { key: string; id: string; title: string; status: string }[];
+	/** Tasks waiting on this one. */
+	dependents: { key: string; id: string; title: string; status: string }[];
+	blocked: boolean;
 	description: string;
 	checklist: ChecklistItemLike[];
 	attachments: AttachmentSummary[];
@@ -517,6 +532,19 @@ export function taskDetailDto(t: Task, dir: UserDirectory, origin: string): Task
 		plannedFor: t.plannedFor ?? null,
 		inMyPlan: !!t.inMyPlan,
 		sourceTicket: t.sourceTicket ?? null,
+		dependsOn: (t.dependsOn ?? []).map((d) => ({
+			key: d.id,
+			id: d.uuid,
+			title: d.title,
+			status: d.status
+		})),
+		dependents: (t.dependents ?? []).map((d) => ({
+			key: d.id,
+			id: d.uuid,
+			title: d.title,
+			status: d.status
+		})),
+		blocked: !!t.blocked,
 		description: t.description ?? '',
 		checklist: (t.checklist ?? []).map((c) => ({ id: c.id, text: c.text, done: c.done })),
 		attachments: (t.files ?? []).map((a) => attachmentSummary(a, origin)),

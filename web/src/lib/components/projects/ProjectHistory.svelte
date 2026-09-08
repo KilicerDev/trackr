@@ -179,6 +179,7 @@
 		'task.priority': { icon: 'arrow-up', color: '#e0a458' },
 		'task.type': { icon: 'square', color: '#7fc8a9' },
 		'task.assignee': { icon: 'users', color: '#a98cf0' },
+		'task.dependency': { icon: 'link', color: '#e9c46a' },
 		'time.logged': { icon: 'calendar', color: '#e0a458' },
 		'project.name': { icon: 'settings', color: '#9aa4b2' },
 		'project.description': { icon: 'settings', color: '#9aa4b2' },
@@ -253,6 +254,8 @@
 			<span class="font-medium text-text">{humanize(e.meta?.to)}</span>
 		{:else if e.type === 'task.assignee'}
 			{m.projects_history_updated_assignees_of()} {@render refChip(e.meta)}
+		{:else if e.type === 'task.dependency'}
+			{m.projects_history_updated_dependencies_of()} {@render refChip(e.meta)}
 		{:else if e.type === 'time.logged'}
 			{m.projects_history_logged()}
 			<span class="font-medium text-text">{fmtMinutes(e.meta?.minutes)}</span>
@@ -372,18 +375,23 @@
 									>
 										<MentionText text={e.body} />
 									</div>
-								{:else if e.type === 'task.assignee'}
-									<div class="mt-1 flex flex-wrap gap-1.5 text-[12px]">
+								{:else if e.type === 'task.assignee' || e.type === 'task.dependency'}
+									{@const label = e.type === 'task.assignee' ? userName : (ref: string) => ref}
+									<div
+										class="mt-1 flex flex-wrap gap-1.5 text-[12px] {e.type === 'task.dependency'
+											? 'font-mono'
+											: ''}"
+									>
 										{#if Array.isArray(e.meta?.added) && e.meta.added.length}
 											<span
 												class="inline-flex items-center rounded border border-border bg-surface px-1.5 py-px text-text-2"
-												>+{(e.meta.added as string[]).map(userName).join(', ')}</span
+												>+{(e.meta.added as string[]).map(label).join(', ')}</span
 											>
 										{/if}
 										{#if Array.isArray(e.meta?.removed) && e.meta.removed.length}
 											<span
 												class="inline-flex items-center rounded border border-border bg-surface px-1.5 py-px text-text-4 line-through"
-												>{(e.meta.removed as string[]).map(userName).join(', ')}</span
+												>{(e.meta.removed as string[]).map(label).join(', ')}</span
 											>
 										{/if}
 									</div>

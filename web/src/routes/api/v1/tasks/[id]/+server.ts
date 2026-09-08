@@ -2,7 +2,9 @@
 //   GET   — full task view model + display directory + canEdit; editors also
 //           get the assignee picker candidates (internal users only).
 //   PATCH { status?, priority?, type?, title?, description?, due?, estimate?,
-//           tags?, checklist?, assigneeIds?, plannedFor? } — permission mirrors
+//           tags?, checklist?, assigneeIds?, dependsOnIds?, plannedFor? } —
+//   dependsOnIds is the full prerequisite set (same-project task uuids; a
+//   blocked task stays editable, the app only warns). Permission mirrors
 //   the web update action: project.tasks.edit.any, or creator + edit.own.
 //   plannedFor plans the task into the *caller's* week (web planSet parity)
 //   and only needs read access, like the web action.
@@ -95,6 +97,7 @@ export const PATCH: RequestHandler = async ({ locals, params, request, url }) =>
 		tags?: string[];
 		checklist?: { id?: string; text?: string; done?: boolean }[];
 		assigneeIds?: string[];
+		dependsOnIds?: string[];
 		plannedFor?: string | null;
 	}>(request);
 	// Validation, permission rules, persistence and every side effect live in

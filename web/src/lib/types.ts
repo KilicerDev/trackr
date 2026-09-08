@@ -87,6 +87,21 @@ export interface Task {
 	inMyPlan?: boolean;
 	/** Set when the task was spun up from a support ticket. */
 	sourceTicket?: { id: string; displayId: string } | null;
+	/** Prerequisites: tasks that should be done before this one starts. */
+	dependsOn?: TaskLink[];
+	/** Reverse edge: tasks waiting on this one. */
+	dependents?: TaskLink[];
+	/** Derived: at least one prerequisite is not done. Never stored. */
+	blocked?: boolean;
+}
+
+/** Compact reference to another task, for dependency lists and pickers. */
+export interface TaskLink {
+	uuid: string;
+	/** Display ref, e.g. WEB-12. */
+	id: string;
+	title: string;
+	status: StatusId;
 }
 
 export interface WikiPage {

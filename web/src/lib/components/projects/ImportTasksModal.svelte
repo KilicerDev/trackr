@@ -186,6 +186,10 @@
 	//                    to assign the task to yourself. If given, exactly those
 	//                    users are assigned — and if none of them match an
 	//                    assignable user, that task is rejected with an error.
+	//   dependsOn:       array of task refs from this project, e.g. ["WEB-12"] —
+	//                    prerequisites that should be done before the task starts.
+	//                    Refs must be existing tasks (not new entries in this
+	//                    file); loops are rejected.
 	"tasks": [
 		{
 			"title": "Set up staging environment",
@@ -198,7 +202,8 @@
 			"estimateMinutes": 90,
 			"tags": ["infra"],
 			"checklist": [{ "text": "Provision server", "done": false }],
-			"assignees": ["user@example.com"]
+			"assignees": ["user@example.com"],
+			"dependsOn": ["WEB-12"]
 		},
 		{ "title": "Only a title is required" }
 	]

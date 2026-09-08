@@ -556,7 +556,15 @@
 	</div>
 </div>
 
-<Inspector task={selected} onclose={() => (selectedId = null)} users={data.users} />
+<Inspector
+	task={selected}
+	onclose={() => (selectedId = null)}
+	users={data.users}
+	onopen={(id) => {
+		if (data.tasks.some((t) => t.id === id)) selectedId = id;
+		else void goto(`/tasks?task=${encodeURIComponent(id)}`);
+	}}
+/>
 
 <CreateTaskModal
 	open={creating}

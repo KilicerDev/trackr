@@ -18,11 +18,16 @@ import {
 	ALLOWED_TASK_STATUS,
 	ALLOWED_TASK_TYPE,
 	createTask,
+	loadTaskDependencyIds,
 	loadTasks,
-	resolveTaskByDisplayId
+	resolveTaskByDisplayId,
+	TaskDependencyError,
+	taskRefsFor,
+	validateTaskDependencies,
+	writeTaskDependencies
 } from '$lib/server/tasks';
 import { normalizeTag } from '$lib/utils/label-meta';
-import { logActivityFF } from '$lib/server/activity';
+import { logActivity, logActivityFF } from '$lib/server/activity';
 import { attachmentSnapshots, emitWebhookEvent, taskSnapshot } from '$lib/server/webhooks';
 import { recordAudit } from '$lib/server/audit';
 import { syncTicketChecklistFromTask } from '$lib/server/tickets';
@@ -289,6 +294,21 @@ export const actions: Actions = {
 			}
 		}
 
+		// Prerequisites: multi-value `dependsOn` (task uuids), or `__clear__`.
+		// Validated up front (same project, exists, no cycle) so a bad pick
+		// fails with a readable 400 instead of a constraint error mid-transaction.
+		let dependsUpdate: string[] | null = null;
+		if (form.has('dependsOn')) {
+			const all = form.getAll('dependsOn').map((v) => String(v));
+			const wanted = all.length === 1 && all[0] === '__clear__' ? [] : all.filter(Boolean);
+			try {
+				dependsUpdate = await validateTaskDependencies(target, wanted);
+			} catch (err) {
+				if (err instanceof TaskDependencyError) return fail(400, { message: err.message });
+				throw err;
+			}
+		}
+
 		// Snapshot prior assignees so we can compute the *added* set and only
 		// notify newly-assigned users. Reads outside the transaction are fine
 		// here — the resolve already pinned the task and we use the snapshot
@@ -299,12 +319,16 @@ export const actions: Actions = {
 			.where(eq(taskAssignee.taskId, target.id));
 		const priorAssignees = new Set(priorAssigneeRows.map((r) => r.userId));
 		const priorStatus = target.status;
+		const priorDeps = await loadTaskDependencyIds(target.id);
 
 		// Declared via a holder object so TypeScript's control-flow analysis
 		// doesn't collapse the type to `null` based on the outer initializer
 		// — mutations happen inside the transaction callback, which CFA
 		// cannot follow.
 		const assigneeOut: { next: string[] | null } = { next: null };
+		const depsOut: { added: string[]; removed: string[] } | null = dependsUpdate
+			? { added: [], removed: [] }
+			: null;
 		try {
 			await db.transaction(async (tx) => {
 				if (Object.keys(patch).length > 0) {
@@ -331,6 +355,11 @@ export const actions: Actions = {
 					} else {
 						assigneeOut.next = [];
 					}
+				}
+				if (dependsUpdate !== null && depsOut) {
+					const diff = await writeTaskDependencies(tx, target.id, dependsUpdate, priorDeps);
+					depsOut.added = diff.added;
+					depsOut.removed = diff.removed;
 				}
 			});
 		} catch (err) {
@@ -359,6 +388,7 @@ export const actions: Actions = {
 			type: (patch.type as string | undefined) ?? target.type
 		};
 		const currentAssignees = assigneeOut.next ?? [...priorAssignees];
+		const currentDeps = dependsUpdate ?? priorDeps;
 		const webhookActor = { id: me.id, name: me.name };
 
 		// task.updated carries a from/to map of every changed scalar field.
@@ -405,11 +435,17 @@ export const actions: Actions = {
 						assigneeIds: removed,
 						origin: url.origin,
 						data: {
-							task: taskSnapshot({ ...taskCtx, assigneeIds: currentAssignees }, url.origin),
+							task: taskSnapshot(
+								{ ...taskCtx, assigneeIds: currentAssignees, dependsOnIds: currentDeps },
+								url.origin
+							),
 							removedAssigneeIds: removed
 						}
 					});
 				}
+			}
+			if (depsOut && (depsOut.added.length || depsOut.removed.length)) {
+				changes.dependsOnIds = { from: priorDeps, to: currentDeps };
 			}
 			if (Object.keys(changes).length > 0) {
 				emitWebhookEvent({
@@ -420,7 +456,10 @@ export const actions: Actions = {
 					assigneeIds: currentAssignees,
 					origin: url.origin,
 					data: {
-						task: taskSnapshot({ ...taskCtx, assigneeIds: currentAssignees }, url.origin),
+						task: taskSnapshot(
+							{ ...taskCtx, assigneeIds: currentAssignees, dependsOnIds: currentDeps },
+							url.origin
+						),
 						changes
 					}
 				});
@@ -507,6 +546,24 @@ export const actions: Actions = {
 					meta: { ...taskMeta, added, removed }
 				});
 			}
+		}
+		if (depsOut && (depsOut.added.length || depsOut.removed.length)) {
+			const { added, removed } = depsOut;
+			void taskRefsFor([...added, ...removed])
+				.then((refs) =>
+					logActivity(db, {
+						projectId,
+						taskId: target.id,
+						actorId: me.id,
+						type: 'task.dependency',
+						meta: {
+							...taskMeta,
+							added: added.map((id) => refs[id] ?? id),
+							removed: removed.map((id) => refs[id] ?? id)
+						}
+					})
+				)
+				.catch((err) => console.error('logActivity failed', err));
 		}
 
 		return { success: true };

@@ -10,7 +10,7 @@
 	import { formatDateShort, formatEstimate, dueCountdown } from '$lib/utils/format';
 	import { loggedMinutes } from '$lib/utils/task';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
-	import { priorityLabel } from '$lib/utils/labels';
+	import { priorityLabel, statusLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
@@ -35,6 +35,11 @@
 	// Suppress the countdown for completed tasks — a finished task isn't
 	// "overdue". Only show the live indicator while work is still pending.
 	let due = $derived(task.status === 'done' ? null : dueCountdown(task.due));
+	// Open prerequisites. When any exist the link indicator replaces the
+	// status dot in the leading column; the status stays in its tooltip.
+	let openDeps = $derived(
+		task.blocked ? (task.dependsOn ?? []).filter((d) => d.status !== 'done').length : 0
+	);
 	const DUE_TONE: Record<string, string> = {
 		overdue: 'text-[#ef4f5e] font-medium',
 		urgent: 'text-accent',
@@ -45,11 +50,23 @@
 <button
 	type="button"
 	{onclick}
-	class="grid w-full grid-cols-[22px_minmax(0,1fr)_auto_28px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors md:grid-cols-[22px_88px_minmax(0,1fr)_110px_88px_88px_28px]
+	class="grid w-full grid-cols-[30px_minmax(0,1fr)_auto_28px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors md:grid-cols-[30px_88px_minmax(0,1fr)_110px_88px_88px_28px]
 	{selected ? 'bg-[var(--row-active)]' : 'hover:bg-[var(--row-hover)]'}"
 	style:height="var(--row-h)"
 >
-	<StatusDot status={task.status} />
+	{#if openDeps > 0}
+		<span
+			class="inline-flex items-center gap-0.5 text-[var(--color-status-paused)]"
+			title="{openDeps === 1
+				? m.tasks_blocked_badge_title_one()
+				: m.tasks_blocked_badge_title({ n: openDeps })} · {statusLabel(task.status)}"
+		>
+			<Icon name="link" size={13} />
+			<span class="font-mono text-[12px]">{openDeps}</span>
+		</span>
+	{:else}
+		<StatusDot status={task.status} />
+	{/if}
 	<span class="hidden truncate font-mono text-[13px] text-text-3 md:block">{task.id}</span>
 	<span class="flex min-w-0 items-center gap-2">
 		<span class="shrink-0"><TypeBadge type={task.type ?? 'task'} showLabel={false} /></span>
@@ -109,7 +126,11 @@
 	{#if showTime}
 		<span
 			class="hidden font-mono text-[13px] md:block {logged > 0 ? 'text-text-2' : 'text-text-3'}"
-			title={timeMinutes ? (logged > 0 ? m.week_time_logged() : m.week_time_estimated()) : undefined}
+			title={timeMinutes
+				? logged > 0
+					? m.week_time_logged()
+					: m.week_time_estimated()
+				: undefined}
 		>
 			{timeMinutes ? formatEstimate(timeMinutes) : '—'}
 		</span>

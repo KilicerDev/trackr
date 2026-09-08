@@ -124,6 +124,21 @@ export async function loadTaskDetail(ctx: McpContext, key: string): Promise<Task
 	return { task, users, markdown: taskDetailMd({ task, users, origin: ctx.origin }) };
 }
 
+/**
+ * Task keys (WEB-12) → uuids. Same-project and cycle rules are enforced by the
+ * write helpers; an unknown key is a plain 404 here.
+ */
+async function resolveTaskKeys(keys: readonly string[]): Promise<string[]> {
+	return Promise.all(
+		keys.map(async (k) => {
+			const display = normalizeDisplayId(k);
+			const dep = await resolveTaskByDisplayId(display);
+			if (!dep) fail(404, `Task ${display} not found.`);
+			return dep.id;
+		})
+	);
+}
+
 /** Task assignees are internal users only — same directory the web picker uses. */
 async function resolveTaskAssignees(refs: readonly string[]): Promise<string[]> {
 	if (refs.length === 0) return [];
@@ -276,7 +291,7 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 		{
 			title: 'Get task',
 			description:
-				'Full view of one task by display id (e.g. `WEB-12`): fields, description (markdown), checklist with item ids, attachments with ids and download URLs, comments, time logs, and the source ticket if it was converted from one.',
+				'Full view of one task by display id (e.g. `WEB-12`): fields, description (markdown), checklist with item ids, attachments with ids and download URLs, comments, time logs, the source ticket if it was converted from one, and dependencies (`dependsOn` prerequisites with `blocked` = any not done; `dependents` waiting on it).',
 			inputSchema: z.object({ key: taskKeySchema }),
 			annotations: READ_ONLY,
 			_meta: uiToolMeta(DETAIL_UI_URI)
@@ -292,7 +307,7 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 		{
 			title: 'Create task',
 			description:
-				'Create a task in a project (`projectKey`, see `list_projects`; requires project.tasks.create). `description` is markdown. Defaults: status `todo`, priority `none`, type `task`. `assignees` are internal team members (ids or emails); when omitted or none valid, the task is assigned to you. Optional `due` (YYYY-MM-DD), `estimateMinutes`, `tags`, `checklist`, `attachmentUrls`. Keep it to what the user said: a title, and a description/checklist/tags only when they supplied that content. Returns the new task key.',
+				'Create a task in a project (`projectKey`, see `list_projects`; requires project.tasks.create). `description` is markdown. Defaults: status `todo`, priority `none`, type `task`. `assignees` are internal team members (ids or emails); when omitted or none valid, the task is assigned to you. Optional `due` (YYYY-MM-DD), `estimateMinutes`, `tags`, `checklist`, `dependsOn` (prerequisite task keys in the same project, e.g. ["WEB-12"]), `attachmentUrls`. Keep it to what the user said: a title, and a description/checklist/tags only when they supplied that content. Returns the new task key.',
 			inputSchema: z.object({
 				projectKey: z.string().describe('Project key (e.g. `WEB`).'),
 				title: z.string().min(1).max(300).describe('Task title, in the user’s own words.'),
@@ -324,6 +339,10 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 					.optional()
 					.describe('Assignee user ids or emails (internal users only).'),
 				checklist: checklistSchema.optional(),
+				dependsOn: z
+					.array(z.string())
+					.optional()
+					.describe('Prerequisite task keys in the same project (e.g. ["WEB-12"]).'),
 				attachmentUrls: attachmentUrlsSchema
 			}),
 			annotations: WRITE,
@@ -340,6 +359,7 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 			const tags = [...new Set((args.tags ?? []).map((t) => normalizeTag(t)).filter(Boolean))];
 			const assigneeIds = await resolveTaskAssignees(args.assignees ?? []);
 			const checklist = args.checklist ? (sanitizeTaskChecklist(args.checklist) ?? []) : undefined;
+			const dependsOnIds = args.dependsOn ? await resolveTaskKeys(args.dependsOn) : undefined;
 
 			const created = await createTaskWithEffects(
 				locals,
@@ -356,6 +376,7 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 					tags,
 					checklist,
 					assigneeIds,
+					dependsOnIds,
 					createdBy: locals.user.id
 				},
 				{ origin, via: 'mcp' }
@@ -382,7 +403,7 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 		{
 			title: 'Update task',
 			description:
-				'Change task fields. Requires project.tasks.edit.any, or being the creator with project.tasks.edit.own. Pass only the fields the user asked to change (leave everything else untouched): `title`, `description` (markdown, replaces; empty string clears), `status`, `priority`, `type`, `due` (YYYY-MM-DD; null clears), `estimateMinutes` (null clears), `tags` (full list), `assignees` (full list of internal user ids/emails), `checklist` (full replace — see `checklist_toggle`), `plannedFor` (plan into YOUR week: YYYY-MM-DD, null removes; only needs read access). Status changes notify and log activity like the app.',
+				'Change task fields. Requires project.tasks.edit.any, or being the creator with project.tasks.edit.own. Pass only the fields the user asked to change (leave everything else untouched): `title`, `description` (markdown, replaces; empty string clears), `status`, `priority`, `type`, `due` (YYYY-MM-DD; null clears), `estimateMinutes` (null clears), `tags` (full list), `assignees` (full list of internal user ids/emails), `checklist` (full replace — see `checklist_toggle`), `dependsOn` (full prerequisite list as task keys in the same project, e.g. ["WEB-12"]; [] clears; a blocked task stays editable — it is a warning, not a lock), `plannedFor` (plan into YOUR week: YYYY-MM-DD, null removes; only needs read access). Status changes notify and log activity like the app.',
 			inputSchema: z.object({
 				key: taskKeySchema,
 				title: z.string().min(1).max(300).optional().describe('New title.'),
@@ -408,6 +429,12 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 					.optional()
 					.describe('Full assignee list; [] clears (internal users only).'),
 				checklist: checklistSchema.optional(),
+				dependsOn: z
+					.array(z.string())
+					.optional()
+					.describe(
+						'Full prerequisite list as task keys (same project, e.g. ["WEB-12"]); [] clears.'
+					),
 				plannedFor: isoDateSchema
 					.nullable()
 					.optional()
@@ -433,6 +460,7 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 			if (args.assignees !== undefined) {
 				patch.assigneeIds = await resolveTaskAssignees(args.assignees);
 			}
+			if (args.dependsOn !== undefined) patch.dependsOnIds = await resolveTaskKeys(args.dependsOn);
 			if (args.plannedFor !== undefined) patch.plannedFor = args.plannedFor;
 			if (Object.keys(patch).length === 0)
 				fail(400, 'Nothing to update — pass at least one field.');

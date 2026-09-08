@@ -10,6 +10,7 @@ import {
 	index,
 	uniqueIndex,
 	primaryKey,
+	check,
 	customType,
 	type AnyPgColumn
 } from 'drizzle-orm/pg-core';
@@ -410,6 +411,31 @@ export const taskAssignee = pgTable(
 
 export type TaskAssignee = typeof taskAssignee.$inferSelect;
 
+// Task prerequisites: `taskId` should not start until `dependsOnId` is done.
+// "Blocked" is derived at read time (any prerequisite not `done`) — never
+// stored and never a status, so it can't go stale. Same-project only and
+// cycle-free, both enforced by `applyTaskDependencies` in server/tasks.ts;
+// the CHECK only rules out the trivial self-reference.
+export const taskDependency = pgTable(
+	'task_dependency',
+	{
+		taskId: text('task_id')
+			.notNull()
+			.references(() => task.id, { onDelete: 'cascade' }),
+		dependsOnId: text('depends_on_id')
+			.notNull()
+			.references(() => task.id, { onDelete: 'cascade' }),
+		addedAt: timestamp('added_at').defaultNow().notNull()
+	},
+	(t) => [
+		primaryKey({ columns: [t.taskId, t.dependsOnId] }),
+		index('task_dependency_depends_on_idx').on(t.dependsOnId),
+		check('task_dependency_no_self', sql`${t.taskId} <> ${t.dependsOnId}`)
+	]
+);
+
+export type TaskDependency = typeof taskDependency.$inferSelect;
+
 export const taskRelations = relations(task, ({ one, many }) => ({
 	project: one(project, {
 		fields: [task.projectId],
@@ -467,6 +493,7 @@ export const PROJECT_ACTIVITY_TYPES = [
 	'task.priority',
 	'task.type',
 	'task.assignee',
+	'task.dependency',
 	'task.deleted',
 	'time.logged'
 ] as const;

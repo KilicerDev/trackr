@@ -7,6 +7,7 @@ import {
 	project,
 	task,
 	taskAssignee,
+	taskDependency,
 	taskPlanning
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
@@ -15,6 +16,7 @@ import {
 	ALLOWED_TASK_STATUS,
 	ALLOWED_TASK_TYPE,
 	createTasks,
+	writeTaskDependencies,
 	type BulkTaskInput
 } from '$lib/server/tasks';
 import { syncTicketChecklistFromTask } from '$lib/server/tickets';
@@ -54,7 +56,10 @@ type ParsedFields = {
 	checklist?: { text: string; done: boolean }[];
 	/** Plan into the importer's week (YYYY-MM-DD); null removes the plan. */
 	plannedFor?: string | null;
+	/** Prerequisite refs as written ("KEY-12", "12" or a uuid); [] clears. */
+	dependsOn?: string[];
 };
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Validate one JSON item, or explain why it can't be. `assignees` stays raw
 // here (email or user id, null when the key is absent); ids are resolved by
@@ -170,6 +175,16 @@ function parseItem(
 	if (it.description !== undefined) {
 		fields.description =
 			typeof it.description === 'string' && it.description.trim() ? it.description.trim() : null;
+	}
+
+	if (it.dependsOn !== undefined) {
+		if (
+			!Array.isArray(it.dependsOn) ||
+			it.dependsOn.some((d) => typeof d !== 'string' && typeof d !== 'number')
+		) {
+			return { ok: false, message: m.import_err_invalid_depends_on() };
+		}
+		fields.dependsOn = [...new Set(it.dependsOn.map((d) => String(d).trim()).filter(Boolean))];
 	}
 
 	return { ok: true, id, fields, assignees };
@@ -337,11 +352,90 @@ export const POST: RequestHandler = async ({ request, params, locals, url }) => 
 		return resolved;
 	}
 
+	// ---- prerequisites ------------------------------------------------------
+	// Refs resolve against the project's live tasks (by number, "KEY-n", or
+	// uuid) — never against other entries of this file, which have no ref yet.
+	// Loops are checked in memory over the project's existing edges with each
+	// accepted entry's replacement applied in file order, so two entries can't
+	// close a cycle between them either.
+	const depItems = [...createItems, ...updateItems].filter((v) => v.fields.dependsOn !== undefined);
+	const idByDepRef = new Map<string, string>();
+	const refById = new Map<string, string>();
+	const existingDeps = new Map<string, string[]>();
+	if (depItems.length > 0) {
+		const live = await db
+			.select({ id: task.id, number: task.number })
+			.from(task)
+			.where(and(eq(task.projectId, p.id), isNull(task.deletedAt)));
+		for (const t of live) {
+			const ref = `${p.key}-${t.number}`;
+			refById.set(t.id, ref);
+			idByDepRef.set(t.id, t.id);
+			idByDepRef.set(ref, t.id);
+			idByDepRef.set(String(t.number), t.id);
+		}
+		const edges = await db
+			.select({ taskId: taskDependency.taskId, dependsOnId: taskDependency.dependsOnId })
+			.from(taskDependency)
+			.innerJoin(task, eq(task.id, taskDependency.taskId))
+			.where(eq(task.projectId, p.id));
+		for (const e of edges) {
+			const list = existingDeps.get(e.taskId) ?? [];
+			list.push(e.dependsOnId);
+			existingDeps.set(e.taskId, list);
+		}
+	}
+	const graph = new Map<string, string[]>(existingDeps);
+	function reaches(from: string[], goal: string): string | null {
+		const seen = new Set<string>();
+		const stack = from.map((id) => ({ id, origin: id }));
+		while (stack.length) {
+			const cur = stack.pop()!;
+			if (cur.id === goal) return cur.origin;
+			if (seen.has(cur.id)) continue;
+			seen.add(cur.id);
+			for (const next of graph.get(cur.id) ?? []) stack.push({ id: next, origin: cur.origin });
+		}
+		return null;
+	}
+	const resolveDeps = (v: ValidItem): string[] | null | undefined => {
+		const refs = v.fields.dependsOn;
+		if (refs === undefined) return null;
+		const ids: string[] = [];
+		for (const raw of refs) {
+			const ref = UUID_RE.test(raw) ? raw.toLowerCase() : raw.toUpperCase();
+			const id = idByDepRef.get(ref) ?? idByDepRef.get(raw);
+			if (!id) {
+				failed.push({ index: v.index, message: m.import_err_unknown_dependency({ ref: raw }) });
+				return undefined;
+			}
+			if (id === v.id) {
+				failed.push({ index: v.index, message: m.tasks_err_dependency_self() });
+				return undefined;
+			}
+			if (!ids.includes(id)) ids.push(id);
+		}
+		if (v.id) {
+			const offender = reaches(ids, v.id);
+			if (offender) {
+				failed.push({
+					index: v.index,
+					message: m.tasks_err_dependency_cycle({ ref: refById.get(offender) ?? offender })
+				});
+				return undefined;
+			}
+			graph.set(v.id, ids);
+		}
+		return ids;
+	};
+
 	// ---- creates -------------------------------------------------------------
 	const toCreate: { index: number; task: BulkTaskInput }[] = [];
 	for (const v of createItems) {
 		const resolved = resolveAssignees(v);
 		if (resolved === undefined) continue;
+		const deps = resolveDeps(v);
+		if (deps === undefined) continue;
 		const f = v.fields;
 		toCreate.push({
 			index: v.index,
@@ -358,7 +452,8 @@ export const POST: RequestHandler = async ({ request, params, locals, url }) => 
 				tags: f.tags ?? [],
 				checklist: (f.checklist ?? []).map((c) => ({ ...c, id: crypto.randomUUID() })),
 				assigneeIds: resolved ?? [],
-				plannedFor: f.plannedFor ?? null
+				plannedFor: f.plannedFor ?? null,
+				dependsOnIds: deps ?? []
 			}
 		});
 	}
@@ -371,11 +466,15 @@ export const POST: RequestHandler = async ({ request, params, locals, url }) => 
 		assigneeIds: string[] | null;
 		/** undefined = key absent (leave the plan alone); null = remove. */
 		plannedFor: string | null | undefined;
+		/** null = key absent; otherwise the full replacement set. */
+		dependsOnIds: string[] | null;
 	};
 	const toUpdate: UpdatePlan[] = [];
 	for (const v of updateItems) {
 		const resolved = resolveAssignees(v);
 		if (resolved === undefined) continue;
+		const deps = resolveDeps(v);
+		if (deps === undefined) continue;
 		const target = targetById.get(v.id as string) as Target;
 		const f = v.fields;
 		const patch: Record<string, unknown> = {};
@@ -402,7 +501,8 @@ export const POST: RequestHandler = async ({ request, params, locals, url }) => 
 			target,
 			patch,
 			assigneeIds: resolved,
-			plannedFor: f.plannedFor
+			plannedFor: f.plannedFor,
+			dependsOnIds: deps
 		});
 	}
 	failed.sort((a, b) => a.index - b.index);
@@ -474,6 +574,24 @@ export const POST: RequestHandler = async ({ request, params, locals, url }) => 
 							await tx
 								.insert(taskAssignee)
 								.values(u.assigneeIds.map((userId) => ({ taskId: u.target.id, userId })));
+						}
+					}
+					if (u.dependsOnIds !== null) {
+						const prior = existingDeps.get(u.target.id) ?? [];
+						const diff = await writeTaskDependencies(tx, u.target.id, u.dependsOnIds, prior);
+						if (diff.added.length || diff.removed.length) {
+							await logActivity(tx, {
+								projectId: p.id,
+								taskId: u.target.id,
+								actorId: me.id,
+								type: 'task.dependency',
+								meta: {
+									taskRef: `${p.key}-${u.target.number}`,
+									taskTitle: (u.patch.title as string) ?? u.target.title,
+									added: diff.added.map((id) => refById.get(id) ?? id),
+									removed: diff.removed.map((id) => refById.get(id) ?? id)
+								}
+							});
 						}
 					}
 					if (u.patch.status !== undefined && u.patch.status !== u.target.status) {

@@ -2,7 +2,7 @@
 // (via PATCH on [id]), quick-add with a single field. Structuring work
 // (boards, bulk edits) stays on the desktop.
 //   GET  ?scope=mine|all — `mine` (default) = tasks I'm assigned to or created.
-//   POST { title, projectKey, description?, status?, priority?, type?, due?,
+//   POST { title, projectKey, description?, status?, priority?, type?, due?, dependsOnIds?,
 //          estimate?, tags?, assigneeIds?, plannedFor? } — full create, same
 //          field semantics as the web create action. Send multipart/form-data
 //          with the object in a `payload` field plus `attachments` file parts
@@ -16,7 +16,9 @@ import {
 	ALLOWED_TASK_STATUS,
 	ALLOWED_TASK_TYPE,
 	createTask,
-	loadTasks
+	loadTasks,
+	TaskDependencyError,
+	validateTaskDependencies
 } from '$lib/server/tasks';
 import { loadTicketDisplayUsers } from '$lib/server/tickets';
 import { notifyTaskAssigned } from '$lib/server/notify/events/task';
@@ -66,6 +68,7 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		estimate?: number | null;
 		tags?: string[];
 		assigneeIds?: string[];
+		dependsOnIds?: string[];
 		plannedFor?: string | null;
 	}>(request);
 	const title = body.title?.trim();
@@ -113,6 +116,24 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 	if (!proj) apiError(404, m.tasks_err_task_not_found());
 	await assertCan(locals, 'project.tasks.create', { projectId: proj.id });
 
+	// Prerequisites: must be live tasks of this project (no self/cycle risk
+	// for a task that doesn't exist yet).
+	let dependsOnIds: string[] = [];
+	if (body.dependsOnIds !== undefined) {
+		if (!Array.isArray(body.dependsOnIds) || body.dependsOnIds.some((x) => typeof x !== 'string')) {
+			apiError(400, 'dependsOnIds must be a string array.');
+		}
+		try {
+			dependsOnIds = await validateTaskDependencies(
+				{ id: '', projectId: proj.id, projectKey: proj.key },
+				body.dependsOnIds
+			);
+		} catch (err) {
+			if (err instanceof TaskDependencyError) apiError(400, err.message);
+			throw err;
+		}
+	}
+
 	const created = await createTask({
 		projectId: proj.id,
 		projectKey: proj.key,
@@ -128,7 +149,8 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		createdBy: user.id,
 		plannedForUserId: user.id,
 		plannedFor,
-		channel: 'api'
+		channel: 'api',
+		dependsOnIds
 	});
 	logActivityFF({
 		projectId: proj.id,
@@ -167,7 +189,10 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		assigneeIds: created.assignedIds,
 		origin: url.origin,
 		data: {
-			task: taskSnapshot({ ...createdCtx, assigneeIds: created.assignedIds, dueDate }, url.origin),
+			task: taskSnapshot(
+				{ ...createdCtx, assigneeIds: created.assignedIds, dueDate, dependsOnIds },
+				url.origin
+			),
 			description: body.description?.trim() || null,
 			attachments: attachmentSnapshots(attachments, url.origin)
 		}

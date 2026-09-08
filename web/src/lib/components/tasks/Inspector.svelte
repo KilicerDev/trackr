@@ -5,7 +5,7 @@
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { confirm } from '$lib/components/confirm.svelte';
 	import type { ActionResult } from '@sveltejs/kit';
-	import type { PriorityId, StatusId, TypeId, Task } from '$lib/types';
+	import type { PriorityId, StatusId, TypeId, Task, TaskLink } from '$lib/types';
 	import Drawer from '../Drawer.svelte';
 	import StatusDot from '../StatusDot.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
@@ -32,6 +32,7 @@
 	import DatePopover from '../popovers/DatePopover.svelte';
 	import EstimatePopover from '../popovers/EstimatePopover.svelte';
 	import TagsPopover from '../popovers/TagsPopover.svelte';
+	import DependencyPopover from '../popovers/DependencyPopover.svelte';
 	import TaskMenuPopover from '../popovers/TaskMenuPopover.svelte';
 	import NewMeetingDialog from '../notes/NewMeetingDialog.svelte';
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES, TRACKR_TYPES } from '$lib/config/taxonomy';
@@ -54,8 +55,20 @@
 		task: Task | null;
 		onclose: () => void;
 		users?: AssignableUser[];
+		// Open another task by display id (dependency chips). Pages that hold the
+		// selection pass this so the drawer switches in place; without it the
+		// chip falls back to the /tasks deep link.
+		onopen?: (displayId: string) => void;
 	}
-	let { task, onclose, users: providedUsers }: Props = $props();
+	let { task, onclose, users: providedUsers, onopen }: Props = $props();
+
+	// Plain left-clicks switch the drawer; modified clicks keep the link's
+	// native open-in-new-tab behaviour.
+	function openTask(e: MouseEvent, displayId: string) {
+		if (!onopen || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+		e.preventDefault();
+		onopen(displayId);
+	}
 
 	function resolveUser(id: string) {
 		const source = providedUsers ?? (page.data as { users?: AssignableUser[] }).users;
@@ -290,9 +303,43 @@
 		| 'estimate'
 		| 'plan'
 		| 'tags'
+		| 'deps'
 		| 'menu'
 		| null;
 	let openPop = $state<PopId>(null);
+
+	// ─── Dependencies ────────────────────────────────────────────────────────
+	// Prerequisites live on the draft as TaskLinks so add/remove render at once;
+	// the server gets uuids (whole-array replace, `__clear__` for empty).
+	const dependsOn = $derived(draft?.dependsOn ?? []);
+	const dependents = $derived(draft?.dependents ?? []);
+	const openPrerequisites = $derived(dependsOn.filter((d) => d.status !== 'done'));
+	const isBlocked = $derived(openPrerequisites.length > 0);
+	const byRef = (a: TaskLink, b: TaskLink) =>
+		a.id.localeCompare(b.id, undefined, { numeric: true });
+
+	function setDependencies(next: TaskLink[]) {
+		if (!draft) return;
+		draft.dependsOn = next.length ? next : undefined;
+		draft.blocked = next.some((d) => d.status !== 'done');
+		void patch('dependsOn', { dependsOn: next.map((d) => d.uuid) });
+	}
+	function toggleDependency(link: TaskLink) {
+		const has = dependsOn.some((d) => d.uuid === link.uuid);
+		setDependencies(
+			has ? dependsOn.filter((d) => d.uuid !== link.uuid) : [...dependsOn, link].sort(byRef)
+		);
+	}
+	// Same-project tasks already on the page — instant picker results while
+	// the complete list is fetched.
+	const dependencySeed = $derived.by(() => {
+		const d = draft;
+		if (!d) return [];
+		const all = (page.data as { tasks?: Task[] }).tasks ?? [];
+		return all
+			.filter((t) => t.project === d.project && t.uuid && t.uuid !== d.uuid)
+			.map<TaskLink>((t) => ({ uuid: t.uuid!, id: t.id, title: t.title, status: t.status }));
+	});
 
 	// Every tag in use across tasks: the app-wide list from the layout load
 	// (complete, works from any page) unioned with tags on currently loaded
@@ -704,6 +751,40 @@
 				</div>
 			</div>
 
+			{#if isBlocked}
+				<div
+					class="mb-4 rounded-lg border border-l-[3px] border-border border-l-[var(--color-status-paused)] bg-surface px-3 py-2.5"
+					role="status"
+				>
+					<div class="flex items-start gap-2 text-[13px] leading-snug text-text-2">
+						<span class="mt-px shrink-0 text-[var(--color-status-paused)]">
+							<Icon name="alert-triangle" size={14} />
+						</span>
+						<span>
+							{dependsOn.length === 1
+								? m.tasks_blocked_banner_one()
+								: m.tasks_blocked_banner({
+										open: openPrerequisites.length,
+										total: dependsOn.length
+									})}
+						</span>
+					</div>
+					<div class="mt-2 flex flex-wrap gap-1.5 pl-[22px]">
+						{#each openPrerequisites as d (d.uuid)}
+							<a
+								href="/tasks?task={d.id}"
+								onclick={(e) => openTask(e, d.id)}
+								class="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-bg-elev px-2 py-1 text-[12px] text-text-2 transition-colors hover:border-border-strong hover:text-text"
+							>
+								<StatusDot status={d.status} size={11} />
+								<span class="shrink-0 font-mono text-text-3">{d.id}</span>
+								<span class="truncate">{d.title}</span>
+							</a>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
 			{#if canEdit}
 				{#key draft.id}
 					<div class="mb-5">
@@ -742,6 +823,125 @@
 				addPlaceholder={m.tasks_checklist_add()}
 				onChange={onChecklistChange}
 			/>
+
+			{#if draft.uuid && (dependsOn.length || dependents.length || canEdit)}
+				{@const hasAny = dependsOn.length > 0 || dependents.length > 0}
+				<div class="mb-6">
+					{#if hasAny}
+						<div class="mb-2 flex items-center justify-between">
+							<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
+								{m.tasks_dependencies()}{#if dependsOn.length}<span class="ml-1.5 text-text-3"
+										>{dependsOn.length}</span
+									>{/if}
+							</div>
+							{#if canEdit}
+								<div class="relative">
+									<button
+										type="button"
+										onclick={() => toggle('deps')}
+										class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text {openPop ===
+										'deps'
+											? 'ring-2 ring-accent/40'
+											: ''}"
+									>
+										<Icon name="plus" size={13} />
+										<span>{m.common_add()}</span>
+									</button>
+									{#if openPop === 'deps'}
+										<DependencyPopover
+											projectKey={draft.project}
+											value={dependsOn.map((d) => d.uuid)}
+											exclude={[draft.uuid, ...dependents.map((d) => d.uuid)]}
+											seed={dependencySeed}
+											ontoggle={toggleDependency}
+											onclose={() => (openPop = null)}
+										/>
+									{/if}
+								</div>
+							{/if}
+						</div>
+						{#if dependsOn.length}
+							<div class="mb-1 text-[12px] text-text-3">{m.tasks_depends_on()}</div>
+							<div class="-mx-2">
+								{#each dependsOn as d (d.uuid)}
+									<div
+										class="group/dep flex h-8 items-center gap-2.5 rounded-md px-2 transition-colors focus-within:bg-surface hover:bg-surface {d.status ===
+										'done'
+											? 'opacity-60'
+											: ''}"
+									>
+										<a
+											href="/tasks?task={d.id}"
+											onclick={(e) => openTask(e, d.id)}
+											class="flex min-w-0 flex-1 items-center gap-2.5 text-text-2 hover:text-text"
+										>
+											<StatusDot status={d.status} size={12} />
+											<span class="shrink-0 font-mono text-[12px] text-text-3">{d.id}</span>
+											<span class="min-w-0 flex-1 truncate text-[14px]">{d.title}</span>
+											<span class="shrink-0 text-[12px] text-text-3">{statusLabel(d.status)}</span>
+										</a>
+										{#if canEdit}
+											<button
+												type="button"
+												aria-label={m.tasks_remove_prerequisite()}
+												title={m.tasks_remove_prerequisite()}
+												onclick={() => toggleDependency(d)}
+												class="grid h-6 w-6 shrink-0 place-items-center rounded-md text-text-3 opacity-0 transition-opacity group-hover/dep:opacity-100 hover:bg-surface-2 hover:text-text focus-visible:opacity-100"
+											>
+												<Icon name="x" size={13} />
+											</button>
+										{/if}
+									</div>
+								{/each}
+							</div>
+						{/if}
+						{#if dependents.length}
+							<div class="mt-2 mb-1 text-[12px] text-text-3">{m.tasks_needed_by()}</div>
+							<div class="-mx-2">
+								{#each dependents as d (d.uuid)}
+									<a
+										href="/tasks?task={d.id}"
+										onclick={(e) => openTask(e, d.id)}
+										class="flex h-8 items-center gap-2.5 rounded-md px-2 text-text-2 transition-colors hover:bg-surface hover:text-text {d.status ===
+										'done'
+											? 'opacity-60'
+											: ''}"
+									>
+										<StatusDot status={d.status} size={12} />
+										<span class="shrink-0 font-mono text-[12px] text-text-3">{d.id}</span>
+										<span class="min-w-0 flex-1 truncate text-[14px]">{d.title}</span>
+										<span class="shrink-0 text-[12px] text-text-3">{statusLabel(d.status)}</span>
+									</a>
+								{/each}
+							</div>
+						{/if}
+					{:else}
+						<div class="relative inline-block">
+							<button
+								type="button"
+								onclick={() => toggle('deps')}
+								class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text {openPop ===
+								'deps'
+									? 'ring-2 ring-accent/40'
+									: ''}"
+							>
+								<Icon name="link" size={13} />
+								<span>{m.tasks_add_prerequisite()}</span>
+							</button>
+							{#if openPop === 'deps'}
+								<DependencyPopover
+									projectKey={draft.project}
+									value={[]}
+									exclude={[draft.uuid]}
+									seed={dependencySeed}
+									ontoggle={toggleDependency}
+									onclose={() => (openPop = null)}
+								/>
+							{/if}
+						</div>
+					{/if}
+				</div>
+			{/if}
 
 			{#if draft.parent || draft.sourceTicket || (draft.labels && draft.labels.length > 0) || canEdit}
 				<div class="mb-6 flex flex-wrap items-center gap-2">

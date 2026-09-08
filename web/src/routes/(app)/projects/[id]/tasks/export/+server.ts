@@ -1,7 +1,13 @@
 import { error } from '@sveltejs/kit';
 import { asc, and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
-import { project, task, taskAssignee, taskPlanning } from '$lib/server/db/app.schema';
+import {
+	project,
+	task,
+	taskAssignee,
+	taskDependency,
+	taskPlanning
+} from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
 import { can } from '$lib/server/permissions';
 import { recordAudit } from '$lib/server/audit';
@@ -76,6 +82,27 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		if (r.plannedFor) plannedByTask.set(r.taskId, String(r.plannedFor).slice(0, 10));
 	}
 
+	// Prerequisites as task refs (KEY-n): readable, editable, and what the
+	// import resolves. Edges to deleted tasks are gone via cascade; archived
+	// prerequisites aren't in `rows`, so resolve refs from the edge set itself.
+	const depRows = taskIds.length
+		? await db
+				.select({
+					taskId: taskDependency.taskId,
+					dependsOnId: taskDependency.dependsOnId,
+					number: task.number
+				})
+				.from(taskDependency)
+				.innerJoin(task, eq(task.id, taskDependency.dependsOnId))
+				.where(and(inArray(taskDependency.taskId, taskIds), isNull(task.deletedAt)))
+		: [];
+	const dependsOnByTask = new Map<string, string[]>();
+	for (const r of depRows) {
+		const list = dependsOnByTask.get(r.taskId) ?? [];
+		list.push(`${p.key}-${r.number}`);
+		dependsOnByTask.set(r.taskId, list);
+	}
+
 	const exportedAt = new Date().toISOString().slice(0, 10);
 	const header = `{
 	// Trackr task export — ${p.key} · ${p.name} — exported ${exportedAt}.
@@ -102,6 +129,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	//   tags:            array of strings (lowercased, max 24 chars each)
 	//   checklist:       array of { "text": string, "done": boolean }
 	//   assignees:       array of user emails or user ids
+	//   dependsOn:       array of task refs from this project, e.g. ["${p.key}-12"] —
+	//                    prerequisites that should be done before the task starts
+	//                    ([] clears them; refs must be existing tasks, not new
+	//                    entries in this file; loops are rejected)
 	"tasks": [`;
 
 	const entries = rows.map((t) => {
@@ -119,6 +150,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			item.checklist = t.checklist.map((c) => ({ text: c.text, done: c.done }));
 		}
 		item.assignees = assigneesByTask.get(t.id) ?? [];
+		const deps = dependsOnByTask.get(t.id);
+		if (deps?.length)
+			item.dependsOn = deps.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 		const json = JSON.stringify(item, null, '\t')
 			.split('\n')
 			.map((line) => `\t\t${line}`)

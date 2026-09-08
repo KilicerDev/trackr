@@ -289,7 +289,12 @@
 	/>
 {/if}
 
-<Inspector task={selected} onclose={closeInspector} users={data.users} />
+<Inspector
+	task={selected}
+	onclose={closeInspector}
+	users={data.users}
+	onopen={(id) => (manualSelectedId = id)}
+/>
 
 <CreateTaskModal
 	open={creating}

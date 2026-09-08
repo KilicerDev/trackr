@@ -43,6 +43,8 @@ export type TaskSnapshotInput = {
 	type?: string | null;
 	assigneeIds?: string[];
 	dueDate?: Date | string | null;
+	/** Prerequisite task ids (uuids); omitted callers report []. */
+	dependsOnIds?: string[];
 };
 
 export function taskSnapshot(t: TaskSnapshotInput, origin?: string | null) {
@@ -55,6 +57,7 @@ export function taskSnapshot(t: TaskSnapshotInput, origin?: string | null) {
 		priority: t.priority ?? null,
 		type: t.type ?? null,
 		assigneeIds: t.assigneeIds ?? [],
+		dependsOnIds: t.dependsOnIds ?? [],
 		dueDate: t.dueDate ? new Date(t.dueDate).toISOString().slice(0, 10) : null,
 		url: absoluteUrl(`/tasks?task=${encodeURIComponent(t.displayId)}`, origin)
 	};

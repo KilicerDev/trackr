@@ -46,6 +46,7 @@
 		Square,
 		Bug,
 		Triangle,
+		TriangleAlert,
 		Sparkles
 	} from '@lucide/svelte';
 
@@ -105,6 +106,7 @@
 		square: Square,
 		bug: Bug,
 		triangle: Triangle,
+		'alert-triangle': TriangleAlert,
 		sparkle: Sparkles,
 		gear: Settings
 	};
