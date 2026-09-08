@@ -404,20 +404,6 @@
 	function toggle(id: PopId) {
 		openPop = openPop === id ? null : id;
 	}
-
-	function autosize(el: HTMLTextAreaElement, value: string) {
-		const resize = () => {
-			el.style.height = 'auto';
-			el.style.height = el.scrollHeight + 'px';
-		};
-		resize();
-		return {
-			update(v: string) {
-				if (el.value !== v) el.value = v;
-				resize();
-			}
-		};
-	}
 </script>
 
 <Drawer
@@ -463,36 +449,40 @@
 			</div>
 		</div>
 		<div class="min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-24">
-			<textarea
-				use:autosize={draft.title}
-				value={draft.title}
-				rows="1"
-				placeholder={m.tasks_untitled()}
-				readonly={!canEdit}
-				oninput={(e) => {
-					const el = e.currentTarget;
-					if (draft) draft.title = el.value;
-					el.style.height = 'auto';
-					el.style.height = el.scrollHeight + 'px';
-				}}
-				onkeydown={(e) => {
-					if (e.key === 'Enter' && !e.shiftKey) {
-						e.preventDefault();
-						(e.currentTarget as HTMLTextAreaElement).blur();
-					}
-				}}
-				onblur={(e) => {
-					const next = e.currentTarget.value.trim();
-					if (!draft || next === (task?.title ?? '')) return;
-					if (!next) {
-						if (draft) draft.title = task?.title ?? '';
-						e.currentTarget.value = task?.title ?? '';
-						return;
-					}
-					void patch('title', { title: next });
-				}}
-				class="mb-4 w-full resize-none border-0 bg-transparent text-[22px] leading-tight font-semibold tracking-[-0.012em] text-text outline-none placeholder:text-text-4"
-			></textarea>
+			<!-- Title. A hidden replica of the text (::after, see .title-grow) sits in
+			     the same grid cell as the textarea and sizes it from CSS, so the
+			     height is right even when the font swaps in late or the drawer
+			     narrows — measuring scrollHeight once at mount left it clipped. Both
+			     layers are pinned to the column width and wrap anywhere, so a long
+			     title can't run past the drawer's padding. -->
+			<div class="title-grow mb-4" data-title={draft.title}>
+				<textarea
+					value={draft.title}
+					rows="1"
+					placeholder={m.tasks_untitled()}
+					readonly={!canEdit}
+					oninput={(e) => {
+						if (draft) draft.title = e.currentTarget.value;
+					}}
+					onkeydown={(e) => {
+						if (e.key === 'Enter' && !e.shiftKey) {
+							e.preventDefault();
+							(e.currentTarget as HTMLTextAreaElement).blur();
+						}
+					}}
+					onblur={(e) => {
+						const next = e.currentTarget.value.trim();
+						if (!draft || next === (task?.title ?? '')) return;
+						if (!next) {
+							if (draft) draft.title = task?.title ?? '';
+							e.currentTarget.value = task?.title ?? '';
+							return;
+						}
+						void patch('title', { title: next });
+					}}
+					class="text-text outline-none placeholder:text-text-4"
+				></textarea>
+			</div>
 
 			<!-- properties rail -->
 			<div class="mb-5 flex flex-wrap gap-2">
@@ -1007,3 +997,36 @@
 		{/if}
 	{/if}
 </Drawer>
+
+<style>
+	.title-grow {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		font-size: 22px;
+		line-height: 1.25;
+		font-weight: 600;
+		letter-spacing: -0.012em;
+	}
+	.title-grow::after {
+		content: attr(data-title) ' ';
+		visibility: hidden;
+		pointer-events: none;
+	}
+	.title-grow > textarea,
+	.title-grow::after {
+		grid-area: 1 / 1 / 2 / 2;
+		min-width: 0;
+		width: 100%;
+		max-width: 100%;
+		margin: 0;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		font: inherit;
+		letter-spacing: inherit;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+		overflow: hidden;
+		resize: none;
+	}
+</style>
