@@ -151,12 +151,13 @@ const handleAdminGuard: Handle = async ({ event, resolve }) => {
 	if (path === '/admin' || path.startsWith('/admin/')) {
 		if (!event.locals.user) redirect(302, `/login?next=${encodeURIComponent(path)}`);
 		if (!event.locals.isAdmin) error(403, 'Admin access required.');
-		// System is root-tier except its audit-log tab, which every admin may
-		// use (the log loaders check admin.logs.view themselves). The bare
-		// section path only redirects to that tab, so it passes too.
+		// System is root-tier except its audit-log and roles tabs, which every
+		// admin may use (the log loaders check admin.logs.view themselves). The
+		// bare section path only redirects to the log tab, so it passes too.
 		if (
 			path.startsWith('/admin/system/') &&
 			!path.startsWith('/admin/system/logs') &&
+			!path.startsWith('/admin/system/roles') &&
 			!isSuperadmin(event.locals.user.role)
 		) {
 			error(403, 'Superadmin access required.');

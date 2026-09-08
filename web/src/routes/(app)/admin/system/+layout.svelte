@@ -5,11 +5,12 @@
 
 	let { children } = $props();
 
-	// Logs is the section's home and open to every admin; the job queue and
-	// schedules stay root-tier (the server gate mirrors this split).
+	// Logs (the section's home) and Roles are open to every admin; the job
+	// queue and schedules stay root-tier (the server gate mirrors this split).
 	const isSuperadmin = $derived(!!(page.data as { isSuperadmin?: boolean }).isSuperadmin);
 	const tabs = $derived([
 		{ href: '/admin/system/logs', label: m.system_tab_logs() },
+		{ href: '/admin/system/roles', label: m.system_tab_roles() },
 		...(isSuperadmin
 			? [
 					{ href: '/admin/system/jobs', label: m.system_tab_jobs() },

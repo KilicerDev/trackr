@@ -68,7 +68,6 @@
 			icon: 'org',
 			href: '/admin/organizations'
 		},
-		{ key: 'roles', label: m.shell_admin_roles(), icon: 'shield', href: '/admin/roles' },
 		{
 			key: 'users',
 			label: m.shell_admin_user_management(),
@@ -81,8 +80,8 @@
 			icon: 'settings',
 			href: '/admin/settings'
 		},
-		// System opens on the audit log (every admin); its jobs + schedules tabs
-		// are root-tier only and hidden inside the section for regular admins.
+		// System opens on the audit log (every admin, like its roles tab); the
+		// jobs + schedules tabs are root-tier only and hidden for regular admins.
 		{
 			key: 'system',
 			label: m.shell_admin_system(),

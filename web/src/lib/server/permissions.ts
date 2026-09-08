@@ -253,7 +253,7 @@ export async function effectivePermissions(locals: Locals): Promise<Permission[]
 }
 
 // Look up every permission for a given role id — used by the read-only
-// /admin/roles page.
+// /admin/system/roles page.
 export async function permissionsForRole(roleId: string): Promise<Permission[]> {
 	const matrix = await loadRolePermissions();
 	return Array.from(matrix[roleId] ?? []);
