@@ -39,8 +39,20 @@ const skVirtuals: BunPlugin = {
 			path: 'sk-env',
 			namespace: 'sk-virtual'
 		}));
-		build.onLoad({ filter: /.*/, namespace: 'sk-virtual' }, () => ({
-			contents: 'export const env = process.env; export default env;',
+		// `$app/server` only exists inside the SvelteKit bundle. $lib modules
+		// reached from src/server.ts (collab → notes → audit) import
+		// `getRequestEvent` to enrich audit rows with IP / UA / channel; outside a
+		// SvelteKit request there is no event, so the shim throws and the caller's
+		// try/catch records the row without request context.
+		build.onResolve({ filter: /^\$app\/server$/ }, () => ({
+			path: 'sk-app-server',
+			namespace: 'sk-virtual'
+		}));
+		build.onLoad({ filter: /.*/, namespace: 'sk-virtual' }, (args) => ({
+			contents:
+				args.path === 'sk-app-server'
+					? 'export function getRequestEvent() { throw new Error("getRequestEvent: no SvelteKit request in this context"); }'
+					: 'export const env = process.env; export default env;',
 			loader: 'js'
 		}));
 		build.onResolve({ filter: /^\$lib(\/|$)/ }, (args) => ({
