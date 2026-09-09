@@ -2,18 +2,17 @@
 	import { page } from '$app/state';
 	import Icon from '../Icon.svelte';
 	import InstanceSwitcher from './InstanceSwitcher.svelte';
+	import RailHeading from './RailHeading.svelte';
+	import { Rail } from './rail.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import { getSidebar } from '$lib/stores/sidebar.svelte';
 	import type { CapabilityManifest } from '$lib/permissions';
-
-	const sidebar = getSidebar();
-	const collapsed = $derived(!!sidebar?.collapsed);
 
 	type LayoutShape = {
 		taskCount?: number;
 		projects?: { id: string; key: string; name: string; color: string }[];
 		capabilities?: CapabilityManifest;
 	};
+	type NavItem = { key: string; label: string; icon: string; href: string; count?: number };
 
 	const taskCount = $derived((page.data as LayoutShape).taskCount ?? 0);
 	const projectList = $derived((page.data as LayoutShape).projects ?? []);
@@ -27,7 +26,7 @@
 	const showWikiNotes = $derived(!!surfaces?.wiki);
 	const canChat = $derived(!!surfaces?.chat);
 
-	const workspaceItems = $derived([
+	const workspaceItems = $derived<NavItem[]>([
 		{ key: 'week', label: m.shell_nav_week(), icon: 'calendar', href: '/week' },
 		{
 			key: 'tickets',
@@ -64,7 +63,7 @@
 			: [])
 	]);
 
-	const adminItems = $derived([
+	const adminItems = $derived<NavItem[]>([
 		// Directory = users + organizations, opening on users.
 		{
 			key: 'directory',
@@ -104,92 +103,52 @@
 		return page.url.pathname.startsWith(href);
 	}
 
-	// Labels stay in the DOM and only fade — never pulled from flow — so nothing
-	// they sit next to reflows when the rail collapses.
-	const fade = $derived(
-		`whitespace-nowrap transition-opacity duration-150 ${
-			collapsed ? 'pointer-events-none opacity-0' : 'opacity-100'
-		}`
-	);
-
-	// Seamless collapse: the icon must never move. Its left offset is
-	// container-padding + row-margin + row-padding, which we keep at a constant
-	// 24px in both states — left-aligned in the 260px rail, dead-centre in the
-	// 64px one. Container pad stays 8px, so only the row's own margin/padding
-	// interpolate (deltas cancel: −4 +4 = 0) and the icon holds still while the
-	// highlight grows, leaving an 8px inset on each side of the collapsed rail.
-	const row = $derived(
-		`relative my-[1px] flex items-center gap-2.5 rounded-[7px] py-[8px] text-[15px] text-text-2 transition-[margin,padding,background-color,color] duration-150 hover:bg-[var(--row-hover)] hover:text-text ${
-			collapsed ? 'mx-0 px-4' : 'mx-1 px-3'
-		}`
-	);
+	// Collapse + hover-peek mechanics live in Rail (shared with the portal).
+	const rail = new Rail(260);
 </script>
 
-<aside class="flex min-h-0 w-full flex-col overflow-hidden border-r border-border bg-bg-elev">
-	<InstanceSwitcher {fade} />
+{#snippet nav(item: NavItem)}
+	{@const active = isActive(item.href)}
+	<a
+		href={item.href}
+		aria-label={rail.rail ? item.label : undefined}
+		class="{rail.row} {active ? 'bg-[var(--row-active)] !text-text' : ''}"
+	>
+		<span class={rail.icon(active)}>
+			<Icon name={item.icon} size={18} />
+		</span>
+		<span class={rail.fade}>{item.label}</span>
+		{#if item.count !== undefined}
+			<span class="ml-auto font-mono text-[12px] text-text-3 {rail.fade}">{item.count}</span>
+		{/if}
+	</a>
+{/snippet}
 
-	<div class="mt-1.5 flex-1 overflow-x-hidden overflow-y-auto px-2 pb-2">
+<aside
+	onmouseenter={() => rail.setHover(true)}
+	onmouseleave={() => rail.setHover(false)}
+	onfocusin={rail.focusin}
+	onfocusout={rail.focusout}
+	class={rail.aside}
+	style:width={rail.width}
+>
+	<InstanceSwitcher fade={rail.fade} bind:open={rail.menuOpen} />
+
+	<nav class="mt-1.5 flex-1 overflow-x-hidden overflow-y-auto px-2 pb-2">
 		<div class="py-1.5">
-			{#if collapsed}
-				<div class="h-1.5"></div>
-			{:else}
-				<div
-					class="px-3 pt-2.5 pb-1.5 text-[12px] font-medium tracking-[0.08em] text-text-4 uppercase"
-				>
-					{m.shell_section_workspace()}
-				</div>
-			{/if}
+			<RailHeading {rail} label={m.shell_section_workspace()} />
 			{#each workspaceItems as item (item.key)}
-				{@const active = isActive(item.href)}
-				<a
-					href={item.href}
-					title={collapsed ? item.label : undefined}
-					class="{row} {active ? 'bg-[var(--row-active)] !text-text' : ''}"
-				>
-					<span
-						class="grid h-4 w-4 shrink-0 place-items-center {active
-							? 'text-accent'
-							: 'text-text-3'}"
-					>
-						<Icon name={item.icon} size={16} />
-					</span>
-					<span class={fade}>{item.label}</span>
-					{#if item.count !== undefined}
-						<span class="ml-auto font-mono text-[12px] text-text-3 {fade}">{item.count}</span>
-					{/if}
-				</a>
+				{@render nav(item)}
 			{/each}
 		</div>
 
 		{#if isAdmin}
 			<div class="py-1.5">
-				{#if collapsed}
-					<div class="mx-3 mb-2 border-t border-border"></div>
-				{:else}
-					<div
-						class="px-3 pt-2.5 pb-1.5 text-[12px] font-medium tracking-[0.08em] text-text-4 uppercase"
-					>
-						{m.shell_section_admin()}
-					</div>
-				{/if}
+				<RailHeading {rail} label={m.shell_section_admin()} divider />
 				{#each adminItems as item (item.key)}
-					{@const active = isActive(item.href)}
-					<a
-						href={item.href}
-						title={collapsed ? item.label : undefined}
-						class="{row} {active ? 'bg-[var(--row-active)] !text-text' : ''}"
-					>
-						<span
-							class="grid h-4 w-4 shrink-0 place-items-center {active
-								? 'text-accent'
-								: 'text-text-3'}"
-						>
-							<Icon name={item.icon} size={16} />
-						</span>
-						<span class={fade}>{item.label}</span>
-					</a>
+					{@render nav(item)}
 				{/each}
 			</div>
 		{/if}
-	</div>
+	</nav>
 </aside>

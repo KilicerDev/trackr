@@ -12,7 +12,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import type { Snippet } from 'svelte';
 
-	// Present only inside the main AppShell (not the portal shell).
+	// Shell state shared with the rail (AppShell and PortalShell both provide it).
 	const sidebarUi = getSidebar();
 
 	interface Crumb {
@@ -135,7 +135,7 @@
 			<Icon name="menu" size={18} />
 		</button>
 		{#if sidebarUi.collapsible}
-			<!-- Desktop: collapse the rail (AppShell only — the portal rail is fixed). -->
+			<!-- Desktop: collapse the rail to icons. -->
 			<button
 				type="button"
 				onclick={() => sidebarUi.toggle()}

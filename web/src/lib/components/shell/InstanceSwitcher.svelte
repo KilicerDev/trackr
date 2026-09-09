@@ -35,12 +35,16 @@
 		fade = '',
 		orgs = [],
 		activeOrgId = null,
-		onChooseOrg
+		onChooseOrg,
+		open = $bindable(false)
 	}: {
 		fade?: string;
 		orgs?: OrgOption[];
 		activeOrgId?: string | null;
 		onChooseOrg?: (orgId: string) => void | Promise<void>;
+		// Bindable so the collapsed rail can hold its hover-peek open while the
+		// menu is showing.
+		open?: boolean;
 	} = $props();
 	const showOrgs = $derived(orgs.length > 1 && !!onChooseOrg);
 	const activeOrg = $derived(orgs.find((o) => o.id === activeOrgId) ?? null);
@@ -63,7 +67,6 @@
 
 	// The tile rolls out in place (it grows and pushes the nav down) rather
 	// than opening a floating menu, so the whole thing reads as one control.
-	let open = $state(false);
 	function close() {
 		open = false;
 	}
@@ -192,7 +195,7 @@
 			type="button"
 			onclick={() => (open = !open)}
 			aria-expanded={open}
-			class="group flex w-full items-center gap-2.5 px-[11px] py-2 text-left"
+			class="group flex w-full items-center gap-2.5 px-3 py-2 text-left"
 		>
 			<span class="grid h-6 w-6 shrink-0 place-items-center" aria-hidden="true">
 				<BrandLogo size={22} />
@@ -228,16 +231,16 @@
 		{#if open}
 			<div transition:slide={{ duration: 180, easing: cubicOut }}>
 				{#if showOrgs}
-					<div class="mx-[11px] border-t border-border"></div>
+					<div class="mx-3 border-t border-border"></div>
 					<div class="py-1">
-						<div class="px-[11px] pt-1.5 pb-1 text-[12px] text-text-4 {fade}">
+						<div class="px-3 pt-1.5 pb-1 text-[12px] text-text-4 {fade}">
 							{m.shell_switch_organization()}
 						</div>
 						{#each orgs as o (o.id)}
 							<button
 								type="button"
 								onclick={() => chooseOrg(o.id)}
-								class="flex w-full items-center gap-2.5 px-[11px] py-1.5 text-left transition-colors hover:bg-[var(--row-hover)]"
+								class="flex w-full items-center gap-2.5 px-3 py-1.5 text-left transition-colors hover:bg-[var(--row-hover)]"
 							>
 								<span
 									class="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[12px] font-semibold text-white"
@@ -261,10 +264,10 @@
 						{/each}
 					</div>
 				{/if}
-				<div class="mx-[11px] border-t border-border"></div>
+				<div class="mx-3 border-t border-border"></div>
 				<div class="py-1">
 					{#if showOrgs}
-						<div class="px-[11px] pt-1.5 pb-1 font-mono text-[11px] text-text-4 {fade}">
+						<div class="px-3 pt-1.5 pb-1 font-mono text-[11px] text-text-4 {fade}">
 							{currentHost}
 						</div>
 					{/if}
@@ -274,7 +277,7 @@
 								type="button"
 								onclick={() => switchTo(inst)}
 								title={m.instances_switch_to({ name: inst.name })}
-								class="flex min-w-0 flex-1 items-center gap-2.5 px-[11px] py-1.5 text-left"
+								class="flex min-w-0 flex-1 items-center gap-2.5 px-3 py-1.5 text-left"
 							>
 								<span class="grid h-6 w-6 shrink-0 place-items-center">
 									{#if inst.logoUrl}
@@ -314,7 +317,7 @@
 					<button
 						type="button"
 						onclick={openAdd}
-						class="flex w-full items-center gap-2.5 px-[11px] py-1.5 text-left text-[14px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text"
+						class="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-[14px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text"
 					>
 						<span class="grid h-6 w-6 shrink-0 place-items-center">
 							<Icon name="plus" size={15} class="text-text-3" />

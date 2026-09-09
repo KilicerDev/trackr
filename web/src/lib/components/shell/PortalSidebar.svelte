@@ -2,6 +2,8 @@
 	import { page } from '$app/state';
 	import Icon from '../Icon.svelte';
 	import InstanceSwitcher from './InstanceSwitcher.svelte';
+	import RailHeading from './RailHeading.svelte';
+	import { Rail } from './rail.svelte';
 	import { setActiveOrg, type PortalOrg } from '$lib/api/portal';
 	import type { TicketRow, TicketStatus } from '$lib/server/tickets';
 	import { TICKET_STATUSES } from '$lib/config/taxonomy';
@@ -91,105 +93,87 @@
 	async function choose(orgId: string) {
 		if (orgId !== activeOrgId) await setActiveOrg(orgId);
 	}
+
+	// Collapse + hover-peek mechanics live in Rail (shared with the app rail).
+	const rail = new Rail(286);
 </script>
 
-<aside class="flex min-h-0 w-full flex-col border-r border-border bg-bg-elev">
+<aside
+	onmouseenter={() => rail.setHover(true)}
+	onmouseleave={() => rail.setHover(false)}
+	onfocusin={rail.focusin}
+	onfocusout={rail.focusout}
+	class={rail.aside}
+	style:width={rail.width}
+>
 	<!-- Brand tile: instance switcher + organization switcher (TRACK-140). -->
-	<InstanceSwitcher {orgs} {activeOrgId} onChooseOrg={choose} />
+	<InstanceSwitcher
+		fade={rail.fade}
+		{orgs}
+		{activeOrgId}
+		onChooseOrg={choose}
+		bind:open={rail.menuOpen}
+	/>
 
-	<!-- New ticket -->
-	<div class="px-3 pb-1">
+	<!--
+		Primary actions. "New ticket" keeps its outlined-button look via an inset
+		ring rather than a border, so it shares the exact row geometry (and the
+		pinned icon axis) with the plain rows around it.
+	-->
+	<nav class="mt-1.5 px-2 py-1.5">
 		<a
 			href="/tickets/new"
-			class="flex items-center gap-2.5 rounded-lg border border-border bg-surface px-2.5 py-2 text-[14px] text-text-2 transition-colors hover:border-border-strong hover:text-text {page
+			aria-label={rail.rail ? m.shell_portal_new_ticket() : undefined}
+			class="{rail.rowBase} bg-surface ring-1 ring-border ring-inset hover:text-text hover:ring-border-strong {page
 				.url.pathname === '/tickets/new'
-				? 'border-border-strong !text-text'
+				? '!text-text ring-border-strong'
 				: ''}"
 		>
-			<Icon name="plus" size={16} class="text-text-3" />
-			<span>{m.shell_portal_new_ticket()}</span>
+			<span class={rail.icon(false)}>
+				<Icon name="plus" size={18} />
+			</span>
+			<span class={rail.fade}>{m.shell_portal_new_ticket()}</span>
 		</a>
-	</div>
 
-	{#if isAdmin}
-		<!-- Dashboard (admin overview) -->
-		<div class="px-3 pt-1 pb-1">
-			<a
-				href="/tickets/dashboard"
-				class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[14px] text-text-2 transition-colors hover:bg-surface hover:text-text {navActive(
-					'/tickets/dashboard'
-				)
-					? 'bg-surface !text-text'
-					: ''}"
-			>
-				<Icon name="grid" size={16} class="text-text-3" />
-				<span>{m.shell_portal_dashboard()}</span>
-			</a>
-		</div>
-		<!-- Tickets (full board / list) -->
-		<div class="px-3 pt-1 pb-1">
-			<a
-				href="/tickets"
-				class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[14px] text-text-2 transition-colors hover:bg-surface hover:text-text {ticketsActive()
-					? 'bg-surface !text-text'
-					: ''}"
-			>
-				<Icon name="ticket" size={16} class="text-text-3" />
-				<span>{m.shell_portal_tickets()}</span>
-			</a>
-		</div>
-	{:else}
-		<!-- Overview (member: their own tickets) -->
-		<div class="px-3 pt-1 pb-1">
-			<a
-				href="/tickets"
-				class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[14px] text-text-2 transition-colors hover:bg-surface hover:text-text {page
-					.url.pathname === '/tickets'
-					? 'bg-surface !text-text'
-					: ''}"
-			>
-				<Icon name="ticket" size={16} class="text-text-3" />
-				<span>{m.shell_portal_overview()}</span>
-			</a>
-		</div>
-	{/if}
+		{#if isAdmin}
+			{@render link(
+				'/tickets/dashboard',
+				'grid',
+				m.shell_portal_dashboard(),
+				navActive('/tickets/dashboard')
+			)}
+			{@render link('/tickets', 'ticket', m.shell_portal_tickets(), ticketsActive())}
+		{:else}
+			<!-- Overview (member: their own tickets) -->
+			{@render link(
+				'/tickets',
+				'ticket',
+				m.shell_portal_overview(),
+				page.url.pathname === '/tickets'
+			)}
+		{/if}
+		{#if canChat}
+			{@render link('/chat', 'msg', m.shell_nav_chat(), page.url.pathname.startsWith('/chat'))}
+		{/if}
+	</nav>
 
-	{#if canChat}
-		<div class="px-3 pt-1 pb-1">
-			<a
-				href="/chat"
-				class="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[14px] text-text-2 transition-colors hover:bg-surface hover:text-text {page.url.pathname.startsWith(
-					'/chat'
-				)
-					? 'bg-surface !text-text'
-					: ''}"
-			>
-				<Icon name="msg" size={16} class="text-text-3" />
-				<span>{m.shell_nav_chat()}</span>
-			</a>
-		</div>
-	{/if}
-
-	<div class="mt-1 flex-1 overflow-y-auto px-2 pb-2">
+	<div class="flex-1 overflow-x-hidden overflow-y-auto px-2 pb-2">
 		<!-- Saved views (admin only) -->
 		{#if isAdmin}
 			<div class="py-1.5">
-				<div
-					class="px-3 pt-1.5 pb-1.5 text-[12px] font-medium tracking-[0.08em] text-text-4 uppercase"
-				>
-					{m.shell_portal_saved_views()}
-				</div>
+				<RailHeading {rail} label={m.shell_portal_saved_views()} />
 				{#each SAVED_VIEWS as v (v.href)}
+					{@const active = navActive('/tickets', v.match)}
 					<a
 						href={v.href}
-						class="relative mx-1 my-[1px] flex items-center gap-2.5 rounded-[7px] px-3 py-[8px] text-[14px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text
-						{navActive('/tickets', v.match) ? 'bg-[var(--row-active)] !text-text' : ''}"
+						aria-label={rail.rail ? v.label() : undefined}
+						class="{rail.row} {active ? 'bg-[var(--row-active)] !text-text' : ''}"
 					>
-						<span class="grid h-4 w-4 shrink-0 place-items-center">
+						<span class="grid h-[18px] w-[18px] shrink-0 place-items-center">
 							<span class="h-[12px] w-[12px] rounded-full border-[1.5px]" style:border-color={v.dot}
 							></span>
 						</span>
-						<span class="truncate">{v.label()}</span>
+						<span class="min-w-0 flex-1 truncate {rail.fade}">{v.label()}</span>
 					</a>
 				{/each}
 			</div>
@@ -198,11 +182,7 @@
 		<!-- Pinned -->
 		{#if pinned.length}
 			<div class="py-1.5">
-				<div
-					class="px-3 pt-1.5 pb-1.5 text-[12px] font-medium tracking-[0.08em] text-text-4 uppercase"
-				>
-					{m.shell_portal_pinned()}
-				</div>
+				<RailHeading {rail} label={m.shell_portal_pinned()} divider />
 				{#each pinned as t (t.id)}
 					{@render ticketRow(t)}
 				{/each}
@@ -211,22 +191,31 @@
 
 		<!-- Recents -->
 		<div class="py-1.5">
-			<div
-				class="px-3 pt-1.5 pb-1.5 text-[12px] font-medium tracking-[0.08em] text-text-4 uppercase"
-			>
-				{m.shell_portal_recents()}
-			</div>
+			<RailHeading {rail} label={m.shell_portal_recents()} divider />
 			{#each recents as t (t.id)}
 				{@render ticketRow(t)}
 			{/each}
 			{#if recents.length === 0}
-				<div class="px-3 py-1.5 text-[13px] leading-snug text-text-4">
+				<div class="px-3 py-1.5 text-[13px] leading-snug text-text-4 {rail.fade}">
 					{m.shell_portal_recents_empty()}
 				</div>
 			{/if}
 		</div>
 	</div>
 </aside>
+
+{#snippet link(href: string, icon: string, label: string, active: boolean)}
+	<a
+		{href}
+		aria-label={rail.rail ? label : undefined}
+		class="{rail.row} {active ? 'bg-[var(--row-active)] !text-text' : ''}"
+	>
+		<span class={rail.icon(active)}>
+			<Icon name={icon} size={18} />
+		</span>
+		<span class={rail.fade}>{label}</span>
+	</a>
+{/snippet}
 
 {#snippet ticketRow(t: TicketRow)}
 	{@const active = isActiveTicket(t.id)}
@@ -235,16 +224,18 @@
 	<a
 		href="/tickets/{t.id}"
 		title={t.subject}
-		class="relative mx-1 my-[1px] flex items-center gap-2.5 rounded-[7px] px-3 py-[8px] text-[14px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text
-		{active ? 'bg-[var(--row-active)] !text-text' : ''}"
+		class="{rail.row} {active ? 'bg-[var(--row-active)] !text-text' : ''}"
 	>
-		<span class="grid h-4 w-4 shrink-0 place-items-center" title={ticketStatusLabel(t.status)}>
+		<span
+			class="grid h-[18px] w-[18px] shrink-0 place-items-center"
+			title={ticketStatusLabel(t.status)}
+		>
 			<span
 				class="h-[12px] w-[12px] rounded-full border-[1.5px]"
 				style:border-color={dot}
 				style:background={filled ? dot : 'transparent'}
 			></span>
 		</span>
-		<span class="truncate">{t.subject}</span>
+		<span class="min-w-0 flex-1 truncate {rail.fade}">{t.subject}</span>
 	</a>
 {/snippet}
