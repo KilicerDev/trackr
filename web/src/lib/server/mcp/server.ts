@@ -75,7 +75,7 @@ export function composeInstructions(guidance: Guidance): string {
 export function buildServer(
 	principal: McpPrincipal,
 	origin: string,
-	guidance: Guidance = { instructions: '', guides: [] }
+	guidance: Guidance = { instructions: '', personalInstructions: '', guides: [] }
 ): McpServer {
 	const ctx: McpContext = { locals: localsFromPrincipal(principal), origin, principal };
 	const server = new McpServer(
