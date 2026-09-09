@@ -4,7 +4,7 @@
 	import PriorityBars from '../PriorityBars.svelte';
 	import LabelChip from '../LabelChip.svelte';
 	import TypeBadge from '../TypeBadge.svelte';
-	import Avatar from '../Avatar.svelte';
+	import AvatarStack from '../AvatarStack.svelte';
 	import Icon from '../Icon.svelte';
 	import { TRACKR_PRIORITIES } from '$lib/config/taxonomy';
 	import { formatDateShort, formatEstimate, dueCountdown } from '$lib/utils/format';
@@ -27,7 +27,15 @@
 	let { task, selected = false, onclick, showPlanned = true, showTime = false }: Props = $props();
 
 	let prio = $derived(TRACKR_PRIORITIES.find((p) => p.id === task.priority)!);
-	let assignee = $derived(resolveUser(task.assignee));
+	// Every assignee, not just the primary one — matches the ticket row and
+	// the board card. Legacy rows without an `assignees` array fall back to
+	// the single `assignee`.
+	let assignees = $derived((task.assignees ?? [task.assignee]).map((id) => resolveUser(id)));
+	let assigneeCount = $derived(assignees.filter(Boolean).length);
+	// The trailing column is fixed at 60px so date columns stay aligned across
+	// rows: three 24px avatars at 6px overlap fill it exactly, and beyond three
+	// we show two plus a "+N" badge, which is the same width.
+	let avatarMax = $derived(assigneeCount > 3 ? 2 : 3);
 	// Real logged time when any exists, otherwise the estimate.
 	let logged = $derived(loggedMinutes(task));
 	let timeMinutes = $derived(logged > 0 ? logged : task.estimate);
@@ -50,7 +58,7 @@
 <button
 	type="button"
 	{onclick}
-	class="grid w-full grid-cols-[30px_minmax(0,1fr)_auto_28px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors md:grid-cols-[30px_88px_minmax(0,1fr)_110px_88px_88px_28px]
+	class="grid w-full grid-cols-[30px_minmax(0,1fr)_auto_60px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors md:grid-cols-[30px_88px_minmax(0,1fr)_110px_88px_88px_60px]
 	{selected ? 'bg-[var(--row-active)]' : 'hover:bg-[var(--row-hover)]'}"
 	style:height="var(--row-h)"
 >
@@ -140,6 +148,10 @@
 		</span>
 	{/if}
 	<span class="flex justify-end">
-		<Avatar user={assignee} size={24} />
+		{#if assigneeCount > 0}
+			<AvatarStack users={assignees} size={24} max={avatarMax} overlap={6} />
+		{:else}
+			<span class="h-6 w-6 rounded-full border border-dashed border-border-strong"></span>
+		{/if}
 	</span>
 </button>
