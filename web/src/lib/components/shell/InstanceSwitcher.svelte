@@ -63,7 +63,6 @@
 		(page.data as { preferences?: { instances?: Instance[] } }).preferences?.instances ?? []
 	);
 	const instances = $derived(stored.filter((i) => !sameInstance(i.url, page.url.origin)));
-	const currentHost = $derived(instanceHost(page.url.origin));
 
 	// The tile rolls out in place (it grows and pushes the nav down) rather
 	// than opening a floating menu, so the whole thing reads as one control.
@@ -182,7 +181,10 @@
 <!--
 	The wrapper reserves exactly the closed tile's height (12 + 52 + 6 px) and
 	the card is absolutely positioned inside it, so rolling out overlays the
-	nav instead of pushing it down.
+	nav instead of pushing it down. The button holds that height itself
+	(min-h 50 + border) so the tile stays put whether the second line — the
+	active organization, portal only — is there or not. The host is not shown
+	in the header; the menu lists it where instances need telling apart.
 -->
 <div class="relative z-20 h-[70px]">
 	<div
@@ -195,7 +197,7 @@
 			type="button"
 			onclick={() => (open = !open)}
 			aria-expanded={open}
-			class="group flex w-full items-center gap-2.5 px-3 py-2 text-left"
+			class="group flex min-h-[50px] w-full items-center gap-2.5 px-3 py-2 text-left"
 		>
 			<span class="grid h-6 w-6 shrink-0 place-items-center" aria-hidden="true">
 				<BrandLogo size={22} />
@@ -211,10 +213,6 @@
 						<span class="h-1.5 w-1.5 shrink-0 rounded-full" style:background={activeOrg.color}
 						></span>
 						<span class="truncate">{activeOrg.name}</span>
-					</span>
-				{:else}
-					<span class="block truncate font-mono text-[11px] leading-[14px] text-text-3">
-						{currentHost}
 					</span>
 				{/if}
 			</span>
@@ -266,17 +264,12 @@
 				{/if}
 				<div class="mx-3 border-t border-border"></div>
 				<div class="py-1">
-					{#if showOrgs}
-						<div class="px-3 pt-1.5 pb-1 font-mono text-[11px] text-text-4 {fade}">
-							{currentHost}
-						</div>
-					{/if}
 					{#each instances as inst (inst.url)}
 						<div class="group/row flex items-center transition-colors hover:bg-[var(--row-hover)]">
 							<button
 								type="button"
 								onclick={() => switchTo(inst)}
-								title={m.instances_switch_to({ name: inst.name })}
+								title="{m.instances_switch_to({ name: inst.name })} ({instanceHost(inst.url)})"
 								class="flex min-w-0 flex-1 items-center gap-2.5 px-3 py-1.5 text-left"
 							>
 								<span class="grid h-6 w-6 shrink-0 place-items-center">
@@ -293,13 +286,10 @@
 										<Icon name="org" size={16} class="text-text-3" />
 									{/if}
 								</span>
-								<span class="min-w-0 flex-1 {fade}">
-									<span class="block truncate text-[14px] leading-5 font-medium text-text-2">
-										{inst.name}
-									</span>
-									<span class="block truncate font-mono text-[11px] leading-[14px] text-text-3">
-										{instanceHost(inst.url)}
-									</span>
+								<span
+									class="min-w-0 flex-1 truncate text-[14px] leading-5 font-medium text-text-2 {fade}"
+								>
+									{inst.name}
 								</span>
 							</button>
 							<button
