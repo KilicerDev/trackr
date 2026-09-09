@@ -101,14 +101,30 @@
 	let bulkTodos = $state<SourceTodo[]>([]);
 
 	// ─── Outline / table of contents (meeting notes) ────────────────────────
-	// A sticky right-gutter panel listing the document's headings so the reader
-	// can jump between sections. Meeting-note only, and only when the viewport is
-	// wide enough to fit the gutter (a container query hides it otherwise).
+	// A sticky module at the top-right of the note (TRACK-137, Notion-style):
+	// closed by default it is a column of short bars, one per heading, indented
+	// by level with the section you're reading in accent — a scroll position
+	// indicator that costs no space. Hovering it (or tabbing into it) opens
+	// the full outline over the page; leaving closes it again. Meeting-note
+	// only, and only with headings.
 	type TocItem = { index: number; level: number; text: string };
 	let tocItems = $state<TocItem[]>([]);
 	let activeIndex = $state(-1);
-	let tocCollapsed = $state(false);
 	const showToc = $derived(note.kind === 'meeting' && tocItems.length > 0);
+
+	let tocHover = $state(false);
+	let tocFocus = $state(false);
+	const tocOpen = $derived(tocHover || tocFocus);
+	let tocTimer: ReturnType<typeof setTimeout> | undefined;
+	// Open at once (the bars are the affordance, a delay would feel dead) and
+	// close with a short grace period so a cursor drifting off the edge of
+	// the panel doesn't snap it shut mid-read.
+	function setTocHover(next: boolean) {
+		clearTimeout(tocTimer);
+		if (next) tocHover = true;
+		else tocTimer = setTimeout(() => (tocHover = false), 160);
+	}
+	$effect(() => () => clearTimeout(tocTimer));
 
 	function headingEls(): HTMLElement[] {
 		const root = editorWrap?.querySelector('.ProseMirror');
@@ -354,7 +370,8 @@
 		presence = [];
 		tocItems = [];
 		activeIndex = -1;
-		tocCollapsed = false;
+		tocHover = false;
+		tocFocus = false;
 	});
 
 	async function saveTitle() {
@@ -613,59 +630,76 @@
 	</div>
 
 	{#if showToc}
-		<!-- Outline floats over the top-right of the note and sticks while you
-		     scroll, so it's available at any width (rather than only when a wide
-		     side gutter fits). Collapses to a compact chip. -->
+		<!--
+			The module floats over the top-right of the note and sticks while you
+			scroll, so it's available at any width. Two layers share one anchor:
+			the bar rail (closed) and the outline panel (open) cross-fade in place,
+			and the panel overlays the rail's footprint so the hover never breaks
+			while it opens.
+		-->
 		<aside class="pointer-events-none absolute inset-y-0 right-0 z-10 hidden sm:block">
-			<div class="pointer-events-auto sticky top-[73px] mr-3 flex w-[216px] flex-col">
-				{#if tocCollapsed}
-					<button
-						type="button"
-						onclick={() => (tocCollapsed = false)}
-						aria-label={m.notes_toc_title()}
-						class="ml-auto flex h-8 items-center gap-1.5 rounded-lg border border-border bg-bg-elev/90 px-2.5 text-[12px] text-text-3 shadow-sm backdrop-blur transition-colors hover:border-border-strong hover:text-text"
-					>
-						<Icon name="list" size={14} />
-						<span class="tabular-nums">{tocItems.length}</span>
-					</button>
-				{:else}
-					<nav
-						aria-label={m.notes_toc_title()}
-						class="flex max-h-[calc(100vh-89px)] flex-col overflow-hidden rounded-xl border border-border bg-bg-elev/90 shadow-lg backdrop-blur"
-					>
-						<div class="flex items-center justify-between gap-2 py-2 pr-1.5 pl-3">
-							<span class="text-[11px] font-semibold tracking-wide text-text-4 uppercase">
-								{m.notes_toc_title()}
-							</span>
-							<button
-								type="button"
-								onclick={() => (tocCollapsed = true)}
-								aria-label={m.notes_toc_title()}
-								class="grid h-5 w-5 place-items-center rounded text-text-4 transition-colors hover:bg-surface-2 hover:text-text-2"
-							>
-								<Icon name="x" size={13} />
-							</button>
-						</div>
-						<ul class="overflow-y-auto px-1.5 pb-2">
-							{#each tocItems as item (item.index)}
-								<li>
-									<button
-										type="button"
-										onclick={() => scrollToHeading(item.index)}
-										title={item.text}
-										style:padding-left="{(item.level - 1) * 12 + 8}px"
-										class="block w-full truncate rounded-md py-1 pr-2 text-left text-[13px] leading-snug transition-colors {activeIndex ===
-										item.index
-											? 'bg-surface-2 text-text'
-											: 'text-text-3 hover:bg-surface-2/60 hover:text-text-2'}"
-									>
-										{item.text}
-									</button>
-								</li>
-							{/each}
-						</ul>
-					</nav>
-				{/if}
+			<div
+				role="presentation"
+				onmouseenter={() => setTocHover(true)}
+				onmouseleave={() => setTocHover(false)}
+				onfocusin={() => (tocFocus = true)}
+				onfocusout={(e) => {
+					if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node | null)) {
+						tocFocus = false;
+					}
+				}}
+				class="pointer-events-auto sticky top-[73px] mr-3 flex justify-end"
+			>
+				<!-- Closed: the bar rail. Decorative — the panel carries the controls. -->
+				<div
+					aria-hidden="true"
+					class="flex flex-col items-start gap-[7px] px-3.5 py-3 transition-opacity duration-150 {tocOpen
+						? 'opacity-0'
+						: 'opacity-100'}"
+				>
+					{#each tocItems as item (item.index)}
+						<span
+							class="block h-[3px] rounded-full transition-colors duration-200 {activeIndex ===
+							item.index
+								? 'bg-accent'
+								: 'bg-text-4'}"
+							style:width="{22 - (item.level - 1) * 6}px"
+							style:margin-left="{(item.level - 1) * 6}px"
+						></span>
+					{/each}
+				</div>
+
+				<!-- Open: the outline panel, anchored to the rail's top-right corner. -->
+				<nav
+					aria-label={m.notes_toc_title()}
+					class="absolute top-0 right-0 flex max-h-[calc(100vh-89px)] w-[240px] flex-col overflow-hidden rounded-xl border border-border bg-bg-elev/95 shadow-[var(--shadow-elev)] backdrop-blur transition-[opacity,transform] duration-150 ease-out {tocOpen
+						? 'translate-x-0 opacity-100'
+						: 'pointer-events-none translate-x-1.5 opacity-0'}"
+				>
+					<ul class="overflow-y-auto py-2 pr-2 pl-1.5">
+						{#each tocItems as item (item.index)}
+							{@const active = activeIndex === item.index}
+							<li>
+								<button
+									type="button"
+									onclick={() => scrollToHeading(item.index)}
+									title={item.text}
+									style:padding-left="{(item.level - 1) * 12 + 10}px"
+									class="relative block w-full truncate rounded-md py-1.5 pr-2 text-left text-[13px] leading-snug transition-colors {active
+										? 'font-medium text-text'
+										: 'text-text-3 hover:bg-surface-2/70 hover:text-text'}"
+								>
+									{#if active}
+										<span
+											class="absolute top-1/2 left-0 h-3.5 w-[2px] -translate-y-1/2 rounded-full bg-accent"
+										></span>
+									{/if}
+									{item.text}
+								</button>
+							</li>
+						{/each}
+					</ul>
+				</nav>
 			</div>
 		</aside>
 	{/if}
@@ -711,6 +745,6 @@
 		color: var(--accent);
 		background: color-mix(in oklab, var(--accent) 12%, var(--bg-elev));
 		border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--border));
-			transform: translateY(6px);
+		transform: translateY(6px);
 	}
 </style>
