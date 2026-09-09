@@ -17,8 +17,15 @@ import { organization, organizationMember } from '$lib/server/db/app.schema';
 import { asc, desc } from 'drizzle-orm';
 import { deriveUserRole, isAdminLike, isAllowedOrgRole, isSuperadmin } from '$lib/roles';
 import {
+	listMcpAccess,
+	listMcpConnections,
+	revokeAllForUser,
+	setMcpAccess
+} from '$lib/server/mcp/access';
+import {
 	canAssignRole,
 	canImpersonate,
+	canManageMcpFor,
 	canManageUser,
 	canViewUser,
 	isRoot,
@@ -161,13 +168,27 @@ export const load: PageServerLoad = async (event) => {
 		);
 	}
 
+	// MCP access is a per-user grant (mcp_access row) managed from the drawer;
+	// the connection count tells the admin what disabling would cut off.
+	const [mcpAccessRows, mcpConnections] = await Promise.all([
+		listMcpAccess(),
+		listMcpConnections()
+	]);
+	const mcpEnabled = new Set(mcpAccessRows.map((a) => a.userId));
+	const mcp: Record<string, { enabled: boolean; connections: number }> = {};
+	for (const id of userIds) mcp[id] = { enabled: mcpEnabled.has(id), connections: 0 };
+	for (const c of mcpConnections) {
+		if (c.userId && mcp[c.userId]) mcp[c.userId].connections += 1;
+	}
+
 	return {
 		users,
 		invitations: invitations.filter((inv) => rankOfRole(inv.role) <= rankOfRole(me.role)),
 		currentUserId: event.locals.user!.id,
 		viewerIsSuperadmin,
 		orgs,
-		orgMemberships
+		orgMemberships,
+		mcp
 	};
 };
 
@@ -480,6 +501,11 @@ export const actions: Actions = {
 		return { ok: true };
 	},
 
+	// MCP access on/off for one user. Same policy as every other user action
+	// (peers and below, root untouchable); an admin may also flip their own.
+	mcpEnable: (event) => setMcp(event, true),
+	mcpDisable: (event) => setMcp(event, false),
+
 	deleteUser: async (event) => {
 		const me = actorOf(event);
 		if (!me) return fail(403, { message: m.admin_err_admin_required() });
@@ -536,3 +562,62 @@ export const actions: Actions = {
 		return { ok: true };
 	}
 };
+
+async function setMcp(event: RequestEvent, enable: boolean) {
+	const me = actorOf(event);
+	if (!me) return fail(403, { message: m.admin_err_admin_required() });
+
+	const form = await event.request.formData();
+	const userId = s(form.get('userId'));
+	if (!userId) return fail(400, { message: m.admin_err_missing_user_id() });
+
+	const [target] = await db
+		.select({
+			id: userTable.id,
+			name: userTable.name,
+			email: userTable.email,
+			role: userTable.role,
+			isRoot: userTable.isRoot,
+			banned: userTable.banned
+		})
+		.from(userTable)
+		.where(eq(userTable.id, userId))
+		.limit(1);
+	if (!target || !canViewUser(me, target)) {
+		return fail(404, { message: m.admin_err_user_not_found() });
+	}
+	if (!canManageMcpFor(me, target)) {
+		denied(event, enable ? 'mcp_enable' : 'mcp_disable', target);
+		return fail(403, { message: rankMessage(target) });
+	}
+
+	await setMcpAccess(target.id, enable, me);
+	if (enable) {
+		void recordAudit(
+			{
+				type: 'mcp_access.enable',
+				actorId: me.id,
+				targetType: 'user',
+				targetId: target.id,
+				targetLabel: target.name
+			},
+			event
+		);
+		return { success: true, mcpEnabled: target.id };
+	}
+	// Hard cut-off: issued tokens would be refused anyway, but leaving them
+	// around only confuses the connections list under Settings → MCP.
+	const revoked = await revokeAllForUser(target.id, me);
+	void recordAudit(
+		{
+			type: 'mcp_access.disable',
+			actorId: me.id,
+			targetType: 'user',
+			targetId: target.id,
+			targetLabel: target.name,
+			meta: { revokedConnections: revoked }
+		},
+		event
+	);
+	return { success: true, mcpDisabled: target.id };
+}

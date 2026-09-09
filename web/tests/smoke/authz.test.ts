@@ -427,3 +427,43 @@ describe('internal-org membership', () => {
 		expect(after.body.capabilities.isAdmin).toBe(false);
 	});
 });
+
+describe('MCP access (Directory → Users drawer)', () => {
+	test('admin toggles MCP for a plain user (peers and below)', async () => {
+		const on = await formAction(
+			'/admin/directory/users',
+			'mcpEnable',
+			{ userId },
+			{ cookie: adminCookie }
+		);
+		expect(on.type).toBe('success');
+		const off = await formAction(
+			'/admin/directory/users',
+			'mcpDisable',
+			{ userId },
+			{ cookie: adminCookie }
+		);
+		expect(off.type).toBe('success');
+	});
+
+	rootOnly('admin cannot touch root (invisible → 404)', async () => {
+		const r = await formAction(
+			'/admin/directory/users',
+			'mcpEnable',
+			{ userId: rootId },
+			{ cookie: adminCookie }
+		);
+		expect(r.type).toBe('failure');
+		expect(r.status).toBe(404);
+	});
+
+	test('the old Settings → MCP toggle actions are gone', async () => {
+		const r = await formAction(
+			'/admin/settings/mcp',
+			'enable',
+			{ userId },
+			{ cookie: superadminCookie }
+		);
+		expect(r.type).not.toBe('success');
+	});
+});

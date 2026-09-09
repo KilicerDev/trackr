@@ -180,6 +180,31 @@
 		}
 	}
 
+	async function handleMcpToggle(u: UserRow, enable: boolean) {
+		const who = u.name ?? u.email;
+		if (!enable) {
+			const ok = await uiConfirm({
+				title: m.mcp_disable_title({ name: who }),
+				message: m.mcp_disable_message({ name: who }),
+				confirmLabel: m.mcp_disable(),
+				tone: 'warn',
+				icon: 'shield'
+			});
+			if (!ok) return;
+		}
+		const key = `mcp:${u.id}`;
+		if (pendingAction === key) return;
+		pendingAction = key;
+		try {
+			await postAction(enable ? 'mcpEnable' : 'mcpDisable', { userId: u.id });
+			showToast('ok', enable ? m.mcp_enabled_toast() : m.mcp_disabled_toast());
+		} catch (e) {
+			showToast('err', e instanceof Error ? e.message : m.admin_failed());
+		} finally {
+			pendingAction = null;
+		}
+	}
+
 	async function handleResend(inv: InvitationRow) {
 		const key = `resend:${inv.id}`;
 		if (pendingAction === key) return;
@@ -569,6 +594,8 @@
 		{@const isRootAccount = !!sel.isRoot}
 		{@const canImpersonate = data.viewerIsSuperadmin && !isSelf && !banned && !isRootAccount}
 		{@const memberships = data.orgMemberships?.[sel.id] ?? []}
+		{@const mcp = data.mcp?.[sel.id] ?? { enabled: false, connections: 0 }}
+		{@const canToggleMcp = !banned && (!isRootAccount || isSelf)}
 		<div class="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3">
 			<span class="font-mono text-[12px] tracking-[0.08em] text-text-4 uppercase"
 				>{m.admin_users_drawer_user()}</span
@@ -611,6 +638,17 @@
 				<div class="font-mono">{fmtDate(sel.createdAt)}</div>
 				<div class="text-text-4">{m.admin_users_id()}</div>
 				<div class="truncate font-mono text-text-3">{sel.id}</div>
+				<div class="text-text-4">{m.mcp_col_access()}</div>
+				<div class="flex items-center gap-1.5">
+					<span class="h-1.5 w-1.5 rounded-full {mcp.enabled ? 'bg-emerald-400' : 'bg-text-4'}"
+					></span>
+					<span>{mcp.enabled ? m.mcp_access_enabled() : m.mcp_access_disabled()}</span>
+					{#if mcp.enabled}
+						<span class="font-mono text-[12px] text-text-4"
+							>· {mcp.connections} {m.mcp_col_connections().toLowerCase()}</span
+						>
+					{/if}
+				</div>
 			</div>
 
 			<div class="mb-6">
@@ -660,6 +698,21 @@
 						{pendingAction === `reset:${sel.id}`
 							? m.admin_users_sending()
 							: m.admin_users_send_password_reset()}
+					</Button>
+				{/if}
+				{#if canToggleMcp}
+					<Button
+						variant="default"
+						size="sm"
+						disabled={pendingAction === `mcp:${sel.id}`}
+						onclick={() => handleMcpToggle(sel, !mcp.enabled)}
+					>
+						<Icon name="sparkle" size={14} />
+						{pendingAction === `mcp:${sel.id}`
+							? m.common_saving()
+							: mcp.enabled
+								? m.admin_users_mcp_disable()
+								: m.admin_users_mcp_enable()}
 					</Button>
 				{/if}
 				{#if canImpersonate}

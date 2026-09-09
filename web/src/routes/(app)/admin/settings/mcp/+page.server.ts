@@ -1,21 +1,11 @@
 import { error, fail } from '@sveltejs/kit';
-import { asc, eq } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
-import { db } from '$lib/server/db';
-import { user as userTable } from '$lib/server/db/auth.schema';
 import { assertCan } from '$lib/server/permissions';
 import { recordAudit } from '$lib/server/audit';
 import { isSuperadmin } from '$lib/roles';
-import { canManageMcpFor, canViewUser, isRoot } from '$lib/server/user-policy';
+import { canViewUser } from '$lib/server/user-policy';
 import { m } from '$lib/paraglide/messages';
-import {
-	getMcpConnection,
-	listMcpAccess,
-	listMcpConnections,
-	revokeAllForUser,
-	revokeMcpConnection,
-	setMcpAccess
-} from '$lib/server/mcp/access';
+import { getMcpConnection, listMcpConnections, revokeMcpConnection } from '$lib/server/mcp/access';
 import {
 	deleteGuide,
 	getInstructions,
@@ -34,48 +24,15 @@ async function guard(locals: App.Locals) {
 	return locals.user;
 }
 
-/** Audit a refused MCP-access operation (the policy said no). */
-function denied(
-	me: App.Locals['user'],
-	reason: string,
-	target: { id: string; email?: string | null }
-) {
-	void recordAudit({
-		type: 'authz.denied',
-		actorId: me?.id ?? null,
-		actorLabel: me?.email ?? null,
-		targetType: 'user',
-		targetId: target.id,
-		targetLabel: target.email ?? null,
-		meta: { path: '/admin/settings/mcp', reason }
-	});
-}
-
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const me = await guard(locals);
-	const [access, connections, instructions, guides, users] = await Promise.all([
-		listMcpAccess(),
+	// Per-user MCP access lives in Directory → Users (mcpEnable/mcpDisable);
+	// this page owns the guidance layer and the OAuth connection registry.
+	const [connections, instructions, guides] = await Promise.all([
 		listMcpConnections(),
 		getInstructions(),
-		listGuides(),
-		db
-			.select({
-				id: userTable.id,
-				name: userTable.name,
-				email: userTable.email,
-				role: userTable.role
-			})
-			.from(userTable)
-			.where(eq(userTable.banned, false))
-			.orderBy(asc(userTable.name))
+		listGuides()
 	]);
-	const enabled = new Set(access.map((a) => a.userId));
-	const connectionCount = new Map<string, number>();
-	for (const c of connections) {
-		if (c.userId) connectionCount.set(c.userId, (connectionCount.get(c.userId) ?? 0) + 1);
-	}
-	// Same tier or below only (admins never see superadmins) — same rule as
-	// user management and API keys.
 	const mcpUrl = `${url.origin}/api/mcp`;
 	return {
 		mcpUrl,
@@ -94,16 +51,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			updatedAt: g.updatedAt,
 			bodyChars: g.body.length
 		})),
-		users: users
-			.filter((u) => canViewUser(me, u))
-			.map((u) => ({
-				id: u.id,
-				name: u.name,
-				email: u.email,
-				role: u.role,
-				enabled: enabled.has(u.id),
-				connections: connectionCount.get(u.id) ?? 0
-			})),
+		// Same tier or below only (admins never see superadmins) — same rule as
+		// user management and API keys.
 		connections: connections.filter((c) =>
 			canViewUser(me, { id: c.userId ?? '', role: c.userRole })
 		),
@@ -111,72 +60,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	};
 };
 
-async function manageableUser(me: NonNullable<App.Locals['user']>, userId: string, reason: string) {
-	if (!userId) return { fail: fail(400, { message: m.mcp_err_user_required() }) };
-	const [target] = await db
-		.select({
-			id: userTable.id,
-			name: userTable.name,
-			email: userTable.email,
-			role: userTable.role,
-			isRoot: userTable.isRoot,
-			banned: userTable.banned
-		})
-		.from(userTable)
-		.where(eq(userTable.id, userId))
-		.limit(1);
-	// Tiers the actor cannot see answer like an unknown user.
-	if (!target || target.banned || !canViewUser(me, target)) {
-		return { fail: fail(400, { message: m.mcp_err_user_required() }) };
-	}
-	if (!canManageMcpFor(me, target)) {
-		denied(me, reason, target);
-		return {
-			fail: fail(403, {
-				message: isRoot(target) ? m.admin_err_root_untouchable() : m.mcp_err_user_forbidden()
-			})
-		};
-	}
-	return { target };
-}
-
 export const actions: Actions = {
-	enable: async ({ request, locals }) => {
-		const me = await guard(locals);
-		const userId = String((await request.formData()).get('userId') ?? '').trim();
-		const res = await manageableUser(me, userId, 'mcp_enable');
-		if ('fail' in res) return res.fail;
-		await setMcpAccess(res.target.id, true, me);
-		void recordAudit({
-			type: 'mcp_access.enable',
-			actorId: me.id,
-			targetType: 'user',
-			targetId: res.target.id,
-			targetLabel: res.target.name
-		});
-		return { success: true, enabled: res.target.id };
-	},
-
-	disable: async ({ request, locals }) => {
-		const me = await guard(locals);
-		const userId = String((await request.formData()).get('userId') ?? '').trim();
-		const res = await manageableUser(me, userId, 'mcp_disable');
-		if ('fail' in res) return res.fail;
-		await setMcpAccess(res.target.id, false, me);
-		// Hard cut-off: issued tokens would be refused anyway, but leaving them
-		// around only confuses the connections list.
-		const revoked = await revokeAllForUser(res.target.id, me);
-		void recordAudit({
-			type: 'mcp_access.disable',
-			actorId: me.id,
-			targetType: 'user',
-			targetId: res.target.id,
-			targetLabel: res.target.name,
-			meta: { revokedConnections: revoked }
-		});
-		return { success: true, disabled: res.target.id };
-	},
-
 	revoke: async ({ request, locals }) => {
 		const me = await guard(locals);
 		const id = String((await request.formData()).get('id') ?? '').trim();

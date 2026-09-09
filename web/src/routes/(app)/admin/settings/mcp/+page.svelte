@@ -21,12 +21,10 @@
 	const instructionsDirty = $derived(instructions.trim() !== data.instructions.trim());
 	const instructionsOver = $derived(instructions.trim().length > data.instructionsMax);
 
-	const userCols = '2fr 0.9fr 1.1fr 0.9fr 96px';
 	const connCols = '1.6fr 1.6fr 1.1fr 1.4fr 48px';
 	const fmt = new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium', timeStyle: 'short' });
 
 	type Conn = PageData['connections'][number];
-	type Row = PageData['users'][number];
 	type Guide = PageData['guides'][number];
 	const guideCols = '2fr 1.4fr 1fr 0.9fr 120px';
 
@@ -57,17 +55,6 @@
 				}
 			};
 		};
-	}
-
-	async function askDisable(u: Row, form: HTMLFormElement) {
-		const ok = await confirm({
-			title: m.mcp_disable_title({ name: u.name }),
-			message: m.mcp_disable_message({ name: u.name }),
-			confirmLabel: m.mcp_disable(),
-			tone: 'warn',
-			icon: 'shield'
-		});
-		if (ok) form.requestSubmit();
 	}
 
 	function onSaveInstructions() {
@@ -334,81 +321,17 @@
 	{/if}
 </div>
 
-<!-- Users -->
-<div class="mb-3">
-	<h2 class="text-[15px] font-semibold text-text">{m.mcp_users_title()}</h2>
-	<p class="mt-0.5 text-[13px] text-text-3">{m.mcp_users_hint()}</p>
-</div>
-<div class="mb-6 overflow-hidden rounded-2xl border border-border bg-bg-elev">
-	<div
-		class="grid h-9 items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
-		style:grid-template-columns={userCols}
-	>
-		<span>{m.mcp_col_user()}</span>
-		<span>{m.mcp_col_role()}</span>
-		<span>{m.mcp_col_access()}</span>
-		<span>{m.mcp_col_connections()}</span>
-		<span></span>
-	</div>
-	{#each data.users as u (u.id)}
-		<div
-			class="grid items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[14px] last:border-b-0"
-			style:grid-template-columns={userCols}
-		>
-			<div class="min-w-0">
-				<span class="block truncate font-medium text-text">{u.name}</span>
-				<span class="block truncate text-[12px] text-text-4">{u.email}</span>
-			</div>
-			<div class="truncate font-mono text-[12px] text-text-3">{u.role ?? 'user'}</div>
-			<div class="flex items-center gap-2">
-				<span class="h-2 w-2 rounded-full {u.enabled ? 'bg-emerald-400' : 'bg-text-4'}"></span>
-				<span class="text-text-2">
-					{u.enabled ? m.mcp_access_enabled() : m.mcp_access_disabled()}
-				</span>
-			</div>
-			<div class="font-mono text-[12px] text-text-3">{u.connections}</div>
-			<div class="flex items-center justify-end">
-				{#if u.enabled}
-					<form
-						method="post"
-						action="?/disable"
-						use:enhance={simple(m.mcp_disabled_toast(), 'userId')}
-					>
-						<input type="hidden" name="userId" value={u.id} />
-						<button
-							type="button"
-							disabled={busyId === u.id}
-							onclick={(e) => askDisable(u, e.currentTarget.form!)}
-							class="inline-flex h-8 items-center rounded-lg border border-border bg-surface px-2.5 text-[13px] text-text-2 transition-colors hover:text-[#e9c46a] disabled:opacity-50"
-						>
-							{m.mcp_disable()}
-						</button>
-					</form>
-				{:else}
-					<form
-						method="post"
-						action="?/enable"
-						use:enhance={simple(m.mcp_enabled_toast(), 'userId')}
-					>
-						<input type="hidden" name="userId" value={u.id} />
-						<button
-							type="submit"
-							disabled={busyId === u.id}
-							class="inline-flex h-8 items-center rounded-lg border border-border bg-surface px-2.5 text-[13px] text-text-2 transition-colors hover:text-text disabled:opacity-50"
-						>
-							{m.mcp_enable()}
-						</button>
-					</form>
-				{/if}
-			</div>
-		</div>
-	{/each}
-</div>
-
 <!-- Connections -->
 <div class="mb-3">
 	<h2 class="text-[15px] font-semibold text-text">{m.mcp_connections_title()}</h2>
-	<p class="mt-0.5 text-[13px] text-text-3">{m.mcp_connections_hint()}</p>
+	<p class="mt-0.5 text-[13px] text-text-3">
+		{m.mcp_connections_hint()}
+		<a
+			href="/admin/directory/users"
+			class="text-text-2 underline decoration-border underline-offset-2 hover:text-text"
+			>{m.mcp_access_moved_hint()}</a
+		>
+	</p>
 </div>
 <div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
 	{#if data.connections.length === 0}
