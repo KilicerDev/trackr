@@ -22,8 +22,12 @@ const handler = createMcpHandler(
 			// Only reachable if the route below is bypassed — never serve unauthenticated.
 			throw new Error('MCP request without an authenticated principal');
 		}
-		// Admin instructions + guide index (memoised; see guidance.ts).
-		return buildServer(extra.principal, extra.origin, await loadGuidance());
+		// Workspace + personal instructions and guide index (memoised per user; see guidance.ts).
+		return buildServer(
+			extra.principal,
+			extra.origin,
+			await loadGuidance(extra.principal.locals.user.id)
+		);
 	},
 	{ responseMode: 'json' }
 );

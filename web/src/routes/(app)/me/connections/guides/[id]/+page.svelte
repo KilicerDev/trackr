@@ -9,6 +9,6 @@
 <GuideEditor
 	guide={data.guide}
 	bodyMax={data.bodyMax}
-	backHref="/admin/settings/mcp"
-	backLabel={m.mcp_guide_back()}
+	backHref="/me/connections"
+	backLabel={m.connections_guide_back()}
 />

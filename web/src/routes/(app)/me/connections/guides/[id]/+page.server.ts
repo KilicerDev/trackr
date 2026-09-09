@@ -1,11 +1,11 @@
-// Guide editor (Settings → MCP → Guides). `[id]` is a guide id or `new`.
-// `fetch` only returns the imported content to the form; nothing is stored
-// until `save`, so an admin can look at the conversion before it goes live.
+// Personal guide editor (/me/connections). `[id]` is a guide id or `new`.
+// Same shape as the workspace editor under Settings → MCP, scoped to the
+// signed-in user's own guides: someone else's id answers like a missing one.
 
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
-import { assertCan } from '$lib/server/permissions';
 import { recordAudit } from '$lib/server/audit';
+import { isMcpEnabled } from '$lib/server/mcp/access';
 import { m } from '$lib/paraglide/messages';
 import {
 	createGuide,
@@ -21,19 +21,20 @@ import {
 import { guidanceErrorMessage } from '$lib/server/mcp/guidance-messages';
 
 const NEW = 'new';
-// Workspace layer only (personal guides: /me/connections/guides/[id]).
-const WORKSPACE = { ownerUserId: null };
+const BACK = '/me/connections';
 
 async function guard(locals: App.Locals) {
-	await assertCan(locals, 'admin.settings.manage');
 	if (!locals.user) throw error(401, m.settings_err_not_authenticated());
+	// Guides only reach assistants acting as this user, so without MCP access
+	// there is nothing to manage.
+	if (!(await isMcpEnabled(locals.user.id))) throw error(403, m.connections_mcp_disabled());
 	return locals.user;
 }
 
 export const load: PageServerLoad = async ({ locals, params }) => {
-	await guard(locals);
+	const me = await guard(locals);
 	if (params.id === NEW) return { guide: null, bodyMax: GUIDE_BODY_MAX_CHARS };
-	const guide = await getGuide(params.id, WORKSPACE);
+	const guide = await getGuide(params.id, { ownerUserId: me.id });
 	if (!guide) error(404, m.mcp_guide_err_not_found());
 	return {
 		guide: {
@@ -65,9 +66,9 @@ function readForm(fd: FormData): GuideInput & { fetched: boolean } {
 }
 
 export const actions: Actions = {
-	save: async ({ request, locals, params }) => {
-		const me = await guard(locals);
-		const form = readForm(await request.formData());
+	save: async (event) => {
+		const me = await guard(event.locals);
+		const form = readForm(await event.request.formData());
 		const input: GuideInput = {
 			title: form.title,
 			slug: form.slug,
@@ -75,31 +76,41 @@ export const actions: Actions = {
 			body: form.body,
 			sourceUrl: form.sourceUrl,
 			enabled: form.enabled,
-			// A body just imported from the URL is a fresh snapshot.
 			...(form.fetched ? { fetchedAt: new Date() } : {})
 		};
 		try {
-			if (params.id === NEW) {
-				const row = await createGuide(input, me.id);
-				void recordAudit({
-					type: 'mcp_guide.create',
+			if (event.params.id === NEW) {
+				const row = await createGuide({ ...input, ownerUserId: me.id }, me.id);
+				void recordAudit(
+					{
+						type: 'mcp_guide.create',
+						actorId: me.id,
+						targetType: 'mcp_guide',
+						targetId: row.id,
+						targetLabel: row.title,
+						meta: {
+							slug: row.slug,
+							sourceUrl: row.sourceUrl,
+							chars: row.body.length,
+							personal: true
+						}
+					},
+					event
+				);
+				redirect(303, `${BACK}/guides/${row.id}?created=1`);
+			}
+			const row = await updateGuide(event.params.id, input, me.id, { ownerUserId: me.id });
+			void recordAudit(
+				{
+					type: 'mcp_guide.update',
 					actorId: me.id,
 					targetType: 'mcp_guide',
 					targetId: row.id,
 					targetLabel: row.title,
-					meta: { slug: row.slug, sourceUrl: row.sourceUrl, chars: row.body.length }
-				});
-				redirect(303, `/admin/settings/mcp/guides/${row.id}?created=1`);
-			}
-			const row = await updateGuide(params.id, input, me.id, WORKSPACE);
-			void recordAudit({
-				type: 'mcp_guide.update',
-				actorId: me.id,
-				targetType: 'mcp_guide',
-				targetId: row.id,
-				targetLabel: row.title,
-				meta: { slug: row.slug, sourceUrl: row.sourceUrl, chars: row.body.length }
-			});
+					meta: { slug: row.slug, sourceUrl: row.sourceUrl, chars: row.body.length, personal: true }
+				},
+				event
+			);
 			return { success: true, saved: row.id };
 		} catch (err) {
 			if (err instanceof GuidanceError) return fail(400, { message: guidanceErrorMessage(err) });
@@ -107,9 +118,9 @@ export const actions: Actions = {
 		}
 	},
 
-	fetch: async ({ request, locals }) => {
-		await guard(locals);
-		const form = readForm(await request.formData());
+	fetch: async (event) => {
+		await guard(event.locals);
+		const form = readForm(await event.request.formData());
 		if (!form.sourceUrl) return fail(400, { message: m.mcp_guide_err_invalid_url() });
 		try {
 			const fetched = await fetchGuideFromUrl(form.sourceUrl);
@@ -128,19 +139,22 @@ export const actions: Actions = {
 		}
 	},
 
-	delete: async ({ locals, params }) => {
-		const me = await guard(locals);
-		if (params.id === NEW) redirect(303, '/admin/settings/mcp');
-		const row = await deleteGuide(params.id, WORKSPACE);
+	delete: async (event) => {
+		const me = await guard(event.locals);
+		if (event.params.id === NEW) redirect(303, BACK);
+		const row = await deleteGuide(event.params.id, { ownerUserId: me.id });
 		if (!row) return fail(404, { message: m.mcp_guide_err_not_found() });
-		void recordAudit({
-			type: 'mcp_guide.delete',
-			actorId: me.id,
-			targetType: 'mcp_guide',
-			targetId: row.id,
-			targetLabel: row.title,
-			meta: { slug: row.slug }
-		});
-		redirect(303, '/admin/settings/mcp');
+		void recordAudit(
+			{
+				type: 'mcp_guide.delete',
+				actorId: me.id,
+				targetType: 'mcp_guide',
+				targetId: row.id,
+				targetLabel: row.title,
+				meta: { slug: row.slug, personal: true }
+			},
+			event
+		);
+		redirect(303, BACK);
 	}
 };

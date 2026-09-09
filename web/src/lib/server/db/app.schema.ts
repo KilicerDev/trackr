@@ -1873,13 +1873,39 @@ export const mcpGuide = pgTable(
 		fetchedAt: timestamp('fetched_at'),
 		enabled: boolean('enabled').notNull().default(true),
 		position: integer('position').notNull().default(0),
+		// null = workspace guide (Settings → MCP, superadmin); set = a personal
+		// guide only assistants acting as that user can read (/me/connections).
+		// A personal guide shadows a workspace guide with the same slug.
+		ownerUserId: text('owner_user_id').references(() => user.id, { onDelete: 'cascade' }),
 		createdById: text('created_by_id').references(() => user.id, { onDelete: 'set null' }),
 		updatedById: text('updated_by_id').references(() => user.id, { onDelete: 'set null' }),
 		createdAt: timestamp('created_at').defaultNow().notNull(),
 		updatedAt: timestamp('updated_at').defaultNow().notNull()
 	},
-	(t) => [uniqueIndex('mcp_guide_slug_idx').on(t.slug)]
+	(t) => [
+		// Slugs are unique per owner scope: once among workspace guides, once per user.
+		uniqueIndex('mcp_guide_workspace_slug_idx')
+			.on(t.slug)
+			.where(sql`${t.ownerUserId} IS NULL`),
+		uniqueIndex('mcp_guide_owner_slug_idx')
+			.on(t.ownerUserId, t.slug)
+			.where(sql`${t.ownerUserId} IS NOT NULL`),
+		index('mcp_guide_owner_idx').on(t.ownerUserId)
+	]
 );
+
+// Per-user MCP layer (/me/connections): free text appended after the
+// workspace instructions for every assistant acting as this user. One row
+// per user; no row = nothing personal.
+export const mcpUserSettings = pgTable('mcp_user_settings', {
+	userId: text('user_id')
+		.primaryKey()
+		.references(() => user.id, { onDelete: 'cascade' }),
+	instructions: text('instructions').notNull().default(''),
+	updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+export type McpUserSettings = typeof mcpUserSettings.$inferSelect;
 
 export type McpGuide = typeof mcpGuide.$inferSelect;
 

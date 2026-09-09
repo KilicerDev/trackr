@@ -1,7 +1,8 @@
 /**
- * Admin-authored guidance for MCP clients (Settings → MCP).
+ * Guidance for MCP clients: the admin layer (Settings → MCP, superadmin) and
+ * the personal layer every MCP-enabled user manages under /me/connections.
  *
- * Two things live here:
+ * Two things live here, each in both layers:
  *  - `instructions`: free text appended to the built-in server instructions
  *    the client receives on `initialize` (claude.ai puts it in the system
  *    prompt verbatim). Keep it short — it costs context in every conversation.
@@ -10,16 +11,19 @@
  *    trackr://guide/{slug} resource. A guide can be typed in, uploaded, or
  *    snapshotted from a public URL (fetched server-side, HTML → markdown).
  *
- * Both are readable by anyone with MCP access; management needs
- * admin.settings.manage (enforced by the route, not here). `loadGuidance` is
- * called once per MCP request, so the result is memoised briefly and the
- * cache is dropped on every write.
+ * Workspace guides/instructions reach every MCP user; a personal guide or
+ * instruction only reaches assistants acting as its owner, and a personal
+ * guide shadows a workspace guide with the same slug. Management is enforced
+ * by the routes (admin.settings.manage / ownership); the `scope` parameter on
+ * the mutators is the backstop that keeps one layer from touching the other.
+ * `loadGuidance(userId)` is called once per MCP request, so the result is
+ * memoised briefly per user and the cache is dropped on every write.
  */
 
-import { asc, eq, max } from 'drizzle-orm';
+import { and, asc, count, eq, isNull, max, or } from 'drizzle-orm';
 import { JSDOM } from 'jsdom';
 import { db } from '$lib/server/db';
-import { mcpGuide, mcpSettings, type McpGuide } from '$lib/server/db/app.schema';
+import { mcpGuide, mcpSettings, mcpUserSettings, type McpGuide } from '$lib/server/db/app.schema';
 import { fetchRemoteFile } from '$lib/server/attachments-fetch';
 import { docHtmlToMarkdown } from '$lib/server/content/markdown';
 
@@ -27,12 +31,28 @@ export const INSTRUCTIONS_MAX_CHARS = 8_000;
 export const GUIDE_BODY_MAX_CHARS = 64 * 1024;
 export const GUIDE_TITLE_MAX_CHARS = 120;
 export const GUIDE_SUMMARY_MAX_CHARS = 200;
+/** Personal guides per user — the index lands in every system prompt. */
+export const PERSONAL_GUIDE_LIMIT = 20;
 const SETTINGS_ID = 'default';
 const CACHE_TTL_MS = 10_000;
 
 export type GuideRow = McpGuide;
-export type GuideIndexEntry = { slug: string; title: string; summary: string };
-export type Guidance = { instructions: string; guides: GuideIndexEntry[] };
+export type GuideIndexEntry = { slug: string; title: string; summary: string; personal?: boolean };
+export type Guidance = {
+	instructions: string;
+	personalInstructions: string;
+	guides: GuideIndexEntry[];
+};
+
+/** Which layer a mutation may touch: workspace guides (null) or one user's. */
+export type GuideScope = { ownerUserId: string | null };
+
+function inScope(scope: GuideScope | undefined) {
+	if (!scope) return undefined;
+	return scope.ownerUserId === null
+		? isNull(mcpGuide.ownerUserId)
+		: eq(mcpGuide.ownerUserId, scope.ownerUserId);
+}
 
 export class GuidanceError extends Error {
 	constructor(
@@ -43,7 +63,8 @@ export class GuidanceError extends Error {
 			| 'title_required'
 			| 'invalid_url'
 			| 'fetch_failed'
-			| 'not_found',
+			| 'not_found'
+			| 'limit',
 		message: string
 	) {
 		super(message);
@@ -82,6 +103,38 @@ export async function setInstructions(text: string, actorId: string): Promise<vo
 	invalidate();
 }
 
+/** The user's own instructions ('' when never set). */
+export async function getUserInstructions(
+	userId: string
+): Promise<{ instructions: string; updatedAt: Date | null }> {
+	const [row] = await db
+		.select()
+		.from(mcpUserSettings)
+		.where(eq(mcpUserSettings.userId, userId))
+		.limit(1);
+	return row
+		? { instructions: row.instructions, updatedAt: row.updatedAt }
+		: { instructions: '', updatedAt: null };
+}
+
+export async function setUserInstructions(userId: string, text: string): Promise<void> {
+	const instructions = text.replace(/\r\n/g, '\n').trim();
+	if (instructions.length > INSTRUCTIONS_MAX_CHARS) {
+		throw new GuidanceError(
+			'too_long',
+			`Instructions are limited to ${INSTRUCTIONS_MAX_CHARS} characters.`
+		);
+	}
+	await db
+		.insert(mcpUserSettings)
+		.values({ userId, instructions, updatedAt: new Date() })
+		.onConflictDoUpdate({
+			target: mcpUserSettings.userId,
+			set: { instructions, updatedAt: new Date() }
+		});
+	invalidate();
+}
+
 // ─── Guides ─────────────────────────────────────────────────────────────────
 
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
@@ -102,23 +155,56 @@ export function isValidSlug(slug: string): boolean {
 	return SLUG_RE.test(slug);
 }
 
+/** Workspace guides (Settings → MCP). */
 export async function listGuides(): Promise<GuideRow[]> {
-	return db.select().from(mcpGuide).orderBy(asc(mcpGuide.position), asc(mcpGuide.createdAt));
+	return db
+		.select()
+		.from(mcpGuide)
+		.where(isNull(mcpGuide.ownerUserId))
+		.orderBy(asc(mcpGuide.position), asc(mcpGuide.createdAt));
 }
 
-export async function getGuide(id: string): Promise<GuideRow | null> {
-	const [row] = await db.select().from(mcpGuide).where(eq(mcpGuide.id, id)).limit(1);
-	return row ?? null;
+/** One user's personal guides (/me/connections). */
+export async function listGuidesFor(userId: string): Promise<GuideRow[]> {
+	return db
+		.select()
+		.from(mcpGuide)
+		.where(eq(mcpGuide.ownerUserId, userId))
+		.orderBy(asc(mcpGuide.position), asc(mcpGuide.createdAt));
 }
 
-/** Enabled guide by slug — what the MCP tool and resource read. */
-export async function getEnabledGuideBySlug(slug: string): Promise<GuideRow | null> {
+export async function getGuide(id: string, scope?: GuideScope): Promise<GuideRow | null> {
 	const [row] = await db
 		.select()
 		.from(mcpGuide)
-		.where(eq(mcpGuide.slug, slug.trim().toLowerCase()))
+		.where(and(eq(mcpGuide.id, id), inScope(scope)))
 		.limit(1);
-	return row && row.enabled ? row : null;
+	return row ?? null;
+}
+
+/**
+ * Enabled guide by slug — what the MCP tool and resource read. The user's
+ * own guide wins over a workspace guide with the same slug.
+ */
+export async function getEnabledGuideBySlug(
+	slug: string,
+	userId?: string
+): Promise<GuideRow | null> {
+	const s = slug.trim().toLowerCase();
+	const rows = await db
+		.select()
+		.from(mcpGuide)
+		.where(
+			and(
+				eq(mcpGuide.slug, s),
+				eq(mcpGuide.enabled, true),
+				userId
+					? or(isNull(mcpGuide.ownerUserId), eq(mcpGuide.ownerUserId, userId))
+					: isNull(mcpGuide.ownerUserId)
+			)
+		)
+		.limit(2);
+	return rows.find((r) => r.ownerUserId !== null) ?? rows[0] ?? null;
 }
 
 export type GuideInput = {
@@ -130,6 +216,8 @@ export type GuideInput = {
 	enabled?: boolean;
 	/** Set when `body` was just imported from `sourceUrl`; undefined leaves it unchanged. */
 	fetchedAt?: Date | null;
+	/** Personal guide owner; null/undefined = workspace guide. Create only. */
+	ownerUserId?: string | null;
 };
 
 type CleanGuide = {
@@ -195,7 +283,16 @@ function isUniqueViolation(err: unknown): boolean {
 
 export async function createGuide(input: GuideInput, actorId: string): Promise<GuideRow> {
 	const values = clean(input);
-	const [{ top }] = await db.select({ top: max(mcpGuide.position) }).from(mcpGuide);
+	const ownerUserId = input.ownerUserId ?? null;
+	const scope = inScope({ ownerUserId })!;
+	if (ownerUserId) {
+		const [{ n }] = await db.select({ n: count() }).from(mcpGuide).where(scope);
+		if (n >= PERSONAL_GUIDE_LIMIT) throw new GuidanceError('limit', String(PERSONAL_GUIDE_LIMIT));
+	}
+	const [{ top }] = await db
+		.select({ top: max(mcpGuide.position) })
+		.from(mcpGuide)
+		.where(scope);
 	const position = (top ?? -1) + 1;
 	try {
 		const [row] = await db
@@ -205,6 +302,7 @@ export async function createGuide(input: GuideInput, actorId: string): Promise<G
 				...values,
 				fetchedAt: values.sourceUrl ? (input.fetchedAt ?? null) : null,
 				position,
+				ownerUserId,
 				createdById: actorId,
 				updatedById: actorId
 			})
@@ -222,9 +320,10 @@ export async function createGuide(input: GuideInput, actorId: string): Promise<G
 export async function updateGuide(
 	id: string,
 	input: GuideInput,
-	actorId: string
+	actorId: string,
+	scope?: GuideScope
 ): Promise<GuideRow> {
-	const existing = await getGuide(id);
+	const existing = await getGuide(id, scope);
 	if (!existing) throw new GuidanceError('not_found', 'Guide not found.');
 	const values = clean(input, existing.slug);
 	try {
@@ -250,18 +349,26 @@ export async function updateGuide(
 	}
 }
 
-export async function setGuideEnabled(id: string, enabled: boolean, actorId: string) {
+export async function setGuideEnabled(
+	id: string,
+	enabled: boolean,
+	actorId: string,
+	scope?: GuideScope
+) {
 	const [row] = await db
 		.update(mcpGuide)
 		.set({ enabled, updatedById: actorId, updatedAt: new Date() })
-		.where(eq(mcpGuide.id, id))
+		.where(and(eq(mcpGuide.id, id), inScope(scope)))
 		.returning({ id: mcpGuide.id, title: mcpGuide.title });
 	invalidate();
 	return row ?? null;
 }
 
-export async function deleteGuide(id: string): Promise<GuideRow | null> {
-	const [row] = await db.delete(mcpGuide).where(eq(mcpGuide.id, id)).returning();
+export async function deleteGuide(id: string, scope?: GuideScope): Promise<GuideRow | null> {
+	const [row] = await db
+		.delete(mcpGuide)
+		.where(and(eq(mcpGuide.id, id), inScope(scope)))
+		.returning();
 	invalidate();
 	return row ?? null;
 }
@@ -390,8 +497,12 @@ export async function fetchGuideFromUrl(url: string): Promise<FetchedGuide> {
 }
 
 /** Re-download a guide's source URL into its body. */
-export async function refreshGuide(id: string, actorId: string): Promise<GuideRow> {
-	const existing = await getGuide(id);
+export async function refreshGuide(
+	id: string,
+	actorId: string,
+	scope?: GuideScope
+): Promise<GuideRow> {
+	const existing = await getGuide(id, scope);
 	if (!existing) throw new GuidanceError('not_found', 'Guide not found.');
 	if (!existing.sourceUrl) {
 		throw new GuidanceError('invalid_url', 'This guide has no source URL to refresh from.');
@@ -413,29 +524,62 @@ export async function refreshGuide(id: string, actorId: string): Promise<GuideRo
 
 // ─── Per-request loader ─────────────────────────────────────────────────────
 
-let cached: { at: number; value: Guidance } | null = null;
+// Keyed by user id ('' = no personal layer). Any write clears the whole map:
+// a workspace change affects everyone, and per-user precision is not worth it.
+const cached = new Map<string, { at: number; value: Guidance }>();
 
 function invalidate(): void {
-	cached = null;
+	cached.clear();
 }
 
 /**
- * Instructions + the index of enabled guides, for `buildServer`. Memoised for
- * a few seconds so a chatty client does not hit the database on every
- * tools/list; writes above drop the cache immediately.
+ * Workspace + personal instructions and the index of enabled guides (the
+ * user's own shadow workspace ones by slug), for `buildServer`. Memoised for
+ * a few seconds per user so a chatty client does not hit the database on
+ * every tools/list; writes above drop the cache immediately.
  */
-export async function loadGuidance(): Promise<Guidance> {
+export async function loadGuidance(userId?: string): Promise<Guidance> {
+	const key = userId ?? '';
 	const now = Date.now();
-	if (cached && now - cached.at < CACHE_TTL_MS) return cached.value;
-	const [settings, guides] = await Promise.all([
+	const hit = cached.get(key);
+	if (hit && now - hit.at < CACHE_TTL_MS) return hit.value;
+	const [settings, personal, rows] = await Promise.all([
 		getInstructions(),
+		userId ? getUserInstructions(userId) : Promise.resolve({ instructions: '' }),
 		db
-			.select({ slug: mcpGuide.slug, title: mcpGuide.title, summary: mcpGuide.summary })
+			.select({
+				slug: mcpGuide.slug,
+				title: mcpGuide.title,
+				summary: mcpGuide.summary,
+				ownerUserId: mcpGuide.ownerUserId
+			})
 			.from(mcpGuide)
-			.where(eq(mcpGuide.enabled, true))
+			.where(
+				and(
+					eq(mcpGuide.enabled, true),
+					userId
+						? or(isNull(mcpGuide.ownerUserId), eq(mcpGuide.ownerUserId, userId))
+						: isNull(mcpGuide.ownerUserId)
+				)
+			)
 			.orderBy(asc(mcpGuide.position), asc(mcpGuide.createdAt))
 	]);
-	const value: Guidance = { instructions: settings.instructions, guides };
-	cached = { at: now, value };
+	// Workspace first, then personal; a personal slug replaces the workspace entry in place.
+	const guides: GuideIndexEntry[] = [];
+	for (const r of rows.filter((r) => r.ownerUserId === null)) {
+		guides.push({ slug: r.slug, title: r.title, summary: r.summary });
+	}
+	for (const r of rows.filter((r) => r.ownerUserId !== null)) {
+		const entry = { slug: r.slug, title: r.title, summary: r.summary, personal: true };
+		const i = guides.findIndex((g) => g.slug === r.slug);
+		if (i >= 0) guides[i] = entry;
+		else guides.push(entry);
+	}
+	const value: Guidance = {
+		instructions: settings.instructions,
+		personalInstructions: personal.instructions,
+		guides
+	};
+	cached.set(key, { at: now, value });
 	return value;
 }

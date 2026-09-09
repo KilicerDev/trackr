@@ -17,6 +17,18 @@ import {
 	revokeOwnMcpConnection
 } from '$lib/server/mcp/access';
 import { canCreateApiKeyFor } from '$lib/server/user-policy';
+import {
+	deleteGuide,
+	getUserInstructions,
+	GuidanceError,
+	INSTRUCTIONS_MAX_CHARS,
+	listGuidesFor,
+	PERSONAL_GUIDE_LIMIT,
+	refreshGuide,
+	setGuideEnabled,
+	setUserInstructions
+} from '$lib/server/mcp/guidance';
+import { guidanceErrorMessage } from '$lib/server/mcp/guidance-messages';
 import { m } from '$lib/paraglide/messages';
 import type { Actions, PageServerLoad, RequestEvent } from './$types';
 
@@ -34,7 +46,7 @@ function requireUser(locals: App.Locals) {
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	const me = requireUser(locals);
-	const [mcpEnabled, connections, keys, devices] = await Promise.all([
+	const [mcpEnabled, connections, keys, devices, instructions, guides] = await Promise.all([
 		isMcpEnabled(me.id),
 		listMcpConnectionsFor(me.id),
 		listApiKeys({ userId: me.id }),
@@ -49,7 +61,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			})
 			.from(pushToken)
 			.where(eq(pushToken.userId, me.id))
-			.orderBy(desc(pushToken.lastSeenAt))
+			.orderBy(desc(pushToken.lastSeenAt)),
+		getUserInstructions(me.id),
+		listGuidesFor(me.id)
 	]);
 	const mcpUrl = `${url.origin}/api/mcp`;
 	return {
@@ -60,6 +74,22 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			url: mcpUrl,
 			claudeCodeCommand: `claude mcp add --transport http trackr ${mcpUrl}`
 		},
+		// The personal guidance layer (only meaningful with MCP access).
+		instructions: instructions.instructions,
+		instructionsUpdatedAt: instructions.updatedAt,
+		instructionsMax: INSTRUCTIONS_MAX_CHARS,
+		guides: guides.map((g) => ({
+			id: g.id,
+			slug: g.slug,
+			title: g.title,
+			summary: g.summary,
+			sourceUrl: g.sourceUrl,
+			fetchedAt: g.fetchedAt,
+			enabled: g.enabled,
+			updatedAt: g.updatedAt,
+			bodyChars: g.body.length
+		})),
+		guideLimit: PERSONAL_GUIDE_LIMIT,
 		connections: connections.map((c) => ({
 			id: c.id,
 			clientId: c.clientId,
@@ -99,6 +129,11 @@ async function ownKey(id: string, userId: string) {
 }
 
 export const actions: Actions = {
+	saveInstructions: (e) => personalActions.saveInstructions(e),
+	guideEnable: (e) => personalActions.guideEnable(e),
+	guideDisable: (e) => personalActions.guideDisable(e),
+	guideRefresh: (e) => personalActions.guideRefresh(e),
+	guideDelete: (e) => personalActions.guideDelete(e),
 	keyCreate: async (event) => {
 		const me = requireUser(event.locals);
 		const form = await event.request.formData();
@@ -208,3 +243,101 @@ export const actions: Actions = {
 		return { success: true, removed: id };
 	}
 };
+
+// ─── Personal guidance (instructions + guides) ──────────────────────────────
+// Only meaningful with MCP access; every mutation is scoped to the caller's
+// own rows, so a foreign guide id answers like a missing one.
+
+async function requireMcpUser(locals: App.Locals) {
+	const me = requireUser(locals);
+	if (!(await isMcpEnabled(me.id))) throw error(403, m.connections_mcp_disabled());
+	return me;
+}
+
+function guideAudit(
+	event: RequestEvent,
+	me: { id: string },
+	type: 'mcp_guide.update' | 'mcp_guide.delete',
+	row: { id: string; title: string },
+	meta: Record<string, unknown>
+) {
+	void recordAudit(
+		{
+			type,
+			actorId: me.id,
+			targetType: 'mcp_guide',
+			targetId: row.id,
+			targetLabel: row.title,
+			meta: { ...meta, personal: true }
+		},
+		event
+	);
+}
+
+const personalActions = {
+	saveInstructions: async (event: RequestEvent) => {
+		const me = await requireMcpUser(event.locals);
+		const text = String((await event.request.formData()).get('instructions') ?? '');
+		try {
+			await setUserInstructions(me.id, text);
+		} catch (err) {
+			if (err instanceof GuidanceError) return fail(400, { message: guidanceErrorMessage(err) });
+			throw err;
+		}
+		void recordAudit(
+			{
+				type: 'mcp_instructions.update',
+				actorId: me.id,
+				targetType: 'user',
+				targetId: me.id,
+				targetLabel: me.name,
+				meta: { chars: text.trim().length, personal: true }
+			},
+			event
+		);
+		return { success: true };
+	},
+
+	guideEnable: async (event: RequestEvent) => {
+		const me = await requireMcpUser(event.locals);
+		const id = await field(event, 'id');
+		const row = id ? await setGuideEnabled(id, true, me.id, { ownerUserId: me.id }) : null;
+		if (!row) return fail(404, { message: m.mcp_guide_err_not_found() });
+		guideAudit(event, me, 'mcp_guide.update', row, { enabled: true });
+		return { success: true };
+	},
+
+	guideDisable: async (event: RequestEvent) => {
+		const me = await requireMcpUser(event.locals);
+		const id = await field(event, 'id');
+		const row = id ? await setGuideEnabled(id, false, me.id, { ownerUserId: me.id }) : null;
+		if (!row) return fail(404, { message: m.mcp_guide_err_not_found() });
+		guideAudit(event, me, 'mcp_guide.update', row, { enabled: false });
+		return { success: true };
+	},
+
+	guideRefresh: async (event: RequestEvent) => {
+		const me = await requireMcpUser(event.locals);
+		const id = await field(event, 'id');
+		try {
+			const row = await refreshGuide(id, me.id, { ownerUserId: me.id });
+			guideAudit(event, me, 'mcp_guide.update', row, {
+				refreshedFrom: row.sourceUrl,
+				chars: row.body.length
+			});
+			return { success: true, refreshed: id };
+		} catch (err) {
+			if (err instanceof GuidanceError) return fail(400, { message: guidanceErrorMessage(err) });
+			throw err;
+		}
+	},
+
+	guideDelete: async (event: RequestEvent) => {
+		const me = await requireMcpUser(event.locals);
+		const id = await field(event, 'id');
+		const row = id ? await deleteGuide(id, { ownerUserId: me.id }) : null;
+		if (!row) return fail(404, { message: m.mcp_guide_err_not_found() });
+		guideAudit(event, me, 'mcp_guide.delete', row, { slug: row.slug });
+		return { success: true, deleted: id };
+	}
+} satisfies Actions;

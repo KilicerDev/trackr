@@ -18,6 +18,9 @@ import {
 } from '$lib/server/mcp/guidance';
 import { guidanceErrorMessage } from '$lib/server/mcp/guidance-messages';
 
+// This page manages the workspace layer only; personal guides live on /me/connections.
+const WORKSPACE = { ownerUserId: null };
+
 async function guard(locals: App.Locals) {
 	await assertCan(locals, 'admin.settings.manage');
 	if (!locals.user) throw error(401, m.settings_err_not_authenticated());
@@ -106,7 +109,7 @@ export const actions: Actions = {
 	guideEnable: async ({ request, locals }) => {
 		const me = await guard(locals);
 		const id = String((await request.formData()).get('id') ?? '').trim();
-		const row = id ? await setGuideEnabled(id, true, me.id) : null;
+		const row = id ? await setGuideEnabled(id, true, me.id, WORKSPACE) : null;
 		if (!row) return fail(404, { message: m.mcp_guide_err_not_found() });
 		void recordAudit({
 			type: 'mcp_guide.update',
@@ -122,7 +125,7 @@ export const actions: Actions = {
 	guideDisable: async ({ request, locals }) => {
 		const me = await guard(locals);
 		const id = String((await request.formData()).get('id') ?? '').trim();
-		const row = id ? await setGuideEnabled(id, false, me.id) : null;
+		const row = id ? await setGuideEnabled(id, false, me.id, WORKSPACE) : null;
 		if (!row) return fail(404, { message: m.mcp_guide_err_not_found() });
 		void recordAudit({
 			type: 'mcp_guide.update',
@@ -139,7 +142,7 @@ export const actions: Actions = {
 		const me = await guard(locals);
 		const id = String((await request.formData()).get('id') ?? '').trim();
 		try {
-			const row = await refreshGuide(id, me.id);
+			const row = await refreshGuide(id, me.id, WORKSPACE);
 			void recordAudit({
 				type: 'mcp_guide.update',
 				actorId: me.id,
@@ -158,7 +161,7 @@ export const actions: Actions = {
 	guideDelete: async ({ request, locals }) => {
 		const me = await guard(locals);
 		const id = String((await request.formData()).get('id') ?? '').trim();
-		const row = id ? await deleteGuide(id) : null;
+		const row = id ? await deleteGuide(id, WORKSPACE) : null;
 		if (!row) return fail(404, { message: m.mcp_guide_err_not_found() });
 		void recordAudit({
 			type: 'mcp_guide.delete',

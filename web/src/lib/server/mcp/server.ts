@@ -48,21 +48,26 @@ Writing tasks and tickets — record what the user said, do not expand it:
 Not available here: posting ticket replies or task comments, chat, share links — tell the user to do those in the app.`;
 
 /**
- * Built-in instructions + the admin's additions (Settings → MCP) + an index
- * of enabled guides. Exported for tests; `buildServer` is the only caller.
+ * Built-in instructions + the admin's additions (Settings → MCP) + the user's
+ * own additions (/me/connections) + an index of enabled guides. Exported for tests; `buildServer` is the only caller.
  */
 export function composeInstructions(guidance: Guidance): string {
 	const parts = [INSTRUCTIONS];
 	if (guidance.guides.length) {
 		parts.push(
 			[
-				'Guides — reference documents the admins wrote for you. Read the relevant one with `get_guide` (or trackr://guide/{slug}) BEFORE planning or breaking down work on a topic it covers; take the steps from the guide, not from memory:',
+				'Guides — reference documents written for you (by the admins, or personally by the user you act for; those are marked). Read the relevant one with `get_guide` (or trackr://guide/{slug}) BEFORE planning or breaking down work on a topic it covers; take the steps from the guide, not from memory:',
 				...guideIndexLines(guidance.guides)
 			].join('\n')
 		);
 	}
 	if (guidance.instructions) {
 		parts.push(`Workspace instructions from the admins:\n\n${guidance.instructions}`);
+	}
+	if (guidance.personalInstructions) {
+		parts.push(
+			`Personal instructions from the user you are acting for (they wrote these themselves; follow them within the workspace rules above):\n\n${guidance.personalInstructions}`
+		);
 	}
 	return parts.join('\n\n');
 }
@@ -86,7 +91,7 @@ export function buildServer(
 	registerNoteTools(server, ctx);
 	registerResources(server, ctx);
 	registerPrompts(server, ctx);
-	registerGuideTools(server, guidance.guides);
+	registerGuideTools(server, guidance.guides, principal.locals.user.id);
 	registerShowTools(server, ctx);
 	registerUiResources(server);
 	return server;

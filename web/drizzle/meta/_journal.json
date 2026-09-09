@@ -421,6 +421,13 @@
       "when": 1788941278271,
       "tag": "0059_superadmin_tier",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1788943637536,
+      "tag": "0060_mcp_personal_guidance",
+      "breakpoints": true
     }
   ]
 }

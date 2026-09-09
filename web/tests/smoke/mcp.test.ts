@@ -11,6 +11,7 @@ import {
 	BASE_URL,
 	DEMO,
 	formAction,
+	idOf,
 	requireServer,
 	signInForCookie,
 	SMOKE_PREFIX,
@@ -962,5 +963,150 @@ describe('audit trail (channel + content events + connections)', () => {
 		await c.client.connect(c.transport);
 		expect(c.client.getServerVersion()?.name).toBe('trackr');
 		await c.client.close().catch(() => {});
+	});
+});
+
+describe('personal guidance (/me/connections)', () => {
+	// The smoke API key belongs to Max (has MCP access): his personal layer is
+	// what a fresh client sees. A workspace guide with the same slug (set up
+	// as the superadmin) must be shadowed by his own.
+	const slug = `smoke-personal-${run}`;
+	let cookie: string;
+	let superadminCookie: string;
+	let superadminId: string;
+	let personalId: string | null = null;
+	let workspaceId: string | null = null;
+
+	beforeAll(async () => {
+		[cookie, superadminCookie, superadminId] = await Promise.all([
+			signInForCookie(DEMO.admin.email, DEMO.admin.password),
+			signInForCookie(DEMO.superadmin.email, DEMO.superadmin.password),
+			idOf(DEMO.superadmin.email, DEMO.superadmin.password)
+		]);
+		// The "other user" below needs MCP access of her own (no fixture row).
+		await formAction(
+			'/admin/directory/users',
+			'mcpEnable',
+			{ userId: superadminId },
+			{ cookie: superadminCookie }
+		);
+	});
+
+	afterAll(async () => {
+		await formAction(
+			'/admin/directory/users',
+			'mcpDisable',
+			{ userId: superadminId },
+			{ cookie: superadminCookie }
+		);
+		if (personalId) {
+			await formAction('/me/connections', 'guideDelete', { id: personalId }, { cookie });
+		}
+		if (workspaceId) {
+			await formAction(
+				'/admin/settings/mcp',
+				'guideDelete',
+				{ id: workspaceId },
+				{ cookie: superadminCookie }
+			);
+		}
+		await formAction('/me/connections', 'saveInstructions', { instructions: '' }, { cookie });
+	});
+
+	async function fresh() {
+		const c = connect(API_KEY);
+		await c.client.connect(c.transport);
+		return c;
+	}
+
+	test('personal instructions are appended after the workspace ones', async () => {
+		const marker = `${SMOKE_PREFIX} personal rule ${run}: call me Max`;
+		const saved = await formAction(
+			'/me/connections',
+			'saveInstructions',
+			{ instructions: marker },
+			{ cookie }
+		);
+		expect(saved.type).toBe('success');
+		const c = await fresh();
+		try {
+			const text = c.client.getInstructions() ?? '';
+			expect(text).toContain('Personal instructions from the user');
+			expect(text).toContain(marker);
+			expect(text.indexOf('Writing tasks and tickets')).toBeLessThan(text.indexOf(marker));
+		} finally {
+			await c.client.close().catch(() => {});
+		}
+	});
+
+	test('a personal guide is listed as personal and shadows a workspace guide with the same slug', async () => {
+		const ws = await formAction(
+			'/admin/settings/mcp/guides/new',
+			'save',
+			{
+				title: `${SMOKE_PREFIX} ws ${run}`,
+				slug,
+				body: `workspace body ${run}`,
+				enabled: 'on',
+				fetched: '0'
+			},
+			{ cookie: superadminCookie }
+		);
+		expect(ws.type).toBe('redirect');
+		workspaceId = /\/guides\/([^/?]+)/.exec(ws.location ?? '')?.[1] ?? null;
+		expect(workspaceId).toBeString();
+
+		const mine = await formAction(
+			'/me/connections/guides/new',
+			'save',
+			{
+				title: `${SMOKE_PREFIX} mine ${run}`,
+				slug,
+				body: `personal body ${run}`,
+				enabled: 'on',
+				fetched: '0'
+			},
+			{ cookie }
+		);
+		expect(mine.type).toBe('redirect');
+		expect(mine.location).toContain('/me/connections/guides/');
+		personalId = /\/guides\/([^/?]+)/.exec(mine.location ?? '')?.[1] ?? null;
+		expect(personalId).toBeString();
+		expect(personalId).not.toBe(workspaceId);
+
+		const c = await fresh();
+		try {
+			const text = c.client.getInstructions() ?? '';
+			expect(text).toContain(`\`${slug}\` — ${SMOKE_PREFIX} mine ${run}`);
+			expect(text).toContain('(personal guide');
+			expect(text).not.toContain(`${SMOKE_PREFIX} ws ${run}`);
+			const res = await c.client.callTool({ name: 'get_guide', arguments: { slug } });
+			expect(res.isError).toBeFalsy();
+			expect(textOf(res)).toContain(`personal body ${run}`);
+			expect(textOf(res)).not.toContain(`workspace body ${run}`);
+		} finally {
+			await c.client.close().catch(() => {});
+		}
+	});
+
+	test("someone else's personal guide cannot be touched from /me", async () => {
+		expect(personalId).toBeString();
+		const r = await formAction(
+			'/me/connections',
+			'guideDelete',
+			{ id: personalId! },
+			{ cookie: superadminCookie }
+		);
+		expect(r.type).toBe('failure');
+		expect(r.status).toBe(404);
+		// …nor from the workspace registry: it is not a workspace guide.
+		const a = await formAction(
+			'/admin/settings/mcp',
+			'guideDelete',
+			{ id: personalId! },
+			{ cookie: superadminCookie }
+		);
+		expect(a.type).toBe('failure');
+		expect(a.status).toBe(404);
 	});
 });

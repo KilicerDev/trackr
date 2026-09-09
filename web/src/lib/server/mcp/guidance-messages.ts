@@ -20,5 +20,7 @@ export function guidanceErrorMessage(err: GuidanceError): string {
 			return m.mcp_guide_err_fetch_failed({ reason: err.message });
 		case 'not_found':
 			return m.mcp_guide_err_not_found();
+		case 'limit':
+			return m.mcp_guide_err_limit({ max: err.message });
 	}
 }
