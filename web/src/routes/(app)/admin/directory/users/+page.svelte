@@ -189,6 +189,15 @@
 		}
 	}
 
+	async function copyId(id: string) {
+		try {
+			await navigator.clipboard.writeText(id);
+			showToast('ok', m.common_copied());
+		} catch {
+			showToast('err', m.admin_failed());
+		}
+	}
+
 	async function handleMcpToggle(u: UserRow, enable: boolean) {
 		const who = u.name ?? u.email;
 		if (!enable) {
@@ -593,7 +602,7 @@
 	</div>
 {/if}
 
-<!-- User detail drawer -->
+<!-- User detail drawer: who this is, what they can reach, what an admin may do. -->
 <Drawer open={!!selected} onclose={() => (selected = null)} width={420}>
 	{#if selected}
 		{@const sel = selected}
@@ -604,136 +613,197 @@
 		{@const canImpersonate = data.viewerIsSuperadmin && !isSelf && !banned && !isRootAccount}
 		{@const memberships = data.orgMemberships?.[sel.id] ?? []}
 		{@const mcp = data.mcp?.[sel.id] ?? { enabled: false, connections: 0 }}
-		{@const canToggleMcp = !banned && (!isRootAccount || isSelf)}
-		<div class="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3">
-			<span class="font-mono text-[12px] tracking-[0.08em] text-text-4 uppercase"
-				>{m.admin_users_drawer_user()}</span
-			>
-			<div class="ml-auto flex items-center gap-1">
+		{@const activeKeys = data.activeApiKeys?.[sel.id] ?? 0}
+		{@const manageable = !isRootAccount || isSelf}
+		{@const mcpBusy = pendingAction === `mcp:${sel.id}`}
+		{@const resetBusy = pendingAction === `reset:${sel.id}`}
+
+		<!-- Identity. The role color is the one accent in the drawer: avatar ring + chip. -->
+		<header class="relative px-6 pt-6 pb-5">
+			<div class="absolute top-3 right-3">
 				<IconButton size={31} ariaLabel={m.common_close()} onclick={() => (selected = null)}>
 					<Icon name="x" size={15} />
 				</IconButton>
 			</div>
-		</div>
-		<div class="flex-1 overflow-y-auto px-5 py-5">
-			<div class="mb-5 flex items-center gap-3">
-				<Avatar user={makeAvatar(sel)} size={62} />
-				<div class="min-w-0">
-					<div class="truncate text-[20px] font-semibold tracking-[-0.01em] text-text">
-						{sel.name ?? '—'}
+			<div class="flex items-start gap-4">
+				<span
+					class="grid shrink-0 place-items-center rounded-full p-[3px]"
+					style:box-shadow="0 0 0 1.5px {banned ? 'var(--color-prio-urgent)' : meta.color}"
+				>
+					<Avatar user={makeAvatar(sel)} size={56} />
+				</span>
+				<div class="min-w-0 flex-1 pt-0.5">
+					<h2
+						class="truncate text-[21px] leading-tight font-semibold tracking-[-0.015em] text-text"
+					>
+						{sel.name ?? sel.email}
 						{#if isSelf}
-							<span class="ml-1 font-mono text-[13px] text-text-4">{m.admin_users_you()}</span>
+							<span class="ml-1 text-[13px] font-normal text-text-4">{m.admin_users_you()}</span>
+						{/if}
+					</h2>
+					<div class="mt-0.5 truncate font-mono text-[13px] text-text-3">{sel.email}</div>
+					<div class="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+						<span
+							class="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[12px] font-medium"
+							style:color={meta.color}
+							style:background={meta.color + '22'}
+						>
+							<span class="h-1.5 w-1.5 rounded-full" style:background={meta.color}></span>
+							{metaRoleLabel(sel.role ?? 'user')}
+						</span>
+						{#if banned}
+							<span class="text-[12px] font-medium text-prio-urgent"
+								>{m.admin_users_status_banned()}</span
+							>
+						{:else}
+							<span class="text-[12px] text-status-done">{m.admin_users_status_active()}</span>
 						{/if}
 					</div>
-					<div class="truncate font-mono text-[14px] text-text-3">{sel.email}</div>
 				</div>
 			</div>
+			<div class="mt-4 flex items-center gap-3 text-[12.5px] text-text-4">
+				<span>{m.admin_users_joined_on({ date: fmtDate(sel.createdAt) })}</span>
+				<button
+					type="button"
+					onclick={() => copyId(sel.id)}
+					title={m.admin_users_copy_id()}
+					aria-label={m.admin_users_copy_id()}
+					class="ml-auto inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 font-mono transition-colors hover:bg-surface hover:text-text-2"
+				>
+					{sel.id.slice(0, 8)}
+					<Icon name="link" size={12} />
+				</button>
+			</div>
+		</header>
 
-			<div class="mb-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-[14px]">
-				<div class="text-text-4">{m.admin_users_col_role()}</div>
-				<div class="flex items-center gap-1.5">
-					<span class="h-1.5 w-1.5 rounded-full" style:background={meta.color}></span>
-					<span style:color={meta.color}>{metaRoleLabel(sel.role ?? 'user')}</span>
-				</div>
-				<div class="text-text-4">{m.admin_users_col_status()}</div>
-				<div>
-					{#if banned}
-						<span class="text-prio-urgent">{m.admin_users_status_banned()}</span>
-					{:else}
-						<span class="text-status-done">{m.admin_users_status_active()}</span>
-					{/if}
-				</div>
-				<div class="text-text-4">{m.admin_users_col_joined()}</div>
-				<div class="font-mono">{fmtDate(sel.createdAt)}</div>
-				<div class="text-text-4">{m.admin_users_id()}</div>
-				<div class="truncate font-mono text-text-3">{sel.id}</div>
-				<div class="text-text-4">{m.mcp_col_access()}</div>
-				<div class="flex items-center gap-1.5">
-					<span class="h-1.5 w-1.5 rounded-full {mcp.enabled ? 'bg-emerald-400' : 'bg-text-4'}"
-					></span>
-					<span>{mcp.enabled ? m.mcp_access_enabled() : m.mcp_access_disabled()}</span>
-					{#if mcp.enabled}
-						<span class="font-mono text-[12px] text-text-4"
-							>· {mcp.connections} {m.mcp_col_connections().toLowerCase()}</span
+		<div class="min-h-0 flex-1 overflow-y-auto">
+			<!-- Access: each row pairs the state with the one action that changes it. -->
+			<section class="border-t border-border px-6 py-5">
+				<h3 class="mb-1 text-[13px] font-medium text-text-2">{m.admin_users_access_title()}</h3>
+				<div class="divide-y divide-border/60">
+					<div class="flex items-center gap-3 py-3">
+						<span
+							class="grid h-8 w-8 shrink-0 place-items-center rounded-lg {mcp.enabled
+								? 'bg-emerald-400/15 text-emerald-400'
+								: 'bg-surface text-text-4'}"
 						>
+							<Icon name="sparkle" size={15} />
+						</span>
+						<div class="min-w-0 flex-1">
+							<div class="text-[14px] text-text">{m.admin_users_ai_assistants()}</div>
+							<div class="truncate text-[12.5px] text-text-3">
+								{#if mcp.enabled}
+									{m.mcp_access_enabled()}
+									<span class="text-text-4"
+										>· {m.admin_users_mcp_connections({ count: mcp.connections })}</span
+									>
+								{:else}
+									{m.admin_users_mcp_off_hint()}
+								{/if}
+							</div>
+						</div>
+						{#if manageable && !banned}
+							<Button
+								variant="default"
+								size="sm"
+								disabled={mcpBusy}
+								onclick={() => handleMcpToggle(sel, !mcp.enabled)}
+							>
+								{mcpBusy
+									? m.common_saving()
+									: mcp.enabled
+										? m.admin_users_disable()
+										: m.admin_users_enable()}
+							</Button>
+						{/if}
+					</div>
+
+					<div class="flex items-center gap-3 py-3">
+						<span
+							class="grid h-8 w-8 shrink-0 place-items-center rounded-lg {activeKeys > 0
+								? 'bg-emerald-400/15 text-emerald-400'
+								: 'bg-surface text-text-4'}"
+						>
+							<Icon name="shield" size={15} />
+						</span>
+						<div class="min-w-0 flex-1">
+							<div class="text-[14px] text-text">{m.settings_tab_api_keys()}</div>
+							<div class="truncate text-[12.5px] text-text-3">
+								{m.admin_users_api_keys_active({ count: activeKeys })}
+								<span class="text-text-4">· {m.admin_users_api_keys_hint()}</span>
+							</div>
+						</div>
+						{#if manageable && !banned}
+							<Button variant="default" size="sm" onclick={() => (apiKeyFor = sel)}>
+								{m.admin_users_create()}
+							</Button>
+						{/if}
+					</div>
+
+					{#if manageable}
+						<div class="flex items-center gap-3 py-3">
+							<span
+								class="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-surface text-text-4"
+							>
+								<Icon name="user" size={15} />
+							</span>
+							<div class="min-w-0 flex-1">
+								<div class="text-[14px] text-text">{m.admin_users_password()}</div>
+								<div class="truncate text-[12.5px] text-text-3">
+									{m.admin_users_password_hint()}
+								</div>
+							</div>
+							<Button
+								variant="default"
+								size="sm"
+								disabled={resetBusy}
+								onclick={() => handleResetPassword(sel)}
+							>
+								{resetBusy ? m.admin_users_sending() : m.admin_users_send_reset_short()}
+							</Button>
+						</div>
 					{/if}
 				</div>
-				<div class="text-text-4">{m.settings_tab_api_keys()}</div>
-				<div class="font-mono text-text-3">
-					{m.admin_users_api_keys_active({ count: data.activeApiKeys?.[sel.id] ?? 0 })}
-				</div>
-			</div>
+			</section>
 
-			<div class="mb-6">
-				<div class="mb-2 font-mono text-[12px] tracking-[0.08em] text-text-4 uppercase">
-					{m.admin_users_organizations()}
-				</div>
+			<section class="border-t border-border px-6 py-5">
+				<h3 class="mb-3 text-[13px] font-medium text-text-2">{m.admin_users_organizations()}</h3>
 				{#if memberships.length === 0}
-					<div class="text-[14px] text-text-3">{m.admin_users_no_organizations()}</div>
+					<p class="text-[13.5px] text-text-3">{m.admin_users_no_organizations()}</p>
 				{:else}
-					<div class="flex flex-col gap-1.5">
+					<ul class="flex flex-col gap-1.5">
 						{#each memberships as om (om.id)}
 							{@const roleMeta = ORG_ROLE_META[om.role] ?? { color: '#7c7c84' }}
-							<a
-								href="/admin/directory/organizations/{om.id}"
-								class="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2 transition-colors hover:border-border-strong hover:bg-surface"
-							>
-								<span
-									class="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[11px] font-semibold text-white"
-									style:background={om.color}
+							<li>
+								<a
+									href="/admin/directory/organizations/{om.id}"
+									class="flex items-center gap-2.5 rounded-lg border border-border px-3 py-2 transition-colors hover:border-border-strong hover:bg-surface"
 								>
-									{om.name.slice(0, 1).toUpperCase()}
-								</span>
-								<span class="min-w-0 flex-1 truncate text-[14px] text-text">{om.name}</span>
-								<span
-									class="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-0.5 text-[12px] font-medium"
-									style:color={roleMeta.color}
-									style:background={roleMeta.color + '22'}
-								>
-									<span class="h-1.5 w-1.5 rounded-full" style:background={roleMeta.color}></span>
-									{orgRoleLabel(om.role)}
-								</span>
-							</a>
+									<span
+										class="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[11px] font-semibold text-white"
+										style:background={om.color}
+									>
+										{om.name.slice(0, 1).toUpperCase()}
+									</span>
+									<span class="min-w-0 flex-1 truncate text-[14px] text-text">{om.name}</span>
+									<span
+										class="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-medium"
+										style:color={roleMeta.color}
+									>
+										<span class="h-1.5 w-1.5 rounded-full" style:background={roleMeta.color}></span>
+										{orgRoleLabel(om.role)}
+									</span>
+								</a>
+							</li>
 						{/each}
-					</div>
+					</ul>
 				{/if}
-			</div>
+			</section>
+		</div>
 
-			<div class="flex flex-col gap-2">
-				{#if !isRootAccount || isSelf}
-					<Button
-						variant="default"
-						size="sm"
-						disabled={pendingAction === `reset:${sel.id}`}
-						onclick={() => handleResetPassword(sel)}
-					>
-						<Icon name="shield" size={14} />
-						{pendingAction === `reset:${sel.id}`
-							? m.admin_users_sending()
-							: m.admin_users_send_password_reset()}
-					</Button>
-				{/if}
-				{#if !banned && (!isRootAccount || isSelf)}
-					<Button variant="default" size="sm" onclick={() => (apiKeyFor = sel)}>
-						<Icon name="shield" size={14} />
-						{m.admin_users_api_key_create()}
-					</Button>
-				{/if}
-				{#if canToggleMcp}
-					<Button
-						variant="default"
-						size="sm"
-						disabled={pendingAction === `mcp:${sel.id}`}
-						onclick={() => handleMcpToggle(sel, !mcp.enabled)}
-					>
-						<Icon name="sparkle" size={14} />
-						{pendingAction === `mcp:${sel.id}`
-							? m.common_saving()
-							: mcp.enabled
-								? m.admin_users_mcp_disable()
-								: m.admin_users_mcp_enable()}
-					</Button>
-				{/if}
+		<!-- Account-level actions stay pinned and apart from the everyday ones above. -->
+		{#if canImpersonate || (!isSelf && !isRootAccount)}
+			<footer class="flex items-center gap-2 border-t border-border bg-bg/40 px-6 py-3">
 				{#if canImpersonate}
 					<Button
 						variant="default"
@@ -748,20 +818,20 @@
 					</Button>
 				{/if}
 				{#if !isSelf && !isRootAccount}
-					<Button
-						variant="default"
-						size="sm"
+					<button
+						type="button"
 						disabled={pendingAction === `del:${sel.id}`}
 						onclick={() => handleDelete(sel)}
+						class="ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px] text-text-3 transition-colors hover:bg-prio-urgent/10 hover:text-prio-urgent disabled:opacity-50"
 					>
-						<Icon name="x" size={14} />
+						<Icon name="trash" size={14} />
 						{pendingAction === `del:${sel.id}`
 							? m.admin_users_deleting()
 							: m.admin_users_delete_confirm()}
-					</Button>
+					</button>
 				{/if}
-			</div>
-		</div>
+			</footer>
+		{/if}
 	{/if}
 </Drawer>
 
