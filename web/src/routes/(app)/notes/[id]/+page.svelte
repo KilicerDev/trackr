@@ -1,10 +1,13 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { browser } from '$app/environment';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { deserialize } from '$app/forms';
 	import type { ActionResult } from '@sveltejs/kit';
 	import Icon from '$lib/components/Icon.svelte';
+	import SyncStatus from '$lib/components/SyncStatus.svelte';
+	import { autosize } from '$lib/actions/autosize';
 	import IconButton from '$lib/components/IconButton.svelte';
 	import Popover from '$lib/components/Popover.svelte';
 	import { confirm, prompt } from '$lib/components/confirm.svelte';
@@ -396,6 +399,8 @@
 		}
 	}
 	function onTitleInput() {
+		// Single line: a pasted line break becomes a space.
+		if (/[\r\n]/.test(titleDraft)) titleDraft = titleDraft.replace(/[\r\n]+/g, ' ');
 		clearTimeout(titleTimer);
 		titleTimer = setTimeout(saveTitle, 800);
 	}
@@ -468,7 +473,7 @@
 	);
 </script>
 
-<svelte:head><title>{note.title || m.notes_untitled()}</title></svelte:head>
+<svelte:head><title>{pageTitle(note.title || m.notes_untitled())}</title></svelte:head>
 
 <!-- A FILE drop that misses the editor must not navigate the browser to the
      file (drops ON the editor are handled by WikiFileUpload/WikiImageUpload).
@@ -511,7 +516,7 @@
 				</a>
 			{/if}
 			{#if meetingDateLabel}
-				<span class="flex items-center gap-1.5 text-[13px] text-text-3">
+				<span class="flex shrink-0 items-center gap-1.5 text-[13px] whitespace-nowrap text-text-3">
 					<Icon name="calendar" size={14} />
 					{meetingDateLabel}
 				</span>
@@ -544,7 +549,7 @@
 			{/if}
 
 			{#if statusLabel}
-				<span class="text-[12px] text-text-3">{statusLabel}</span>
+				<SyncStatus state={collabStatus ?? 'idle'} label={statusLabel} />
 			{/if}
 
 			<div class="h-4 w-px bg-border"></div>
@@ -596,16 +601,19 @@
 					<Icon name={note.icon || 'file'} size={22} stroke={1.75} />
 				</span>
 			</span>
-			<input
+			<!-- A one-row textarea so long titles wrap instead of clipping; Enter moves into the body. -->
+			<textarea
+				rows="1"
 				bind:value={titleDraft}
+				use:autosize={titleDraft}
 				maxlength="120"
 				readonly={!canEdit}
 				placeholder={m.notes_untitled()}
 				oninput={onTitleInput}
 				onblur={() => void saveTitle()}
 				onkeydown={onTitleKeydown}
-				class="w-full border-0 bg-transparent text-[40px] leading-[1.15] font-bold tracking-[-0.025em] text-text outline-none placeholder:text-text-4 read-only:cursor-default"
-			/>
+				class="w-full resize-none overflow-hidden border-0 bg-transparent text-[40px] leading-[1.15] font-bold tracking-[-0.025em] text-text outline-none placeholder:text-text-4 read-only:cursor-default max-md:text-[32px]"
+			></textarea>
 		</div>
 
 		{#if browser && note.documentId}

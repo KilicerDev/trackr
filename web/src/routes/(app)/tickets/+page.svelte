@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { brandName, pageTitle } from '$lib/brand';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Toolbar from '$lib/components/tickets/Toolbar.svelte';
 	import ListView from '$lib/components/tickets/ListView.svelte';
@@ -320,13 +321,13 @@
 	});
 </script>
 
-<svelte:head><title>{m.tickets_page_title()}</title></svelte:head>
+<svelte:head><title>{pageTitle(m.tickets_breadcrumb_support())}</title></svelte:head>
 
 <Topbar
 	crumbs={isPortal
 		? [{ label: activeOrg?.name ?? m.shell_portal_support() }, { label: m.shell_portal_overview() }]
 		: [
-				{ label: m.tickets_breadcrumb_workspace(), href: '/tasks' },
+				{ label: m.shell_workspace_crumb({ brand: brandName() }), href: '/tasks' },
 				{ label: m.tickets_breadcrumb_support() }
 			]}
 />

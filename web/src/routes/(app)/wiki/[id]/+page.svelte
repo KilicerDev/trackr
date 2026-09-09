@@ -1,10 +1,13 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { browser } from '$app/environment';
 	import { invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import type { ActionResult } from '@sveltejs/kit';
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
+	import SyncStatus from '$lib/components/SyncStatus.svelte';
+	import { autosize } from '$lib/actions/autosize';
 	import IconButton from '$lib/components/IconButton.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -195,6 +198,8 @@
 		}
 	}
 	function onTitleInput() {
+		// Single line: a pasted line break becomes a space.
+		if (/[\r\n]/.test(titleDraft)) titleDraft = titleDraft.replace(/[\r\n]+/g, ' ');
 		clearTimeout(titleTimer);
 		titleTimer = setTimeout(saveTitle, 800);
 	}
@@ -283,7 +288,7 @@
 	);
 </script>
 
-<svelte:head><title>{m.wiki_page_title({ title: pg.title })}</title></svelte:head>
+<svelte:head><title>{pageTitle(pg.title)}</title></svelte:head>
 
 <div class="wiki-doc relative min-h-full">
 	<!-- Ambient warmth behind the header so the page reads as a crafted document. -->
@@ -336,10 +341,11 @@
 			{/if}
 
 			{#if statusLabel}
-				<span class="wiki-status" data-state={collabStatus} title={m.wiki_sync_status_title()}>
-					<span class="wiki-status__dot"></span>
-					{statusLabel}
-				</span>
+				<SyncStatus
+					state={collabStatus ?? 'idle'}
+					label={statusLabel}
+					title={m.wiki_sync_status_title()}
+				/>
 			{/if}
 
 			<div class="h-4 w-px bg-border"></div>
@@ -392,15 +398,18 @@
 						<Icon name={pg.isFolder ? 'folder' : 'file'} size={22} stroke={1.75} />
 					</span>
 				</span>
-				<input
+				<!-- A one-row textarea so long titles wrap instead of clipping; Enter moves into the body. -->
+				<textarea
+					rows="1"
 					bind:value={titleDraft}
+					use:autosize={titleDraft}
 					maxlength="120"
 					placeholder={m.wiki_untitled()}
 					oninput={onTitleInput}
 					onblur={onTitleBlur}
 					onkeydown={onTitleKeydown}
-					class="w-full border-0 bg-transparent text-[40px] leading-[1.15] font-bold tracking-[-0.025em] text-text outline-none placeholder:text-text-4"
-				/>
+					class="w-full resize-none overflow-hidden border-0 bg-transparent text-[40px] leading-[1.15] font-bold tracking-[-0.025em] text-text outline-none placeholder:text-text-4 max-md:text-[32px]"
+				></textarea>
 			</div>
 
 			<!-- Byline -->
@@ -554,50 +563,7 @@
 		background: color-mix(in oklab, var(--accent) 12%, var(--bg-elev));
 		border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--border));
 		box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
-			transform: translateY(6px);
-	}
-
-	/* Live status pill */
-	.wiki-status {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		font-size: 11.5px;
-		font-weight: 500;
-		letter-spacing: 0.01em;
-		color: var(--text-3);
-		user-select: none;
-	}
-	.wiki-status__dot {
-		width: 6px;
-		height: 6px;
-		border-radius: 50%;
-		background: var(--text-4);
-	}
-	.wiki-status[data-state='connected'] {
-		color: #7fc8a9;
-	}
-	.wiki-status[data-state='connected'] .wiki-status__dot {
-		background: #7fc8a9;
-		box-shadow: 0 0 0 0 rgba(127, 200, 169, 0.5);
-		animation: wiki-pulse 2.2s ease-out infinite;
-	}
-	.wiki-status[data-state='connecting'] {
-		color: var(--color-status-paused, #e9c46a);
-	}
-	.wiki-status[data-state='connecting'] .wiki-status__dot {
-		background: var(--color-status-paused, #e9c46a);
-	}
-	@keyframes wiki-pulse {
-		0% {
-			box-shadow: 0 0 0 0 rgba(127, 200, 169, 0.45);
-		}
-		70% {
-			box-shadow: 0 0 0 5px rgba(127, 200, 169, 0);
-		}
-		100% {
-			box-shadow: 0 0 0 0 rgba(127, 200, 169, 0);
-		}
+		transform: translateY(6px);
 	}
 
 	/* Right-rail micro labels */

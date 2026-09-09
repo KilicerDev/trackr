@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
@@ -7,7 +8,7 @@
 	let creating = $state(false);
 </script>
 
-<svelte:head><title>{m.notes_page_title()}</title></svelte:head>
+<svelte:head><title>{pageTitle(m.notes_page_title())}</title></svelte:head>
 
 <div class="grid min-h-full place-items-center px-8 py-16">
 	<div class="max-w-[396px] text-center">

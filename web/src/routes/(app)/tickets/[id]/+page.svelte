@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { brandName, pageTitle } from '$lib/brand';
 	import { goto, invalidate, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
@@ -385,14 +386,14 @@
 </script>
 
 <svelte:head>
-	<title>{m.tickets_detail_page_title({ displayId: t.displayId, subject: t.subject })}</title>
+	<title>{pageTitle(`${t.displayId} · ${t.subject}`)}</title>
 </svelte:head>
 
 <Topbar
 	crumbs={data.isPortalUser
 		? [{ label: t.orgName }, { label: t.displayId }]
 		: [
-				{ label: m.tickets_breadcrumb_workspace(), href: '/tasks' },
+				{ label: m.shell_workspace_crumb({ brand: brandName() }), href: '/tasks' },
 				{ label: m.tickets_breadcrumb_support(), href: '/tickets' },
 				{ label: t.displayId }
 			]}

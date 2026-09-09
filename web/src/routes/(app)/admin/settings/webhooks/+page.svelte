@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import Button from '$lib/components/Button.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Icon from '$lib/components/Icon.svelte';
@@ -37,7 +38,10 @@
 		})[s] ?? s;
 </script>
 
-<svelte:head><title>{m.settings_tab_webhooks()} · {m.admin_settings_title()}</title></svelte:head>
+<svelte:head
+	><title>{pageTitle(`${m.settings_tab_webhooks()} · ${m.admin_settings_title()}`)}</title
+	></svelte:head
+>
 
 <div class="mb-6 flex items-start gap-4">
 	<div class="min-w-0 flex-1">

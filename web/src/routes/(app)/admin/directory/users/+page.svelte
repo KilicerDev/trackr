@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import type { ActionResult } from '@sveltejs/kit';
@@ -399,7 +400,9 @@
 	let showPassword = $state(false);
 </script>
 
-<svelte:head><title>{m.admin_users_title()} · {m.directory_title()}</title></svelte:head>
+<svelte:head
+	><title>{pageTitle(`${m.admin_users_title()} · ${m.directory_title()}`)}</title></svelte:head
+>
 
 <!-- Chrome (Topbar, scroll container, tabs) comes from the Directory layout. -->
 <div class="mb-6 flex items-end gap-4">
@@ -461,7 +464,7 @@
 		<div class="mb-2 px-1 text-[12px] tracking-[0.08em] text-text-4 uppercase">
 			{m.admin_users_pending_invitations({ count: data.invitations.length })}
 		</div>
-		<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
+		<div class="overflow-x-auto rounded-2xl border border-border bg-bg-elev">
 			{#each data.invitations as inv (inv.id)}
 				{@const meta =
 					ORG_ROLE_META[inv.orgRole ?? ''] ?? ROLE_META[inv.role as Role] ?? ROLE_META.user}
@@ -522,9 +525,9 @@
 	</div>
 {/if}
 
-<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
+<div class="overflow-x-auto rounded-2xl border border-border bg-bg-elev">
 	<div
-		class="grid h-9 items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
+		class="grid h-9 min-w-[640px] items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
 		style:grid-template-columns="2fr 1fr 1fr 1fr 36px"
 	>
 		<span>{m.admin_users_col_user()}</span>
@@ -545,7 +548,7 @@
 		<button
 			type="button"
 			onclick={() => (selected = u)}
-			class="grid w-full items-center gap-3 border-b border-border/40 px-5 py-2.5 text-left text-[14px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)] {banned
+			class="grid w-full min-w-[640px] items-center gap-3 border-b border-border/40 px-5 py-2.5 text-left text-[14px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)] {banned
 				? 'opacity-55 hover:opacity-100'
 				: ''}"
 			style:grid-template-columns="2fr 1fr 1fr 1fr 36px"

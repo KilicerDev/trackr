@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import ViewPanel from '$lib/components/view-panel/ViewPanel.svelte';
@@ -222,7 +223,9 @@
 	{/if}
 {/snippet}
 
-<svelte:head><title>{m.admin_logs_title()} · {m.system_title()}</title></svelte:head>
+<svelte:head
+	><title>{pageTitle(`${m.admin_logs_title()} · ${m.system_title()}`)}</title></svelte:head
+>
 
 <!-- Chrome (Topbar, scroll container, tabs) comes from the System layout. -->
 <div class="mb-6 flex items-end gap-4">
@@ -260,12 +263,12 @@
 	</div>
 </div>
 
-<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
+<div class="overflow-x-auto rounded-2xl border border-border bg-bg-elev">
 	{#if rows.length === 0}
 		<EmptyState icon="logs" title={m.admin_logs_empty_title()} />
 	{:else}
 		<div
-			class="grid h-9 items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
+			class="grid h-9 min-w-[880px] items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
 			style:grid-template-columns="1.6fr 1fr 2fr 0.7fr 1.4fr 1.2fr 30px"
 		>
 			<span>{m.admin_logs_col_event()}</span>
@@ -287,7 +290,7 @@
 			<button
 				type="button"
 				onclick={() => (selected = e)}
-				class="group grid w-full items-center gap-3 border-b border-border/40 px-5 py-2.5 text-left text-[14px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)]"
+				class="group grid w-full min-w-[880px] items-center gap-3 border-b border-border/40 px-5 py-2.5 text-left text-[14px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)]"
 				style:grid-template-columns="1.6fr 1fr 2fr 0.7fr 1.4fr 1.2fr 30px"
 			>
 				<span class="flex min-w-0 items-center gap-2">

@@ -173,12 +173,21 @@
 		{/if}
 	{/if}
 	<div class="flex min-w-0 items-center gap-2 overflow-hidden text-[14px] whitespace-nowrap">
+		<!--
+			Narrow screens keep the current crumb, plus its parent when the trail is
+			three deep or more (the parent is the way back: Projects, Notebook, …).
+		-->
 		{#each crumbs as c, i (`${i}:${c.label}`)}
-			{#if i > 0}<span class="text-text-4">/</span>{/if}
+			{@const last = crumbs.length - 1}
+			{@const shown = i === last || (crumbs.length >= 3 && i === last - 1)}
+			{@const trail = shown ? '' : 'max-md:hidden'}
+			{#if i > 0}<span class="text-text-4 {i === last && crumbs.length >= 3 ? '' : 'max-md:hidden'}"
+					>/</span
+				>{/if}
 			{#if c.href}
-				<a href={c.href} class="text-text-3 hover:text-text">{c.label}</a>
+				<a href={c.href} class="shrink-0 text-text-3 hover:text-text {trail}">{c.label}</a>
 			{:else}
-				<span class="font-medium text-text">{c.label}</span>
+				<span class="min-w-0 truncate font-medium text-text {trail}">{c.label}</span>
 			{/if}
 		{/each}
 	</div>

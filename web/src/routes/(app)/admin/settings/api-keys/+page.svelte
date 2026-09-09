@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import type { ActionResult } from '@sveltejs/kit';
@@ -70,7 +71,10 @@
 	}
 </script>
 
-<svelte:head><title>{m.settings_tab_api_keys()} · {m.admin_settings_title()}</title></svelte:head>
+<svelte:head
+	><title>{pageTitle(`${m.settings_tab_api_keys()} · ${m.admin_settings_title()}`)}</title
+	></svelte:head
+>
 
 <div class="mb-6 flex items-start gap-4">
 	<div class="min-w-0 flex-1">
@@ -83,12 +87,12 @@
 	</Button>
 </div>
 
-<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
+<div class="overflow-x-auto rounded-2xl border border-border bg-bg-elev">
 	{#if data.keys.length === 0}
 		<EmptyState icon="shield" title={m.api_keys_empty_title()} hint={m.api_keys_empty_hint()} />
 	{:else}
 		<div
-			class="grid h-9 items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
+			class="grid h-9 min-w-[760px] items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
 			style:grid-template-columns={cols}
 		>
 			<span>{m.api_keys_col_name()}</span>
@@ -101,7 +105,7 @@
 		{#each data.keys as k (k.id)}
 			{@const st = statusOf(k)}
 			<div
-				class="grid items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[14px] last:border-b-0 {k.status !==
+				class="grid min-w-[760px] items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[14px] last:border-b-0 {k.status !==
 				'active'
 					? 'opacity-70'
 					: ''}"

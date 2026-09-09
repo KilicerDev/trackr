@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { tick, untrack } from 'svelte';
 	import { deserialize } from '$app/forms';
 	import { goto } from '$app/navigation';
@@ -312,9 +313,7 @@
 	const published = $derived(status === 'published');
 </script>
 
-<svelte:head
-	><title>{name || m.templates_title()}</title></svelte:head
->
+<svelte:head><title>{pageTitle(name || m.templates_title())}</title></svelte:head>
 
 <div class="mx-auto max-w-[880px]">
 	<a

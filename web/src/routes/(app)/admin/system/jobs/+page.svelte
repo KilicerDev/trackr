@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
@@ -31,7 +32,7 @@
 	const cols = '2fr 1fr 0.7fr 1.2fr 1.2fr 0.8fr';
 </script>
 
-<svelte:head><title>{m.jobs_title()} · {m.system_title()}</title></svelte:head>
+<svelte:head><title>{pageTitle(`${m.jobs_title()} · ${m.system_title()}`)}</title></svelte:head>
 
 <div class="mb-6 flex items-end gap-4">
 	<div>
@@ -76,12 +77,12 @@
 </div>
 
 <!-- Job list -->
-<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
+<div class="overflow-x-auto rounded-2xl border border-border bg-bg-elev">
 	{#if data.jobs.length === 0}
 		<EmptyState icon="list" title={m.jobs_empty_title()} hint={m.jobs_empty_description()} />
 	{:else}
 		<div
-			class="grid h-9 items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
+			class="grid h-9 min-w-[760px] items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
 			style:grid-template-columns={cols}
 		>
 			<span>{m.jobs_col_job()}</span>
@@ -93,7 +94,7 @@
 		</div>
 		{#each data.jobs as j (j.id)}
 			<div
-				class="grid items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[14px] last:border-b-0"
+				class="grid min-w-[760px] items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[14px] last:border-b-0"
 				style:grid-template-columns={cols}
 			>
 				<div class="min-w-0">

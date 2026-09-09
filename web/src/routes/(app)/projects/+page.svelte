@@ -250,7 +250,7 @@
 
 <Topbar
 	crumbs={[
-		{ label: m.projects_breadcrumb_workspace({ brand: brandName() }), href: '/tasks' },
+		{ label: m.shell_workspace_crumb({ brand: brandName() }), href: '/tasks' },
 		{ label: m.projects_breadcrumb_projects() }
 	]}
 />

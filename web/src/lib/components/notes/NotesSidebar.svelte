@@ -545,7 +545,9 @@
 	{/if}
 {/snippet}
 
-<aside class="flex min-h-0 w-[286px] flex-col border-r border-border bg-bg-elev">
+<aside
+	class="flex min-h-0 w-[286px] flex-col border-r border-border bg-bg-elev max-md:w-full max-md:border-r-0"
+>
 	<!-- Header: eyebrow + count + create menu -->
 	<div class="flex items-center gap-2 px-4 pt-4 pb-2">
 		<span class="eyebrow">{m.shell_nav_notes()}</span>

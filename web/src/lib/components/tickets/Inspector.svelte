@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
+	import { autosize } from '$lib/actions/autosize';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
 	import Drawer from '../Drawer.svelte';
@@ -250,18 +251,20 @@
 		<div class="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-4">
 			<!-- Subject -->
 			{#if canEdit}
-				<input
-					type="text"
+				<!-- A textarea so long subjects wrap like the read-only heading; Enter commits. -->
+				<textarea
+					rows="1"
 					bind:value={subjectDraft}
+					use:autosize={subjectDraft}
 					onblur={saveSubject}
 					onkeydown={(e) => {
 						if (e.key === 'Enter') {
 							e.preventDefault();
-							(e.currentTarget as HTMLInputElement).blur();
+							(e.currentTarget as HTMLTextAreaElement).blur();
 						}
 					}}
-					class="mb-4 block w-full rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-[20px] leading-tight font-semibold tracking-[-0.01em] text-text outline-none hover:border-border focus:border-border-strong focus:bg-surface"
-				/>
+					class="mb-4 block w-full resize-none overflow-hidden rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-[20px] leading-tight font-semibold tracking-[-0.01em] text-text outline-none hover:border-border focus:border-border-strong focus:bg-surface"
+				></textarea>
 			{:else}
 				<h2 class="mb-4 px-1 text-[20px] leading-tight font-semibold tracking-[-0.01em] text-text">
 					{ticket.subject}

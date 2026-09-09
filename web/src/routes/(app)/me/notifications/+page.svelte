@@ -75,12 +75,15 @@
 
 <svelte:head><title>{pageTitle(m.notif_inbox_title())}</title></svelte:head>
 
-<header class="mb-6 flex items-end justify-between gap-4">
+<header class="mb-6 flex flex-wrap items-end justify-between gap-4">
 	<div>
 		<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.notif_inbox_title()}</h1>
 		<p class="mt-1 text-[14px] text-text-3">{m.notif_inbox_subtitle()}</p>
 	</div>
-	<a href="/me/settings" class="flex items-center gap-1.5 text-[13px] text-text-3 hover:text-text">
+	<a
+		href="/me/settings"
+		class="flex shrink-0 items-center gap-1.5 text-[13px] whitespace-nowrap text-text-3 hover:text-text"
+	>
 		<Icon name="settings" size={14} />
 		<span>{m.notif_inbox_settings()}</span>
 	</a>

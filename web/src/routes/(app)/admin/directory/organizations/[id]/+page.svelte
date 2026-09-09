@@ -361,16 +361,16 @@
 <div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
 	<div class="flex items-center gap-2.5 border-b border-border px-4 py-3">
 		<span class="text-[15px] font-semibold">{m.admin_projects()}</span>
-		<span class="font-mono text-[12px] text-text-3">{data.projects.length}</span>
+		<span class="font-mono text-[12px] text-text-3">{data.orgProjects.length}</span>
 	</div>
-	{#if data.projects.length === 0}
+	{#if data.orgProjects.length === 0}
 		<EmptyState
 			icon="folder"
 			title={m.admin_org_no_projects_title()}
 			hint={m.admin_org_no_projects_hint()}
 		/>
 	{:else}
-		{#each data.projects as p (p.id)}
+		{#each data.orgProjects as p (p.id)}
 			<a
 				href="/projects/{p.id}"
 				class="flex items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[14px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)]"

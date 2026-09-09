@@ -306,7 +306,9 @@
 	{/if}
 {/snippet}
 
-<aside class="flex min-h-0 flex-col border-r border-border bg-bg-elev w-[286px]">
+<aside
+	class="flex min-h-0 w-[286px] flex-col border-r border-border bg-bg-elev max-md:w-full max-md:border-r-0"
+>
 	<div class="flex items-center gap-2 px-4 pt-4 pb-2.5">
 		<span class="wiki-eyebrow">{m.wiki_breadcrumb_root()}</span>
 		{#if pageCount > 0}

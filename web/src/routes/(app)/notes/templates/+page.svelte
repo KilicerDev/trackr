@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import type { ActionResult } from '@sveltejs/kit';
@@ -55,7 +56,7 @@
 	}
 </script>
 
-<svelte:head><title>{m.notes_templates_title()}</title></svelte:head>
+<svelte:head><title>{pageTitle(m.notes_templates_title())}</title></svelte:head>
 
 <div class="mx-auto max-w-[704px] px-8 py-10">
 	<h1 class="mb-1 text-[20px] font-semibold text-text">{m.notes_templates_title()}</h1>

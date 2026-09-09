@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -55,7 +56,10 @@
 	});
 </script>
 
-<svelte:head><title>{m.tickets_dash_title()} · {m.shell_portal_support()}</title></svelte:head>
+<svelte:head
+	><title>{pageTitle(`${m.tickets_dash_title()} · ${m.shell_portal_support()}`)}</title
+	></svelte:head
+>
 
 <Topbar
 	crumbs={[

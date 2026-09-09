@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import Button from '$lib/components/Button.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -47,7 +48,10 @@
 	}
 </script>
 
-<svelte:head><title>{m.admin_organizations_title()} · {m.directory_title()}</title></svelte:head>
+<svelte:head
+	><title>{pageTitle(`${m.admin_organizations_title()} · ${m.directory_title()}`)}</title
+	></svelte:head
+>
 
 <!-- Chrome (Topbar, scroll container, tabs) comes from the Directory layout. -->
 <div class="mb-6 flex items-end gap-4">
@@ -81,9 +85,9 @@
 {#if data.orgs.length === 0}
 	<EmptyState icon="org" title={m.admin_org_empty_title()} hint={m.admin_org_empty_hint()} />
 {:else}
-	<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
+	<div class="overflow-x-auto rounded-2xl border border-border bg-bg-elev">
 		<div
-			class="grid h-9 items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
+			class="grid h-9 min-w-[720px] items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
 			style:grid-template-columns="1.6fr 90px 1fr 80px 1fr 36px"
 		>
 			<span>{m.admin_organization()}</span>
@@ -101,7 +105,7 @@
 		{#each visible as o (o.id)}
 			<a
 				href="/admin/directory/organizations/{o.id}"
-				class="grid items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[14px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)] {o.archivedAt
+				class="grid min-w-[720px] items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[14px] transition-colors last:border-b-0 hover:bg-[var(--row-hover)] {o.archivedAt
 					? 'opacity-55 hover:opacity-100'
 					: ''}"
 				style:grid-template-columns="1.6fr 90px 1fr 80px 1fr 36px"

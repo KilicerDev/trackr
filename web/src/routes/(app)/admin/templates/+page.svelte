@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { deserialize } from '$app/forms';
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { ActionResult } from '@sveltejs/kit';
@@ -120,7 +121,7 @@
 	}
 </script>
 
-<svelte:head><title>{m.templates_title()}</title></svelte:head>
+<svelte:head><title>{pageTitle(m.templates_title())}</title></svelte:head>
 
 <div class="mb-6 flex items-start gap-4">
 	<div class="min-w-0 flex-1">

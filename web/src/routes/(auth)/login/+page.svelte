@@ -31,7 +31,7 @@
 <svelte:head>
 	<title>
 		{oauth
-			? m.mcp_login_page_title({ client: oauth.clientName })
+			? m.mcp_login_page_title({ client: oauth.clientName, brand: brandName() })
 			: m.auth_login_page_title({ brand: brandName() })}
 	</title>
 </svelte:head>

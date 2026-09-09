@@ -480,7 +480,7 @@
 			<div class="flex items-center justify-between px-5 pt-4 pb-2">
 				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">{group.title}</div>
 				<div
-					class="flex items-center gap-6 pr-1 text-[12px] tracking-[0.08em] text-text-4 uppercase"
+					class="flex items-center gap-6 pr-1 text-[12px] tracking-[0.08em] text-text-4 uppercase max-md:hidden"
 				>
 					<span class="w-[168px] text-center">{m.notif_col_email()}</span>
 					<span class="w-12 text-center">{m.notif_col_inapp()}</span>
@@ -501,12 +501,12 @@
 			<div class="divide-y divide-border">
 				{#each group.items as item (item.key)}
 					{@const v = notif[item.key] ?? { email: 'off', inApp: false }}
-					<div class="flex items-center gap-4 px-5 py-3">
-						<div class="min-w-0 flex-1">
+					<div class="flex flex-wrap items-center gap-x-4 gap-y-2.5 px-5 py-3">
+						<div class="min-w-0 flex-1 max-md:basis-full">
 							<div class="text-[14px] font-medium">{item.label}</div>
 							<div class="mt-0.5 text-[12px] text-text-3">{item.desc}</div>
 						</div>
-						<div class="flex items-center gap-6 pr-1">
+						<div class="flex items-center gap-6 pr-1 max-md:w-full max-md:justify-between">
 							<!-- Email delivery mode -->
 							<div
 								class="inline-flex h-8 w-[168px] items-center rounded-lg border border-border bg-surface p-0.5"

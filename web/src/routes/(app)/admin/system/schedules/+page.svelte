@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -10,14 +11,16 @@
 	const cols = '1.8fr 0.8fr 1.3fr 1.3fr 0.9fr 0.9fr';
 </script>
 
-<svelte:head><title>{m.system_tab_schedules()} · {m.system_title()}</title></svelte:head>
+<svelte:head
+	><title>{pageTitle(`${m.system_tab_schedules()} · ${m.system_title()}`)}</title></svelte:head
+>
 
 <div class="mb-6">
 	<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.schedules_title()}</h1>
 	<p class="mt-1 max-w-xl text-[14px] text-text-3">{m.schedules_description()}</p>
 </div>
 
-<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
+<div class="overflow-x-auto rounded-2xl border border-border bg-bg-elev">
 	{#if data.schedules.length === 0}
 		<EmptyState
 			icon="calendar"
@@ -26,7 +29,7 @@
 		/>
 	{:else}
 		<div
-			class="grid h-9 items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
+			class="grid h-9 min-w-[760px] items-center gap-3 border-b border-border px-5 text-[12px] tracking-[0.08em] text-text-4 uppercase"
 			style:grid-template-columns={cols}
 		>
 			<span>{m.schedules_col_job()}</span>
@@ -38,7 +41,7 @@
 		</div>
 		{#each data.schedules as s (s.id)}
 			<div
-				class="grid items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[14px] last:border-b-0"
+				class="grid min-w-[760px] items-center gap-3 border-b border-border/40 px-5 py-2.5 text-[14px] last:border-b-0"
 				style:grid-template-columns={cols}
 			>
 				<div class="min-w-0">

@@ -205,7 +205,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			createdAt: org.createdAt,
 			updatedAt: org.updatedAt
 		},
-		projects,
+		orgProjects: projects,
 		members,
 		allowedRoles: Array.from(allowedRoles(org.isInternal))
 	};

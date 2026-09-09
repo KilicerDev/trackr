@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { enhance } from '$app/forms';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
@@ -123,7 +124,7 @@ const ok = crypto.timingSafeEqual(
 	};
 </script>
 
-<svelte:head><title>{sub.name} · {m.settings_tab_webhooks()}</title></svelte:head>
+<svelte:head><title>{pageTitle(`${sub.name} · ${m.settings_tab_webhooks()}`)}</title></svelte:head>
 
 <div class="max-w-[960px]">
 	<a

@@ -13,7 +13,7 @@
 </script>
 
 <span
-	class="inline-flex h-[20px] items-center gap-1.5 rounded-md border px-1.5 font-mono text-[12px] leading-none font-medium"
+	class="inline-flex h-[20px] shrink-0 items-center gap-1.5 rounded-md border px-1.5 font-mono text-[12px] leading-none font-medium whitespace-nowrap"
 	style:color={meta.color}
 	style:border-color={meta.color + '40'}
 	style:background={meta.color + '14'}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import Icon from '$lib/components/Icon.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -69,7 +70,9 @@
 	const minRowWidth = $derived(300 + allCols.length * 100 + dividerCount * 13);
 </script>
 
-<svelte:head><title>{m.admin_roles_title()} · {m.system_title()}</title></svelte:head>
+<svelte:head
+	><title>{pageTitle(`${m.admin_roles_title()} · ${m.system_title()}`)}</title></svelte:head
+>
 
 <!-- Chrome (Topbar, scroll container, tabs) comes from the System layout. -->
 <div class="max-w-[1408px]">

@@ -28,14 +28,19 @@
 />
 
 <div class="min-h-0 flex-1 overflow-y-auto">
-	<div class="mx-auto grid max-w-[1056px] grid-cols-[200px_1fr] gap-8 px-6 py-6">
-		<aside class="sticky top-6 self-start pt-1">
-			<nav class="flex flex-col gap-0.5">
+	<div
+		class="mx-auto grid max-w-[1056px] grid-cols-1 gap-5 px-6 py-6 md:grid-cols-[200px_1fr] md:gap-8"
+	>
+		<!-- Below md the section nav is a horizontally scrolling row above the content. -->
+		<aside class="self-start md:sticky md:top-6 md:pt-1">
+			<nav
+				class="flex gap-0.5 max-md:-mx-6 max-md:overflow-x-auto max-md:border-b max-md:border-border max-md:px-6 max-md:pb-2 md:flex-col"
+			>
 				{#each items as item (item.href)}
 					{@const active = current.startsWith(item.href)}
 					<a
 						href={item.href}
-						class="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[14px] leading-none transition-colors
+						class="flex shrink-0 items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[14px] leading-none whitespace-nowrap transition-colors
 							{active ? 'bg-surface-2 font-medium text-text' : 'text-text-2 hover:bg-surface hover:text-text'}"
 					>
 						<span class="grid h-4 w-4 place-items-center {active ? 'text-text' : 'text-text-3'}">

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { pageTitle } from '$lib/brand';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import type { ActionResult } from '@sveltejs/kit';
@@ -106,7 +107,9 @@
 	}
 </script>
 
-<svelte:head><title>{m.settings_tab_mcp()} · {m.admin_settings_title()}</title></svelte:head>
+<svelte:head
+	><title>{pageTitle(`${m.settings_tab_mcp()} · ${m.admin_settings_title()}`)}</title></svelte:head
+>
 
 <div class="mb-6">
 	<h1 class="text-[26px] font-semibold tracking-[-0.014em]">{m.mcp_title()}</h1>

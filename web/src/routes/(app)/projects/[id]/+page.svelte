@@ -428,7 +428,7 @@
 
 <Topbar
 	crumbs={[
-		{ label: m.projects_breadcrumb_workspace({ brand: brandName() }), href: '/tasks' },
+		{ label: m.shell_workspace_crumb({ brand: brandName() }), href: '/tasks' },
 		{ label: m.projects_breadcrumb_projects(), href: '/projects' },
 		{ label: p.name }
 	]}
@@ -445,7 +445,7 @@
 		</a>
 
 		<!-- hero -->
-		<div class="mb-5 flex items-start gap-4">
+		<div class="mb-5 flex flex-wrap items-start gap-4">
 			<div
 				class="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-[22px] font-semibold text-white shadow-edge"
 				style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%, #000)
@@ -455,7 +455,9 @@
 			</div>
 			<div class="min-w-0 flex-1">
 				<div class="flex items-center gap-2">
-					<h1 class="text-[26px] font-semibold tracking-[-0.014em] text-text">{p.name}</h1>
+					<h1 class="text-[26px] font-semibold tracking-[-0.014em] text-balance text-text">
+						{p.name}
+					</h1>
 				</div>
 				<div class="mt-1.5 flex items-center gap-2 text-[14px] text-text-3">
 					<span
@@ -499,7 +501,7 @@
 					</div>
 				</div>
 			</div>
-			<div class="flex items-center gap-2">
+			<div class="flex items-center gap-2 max-md:basis-full max-md:justify-end">
 				<IconButton ariaLabel={m.projects_aria_history()} onclick={() => (historyOpen = true)}>
 					<Icon name="logs" size={15} />
 				</IconButton>
