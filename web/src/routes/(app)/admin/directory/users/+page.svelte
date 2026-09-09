@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { invalidateAll, goto } from '$app/navigation';
+	import { invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import type { ActionResult } from '@sveltejs/kit';
 	import Icon from '$lib/components/Icon.svelte';
@@ -112,7 +112,11 @@
 		}, 3500);
 	}
 
-	async function postAction(action: string, fields: Record<string, string>): Promise<void> {
+	async function postAction(
+		action: string,
+		fields: Record<string, string>,
+		opts: { invalidate?: boolean } = {}
+	): Promise<void> {
 		const body = new FormData();
 		for (const [k, v] of Object.entries(fields)) body.append(k, v);
 		const res = await fetch(`?/${action}`, {
@@ -129,7 +133,7 @@
 		if (result.type === 'error') {
 			throw new Error(result.error?.message ?? m.admin_action_failed());
 		}
-		await invalidateAll();
+		if (opts.invalidate !== false) await invalidateAll();
 	}
 
 	async function handleResetPassword(u: UserRow) {
@@ -151,8 +155,11 @@
 		if (pendingAction === key) return;
 		pendingAction = key;
 		try {
-			await postAction('impersonateUser', { userId: u.id });
-			await goto('/', { invalidateAll: true });
+			// No invalidateAll here: the session is already the impersonated user's,
+			// and re-running this admin page's load as a non-admin would 403 before
+			// we ever leave it. A full load of / resets every client store as them.
+			await postAction('impersonateUser', { userId: u.id }, { invalidate: false });
+			window.location.assign('/');
 		} catch (e) {
 			showToast('err', e instanceof Error ? e.message : m.admin_failed());
 			pendingAction = null;
