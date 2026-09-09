@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import Icon from '../Icon.svelte';
-	import Popover from '../Popover.svelte';
+	import InstanceSwitcher from './InstanceSwitcher.svelte';
 	import { setActiveOrg, type PortalOrg } from '$lib/api/portal';
 	import type { TicketRow, TicketStatus } from '$lib/server/tickets';
 	import { TICKET_STATUSES } from '$lib/config/taxonomy';
@@ -25,7 +25,6 @@
 
 	const orgs = $derived((page.data as LayoutShape).orgs ?? []);
 	const activeOrgId = $derived((page.data as LayoutShape).activeOrgId ?? null);
-	const activeOrg = $derived(orgs.find((o) => o.id === activeOrgId) ?? orgs[0] ?? null);
 	const pinned = $derived((page.data as LayoutShape).pinnedTickets ?? []);
 	const recents = $derived((page.data as LayoutShape).recentTickets ?? []);
 	// The see-all tier (org.client + the privileged org.agent) gets the richer
@@ -35,8 +34,6 @@
 	// Members (the see-all tier) get the org chat; standard own-tickets users
 	// don't. Read from the server-computed capability manifest.
 	const canChat = $derived(!!(page.data as LayoutShape).capabilities?.surfaces.chat);
-
-	let switcherOpen = $state(false);
 
 	function isActiveTicket(id: string): boolean {
 		return page.url.pathname === `/tickets/${id}`;
@@ -92,68 +89,13 @@
 	];
 
 	async function choose(orgId: string) {
-		switcherOpen = false;
 		if (orgId !== activeOrgId) await setActiveOrg(orgId);
 	}
 </script>
 
 <aside class="flex min-h-0 w-full flex-col border-r border-border bg-bg-elev">
-	<!-- Org / workspace header -->
-	<div class="px-3 pt-3.5 pb-2">
-		<div class="relative">
-			<button
-				type="button"
-				onclick={() => orgs.length > 1 && (switcherOpen = !switcherOpen)}
-				class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-surface {orgs.length >
-				1
-					? 'cursor-pointer'
-					: 'cursor-default'}"
-			>
-				<span
-					class="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[12px] font-semibold text-white"
-					style:background={activeOrg?.color ?? '#7c7c84'}
-				>
-					{(activeOrg?.name ?? '?').slice(0, 1).toUpperCase()}
-				</span>
-				<span class="min-w-0 flex-1">
-					<span class="block truncate text-[14px] font-semibold"
-						>{activeOrg?.name ?? m.shell_portal_support()}</span
-					>
-					<span class="block text-[12px] leading-tight text-text-3"
-						>{m.shell_portal_support_portal()}</span
-					>
-				</span>
-				{#if orgs.length > 1}<Icon name="chevron" size={13} class="shrink-0 text-text-3" />{/if}
-			</button>
-			{#if orgs.length > 1}
-				<Popover
-					open={switcherOpen}
-					onclose={() => (switcherOpen = false)}
-					align="left"
-					minWidth={232}
-				>
-					<div class="px-2 pt-1 pb-1.5 text-[12px] tracking-[0.08em] text-text-4 uppercase">
-						{m.shell_switch_organization()}
-					</div>
-					{#each orgs as o (o.id)}
-						<button
-							type="button"
-							onclick={() => choose(o.id)}
-							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
-						>
-							<span class="h-2 w-2 shrink-0 rounded-full" style:background={o.color}></span>
-							<span class="truncate text-[14px]">{o.name}</span>
-							<span
-								class="ml-auto text-accent {o.id === activeOrgId ? 'opacity-100' : 'opacity-0'}"
-							>
-								<Icon name="check" size={14} />
-							</span>
-						</button>
-					{/each}
-				</Popover>
-			{/if}
-		</div>
-	</div>
+	<!-- Brand tile: instance switcher + organization switcher (TRACK-140). -->
+	<InstanceSwitcher {orgs} {activeOrgId} onChooseOrg={choose} />
 
 	<!-- New ticket -->
 	<div class="px-3 pb-1">

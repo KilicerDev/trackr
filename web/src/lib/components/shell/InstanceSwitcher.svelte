@@ -24,10 +24,31 @@
 	import { probeInstance as probe, saveInstance } from '$lib/instances-client';
 
 	type Instance = { url: string; name: string; logoUrl: string | null };
+	type OrgOption = { id: string; name: string; color: string };
 
 	// `fade` is the rail's label class (opacity only, never removed from flow),
 	// so collapsing hides name, host and chevron while the logo holds still.
-	let { fade = '' }: { fade?: string } = $props();
+	// The portal passes its organizations: a client who belongs to several
+	// orgs on this instance switches between them in the same tile, above the
+	// list of other instances — one control for "where am I".
+	let {
+		fade = '',
+		orgs = [],
+		activeOrgId = null,
+		onChooseOrg
+	}: {
+		fade?: string;
+		orgs?: OrgOption[];
+		activeOrgId?: string | null;
+		onChooseOrg?: (orgId: string) => void | Promise<void>;
+	} = $props();
+	const showOrgs = $derived(orgs.length > 1 && !!onChooseOrg);
+	const activeOrg = $derived(orgs.find((o) => o.id === activeOrgId) ?? null);
+
+	function chooseOrg(id: string) {
+		close();
+		void onChooseOrg?.(id);
+	}
 
 	// The list rides in the layout data (user preferences); after a write we
 	// reload it so this menu and /me/instances stay in step. An entry for the
@@ -182,9 +203,17 @@
 				>
 					{brandName()}
 				</span>
-				<span class="block truncate font-mono text-[11px] leading-[14px] text-text-3">
-					{currentHost}
-				</span>
+				{#if showOrgs && activeOrg}
+					<span class="flex items-center gap-1.5 text-[12px] leading-[14px] text-text-3">
+						<span class="h-1.5 w-1.5 shrink-0 rounded-full" style:background={activeOrg.color}
+						></span>
+						<span class="truncate">{activeOrg.name}</span>
+					</span>
+				{:else}
+					<span class="block truncate font-mono text-[11px] leading-[14px] text-text-3">
+						{currentHost}
+					</span>
+				{/if}
 			</span>
 			<span
 				class="shrink-0 transition-colors group-hover:text-text {fade} {open
@@ -198,8 +227,47 @@
 
 		{#if open}
 			<div transition:slide={{ duration: 180, easing: cubicOut }}>
+				{#if showOrgs}
+					<div class="mx-[11px] border-t border-border"></div>
+					<div class="py-1">
+						<div class="px-[11px] pt-1.5 pb-1 text-[12px] text-text-4 {fade}">
+							{m.shell_switch_organization()}
+						</div>
+						{#each orgs as o (o.id)}
+							<button
+								type="button"
+								onclick={() => chooseOrg(o.id)}
+								class="flex w-full items-center gap-2.5 px-[11px] py-1.5 text-left transition-colors hover:bg-[var(--row-hover)]"
+							>
+								<span
+									class="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[12px] font-semibold text-white"
+									style:background={o.color}
+								>
+									{o.name.slice(0, 1).toUpperCase()}
+								</span>
+								<span
+									class="min-w-0 flex-1 truncate text-[14px] leading-5 font-medium text-text-2 {fade}"
+								>
+									{o.name}
+								</span>
+								<span
+									class="shrink-0 text-accent {o.id === activeOrgId
+										? 'opacity-100'
+										: 'opacity-0'} {fade}"
+								>
+									<Icon name="check" size={14} />
+								</span>
+							</button>
+						{/each}
+					</div>
+				{/if}
 				<div class="mx-[11px] border-t border-border"></div>
 				<div class="py-1">
+					{#if showOrgs}
+						<div class="px-[11px] pt-1.5 pb-1 font-mono text-[11px] text-text-4 {fade}">
+							{currentHost}
+						</div>
+					{/if}
 					{#each instances as inst (inst.url)}
 						<div class="group/row flex items-center transition-colors hover:bg-[var(--row-hover)]">
 							<button
