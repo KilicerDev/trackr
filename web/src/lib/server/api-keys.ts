@@ -109,7 +109,8 @@ export async function createApiKey(
 
 const creator = { id: user.id, name: user.name };
 
-export async function listApiKeys(): Promise<ApiKeyView[]> {
+/** Every key, or only one owner's (the /me self-service page). */
+export async function listApiKeys(filter: { userId?: string } = {}): Promise<ApiKeyView[]> {
 	const rows = await db
 		.select({
 			key: apiKey,
@@ -123,6 +124,7 @@ export async function listApiKeys(): Promise<ApiKeyView[]> {
 		})
 		.from(apiKey)
 		.innerJoin(user, eq(user.id, apiKey.userId))
+		.where(filter.userId ? eq(apiKey.userId, filter.userId) : undefined)
 		.orderBy(asc(user.name), desc(apiKey.createdAt));
 
 	const creatorIds = [...new Set(rows.map((r) => r.key.createdBy).filter((v): v is string => !!v))];

@@ -467,3 +467,54 @@ describe('MCP access (Directory → Users drawer)', () => {
 		expect(r.type).not.toBe('success');
 	});
 });
+
+describe('self-service (/me/connections)', () => {
+	let userCookie: string;
+	beforeAll(async () => {
+		userCookie = await signInForCookie(DEMO.user.email, DEMO.user.password);
+	});
+
+	test('a plain user mints, revokes and deletes their own API key', async () => {
+		const page = await fetch(`${BASE_URL}/me/connections`, { headers: { cookie: userCookie } });
+		expect(page.status).toBe(200);
+		const r = await formAction(
+			'/me/connections',
+			'keyCreate',
+			{ name: `${SMOKE_PREFIX} self ${run}`, expiry: '30' },
+			{ cookie: userCookie }
+		);
+		expect(r.type).toBe('success');
+		expect(r.raw).toContain('trk_');
+		const id = /"([0-9a-f-]{36})"/.exec(r.raw)?.[1];
+		expect(id).toBeString();
+		const revoke = await formAction(
+			'/me/connections',
+			'keyRevoke',
+			{ id: id! },
+			{ cookie: userCookie }
+		);
+		expect(revoke.type).toBe('success');
+		const del = await formAction(
+			'/me/connections',
+			'keyDelete',
+			{ id: id! },
+			{ cookie: userCookie }
+		);
+		expect(del.type).toBe('success');
+	});
+
+	test('a key owned by someone else answers like a missing one', async () => {
+		const mine = await formAction(
+			'/me/connections',
+			'keyCreate',
+			{ name: `${SMOKE_PREFIX} admin-owned ${run}`, expiry: '30' },
+			{ cookie: adminCookie }
+		);
+		const id = /"([0-9a-f-]{36})"/.exec(mine.raw)?.[1];
+		expect(id).toBeString();
+		createdKeys.push({ id: id!, cookie: superadminCookie });
+		const r = await formAction('/me/connections', 'keyRevoke', { id: id! }, { cookie: userCookie });
+		expect(r.type).toBe('failure');
+		expect(r.status).toBe(404);
+	});
+});

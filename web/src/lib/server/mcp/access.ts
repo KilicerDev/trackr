@@ -10,7 +10,7 @@
  * revokes both the access and the refresh token it carries.
  */
 
-import { asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '$lib/server/db';
 import { mcpAccess } from '$lib/server/db/app.schema';
@@ -161,4 +161,27 @@ export async function revokeAllForUser(userId: string, actor: PolicySubject): Pr
 		.where(eq(oauthAccessToken.userId, userId))
 		.returning({ id: oauthAccessToken.id });
 	return deleted.length;
+}
+
+// ─── Self-service (/me/connections) ─────────────────────────────────────────
+// Ownership is the whole check here: a user always sees and may cut their
+// own connections. Enabling access stays an admin decision (setMcpAccess).
+
+export async function listMcpConnectionsFor(userId: string): Promise<McpConnection[]> {
+	return db
+		.select(connectionColumns)
+		.from(oauthAccessToken)
+		.leftJoin(oauthApplication, eq(oauthApplication.clientId, oauthAccessToken.clientId))
+		.leftJoin(user, eq(user.id, oauthAccessToken.userId))
+		.where(eq(oauthAccessToken.userId, userId))
+		.orderBy(desc(oauthAccessToken.createdAt));
+}
+
+/** Delete one of the caller's own tokens. False when it is not theirs (or gone). */
+export async function revokeOwnMcpConnection(tokenRowId: string, userId: string): Promise<boolean> {
+	const deleted = await db
+		.delete(oauthAccessToken)
+		.where(and(eq(oauthAccessToken.id, tokenRowId), eq(oauthAccessToken.userId, userId)))
+		.returning({ id: oauthAccessToken.id });
+	return deleted.length > 0;
 }
