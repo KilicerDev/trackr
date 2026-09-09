@@ -179,12 +179,13 @@
 </script>
 
 <!--
-	The wrapper reserves exactly the closed tile's height (12 + 52 + 6 px) and
-	the card is absolutely positioned inside it, so rolling out overlays the
-	nav instead of pushing it down. The button holds that height itself
-	(min-h 50 + border) so the tile stays put whether the second line — the
-	active organization, portal only — is there or not. The host is not shown
-	in the header; the menu lists it where instances need telling apart.
+	The wrapper reserves the closed tile's height plus its margins (12 + 48 + 10
+	px) and the card is absolutely positioned inside it, so rolling out overlays
+	the nav instead of pushing it down. The button holds that height itself
+	(min-h 46 + border = 48, square in the 48px folded column) so the tile
+	stays put whether the second line — the active organization, portal only —
+	is there or not. The host is not shown in the header; the menu lists it where
+	instances need telling apart.
 -->
 <div class="relative z-20 h-[70px]">
 	<div
@@ -197,7 +198,7 @@
 			type="button"
 			onclick={() => (open = !open)}
 			aria-expanded={open}
-			class="group flex min-h-[50px] w-full items-center gap-2.5 px-3 py-2 text-left"
+			class="group flex min-h-[46px] w-full items-center gap-2.5 px-3 py-2 text-left"
 		>
 			<span class="grid h-6 w-6 shrink-0 place-items-center" aria-hidden="true">
 				<BrandLogo size={22} />
