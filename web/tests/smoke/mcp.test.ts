@@ -690,14 +690,14 @@ describe('MCP Apps (inline UI)', () => {
 
 describe('guidance (instructions + guides)', () => {
 	// Admin-side setup goes through the Settings → MCP form actions with the
-	// smoke user's cookie (Max is an admin); the MCP side is checked with a
+	// superadmin demo account (Settings → MCP is superadmin tier); the MCP side is checked with a
 	// fresh client because instructions are only delivered on initialize.
 	const slug = `smoke-guide-${run}`;
 	let cookie: string;
 	let guideId: string | null = null;
 
 	beforeAll(async () => {
-		cookie = await signInForCookie(DEMO.admin.email, DEMO.admin.password);
+		cookie = await signInForCookie(DEMO.superadmin.email, DEMO.superadmin.password);
 	});
 
 	afterAll(async () => {
@@ -812,6 +812,9 @@ describe('audit trail (channel + content events + connections)', () => {
 	// The audit log is admin-only; read it through the log page's JSON feed
 	// with the smoke user's cookie and the same filters the UI uses.
 	let cookie: string;
+	// Settings → MCP is superadmin tier; the OAuth flow itself needs a user with
+	// MCP access (the smoke user), so the two roles are kept apart.
+	let superadminCookie: string;
 	let wikiPageId: string | null = null;
 	let connectionId: string | null = null;
 
@@ -837,13 +840,21 @@ describe('audit trail (channel + content events + connections)', () => {
 	}
 
 	beforeAll(async () => {
-		cookie = await signInForCookie(DEMO.admin.email, DEMO.admin.password);
+		[cookie, superadminCookie] = await Promise.all([
+			signInForCookie(DEMO.admin.email, DEMO.admin.password),
+			signInForCookie(DEMO.superadmin.email, DEMO.superadmin.password)
+		]);
 	});
 
 	afterAll(async () => {
 		if (wikiPageId) await call('wiki_delete_page', { id: wikiPageId }).catch(() => {});
 		if (connectionId) {
-			await formAction('/admin/settings/mcp', 'revoke', { id: connectionId }, { cookie });
+			await formAction(
+				'/admin/settings/mcp',
+				'revoke',
+				{ id: connectionId },
+				{ cookie: superadminCookie }
+			);
 		}
 	});
 

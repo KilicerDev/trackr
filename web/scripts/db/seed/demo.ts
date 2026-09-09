@@ -155,7 +155,10 @@ async function seedUsers(ctx: Ctx, password: string) {
 			await ctx.db
 				.insert(schema.organizationMember)
 				.values({ orgId, userId: id, role: usr.orgRole });
-		} else if (m.role !== usr.orgRole && m.role !== 'org.superadmin') {
+		} else if (
+			m.role !== usr.orgRole &&
+			(m.role !== 'org.superadmin' || usr.orgRole === 'org.superadmin')
+		) {
 			await ctx.db
 				.update(schema.organizationMember)
 				.set({ role: usr.orgRole })

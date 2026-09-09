@@ -1017,6 +1017,7 @@
 	"shell_admin_organizations": "Organisationen",
 	"shell_admin_roles": "Rollen",
 	"shell_admin_system_settings": "Einstellungen",
+	"shell_admin_templates": "Vorlagen",
 	"shell_admin_user_management": "Benutzerverwaltung",
 	"shell_back_to_workspace": "Zurück zum Workspace",
 	"shell_error_401_hint": "Sie müssen sich anmelden, um diese Seite anzuzeigen.",

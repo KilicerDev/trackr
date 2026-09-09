@@ -30,6 +30,7 @@ export const PERMISSIONS = {
 	AdminRolesManage: 'admin.roles.manage',
 	AdminOrgsManage: 'admin.orgs.manage',
 	AdminSettingsManage: 'admin.settings.manage',
+	AdminSystemManage: 'admin.system.manage',
 	AdminLogsView: 'admin.logs.view',
 	// Org-scoped (tickets, org members)
 	OrgTicketsCreate: 'org.tickets.create',
@@ -58,6 +59,18 @@ export const PERMISSIONS = {
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
+// The superadmin tier. `admin.access` acts as a workspace-wide override in
+// `can()` for every permission EXCEPT these — they are only ever granted by
+// explicit matrix rows, and the seed gives them to org.superadmin alone.
+// Rule of thumb: superadmins own what the instance *is* and what can reach
+// into or out of it (branding, webhooks, API keys, MCP guidance, devices, the
+// job queue, roles); admins own what is *in* it (people, orgs, content).
+export const SUPERADMIN_ONLY_PERMISSIONS: ReadonlySet<Permission> = new Set<Permission>([
+	PERMISSIONS.AdminRolesManage,
+	PERMISSIONS.AdminSettingsManage,
+	PERMISSIONS.AdminSystemManage
+]);
+
 // Shape of the memberships blob attached to event.locals on every request.
 export type Memberships = {
 	orgs: { orgId: string; role: RoleId; isInternal: boolean }[];
@@ -85,6 +98,10 @@ export type CapabilityManifest = {
 		wiki: boolean;
 		notes: boolean;
 		admin: boolean;
+		// Superadmin tier inside the admin area: /admin/settings (branding,
+		// webhooks, API keys, MCP, devices). Jobs/schedules are gated by
+		// `admin.system.manage` in `global` instead of a surface flag.
+		settings: boolean;
 	};
 	// Which entity types the quick-create affordances may offer.
 	quickCreate: { ticket: boolean; task: boolean; note: boolean };

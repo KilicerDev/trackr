@@ -14,11 +14,7 @@
 //    UI gating; writes are always re-checked server-side with can().
 import type { CapabilityManifest, Permission, RoleId } from '$lib/permissions';
 import type { Memberships } from '$lib/permissions';
-import {
-	effectivePermissions,
-	fullPermissionMatrix,
-	isTrackrTeam
-} from '$lib/server/permissions';
+import { effectivePermissions, fullPermissionMatrix, isTrackrTeam } from '$lib/server/permissions';
 
 type Locals = {
 	user?: { id: string } | null;
@@ -36,7 +32,8 @@ const EMPTY: CapabilityManifest = {
 		projects: false,
 		wiki: false,
 		notes: false,
-		admin: false
+		admin: false,
+		settings: false
 	},
 	quickCreate: { ticket: false, task: false, note: false },
 	global: [],
@@ -88,7 +85,9 @@ export async function buildCapabilities(locals: Locals): Promise<CapabilityManif
 			projects: projectAccess,
 			wiki: staff,
 			notes: staff,
-			admin: isAdmin
+			admin: isAdmin,
+			// Explicit grant only — admin.access never overrides the superadmin tier.
+			settings: isAdmin && globalSet.has('admin.settings.manage')
 		},
 		quickCreate: {
 			ticket: staff || globalSet.has('org.tickets.create'),

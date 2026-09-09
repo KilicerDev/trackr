@@ -23,6 +23,7 @@ import {
 	project
 } from './db/app.schema';
 import { eq } from 'drizzle-orm';
+import { SUPERADMIN_ONLY_PERMISSIONS } from '../permissions';
 import type { Memberships, Permission, RoleId } from '../permissions';
 
 // ─── Role → permissions map (process-cached) ───────────────────────────────
@@ -123,15 +124,16 @@ export async function can(
 	const m = locals.memberships;
 
 	// Internal Trackr-org admin/superadmin always wins. The `admin.access`
-	// holder gets every permission. `admin.roles.manage` is reserved for
-	// roles that explicitly carry it (superadmin); for all other perms,
-	// admin.access acts as a workspace-wide override.
+	// holder gets every permission except the superadmin tier
+	// (SUPERADMIN_ONLY_PERMISSIONS), which only roles that explicitly carry
+	// it may use; for all other perms, admin.access acts as a workspace-wide
+	// override.
 	for (const om of m.orgs) {
 		if (!om.isInternal) continue;
 		const perms = matrix[om.role];
 		if (!perms) continue;
 		if (perms.has(permission)) return true;
-		if (perms.has('admin.access') && permission !== 'admin.roles.manage') return true;
+		if (perms.has('admin.access') && !SUPERADMIN_ONLY_PERMISSIONS.has(permission)) return true;
 	}
 
 	// Resolve scope from the target.
@@ -205,7 +207,12 @@ export function isPortalUser(locals: Locals): boolean {
 // notification links to a 403).
 export async function canViewTicket(
 	locals: Locals,
-	ticket: { orgId: string; customerId: string | null; assignees: string[]; createdBy?: string | null }
+	ticket: {
+		orgId: string;
+		customerId: string | null;
+		assignees: string[];
+		createdBy?: string | null;
+	}
 ): Promise<boolean> {
 	if (isTrackrTeam(locals)) return true;
 	if (await can(locals, 'org.tickets.edit.any', { orgId: ticket.orgId })) return true;

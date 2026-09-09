@@ -120,6 +120,8 @@ export async function signInForBearerToken(
 export const DEMO = {
 	admin: { email: 'max.muster@trackr.dev', password: USER_PASSWORD },
 	admin2: { email: 'maja.schmidt@trackr.dev', password: USER_PASSWORD },
+	/** org.superadmin — the only demo account behind admin.settings.manage. */
+	superadmin: { email: 'sina.berger@trackr.dev', password: USER_PASSWORD },
 	user: { email: 'leon.vogel@trackr.dev', password: USER_PASSWORD },
 	/** ROOT_EMAIL / ROOT_PASSWORD from the repo-root .env (may be unset). */
 	root: {

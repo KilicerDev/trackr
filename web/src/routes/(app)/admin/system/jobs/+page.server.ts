@@ -1,14 +1,16 @@
 import { fail } from '@sveltejs/kit';
 import { listJobs, cancelJob, retryJob, sendEmail, EMAIL_PRIORITY } from '$lib/server/jobs';
-import { isSuperadmin } from '$lib/roles';
+import { assertCan, can } from '$lib/server/permissions';
 import { m } from '$lib/paraglide/messages';
 import type { Actions, PageServerLoad } from './$types';
 
 // Layout loads don't run for action POSTs — the /admin/system layout gate does
 // not protect actions, so every action re-checks the caller here (the
 // hooks.server.ts admin guard covers it too; defense in depth).
-function requireSuperadmin(locals: App.Locals) {
-	if (!isSuperadmin(locals.user?.role)) return fail(403, { message: m.jobs_action_error() });
+async function requireSuperadmin(locals: App.Locals) {
+	if (!(await can(locals, 'admin.system.manage'))) {
+		return fail(403, { message: m.jobs_action_error() });
+	}
 	return null;
 }
 
@@ -20,7 +22,8 @@ function fmt(d: Date | null): string {
 	return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
+	await assertCan(locals, 'admin.system.manage');
 	const rows = await listJobs({ limit: 50 });
 	return {
 		jobs: rows.map((j) => ({
@@ -41,7 +44,7 @@ export const actions: Actions = {
 	// Smoke-test the mail worker end-to-end: enqueue a high-priority mail.send
 	// job addressed to the signed-in superadmin.
 	sendTest: async (event) => {
-		const denied = requireSuperadmin(event.locals);
+		const denied = await requireSuperadmin(event.locals);
 		if (denied) return denied;
 		const email = event.locals.user?.email;
 		if (!email) return fail(400, { message: m.jobs_action_error() });
@@ -61,7 +64,7 @@ export const actions: Actions = {
 	},
 
 	cancel: async (event) => {
-		const denied = requireSuperadmin(event.locals);
+		const denied = await requireSuperadmin(event.locals);
 		if (denied) return denied;
 		const id = (await event.request.formData()).get('id')?.toString();
 		if (!id) return fail(400, { message: m.jobs_action_error() });
@@ -74,7 +77,7 @@ export const actions: Actions = {
 	},
 
 	retry: async (event) => {
-		const denied = requireSuperadmin(event.locals);
+		const denied = await requireSuperadmin(event.locals);
 		if (denied) return denied;
 		const id = (await event.request.formData()).get('id')?.toString();
 		if (!id) return fail(400, { message: m.jobs_action_error() });

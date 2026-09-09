@@ -1,6 +1,6 @@
 // Project templates: named sets of starter tasks that get copied into a new
 // project at creation time. Authored by superadmins under
-// /admin/settings/templates; only `published` templates show up in the
+// /admin/templates; only `published` templates show up in the
 // create-project picker.
 
 import { and, asc, count, desc, eq, sql } from 'drizzle-orm';

@@ -5,8 +5,8 @@ import { building } from '$app/environment';
 import { auth } from '$lib/server/auth';
 import { looksLikeApiKey, resolveApiKey } from '$lib/server/api-keys';
 import { svelteKitHandler } from 'better-auth/svelte-kit';
-import { deriveIsAdmin, loadMemberships } from '$lib/server/permissions';
-import { isSuperadmin } from '$lib/roles';
+import { can, deriveIsAdmin, loadMemberships } from '$lib/server/permissions';
+import { adminRoutePermission, SUPERADMIN_REQUIRED_MESSAGE } from '$lib/server/admin-routes';
 import { getPreferences, PREF_DEFAULTS } from '$lib/server/preferences';
 import { recordAudit } from '$lib/server/audit';
 import { getBranding } from '$lib/server/branding';
@@ -152,17 +152,11 @@ const handleAdminGuard: Handle = async ({ event, resolve }) => {
 	if (path === '/admin' || path.startsWith('/admin/')) {
 		if (!event.locals.user) redirect(302, `/login?next=${encodeURIComponent(path)}`);
 		if (!event.locals.isAdmin) error(403, 'Admin access required.');
-		// System is root-tier except its audit-log and roles tabs, which every
-		// admin may use (the log loaders check admin.logs.view themselves). The
-		// bare section path only redirects to the log tab, so it passes too.
-		if (
-			path.startsWith('/admin/system/') &&
-			!path.startsWith('/admin/system/logs') &&
-			!path.startsWith('/admin/system/roles') &&
-			!isSuperadmin(event.locals.user.role)
-		) {
-			error(403, 'Superadmin access required.');
-		}
+		// Superadmin-tier subtrees (settings, job queue, schedules) need an
+		// explicit permission that admin.access never overrides — the table in
+		// $lib/server/admin-routes is the one place that lists them.
+		const extra = adminRoutePermission(path);
+		if (extra && !(await can(event.locals, extra))) error(403, SUPERADMIN_REQUIRED_MESSAGE);
 	}
 	return resolve(event);
 };

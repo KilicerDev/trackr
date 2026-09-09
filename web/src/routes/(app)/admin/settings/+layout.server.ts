@@ -3,11 +3,10 @@ import { can } from '$lib/server/permissions';
 import { adminRoutePermission, SUPERADMIN_REQUIRED_MESSAGE } from '$lib/server/admin-routes';
 import type { LayoutServerLoad } from './$types';
 
-// /admin/* already requires an admin-like role (parent gate). Within the
-// system section, the audit log (its loader checks admin.logs.view) and the
-// read-only roles matrix are open to every admin; the job queue + schedules
-// need admin.system.manage (superadmin tier). hooks.server.ts applies the
-// same table for POSTs; this is defense in depth for page loads.
+// The whole settings section is superadmin tier (admin.settings.manage): it
+// configures what the instance is and what can reach into or out of it.
+// hooks.server.ts applies the same table for POSTs; each page's actions
+// assert the permission again themselves.
 export const load: LayoutServerLoad = async ({ locals, url }) => {
 	const extra = adminRoutePermission(url.pathname);
 	if (extra && !(await can(locals, extra))) error(403, SUPERADMIN_REQUIRED_MESSAGE);

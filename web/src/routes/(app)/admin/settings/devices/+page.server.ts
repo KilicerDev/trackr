@@ -3,7 +3,7 @@ import { desc, eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { pushToken } from '$lib/server/db/app.schema';
 import { user as userTable } from '$lib/server/db/auth.schema';
-import { isAdminLike } from '$lib/roles';
+import { assertCan, can } from '$lib/server/permissions';
 import { m } from '$lib/paraglide/messages';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -32,7 +32,8 @@ function userColor(id: string): string {
 
 // One row per registered device token. The token itself is a credential for
 // sending to that device — only a short fingerprint leaves the server.
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
+	await assertCan(locals, 'admin.settings.manage');
 	const rows = await db
 		.select({
 			id: pushToken.id,
@@ -73,7 +74,7 @@ export const actions: Actions = {
 	// (the app re-posts its token every start), so this is safe to use for
 	// clearing stale or wrongly-owned rows.
 	remove: async (event) => {
-		if (!isAdminLike(event.locals.user?.role)) {
+		if (!(await can(event.locals, 'admin.settings.manage'))) {
 			return fail(403, { message: m.devices_action_error() });
 		}
 		const fd = await event.request.formData();

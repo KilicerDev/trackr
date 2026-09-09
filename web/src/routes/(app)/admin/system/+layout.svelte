@@ -3,12 +3,18 @@
 	import { page } from '$app/state';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import type { CapabilityManifest } from '$lib/permissions';
 
 	let { children } = $props();
 
 	// Logs (the section's home) and Roles are open to every admin; the job
-	// queue and schedules stay root-tier (the server gate mirrors this split).
-	const isSuperadmin = $derived(!!(page.data as { isSuperadmin?: boolean }).isSuperadmin);
+	// queue and schedules need admin.system.manage (the server gate in
+	// $lib/server/admin-routes mirrors this split).
+	const isSuperadmin = $derived(
+		!!(page.data as { capabilities?: CapabilityManifest }).capabilities?.global.includes(
+			'admin.system.manage'
+		)
+	);
 	const tabs = $derived([
 		{ href: '/admin/system/logs', label: m.system_tab_logs() },
 		{ href: '/admin/system/roles', label: m.system_tab_roles() },

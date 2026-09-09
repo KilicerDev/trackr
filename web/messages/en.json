@@ -987,6 +987,7 @@
 	"shell_admin_organizations": "Organizations",
 	"shell_admin_roles": "Roles",
 	"shell_admin_system_settings": "Settings",
+	"shell_admin_templates": "Templates",
 	"shell_admin_user_management": "User management",
 	"shell_back_to_workspace": "Back to workspace",
 	"shell_error_401_hint": "You need to sign in to view this page.",

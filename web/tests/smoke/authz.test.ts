@@ -32,6 +32,7 @@ const run = stamp();
 let adminCookie: string;
 let adminToken: string;
 let admin2Cookie: string;
+let superadminCookie: string;
 let rootCookie: string;
 let adminId: string;
 let admin2Id: string;
@@ -43,14 +44,16 @@ const createdKeys: { id: string; cookie: string }[] = [];
 
 beforeAll(async () => {
 	await requireServer();
-	[adminCookie, adminToken, admin2Cookie, adminId, admin2Id, userId] = await Promise.all([
-		signInForCookie(DEMO.admin.email, DEMO.admin.password),
-		signInForBearerToken(DEMO.admin.email, DEMO.admin.password),
-		signInForCookie(DEMO.admin2.email, DEMO.admin2.password),
-		idOf(DEMO.admin.email, DEMO.admin.password),
-		idOf(DEMO.admin2.email, DEMO.admin2.password),
-		idOf(DEMO.user.email, DEMO.user.password)
-	]);
+	[adminCookie, adminToken, admin2Cookie, superadminCookie, adminId, admin2Id, userId] =
+		await Promise.all([
+			signInForCookie(DEMO.admin.email, DEMO.admin.password),
+			signInForBearerToken(DEMO.admin.email, DEMO.admin.password),
+			signInForCookie(DEMO.admin2.email, DEMO.admin2.password),
+			signInForCookie(DEMO.superadmin.email, DEMO.superadmin.password),
+			idOf(DEMO.admin.email, DEMO.admin.password),
+			idOf(DEMO.admin2.email, DEMO.admin2.password),
+			idOf(DEMO.user.email, DEMO.user.password)
+		]);
 	if (hasRoot) {
 		[rootCookie, rootId] = await Promise.all([
 			signInForCookie(DEMO.root.email, DEMO.root.password),
@@ -109,11 +112,52 @@ describe('better-auth admin API over HTTP', () => {
 		expect(res.body?.code).toBe('ADMIN_API_HTTP_DISABLED');
 	});
 
-	test('the admin pages themselves still load for an admin', async () => {
-		for (const p of ['/admin/directory/users', '/admin/settings/api-keys', '/admin/settings/mcp']) {
+	test('the admin-tier pages still load for an admin', async () => {
+		for (const p of [
+			'/admin/directory/users',
+			'/admin/templates',
+			'/admin/system/logs',
+			'/admin/system/roles'
+		]) {
 			const res = await fetch(`${BASE_URL}${p}`, { headers: { cookie: adminCookie } });
 			expect(res.status, p).toBe(200);
 		}
+	});
+
+	// The settings section + job queue are the superadmin tier: admin.access
+	// does not override admin.settings.manage / admin.system.manage (TRACKR-13).
+	const SUPERADMIN_PAGES = [
+		'/admin/settings',
+		'/admin/settings/webhooks',
+		'/admin/settings/api-keys',
+		'/admin/settings/mcp',
+		'/admin/settings/devices',
+		'/admin/system/jobs',
+		'/admin/system/schedules'
+	];
+
+	test('the superadmin-tier pages answer 403 to an admin', async () => {
+		for (const p of SUPERADMIN_PAGES) {
+			const res = await fetch(`${BASE_URL}${p}`, { headers: { cookie: adminCookie } });
+			expect(res.status, p).toBe(403);
+		}
+	});
+
+	test('the superadmin-tier pages load for a superadmin', async () => {
+		for (const p of SUPERADMIN_PAGES) {
+			const res = await fetch(`${BASE_URL}${p}`, { headers: { cookie: superadminCookie } });
+			expect(res.status, p).toBe(200);
+		}
+	});
+
+	test('superadmin-tier form actions are refused for an admin too', async () => {
+		const r = await formAction(
+			'/admin/settings/api-keys',
+			'create',
+			{ userId, name: `${SMOKE_PREFIX} tier ${run}`, expiry: '30' },
+			{ cookie: adminCookie }
+		);
+		expect(r.status).toBe(403);
 	});
 });
 
@@ -200,34 +244,34 @@ describe('impersonation', () => {
 });
 
 describe('API keys', () => {
-	rootOnly('admin cannot mint a key for root', async () => {
+	rootOnly('superadmin cannot mint a key for root', async () => {
 		const r = await formAction(
 			'/admin/settings/api-keys',
 			'create',
 			{ userId: rootId, name: `${SMOKE_PREFIX} ${run}`, expiry: '' },
-			{ cookie: adminCookie }
+			{ cookie: superadminCookie }
 		);
 		expect(r.type).toBe('failure');
-		// Root is a superadmin, invisible to admins → "unknown user", not a hint.
-		expect(r.status).toBe(400);
+		// Root is visible to superadmins but untouchable → explicit 403.
+		expect(r.status).toBe(403);
 	});
 
-	test('admin mints a key for a plain user (peers and below)', async () => {
+	test('superadmin mints a key for a plain user (peers and below)', async () => {
 		const r = await formAction(
 			'/admin/settings/api-keys',
 			'create',
 			{ userId, name: `${SMOKE_PREFIX} authz ${run}`, expiry: '30' },
-			{ cookie: adminCookie }
+			{ cookie: superadminCookie }
 		);
 		expect(r.type).toBe('success');
 		const id = /"([0-9a-f-]{36})"/.exec(r.raw)?.[1];
 		expect(id).toBeString();
-		createdKeys.push({ id: id!, cookie: adminCookie });
+		createdKeys.push({ id: id!, cookie: superadminCookie });
 		const revoke = await formAction(
 			'/admin/settings/api-keys',
 			'revoke',
 			{ id: id! },
-			{ cookie: adminCookie }
+			{ cookie: superadminCookie }
 		);
 		expect(revoke.type).toBe('success');
 	});

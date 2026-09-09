@@ -1,6 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { listSchedules, setScheduleEnabled } from '$lib/server/jobs';
-import { isSuperadmin } from '$lib/roles';
+import { assertCan, can } from '$lib/server/permissions';
 import { m } from '$lib/paraglide/messages';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -10,7 +10,8 @@ function fmt(d: Date | null): string {
 	return `${p(d.getDate())}.${p(d.getMonth() + 1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
+	await assertCan(locals, 'admin.system.manage');
 	const rows = await listSchedules();
 	return {
 		schedules: rows.map((s) => ({
@@ -31,7 +32,7 @@ export const actions: Actions = {
 	toggle: async (event) => {
 		// Layout loads don't run for action POSTs — re-check the caller here
 		// (the hooks.server.ts admin guard covers it too; defense in depth).
-		if (!isSuperadmin(event.locals.user?.role)) {
+		if (!(await can(event.locals, 'admin.system.manage'))) {
 			return fail(403, { message: m.schedules_action_error() });
 		}
 		const fd = await event.request.formData();

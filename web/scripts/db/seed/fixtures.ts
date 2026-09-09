@@ -20,11 +20,11 @@ export type DemoUser = {
 	name: string;
 	email: string;
 	team: string;
-	/** better-auth role (user/admin). */
-	appRole: 'admin' | 'user';
+	/** better-auth role (user/admin/superadmin). */
+	appRole: 'superadmin' | 'admin' | 'user';
 	/** Which org the membership goes into. */
 	org: 'internal' | OrgKey;
-	orgRole: 'org.admin' | 'org.staff' | 'org.client' | 'org.member';
+	orgRole: 'org.superadmin' | 'org.admin' | 'org.staff' | 'org.client' | 'org.member';
 };
 
 export const MAX_USER: UserKey = 'u0';
@@ -92,6 +92,17 @@ export const USERS: DemoUser[] = [
 		appRole: 'admin',
 		org: 'internal',
 		orgRole: 'org.admin'
+	},
+	// The superadmin tier: settings, integrations, the system section (the
+	// smoke suites act as her for anything behind admin.settings.manage).
+	{
+		id: 'u7',
+		name: 'Sina Berger',
+		email: 'sina.berger@trackr.dev',
+		team: 'Engineering',
+		appRole: 'superadmin',
+		org: 'internal',
+		orgRole: 'org.superadmin'
 	},
 	// Client-side users (ticket portal / support chat).
 	{

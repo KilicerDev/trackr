@@ -414,6 +414,13 @@
       "when": 1788938404097,
       "tag": "0058_user_instances",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1788941278271,
+      "tag": "0059_superadmin_tier",
+      "breakpoints": true
     }
   ]
 }

@@ -12,7 +12,6 @@
 	type LayoutShape = {
 		taskCount?: number;
 		projects?: { id: string; key: string; name: string; color: string }[];
-		isSuperadmin?: boolean;
 		capabilities?: CapabilityManifest;
 	};
 
@@ -22,6 +21,9 @@
 	// the single source shared with the settings page and the mobile app.
 	const surfaces = $derived((page.data as LayoutShape).capabilities?.surfaces);
 	const isAdmin = $derived(!!surfaces?.admin);
+	// Settings is the superadmin tier (admin.settings.manage); the manifest
+	// already folds that in, so the sidebar mirrors the server gate exactly.
+	const showSettings = $derived(!!surfaces?.settings);
 	const showWikiNotes = $derived(!!surfaces?.wiki);
 	const canChat = $derived(!!surfaces?.chat);
 
@@ -70,14 +72,25 @@
 			icon: 'users',
 			href: '/admin/directory/users'
 		},
+		// Project templates: admin-tier content, its own section.
 		{
-			key: 'settings',
-			label: m.shell_admin_system_settings(),
-			icon: 'settings',
-			href: '/admin/settings'
+			key: 'templates',
+			label: m.shell_admin_templates(),
+			icon: 'check-square',
+			href: '/admin/templates'
 		},
+		...(showSettings
+			? [
+					{
+						key: 'settings',
+						label: m.shell_admin_system_settings(),
+						icon: 'settings',
+						href: '/admin/settings'
+					}
+				]
+			: []),
 		// System opens on the audit log (every admin, like its roles tab); the
-		// jobs + schedules tabs are root-tier only and hidden for regular admins.
+		// jobs + schedules tabs need admin.system.manage and are hidden otherwise.
 		{
 			key: 'system',
 			label: m.shell_admin_system(),
