@@ -304,9 +304,11 @@
 		</span>
 		<div class="min-w-0 flex-1">
 			<h2 class="text-[15px] font-semibold text-text">{m.connections_keys_title()}</h2>
-			<p class="mt-0.5 text-[13px] text-text-3">{m.connections_keys_hint()}</p>
+			<p class="mt-0.5 text-[13px] text-text-3">
+				{data.canCreateKeys ? m.connections_keys_hint() : m.connections_keys_hint_managed()}
+			</p>
 		</div>
-		{#if !keyFormOpen}
+		{#if data.canCreateKeys && !keyFormOpen}
 			<Button variant="primary" size="sm" onclick={() => (keyFormOpen = true)}>
 				<Icon name="plus" size={14} />
 				{m.connections_keys_new()}
@@ -385,7 +387,9 @@
 			<EmptyState
 				icon="shield"
 				title={m.connections_keys_empty_title()}
-				hint={m.connections_keys_empty_hint()}
+				hint={data.canCreateKeys
+					? m.connections_keys_empty_hint()
+					: m.connections_keys_empty_hint_managed()}
 			/>
 		{:else}
 			<div

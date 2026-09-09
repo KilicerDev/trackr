@@ -16,8 +16,12 @@
 		open: boolean;
 		onclose: () => void;
 		users: ApiKeyUserOption[];
+		/** Preselected owner (no picker) — the Directory drawer issues keys for one user. */
+		fixedUser?: ApiKeyUserOption | null;
+		/** Form action to post to; the Settings registry uses its own `create`. */
+		action?: string;
 	}
-	let { open, onclose, users }: Props = $props();
+	let { open, onclose, users, fixedUser = null, action = '?/create' }: Props = $props();
 
 	let submitting = $state(false);
 	let serverError = $state<string | null>(null);
@@ -36,7 +40,7 @@
 			hint: u.role && u.role !== 'user' ? u.role : undefined
 		}))
 	);
-	const selectedUser = $derived(users.find((u) => u.id === userId[0]) ?? null);
+	const selectedUser = $derived(fixedUser ?? users.find((u) => u.id === userId[0]) ?? null);
 
 	const expiryOptions = $derived([
 		{ value: '30', label: m.api_keys_expiry_days({ count: 30 }) },
@@ -53,7 +57,7 @@
 			submitting = false;
 			serverError = null;
 			created = null;
-			userId = [];
+			userId = fixedUser ? [fixedUser.id] : [];
 			name = '';
 			expiry = '90';
 			formKey++;
@@ -100,7 +104,7 @@
 		{#key formKey}
 			<form
 				method="POST"
-				action="?/create"
+				{action}
 				use:enhance={() => {
 					submitting = true;
 					serverError = null;
@@ -142,14 +146,24 @@
 						<span class="mb-1 block text-[12px] tracking-[0.08em] text-text-4 uppercase"
 							>{m.api_keys_field_user()}</span
 						>
-						<PickerSelect
-							name="userId"
-							bind:value={userId}
-							options={userOptions}
-							placeholder={m.api_keys_field_user_placeholder()}
-							searchPlaceholder={m.common_search()}
-							ariaLabel={m.api_keys_field_user()}
-						/>
+						{#if fixedUser}
+							<input type="hidden" name="userId" value={fixedUser.id} />
+							<div
+								class="flex h-9 items-center gap-2 rounded-lg border border-border bg-surface px-3 text-[14px]"
+							>
+								<span class="truncate text-text">{fixedUser.name}</span>
+								<span class="truncate font-mono text-[12px] text-text-4">{fixedUser.email}</span>
+							</div>
+						{:else}
+							<PickerSelect
+								name="userId"
+								bind:value={userId}
+								options={userOptions}
+								placeholder={m.api_keys_field_user_placeholder()}
+								searchPlaceholder={m.common_search()}
+								ariaLabel={m.api_keys_field_user()}
+							/>
+						{/if}
 						<span class="mt-1 block text-[12px] text-text-4">{m.api_keys_field_user_hint()}</span>
 					</div>
 					<label class="block">

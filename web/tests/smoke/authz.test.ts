@@ -474,14 +474,22 @@ describe('self-service (/me/connections)', () => {
 		userCookie = await signInForCookie(DEMO.user.email, DEMO.user.password);
 	});
 
-	test('a plain user mints, revokes and deletes their own API key', async () => {
+	test('a plain user cannot mint a key; an admin issues one from the Directory, the user revokes it', async () => {
 		const page = await fetch(`${BASE_URL}/me/connections`, { headers: { cookie: userCookie } });
 		expect(page.status).toBe(200);
-		const r = await formAction(
+		const denied = await formAction(
 			'/me/connections',
 			'keyCreate',
 			{ name: `${SMOKE_PREFIX} self ${run}`, expiry: '30' },
 			{ cookie: userCookie }
+		);
+		expect(denied.type).toBe('failure');
+		expect(denied.status).toBe(403);
+		const r = await formAction(
+			'/admin/directory/users',
+			'apiKeyCreate',
+			{ userId, name: `${SMOKE_PREFIX} issued ${run}`, expiry: '30' },
+			{ cookie: adminCookie }
 		);
 		expect(r.type).toBe('success');
 		expect(r.raw).toContain('trk_');

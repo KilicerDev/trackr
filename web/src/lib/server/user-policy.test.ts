@@ -7,6 +7,7 @@ import {
 	canAssignRole,
 	canChangeRole,
 	canImpersonate,
+	canCreateApiKeyFor,
 	canManageApiKeyFor,
 	canManageMcpFor,
 	canManageUser,
@@ -138,6 +139,22 @@ describe('canImpersonate', () => {
 		expect(canImpersonate(root, root)).toBe(false);
 		expect(canImpersonate(sa1, sa1)).toBe(false);
 		expect(canImpersonate(sa1, user, { actorImpersonating: true })).toBe(false);
+	});
+});
+
+describe('canCreateApiKeyFor', () => {
+	test('keys are admin-issued: self needs an admin-like role', () => {
+		expect(canCreateApiKeyFor(user, user)).toBe(false);
+		expect(canCreateApiKeyFor(admin, admin)).toBe(true);
+		expect(canCreateApiKeyFor(sa1, sa1)).toBe(true);
+		expect(canCreateApiKeyFor(root, root)).toBe(true);
+	});
+	test('others follow the hierarchy', () => {
+		expect(canCreateApiKeyFor(admin, user)).toBe(true);
+		expect(canCreateApiKeyFor(admin, admin2)).toBe(true);
+		expect(canCreateApiKeyFor(admin, sa1)).toBe(false);
+		expect(canCreateApiKeyFor(sa1, root)).toBe(false);
+		expect(canCreateApiKeyFor(user, admin)).toBe(false);
 	});
 });
 

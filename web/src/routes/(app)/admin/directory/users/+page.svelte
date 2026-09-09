@@ -8,6 +8,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Drawer from '$lib/components/Drawer.svelte';
 	import Modal from '$lib/components/Modal.svelte';
+	import CreateApiKeyModal from '$lib/components/admin/CreateApiKeyModal.svelte';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
 	import { ROLE_META, ORG_ROLE_META } from '$lib/utils/role-meta';
 	import { allowedOrgRoles, type Role } from '$lib/roles';
@@ -40,6 +41,7 @@
 	let filter = $state<StatusFilter>('all');
 	let search = $state('');
 	let selected = $state<UserRow | null>(null);
+	let apiKeyFor = $state<UserRow | null>(null);
 	let inviteOpen = $state(false);
 	let createOpen = $state(false);
 
@@ -649,6 +651,10 @@
 						>
 					{/if}
 				</div>
+				<div class="text-text-4">{m.settings_tab_api_keys()}</div>
+				<div class="font-mono text-text-3">
+					{m.admin_users_api_keys_active({ count: data.activeApiKeys?.[sel.id] ?? 0 })}
+				</div>
 			</div>
 
 			<div class="mb-6">
@@ -700,6 +706,12 @@
 							: m.admin_users_send_password_reset()}
 					</Button>
 				{/if}
+				{#if !banned && (!isRootAccount || isSelf)}
+					<Button variant="default" size="sm" onclick={() => (apiKeyFor = sel)}>
+						<Icon name="shield" size={14} />
+						{m.admin_users_api_key_create()}
+					</Button>
+				{/if}
 				{#if canToggleMcp}
 					<Button
 						variant="default"
@@ -745,6 +757,31 @@
 		</div>
 	{/if}
 </Drawer>
+
+<!-- Issue an API key for the selected user (keys are admin-issued). -->
+<CreateApiKeyModal
+	open={!!apiKeyFor}
+	onclose={() => (apiKeyFor = null)}
+	users={apiKeyFor
+		? [
+				{
+					id: apiKeyFor.id,
+					name: apiKeyFor.name ?? apiKeyFor.email,
+					email: apiKeyFor.email,
+					role: apiKeyFor.role ?? null
+				}
+			]
+		: []}
+	fixedUser={apiKeyFor
+		? {
+				id: apiKeyFor.id,
+				name: apiKeyFor.name ?? apiKeyFor.email,
+				email: apiKeyFor.email,
+				role: apiKeyFor.role ?? null
+			}
+		: null}
+	action="?/apiKeyCreate"
+/>
 
 <!-- Shared org + role picker, used by both the create and invite modals -->
 {#snippet orgRolePicker(p: OrgRolePickerProps)}

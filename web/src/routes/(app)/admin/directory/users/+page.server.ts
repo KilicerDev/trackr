@@ -24,6 +24,7 @@ import {
 } from '$lib/server/mcp/access';
 import {
 	canAssignRole,
+	canCreateApiKeyFor,
 	canImpersonate,
 	canManageMcpFor,
 	canManageUser,
@@ -32,6 +33,7 @@ import {
 	rankOfRole,
 	type PolicySubject
 } from '$lib/server/user-policy';
+import { createApiKey, listApiKeys } from '$lib/server/api-keys';
 import { m } from '$lib/paraglide/messages';
 import type { Actions, PageServerLoad, RequestEvent } from './$types';
 
@@ -69,6 +71,8 @@ function denied(
 function rankMessage(target: PolicySubject): string {
 	return isRoot(target) ? m.admin_err_root_untouchable() : m.admin_err_rank();
 }
+
+const API_KEY_EXPIRY_DAYS = new Set(['', '30', '90', '365']);
 
 function s(value: FormDataEntryValue | null): string {
 	return value?.toString().trim() ?? '';
@@ -170,15 +174,23 @@ export const load: PageServerLoad = async (event) => {
 
 	// MCP access is a per-user grant (mcp_access row) managed from the drawer;
 	// the connection count tells the admin what disabling would cut off.
-	const [mcpAccessRows, mcpConnections] = await Promise.all([
+	const [mcpAccessRows, mcpConnections, apiKeys] = await Promise.all([
 		listMcpAccess(),
-		listMcpConnections()
+		listMcpConnections(),
+		listApiKeys()
 	]);
 	const mcpEnabled = new Set(mcpAccessRows.map((a) => a.userId));
 	const mcp: Record<string, { enabled: boolean; connections: number }> = {};
 	for (const id of userIds) mcp[id] = { enabled: mcpEnabled.has(id), connections: 0 };
 	for (const c of mcpConnections) {
 		if (c.userId && mcp[c.userId]) mcp[c.userId].connections += 1;
+	}
+	// Keys are admin-issued (Directory drawer); the count shows what a user has.
+	const activeApiKeys: Record<string, number> = {};
+	for (const k of apiKeys) {
+		if (k.status === 'active' && mcp[k.userId]) {
+			activeApiKeys[k.userId] = (activeApiKeys[k.userId] ?? 0) + 1;
+		}
 	}
 
 	return {
@@ -188,7 +200,8 @@ export const load: PageServerLoad = async (event) => {
 		viewerIsSuperadmin,
 		orgs,
 		orgMemberships,
-		mcp
+		mcp,
+		activeApiKeys
 	};
 };
 
@@ -503,6 +516,57 @@ export const actions: Actions = {
 
 	// MCP access on/off for one user. Same policy as every other user action
 	// (peers and below, root untouchable); an admin may also flip their own.
+	// Issue a trk_ key for one user (keys are admin-issued; a key acts as its
+	// owner, so the create rule is the impersonation-grade one).
+	apiKeyCreate: async (event) => {
+		const me = actorOf(event);
+		if (!me) return fail(403, { message: m.admin_err_admin_required() });
+
+		const form = await event.request.formData();
+		const userId = s(form.get('userId'));
+		const name = s(form.get('name'));
+		const expiry = s(form.get('expiry'));
+		if (!userId) return fail(400, { message: m.admin_err_missing_user_id() });
+		if (!name || name.length > 120) return fail(400, { message: m.api_keys_err_name_required() });
+		if (!API_KEY_EXPIRY_DAYS.has(expiry))
+			return fail(400, { message: m.api_keys_err_save_failed() });
+
+		const [target] = await db
+			.select({
+				id: userTable.id,
+				name: userTable.name,
+				email: userTable.email,
+				role: userTable.role,
+				isRoot: userTable.isRoot,
+				banned: userTable.banned
+			})
+			.from(userTable)
+			.where(eq(userTable.id, userId))
+			.limit(1);
+		if (!target || target.banned || !canViewUser(me, target)) {
+			return fail(404, { message: m.admin_err_user_not_found() });
+		}
+		if (!canCreateApiKeyFor(me, target)) {
+			denied(event, 'api_key_create', target);
+			return fail(403, { message: rankMessage(target) });
+		}
+
+		const expiresAt = expiry ? new Date(Date.now() + Number(expiry) * 86_400_000) : null;
+		const { key, plaintext } = await createApiKey({ userId: target.id, name, expiresAt }, me);
+		void recordAudit(
+			{
+				type: 'api_key.create',
+				actorId: me.id,
+				targetType: 'api_key',
+				targetId: key.id,
+				targetLabel: key.name,
+				meta: { userId: target.id, userName: target.name, keyPrefix: key.keyPrefix, expiresAt }
+			},
+			event
+		);
+		return { success: true, id: key.id, secret: plaintext };
+	},
+
 	mcpEnable: (event) => setMcp(event, true),
 	mcpDisable: (event) => setMcp(event, false),
 

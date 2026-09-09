@@ -19,7 +19,11 @@ import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { apiKey, type ApiKey } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
-import { assertCanManageApiKeyFor, type PolicySubject } from '$lib/server/user-policy';
+import {
+	assertCanCreateApiKeyFor,
+	assertCanManageApiKeyFor,
+	type PolicySubject
+} from '$lib/server/user-policy';
 import { error } from '@sveltejs/kit';
 
 export const API_KEY_PREFIX = 'trk_';
@@ -89,7 +93,7 @@ export async function createApiKey(
 ): Promise<{ key: ApiKey; plaintext: string }> {
 	const owner = await loadOwner(input.userId);
 	if (!owner || owner.banned) error(404, 'User not found.');
-	assertCanManageApiKeyFor(actor, owner);
+	assertCanCreateApiKeyFor(actor, owner);
 	const createdBy = actor.id;
 	const plaintext = generatePlaintext();
 	const [key] = await db

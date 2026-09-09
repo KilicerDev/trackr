@@ -6,7 +6,12 @@ import { user as userTable } from '$lib/server/db/auth.schema';
 import { assertCan } from '$lib/server/permissions';
 import { recordAudit } from '$lib/server/audit';
 import { isSuperadmin } from '$lib/roles';
-import { canManageApiKeyFor, canViewUser, isRoot } from '$lib/server/user-policy';
+import {
+	canCreateApiKeyFor,
+	canManageApiKeyFor,
+	canViewUser,
+	isRoot
+} from '$lib/server/user-policy';
 import { m } from '$lib/paraglide/messages';
 import {
 	createApiKey,
@@ -99,7 +104,7 @@ export const actions: Actions = {
 		if (!target || target.banned || !canViewUser(me, target)) {
 			return fail(400, { message: m.api_keys_err_user_required() });
 		}
-		if (!canManageApiKeyFor(me, target)) {
+		if (!canCreateApiKeyFor(me, target)) {
 			denied(me, 'api_key_create', target);
 			return fail(403, {
 				message: isRoot(target) ? m.admin_err_root_untouchable() : m.api_keys_err_user_forbidden()

@@ -15,8 +15,9 @@
 //   - nobody changes their own role, through any path;
 //   - only superadmins impersonate, never root, never themselves, and never
 //     while already impersonating;
-//   - API keys and MCP access follow the same rule, except that everyone may
-//     manage their own.
+//   - API keys and MCP access follow the same rule; keys are admin-issued
+//     (a plain user never mints their own) but everyone may revoke their own,
+//     and only admin-like users may enable MCP for themselves.
 // Form actions call the `can*` predicates (they need `fail(403)` + audit);
 // primitives call the `assert*` twins as the backstop that does not depend on
 // the UI.
@@ -98,7 +99,17 @@ export function canImpersonate(
 	);
 }
 
-/** trk_ keys act as their owner, so minting one for someone else is impersonation. */
+/**
+ * Issue a trk_ key. Keys are admin-issued: a plain user never mints their own
+ * (admins and superadmins may, for themselves and for peers-and-below). A key
+ * acts as its owner, so minting one for someone else is impersonation-grade.
+ */
+export function canCreateApiKeyFor(actor: PolicySubject, target: PolicySubject): boolean {
+	if (actor.id === target.id) return isAdminLike(actor.role);
+	return canManageUser(actor, target);
+}
+
+/** Revoke / delete a key: everyone may kill a credential that acts as them. */
 export function canManageApiKeyFor(actor: PolicySubject, target: PolicySubject): boolean {
 	if (actor.id === target.id) return true;
 	return canManageUser(actor, target);
@@ -156,6 +167,9 @@ export function assertCanImpersonate(
 	opts: { actorImpersonating?: boolean } = {}
 ): void {
 	if (!canImpersonate(actor, target, opts)) deny(target);
+}
+export function assertCanCreateApiKeyFor(actor: PolicySubject, target: PolicySubject): void {
+	if (!canCreateApiKeyFor(actor, target)) deny(target);
 }
 export function assertCanManageApiKeyFor(actor: PolicySubject, target: PolicySubject): void {
 	if (!canManageApiKeyFor(actor, target)) deny(target);

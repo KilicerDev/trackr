@@ -16,6 +16,7 @@ import {
 	listMcpConnectionsFor,
 	revokeOwnMcpConnection
 } from '$lib/server/mcp/access';
+import { canCreateApiKeyFor } from '$lib/server/user-policy';
 import { m } from '$lib/paraglide/messages';
 import type { Actions, PageServerLoad, RequestEvent } from './$types';
 
@@ -52,6 +53,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	]);
 	const mcpUrl = `${url.origin}/api/mcp`;
 	return {
+		// Keys are admin-issued: only admin-like users mint their own here.
+		canCreateKeys: canCreateApiKeyFor(me, me),
 		mcp: {
 			enabled: mcpEnabled,
 			url: mcpUrl,
@@ -104,7 +107,8 @@ export const actions: Actions = {
 		if (!name || name.length > 120) return fail(400, { message: m.api_keys_err_name_required() });
 		if (!EXPIRY_DAYS.has(expiry)) return fail(400, { message: m.api_keys_err_save_failed() });
 		const expiresAt = expiry ? new Date(Date.now() + Number(expiry) * 86_400_000) : null;
-		// The policy allows own keys for everyone; createApiKey re-checks it.
+		// Admin-issued: a plain user is refused here (createApiKey re-checks it).
+		if (!canCreateApiKeyFor(me, me)) return fail(403, { message: m.api_keys_err_user_forbidden() });
 		const { key, plaintext } = await createApiKey({ userId: me.id, name, expiresAt }, me);
 		void recordAudit(
 			{
