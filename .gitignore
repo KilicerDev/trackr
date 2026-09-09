@@ -14,6 +14,8 @@ Thumbs.db
 !.env.example
 !.env.test
 
+.claude/
+
 # Dependencies
 node_modules/
 
