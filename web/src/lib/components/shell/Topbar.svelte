@@ -57,6 +57,31 @@
 		(page.data?.notifications as NotifData | undefined) ?? { items: [], unreadCount: 0 }
 	);
 
+	// Who did it: the actor's avatar leads each row when we know them (the
+	// layout ships the org directory); otherwise a glyph for what the
+	// notification is about.
+	type OrgUser = {
+		id: string;
+		name: string | null;
+		email: string;
+		initials: string;
+		color: string;
+	};
+	const usersById = $derived(
+		new Map(((page.data?.users as OrgUser[] | undefined) ?? []).map((u) => [u.id, u]))
+	);
+	function actorOf(n: NotifItem) {
+		const u = n.actorId ? usersById.get(n.actorId) : undefined;
+		return u ? { name: u.name ?? u.email, initials: u.initials, color: u.color } : undefined;
+	}
+	function kindIcon(kind: string): string {
+		if (kind.startsWith('ticket')) return 'ticket';
+		if (kind.startsWith('task')) return 'check-square';
+		if (kind.startsWith('chat')) return 'msg';
+		if (kind.startsWith('project')) return 'folder';
+		return 'bell';
+	}
+
 	let acctOpen = $state(false);
 	let bellOpen = $state(false);
 	let feedbackOpen = $state(false);
@@ -171,66 +196,93 @@
 				open={bellOpen}
 				onclose={() => (bellOpen = false)}
 				align="right"
-				minWidth={340}
+				minWidth={380}
 				maxWidth={420}
 			>
-				<div class="flex items-center justify-between px-2 pt-1 pb-2">
-					<span class="text-[13px] font-medium">{m.shell_notifications()}</span>
-					{#if notifications.unreadCount > 0}
-						<div class="flex items-center gap-2">
-							<span class="text-[12px] tracking-[0.08em] text-text-3 uppercase">
+				<!-- Popover pads 6px; the list wants edge-to-edge sections. -->
+				<div class="-m-1.5 overflow-hidden rounded-[10px]">
+					<div class="flex h-11 items-center gap-2 border-b border-border pr-2 pl-4">
+						<span class="text-[13px] font-semibold text-text">{m.shell_notifications()}</span>
+						{#if notifications.unreadCount > 0}
+							<span
+								class="rounded-full bg-accent-soft px-1.5 py-px text-[11px] font-medium text-accent tabular-nums"
+							>
 								{m.shell_notifications_unread({ n: notifications.unreadCount })}
 							</span>
 							<button
 								type="button"
 								onclick={markAllRead}
 								disabled={markingAll}
-								class="text-[12px] text-text-3 hover:text-text disabled:opacity-50"
+								class="ml-auto rounded-md px-2 py-1 text-[12px] text-text-3 transition-colors hover:bg-surface-2 hover:text-text disabled:opacity-50"
 							>
 								{m.shell_notifications_mark_all_read()}
 							</button>
+						{/if}
+					</div>
+
+					{#if notifications.items.length === 0}
+						<div class="flex flex-col items-center gap-2.5 px-4 py-10 text-center">
+							<span class="grid h-9 w-9 place-items-center rounded-full bg-surface-2 text-text-3">
+								<Icon name="check" size={16} />
+							</span>
+							<span class="text-[13px] text-text-3">{m.shell_notifications_empty()}</span>
 						</div>
+					{:else}
+						<div class="max-h-[440px] overflow-y-auto p-1.5">
+							{#each notifications.items as n (n.id)}
+								{@const actor = actorOf(n)}
+								{@const unread = !n.readAt}
+								<a
+									href={n.url}
+									onclick={(e) => openNotification(e, n)}
+									class="group/n flex items-start gap-3 rounded-lg py-2.5 pr-3 pl-2.5 transition-colors hover:bg-surface-2"
+								>
+									<!-- Leading: who, or what kind. The unread dot rides its corner. -->
+									<span class="relative mt-px shrink-0 {unread ? '' : 'opacity-60'}">
+										{#if actor}
+											<Avatar user={actor} size={28} />
+										{:else}
+											<span
+												class="grid h-7 w-7 place-items-center rounded-full bg-surface-2 text-text-3 group-hover/n:bg-surface"
+											>
+												<Icon name={kindIcon(n.kind)} size={14} />
+											</span>
+										{/if}
+										{#if unread}
+											<span
+												class="absolute -top-px -right-px h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-bg-elev"
+											></span>
+										{/if}
+									</span>
+									<span class="min-w-0 flex-1">
+										<span
+											class="line-clamp-2 text-[13.5px] leading-[1.35] {unread
+												? 'font-medium text-text'
+												: 'text-text-2'}"
+										>
+											{n.title}
+										</span>
+										{#if n.body}
+											<span class="mt-0.5 block truncate text-[12px] leading-4 text-text-3">
+												{n.body}
+											</span>
+										{/if}
+									</span>
+									<span class="mt-px shrink-0 text-[11.5px] text-text-4 tabular-nums">
+										{timeAgo(n.createdAt)}
+									</span>
+								</a>
+							{/each}
+						</div>
+						<a
+							href="/me/notifications"
+							onclick={() => (bellOpen = false)}
+							class="flex h-10 items-center justify-center border-t border-border text-[12.5px] text-text-3 transition-colors hover:bg-surface-2 hover:text-text"
+						>
+							{m.shell_notifications_view_all()}
+						</a>
 					{/if}
 				</div>
-				<div class="-mx-0.5 mb-1 h-px bg-border"></div>
-				{#if notifications.items.length === 0}
-					<div class="px-2 py-6 text-center text-[13px] text-text-3">
-						{m.shell_notifications_empty()}
-					</div>
-				{:else}
-					<div class="-mx-0.5 max-h-[396px] overflow-y-auto">
-						{#each notifications.items as n (n.id)}
-							<a
-								href={n.url}
-								onclick={(e) => openNotification(e, n)}
-								class="flex items-start gap-2 rounded-md px-2 py-2 hover:bg-surface-2 {n.readAt
-									? 'text-text-2'
-									: 'text-text'}"
-							>
-								{#if !n.readAt}
-									<span class="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent"></span>
-								{:else}
-									<span class="mt-1.5 h-1.5 w-1.5 shrink-0"></span>
-								{/if}
-								<div class="min-w-0 flex-1">
-									<div class="truncate text-[14px] font-medium">{n.title}</div>
-									{#if n.body}
-										<div class="mt-0.5 line-clamp-2 text-[12px] text-text-3">{n.body}</div>
-									{/if}
-								</div>
-								<span class="mt-0.5 shrink-0 text-[12px] text-text-4">{timeAgo(n.createdAt)}</span>
-							</a>
-						{/each}
-					</div>
-					<div class="-mx-0.5 mt-1 h-px bg-border"></div>
-					<a
-						href="/me/notifications"
-						onclick={() => (bellOpen = false)}
-						class="block px-2 py-1.5 text-center text-[12px] text-text-3 hover:text-text"
-					>
-						{m.shell_notifications_view_all()}
-					</a>
-				{/if}
 			</Popover>
 		</div>
 		<div class="mx-1 h-5 w-px bg-border"></div>
