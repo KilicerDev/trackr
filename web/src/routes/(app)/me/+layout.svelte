@@ -29,7 +29,7 @@
 
 <div class="min-h-0 flex-1 overflow-y-auto">
 	<div class="mx-auto grid max-w-[1056px] grid-cols-[200px_1fr] gap-8 px-6 py-6">
-		<aside class="sticky top-0 self-start pt-1">
+		<aside class="sticky top-6 self-start pt-1">
 			<nav class="flex flex-col gap-0.5">
 				{#each items as item (item.href)}
 					{@const active = current.startsWith(item.href)}
