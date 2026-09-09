@@ -15,6 +15,7 @@ Thumbs.db
 !.env.test
 
 .claude/
+.vscode/
 
 # Dependencies
 node_modules/
