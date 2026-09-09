@@ -732,6 +732,18 @@ export type NotificationPrefs = Partial<{
 	webhookDisabled: NotificationChannelPrefs;
 }>;
 
+// Another trackr deployment the user switches to from the sidebar brand-mark
+// menu (TRACK-140). Instances are fully separate installs; this list is the
+// only thing tying them together and it lives per user, per instance. `url`
+// is the normalized origin (+ optional base path), `name`/`logoUrl` come from
+// that instance's public probe (`/api/v1/instance`), never from user input.
+export type LinkedInstance = {
+	url: string;
+	name: string;
+	logoUrl: string | null;
+	addedAt: string;
+};
+
 export const userPreferences = pgTable('user_preferences', {
 	userId: text('user_id')
 		.primaryKey()
@@ -756,6 +768,7 @@ export const userPreferences = pgTable('user_preferences', {
 		.notNull()
 		.default({ tickets: 'all', chat: 'all' }),
 	viewState: jsonb('view_state').$type<Record<string, unknown>>().notNull().default({}),
+	instances: jsonb('instances').$type<LinkedInstance[]>().notNull().default([]),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	updatedAt: timestamp('updated_at')
 		.defaultNow()

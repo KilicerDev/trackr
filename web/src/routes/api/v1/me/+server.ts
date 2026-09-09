@@ -6,11 +6,15 @@ import { db } from '$lib/server/db';
 import { notification, organization } from '$lib/server/db/app.schema';
 import { buildCapabilities } from '$lib/server/capabilities';
 import { json, requireUser } from '$lib/server/api/guard';
+import { getPreferences } from '$lib/server/preferences';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ locals }) => {
 	const user = requireUser(locals);
 	const capabilities = await buildCapabilities(locals);
+	// Other trackr instances this user switches to (TRACK-140) — the phone
+	// learns them from the web, so it can offer the same server picker.
+	const preferences = locals.preferences ?? (await getPreferences(user.id));
 
 	const orgIds = Object.keys(capabilities.orgs);
 	const orgRows = orgIds.length
@@ -27,9 +31,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 	// Non-staff only see their own orgs (leaking the org list would name every
 	// other client). Staff get all active orgs for pickers.
 	const orgs =
-		capabilities.userType === 'staff'
-			? orgRows
-			: orgRows.filter((o) => orgIds.includes(o.id));
+		capabilities.userType === 'staff' ? orgRows : orgRows.filter((o) => orgIds.includes(o.id));
 
 	const [unread] = await db
 		.select({ total: count() })
@@ -40,6 +42,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 		user: { id: user.id, name: user.name, email: user.email, image: user.image ?? null },
 		capabilities,
 		orgs,
-		unreadCount: Number(unread?.total ?? 0)
+		unreadCount: Number(unread?.total ?? 0),
+		instances: preferences.instances
 	});
 };

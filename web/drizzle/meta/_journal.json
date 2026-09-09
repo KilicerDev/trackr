@@ -407,6 +407,13 @@
       "when": 1788900796851,
       "tag": "0057_instance_branding",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1788938404097,
+      "tag": "0058_user_instances",
+      "breakpoints": true
     }
   ]
 }

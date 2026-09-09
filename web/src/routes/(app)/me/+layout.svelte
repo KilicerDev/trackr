@@ -10,7 +10,8 @@
 	const items = $derived([
 		{ href: '/me/profile', label: m.settings_nav_profile(), icon: 'user' as const },
 		{ href: '/me/settings', label: m.settings_nav_account(), icon: 'settings' as const },
-		{ href: '/me/notifications', label: m.settings_nav_notifications(), icon: 'bell' as const }
+		{ href: '/me/notifications', label: m.settings_nav_notifications(), icon: 'bell' as const },
+		{ href: '/me/instances', label: m.settings_nav_instances(), icon: 'link' as const }
 	]);
 
 	const current = $derived(page.url.pathname);

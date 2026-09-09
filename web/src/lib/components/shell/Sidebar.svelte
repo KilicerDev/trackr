@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import Icon from '../Icon.svelte';
-	import BrandLogo from '../BrandLogo.svelte';
-	import { brandName } from '$lib/brand';
+	import InstanceSwitcher from './InstanceSwitcher.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { getSidebar } from '$lib/stores/sidebar.svelte';
 	import type { CapabilityManifest } from '$lib/permissions';
@@ -114,15 +113,7 @@
 </script>
 
 <aside class="flex min-h-0 w-full flex-col overflow-hidden border-r border-border bg-bg-elev">
-	<div
-		class="relative flex items-center gap-2.5 px-[20px] pt-[20px] pb-[15px] text-[15px] font-semibold tracking-[-0.01em]"
-	>
-		<span class="grid h-6 w-6 shrink-0 place-items-center" aria-hidden="true">
-			<BrandLogo size={22} />
-		</span>
-		<span class="truncate {fade}">{brandName()}</span>
-		<span class="ml-auto font-mono text-[12px] font-normal text-text-3 {fade}">v2</span>
-	</div>
+	<InstanceSwitcher {fade} />
 
 	<div class="mt-1.5 flex-1 overflow-x-hidden overflow-y-auto px-2 pb-2">
 		<div class="py-1.5">

@@ -4,6 +4,7 @@ import {
 	userPreferences,
 	type DeliveryMode,
 	type DigestConfig,
+	type LinkedInstance,
 	type NotificationChannelPrefs,
 	type NotificationPrefs,
 	type NotificationScope,
@@ -92,7 +93,8 @@ export async function getPreferences(userId: string): Promise<ResolvedPreference
 			quietHours: QUIET_HOURS_DEFAULT,
 			digest: DIGEST_DEFAULT,
 			notificationScope: NOTIFICATION_SCOPE_DEFAULT,
-			viewState: {}
+			viewState: {},
+			instances: []
 		};
 	}
 
@@ -110,7 +112,8 @@ export async function getPreferences(userId: string): Promise<ResolvedPreference
 		quietHours: { ...QUIET_HOURS_DEFAULT, ...(row.quietHours ?? {}) },
 		digest: { ...DIGEST_DEFAULT, ...(row.digest ?? {}) },
 		notificationScope: { ...NOTIFICATION_SCOPE_DEFAULT, ...(row.notificationScope ?? {}) },
-		viewState: row.viewState ?? {}
+		viewState: row.viewState ?? {},
+		instances: Array.isArray(row.instances) ? row.instances : []
 	};
 }
 
@@ -125,6 +128,8 @@ export type PreferencePatch = Partial<{
 	digest: DigestConfig;
 	notificationScope: NotificationScope;
 	viewState: Record<string, unknown>;
+	// Whole-list replace (the switcher always sends the full list).
+	instances: LinkedInstance[];
 }>;
 
 export async function upsertPreferences(userId: string, patch: PreferencePatch) {
@@ -140,7 +145,8 @@ export async function upsertPreferences(userId: string, patch: PreferencePatch) 
 		quietHours: { ...existing.quietHours, ...(patch.quietHours ?? {}) },
 		digest: { ...existing.digest, ...(patch.digest ?? {}) },
 		notificationScope: { ...existing.notificationScope, ...(patch.notificationScope ?? {}) },
-		viewState: { ...existing.viewState, ...(patch.viewState ?? {}) }
+		viewState: { ...existing.viewState, ...(patch.viewState ?? {}) },
+		instances: patch.instances ?? existing.instances
 	};
 
 	await db
@@ -159,6 +165,7 @@ export async function upsertPreferences(userId: string, patch: PreferencePatch) 
 				digest: merged.digest,
 				notificationScope: merged.notificationScope,
 				viewState: merged.viewState,
+				instances: merged.instances,
 				updatedAt: sql`now()`
 			}
 		});
