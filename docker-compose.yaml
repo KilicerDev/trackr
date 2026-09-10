@@ -1,7 +1,12 @@
-# Postgres + the SvelteKit app for PRODUCTION. Migrations run on app container
-# start (scripts/db/migrate.ts).
+# Postgres + the SvelteKit app + the Go services for a SINGLE-HOST docker
+# compose deployment. Migrations run on app container start (scripts/db/migrate.ts).
 #
-# Production:
+# The primary deployment target is skali (skali.yaml at the repo root):
+# managed Postgres + S3 bucket, health-probed rollouts, migrations in a release
+# command. This compose file is the self-hosted fallback and the reference for
+# what each container needs.
+#
+# Compose:
 #   cp .env.example .env       # then fill in production values
 #   docker compose up -d --build
 #
@@ -10,18 +15,17 @@
 #   bun run db:start    # shared dev-postgres (per-project database)
 #   bun run s3:start    # shared dev-minio    (per-project bucket)
 #   bun run mail:start  # shared dev-mailpit  (single inbox at :8025)
-# The web app then runs on the host: `cd web && bun dev`.
+# The web app then runs on the host: `cd web && bun dev`. (Or run the whole
+# stack on a local skali cluster with `skali dev`.)
 #
 # The `app` service does NOT publish a host port. A reverse proxy in front
-# (Traefik via Coolify, Caddy, nginx, …) reaches it directly over the Docker
-# network using the EXPOSEd port from the Dockerfile (3000). Publishing the
-# port here would collide with other apps on a multi-tenant host and bypass
-# the proxy's routing.
+# (Traefik, Caddy, nginx, …) reaches it directly over the Docker network using
+# the EXPOSEd port from the Dockerfile (3000). Publishing the port here would
+# collide with other apps on a multi-tenant host and bypass the proxy's routing.
 #
 # The `db` service publishes 5432 on 127.0.0.1 only — so `bun dev` and tools
 # like `drizzle-kit studio` can connect from the host. If port 5432 is already
 # in use on the prod host, override with POSTGRES_PORT.
-
 services:
   db:
     image: postgres:16-alpine

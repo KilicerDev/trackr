@@ -22,4 +22,8 @@ RUN cd scheduler && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o /schedu
 # a single static binary with no runtime dependencies.
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /scheduler /scheduler
+# HTTP health probes (/healthz, /healthz/ready) — see services/shared/health.
+# Override with HEALTH_PORT. Never published to the host; only the platform
+# probes it.
+EXPOSE 8081
 ENTRYPOINT ["/scheduler"]

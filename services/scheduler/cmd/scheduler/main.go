@@ -14,6 +14,7 @@ import (
 
 	"github.com/KilicerDev/trackr/services/scheduler/internal/config"
 	"github.com/KilicerDev/trackr/services/scheduler/internal/scheduler"
+	"github.com/KilicerDev/trackr/services/shared/health"
 	"github.com/KilicerDev/trackr/services/shared/pg"
 )
 
@@ -33,12 +34,26 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	// Probes come up before the database connection so the platform's startup
+	// and liveness checks pass while pg.Connect retries; readiness reports
+	// "starting" until the pool exists and flips to 503 again once shutdown
+	// begins (Drain), so a draining replica is never counted as ready.
+	probes, err := health.Listen(cfg.HealthAddr, nil, logger)
+	if err != nil {
+		logger.Error("health listener failed", "addr", cfg.HealthAddr, "error", err)
+		os.Exit(1)
+	}
+	probes.Start()
+	defer probes.Close()
+	context.AfterFunc(ctx, probes.Drain)
+
 	pool, err := pg.Connect(ctx, cfg.DSN)
 	if err != nil {
 		logger.Error("postgres connection failed", "error", err)
 		os.Exit(1)
 	}
 	defer pool.Close()
+	probes.SetReady(pool.Ping)
 
 	logger.Info("scheduler started",
 		"schedulerId", cfg.SchedulerID,

@@ -15,6 +15,7 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"github.com/KilicerDev/trackr/services/shared/health"
 	"github.com/KilicerDev/trackr/services/shared/pg"
 )
 
@@ -28,6 +29,9 @@ type Config struct {
 	BatchSize int
 	// Identifies this process in logs. SCHEDULER_ID, default hostname.
 	SchedulerID string
+	// Listen address for the HTTP health probes (/healthz, /healthz/ready).
+	// HEALTH_PORT, falling back to PORT (injected by `skali dev`), default 8081.
+	HealthAddr string
 }
 
 func Load() (Config, error) {
@@ -44,6 +48,7 @@ func Load() (Config, error) {
 		PollInterval: durationEnv("SCHEDULER_POLL_INTERVAL", 5*time.Second),
 		BatchSize:    intEnv("SCHEDULER_BATCH_SIZE", 100),
 		SchedulerID:  os.Getenv("SCHEDULER_ID"),
+		HealthAddr:   health.AddrFromEnv(),
 	}
 
 	if cfg.SchedulerID == "" {

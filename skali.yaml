@@ -1,0 +1,306 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Hinkolas/skali/v0.1.0-alpha.1/schemas/skali.schema.json
+version: "1"
+name: trackr
+description: Trackr — agency work tracker (SvelteKit web app, Go job worker, Go scheduler)
+
+# One manifest for every environment. Per-environment values (${NAME}) are
+# stored encrypted by skali; nothing environment-specific lives in this file.
+#
+#   skali validate                       check the manifest (and an env file)
+#   skali dev                            local cluster; picks up ./.env
+#   skali deploy --env-file .env.prod    production
+#
+# Required values: APP_DOMAIN, BETTER_AUTH_SECRET, ROOT_EMAIL, ROOT_PASSWORD,
+# EMAIL_FROM, SMTP_HOST, SMTP_USER, SMTP_PASS. Everything else has a default.
+
+applications:
+  # SvelteKit app (Bun, adapter-node) plus the in-process Hocuspocus collab
+  # server on the same port (`/collab` websocket, web/src/server.ts).
+  #
+  # Replicas: exactly one, on purpose. Hocuspocus keeps every open Yjs
+  # document in process memory with no cross-replica sync, and the server-side
+  # write path (MCP/API wiki + note updates, collab/replace.ts) edits the live
+  # document in the same process. A second replica would split editors across
+  # two diverging in-memory copies and let API writes be overwritten. The
+  # default blue-green rollout still gives zero-downtime deploys: the new
+  # replica must be ready before it takes traffic. Raising this needs a shared
+  # Hocuspocus backend (Redis extension) or a dedicated collab service first.
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    # The Dockerfile CMD chains migrate → seed → server for docker compose.
+    # Under skali migrate + seed run once per release (releaseCommand below),
+    # so the container only starts the server.
+    command: ["bun", "build/server-entry.js"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "{{databases.data.url}}"
+      # Public origin. adapter-node pins every request URL to it (no forwarded-
+      # header guessing behind the edge), better-auth derives its baseURL from
+      # it, and every emailed link is built on it. APP_SCHEME defaults to https
+      # and is only set in the dev environment file, because `skali dev` serves
+      # routes over plain http on *.localhost.
+      ORIGIN: "${APP_SCHEME:-https}://${APP_DOMAIN}"
+      BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET}"
+      # Root superadmin seed (scripts/db/seed --root, run by the releaseCommand).
+      # Idempotent: creates the user on a fresh database, promotes or no-ops
+      # afterwards. ROOT_PASSWORD is only consulted when the user is created.
+      ROOT_EMAIL: "${ROOT_EMAIL}"
+      ROOT_PASSWORD: "${ROOT_PASSWORD}"
+      ROOT_NAME: "${ROOT_NAME:-Root}"
+      # Attachments live in the bucket; the container filesystem is scratch.
+      STORAGE_DRIVER: s3
+      S3_ENDPOINT: "{{buckets.attachments.endpoint}}"
+      S3_BUCKET: "{{buckets.attachments.name}}"
+      S3_REGION: "{{buckets.attachments.region}}"
+      S3_ACCESS_KEY_ID: "{{buckets.attachments.access_key}}"
+      S3_SECRET_ACCESS_KEY: "{{buckets.attachments.secret_key}}"
+      # adapter-node request body cap; must exceed the per-file upload cap
+      # times the files staged in one create (web/src/lib/attachments/config.ts).
+      BODY_SIZE_LIMIT: 100M
+      # Native push: "true" enqueues one push.send job per inbox notification;
+      # the worker's APNs handler (APNS_* below) delivers them.
+      PUSH_ENABLED: "${PUSH_ENABLED:-false}"
+      # Zone that quiet hours and the daily digest reason in.
+      DIGEST_TZ: "${DIGEST_TZ:-Europe/Berlin}"
+      WEBHOOKS_ENABLED: "true"
+    ports:
+      http:
+        port: 3000
+    routes:
+      public:
+        domain: "${APP_DOMAIN}"
+        port: http
+        tls: automatic
+    health:
+      startup:
+        http:
+          port: http
+          path: /healthz
+      readiness:
+        http:
+          port: http
+          path: /healthz/ready
+        # The readiness handler does a database round-trip; the 2s default
+        # would flap under load and pull the replica out of rotation.
+        timeout: 5s
+      liveness:
+        http:
+          port: http
+          path: /healthz
+    resources:
+      requests:
+        cpu: 0.25
+        memory: 384MB
+        temporaryStorage: 256MB
+      limits:
+        cpu: 1
+        memory: 1.5GB
+        temporaryStorage: 1GB
+    scaling:
+      replicas:
+        min: 1
+    deployment:
+      # Runs once with the new image and the resolved DATABASE_URL before the
+      # new version goes live. Migrations must stay compatible with the release
+      # still serving (expand now, contract in a later release).
+      releaseCommand:
+        command:
+          ["sh", "-c", "bun scripts/db/migrate.ts && bun scripts/db/seed/index.ts --root"]
+        timeout: 10m
+      rollout:
+        # Default blue-green, spelled out: the new replica starts beside the
+        # old one, must pass readiness, then takes all traffic at once.
+        strategy: blue-green
+        timeout: 10m
+    shutdown:
+      # server.ts flushes pending collab writes on SIGTERM and closes within 5s.
+      gracePeriod: 30s
+    # Host-side commands (`skali dev run <name>`), executed from the project
+    # root with this app's resolved environment — DATABASE_URL and the S3
+    # outputs already point at the local cluster's loopback ports. Note that
+    # `bun --cwd=<dir>` only works in the `=` form.
+    commands:
+      # The releaseCommand does not run for an intercepted app, so this is how
+      # the dev database gets its schema and root user.
+      migrate: [bun, --cwd=web, run, db:migrate]
+      seed-root: [bun, --cwd=web, run, db:seed, --root]
+      # Root + the full demo dataset (also uploads demo attachments to the
+      # dev bucket).
+      seed-all: [bun, --cwd=web, run, db:seed, --all]
+      # Drizzle authoring loop.
+      generate: [bun, --cwd=web, run, db:generate]
+      push: [bun, --cwd=web, run, db:push]
+      studio: [bun, --cwd=web, run, db:studio]
+      auth-schema: [bun, --cwd=web, run, auth:schema]
+    # `skali dev` skips building this app and runs vite on the host instead,
+    # behind the real cluster route (collab attaches to vite's server via the
+    # plugin in vite.config.ts). --host is required: the gateway connects from
+    # the container network, so a loopback-only bind is unreachable.
+    dev:
+      command: [bun, --cwd=web, run, dev, --, --port, "${PORT}", --host]
+
+  # Go job-queue worker — drains the Postgres `jobs` table (SKIP LOCKED, so
+  # extra replicas are safe if throughput ever needs them). Owns all outbound
+  # side effects: email (mail.send), APNs push (push.send), webhooks
+  # (webhook.deliver), retention (prune.*).
+  worker:
+    build:
+      context: ./services
+      dockerfile: worker/Dockerfile
+    environment:
+      DATABASE_URL: "{{databases.data.url}}"
+      # Mail. SMTP_HOST empty → the worker logs emails instead of sending them,
+      # so it is required here to make a forgotten relay a deploy-time error
+      # rather than silent mail loss. SMTP_SECURE "" = TLS when SMTP_PORT is 465.
+      EMAIL_FROM: "${EMAIL_FROM}"
+      SMTP_HOST: "${SMTP_HOST}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_SECURE: "${SMTP_SECURE:-}"
+      SMTP_USER: "${SMTP_USER}"
+      SMTP_PASS: "${SMTP_PASS}"
+      # APNs for push.send — all four required for push to be active; with any
+      # missing the handler acks push jobs as skipped. APNS_KEY is the PEM
+      # content of the .p8 key (no file mounts on skali). development = APNs
+      # sandbox (Xcode debug builds), production = TestFlight / App Store.
+      APNS_KEY: "${APNS_KEY:-}"
+      APNS_KEY_ID: "${APNS_KEY_ID:-}"
+      APNS_TEAM_ID: "${APNS_TEAM_ID:-}"
+      APNS_BUNDLE_ID: "${APNS_BUNDLE_ID:-}"
+      APNS_ENV: "${APNS_ENV:-production}"
+      # Queue tuning. WORKER_JOB_TIMEOUT and WORKER_HEARTBEAT (30s default)
+      # must stay below WORKER_REAP_AFTER or a running job gets re-queued.
+      WORKER_CONCURRENCY: "4"
+      WORKER_JOB_TIMEOUT: "4m"
+      WORKER_REAP_AFTER: "5m"
+    # Probe-only port (services/shared/health): no route, never public. The
+    # binary defaults to 8081 (HEALTH_PORT overrides).
+    ports:
+      health:
+        port: 8081
+    health:
+      # Liveness/startup = the process serves HTTP; readiness = it can reach
+      # the database (pool ping). The listener comes up before the DB
+      # connection, so a slow database keeps the replica "not ready" instead
+      # of crash-looping it.
+      startup:
+        http:
+          port: health
+          path: /healthz
+      readiness:
+        http:
+          port: health
+          path: /healthz/ready
+        timeout: 5s
+      liveness:
+        http:
+          port: health
+          path: /healthz
+    resources:
+      requests:
+        cpu: 0.1
+        memory: 64MB
+        temporaryStorage: 64MB
+      limits:
+        cpu: 0.5
+        memory: 512MB
+        temporaryStorage: 256MB
+    scaling:
+      replicas:
+        min: 1
+    # Rollout: the default blue-green. The new replica must report ready
+    # (connected to Postgres) before the old one is stopped, so the queue is
+    # never left without a consumer during a deploy. SKIP LOCKED makes the
+    # brief overlap safe.
+    shutdown:
+      # The engine drains in-flight jobs for up to 30s after SIGTERM and then
+      # records their outcome; the platform's kill must land after that, not
+      # at the same instant (the 30s default), or outcome writes are lost to
+      # the reaper. Anything still running is re-queued by the reaper anyway.
+      gracePeriod: 45s
+    # Run the worker on the host (`go -C` keeps the go.work module resolution
+    # intact) instead of building an image every iteration. The only port is
+    # the probe port, so `skali dev` injects PORT and the binary binds it.
+    dev:
+      command: [go, -C, services/worker, run, ./cmd/worker]
+
+  # Go scheduler — enqueues jobs for due rows in `schedules`. One replica is
+  # enough (FOR UPDATE SKIP LOCKED makes more safe, not necessary).
+  scheduler:
+    build:
+      context: ./services
+      dockerfile: scheduler/Dockerfile
+    environment:
+      DATABASE_URL: "{{databases.data.url}}"
+      SCHEDULER_POLL_INTERVAL: "5s"
+      SCHEDULER_BATCH_SIZE: "100"
+    # Probe-only port, same contract as the worker.
+    ports:
+      health:
+        port: 8081
+    health:
+      startup:
+        http:
+          port: health
+          path: /healthz
+      readiness:
+        http:
+          port: health
+          path: /healthz/ready
+        timeout: 5s
+      liveness:
+        http:
+          port: health
+          path: /healthz
+    resources:
+      requests:
+        cpu: 0.1
+        memory: 64MB
+        temporaryStorage: 64MB
+      limits:
+        cpu: 0.5
+        memory: 256MB
+        temporaryStorage: 256MB
+    scaling:
+      replicas:
+        min: 1
+    # Rollout: the default blue-green, same reasoning as the worker — overlap
+    # rather than gap. Two schedulers racing on `schedules` is safe.
+    shutdown:
+      # A tick may run up to 30s and the process waits for it after SIGTERM.
+      gracePeriod: 45s
+    dev:
+      command: [go, -C, services/scheduler, run, ./cmd/scheduler]
+
+databases:
+  # App data, job queue and schedules in one database; /web owns the schema
+  # (drizzle migrations in web/drizzle, applied by the web releaseCommand).
+  data:
+    engine: postgres
+    version: 17
+    storage:
+      size: 20GB
+    # web/drizzle/0000 runs CREATE EXTENSION IF NOT EXISTS pgcrypto; declaring
+    # it here provisions it up front so the migration is a no-op.
+    extensions: [pgcrypto]
+    recovery:
+      pointInTime: 7d
+
+buckets:
+  # Ticket/task/note attachments and avatars (web/src/lib/server/storage, s3
+  # driver). Metadata lives in the database; the bucket holds the bytes.
+  attachments:
+    visibility: private
+    quotas:
+      storage: 50GB
+
+# Inactive declaration: scheduling and retention are not enforced yet; create
+# backups manually with `skali backup create`.
+backups:
+  daily:
+    schedule: "0 3 * * *"
+    retention: 14d
+    include:
+      databases: all
+      buckets: all

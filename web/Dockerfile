@@ -60,12 +60,19 @@ USER bun
 
 EXPOSE 3000
 
-# Liveness probe — passes on any non-5xx response from the SvelteKit server.
+# Liveness probe for docker compose: /healthz answers without touching the
+# database (src/routes/healthz). skali ignores this and uses the probes in
+# skali.yaml (/healthz for startup + liveness, /healthz/ready for readiness).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD bun -e "fetch('http://127.0.0.1:'+process.env.PORT).then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"
+    CMD bun -e "fetch('http://127.0.0.1:'+process.env.PORT+'/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-# Apply pending migrations, seed the root user if missing, then start the
-# server. Any step's failure aborts boot. The seed step is idempotent — it
-# no-ops once a superadmin user exists, so subsequent restarts skip the work.
-# On a fresh database, ROOT_PASSWORD must be set or seeding (and boot) fails.
+# docker compose entrypoint: apply pending migrations, seed the root user if
+# missing, then start the server. Any step's failure aborts boot. The seed step
+# is idempotent — it no-ops once a superadmin user exists, so subsequent
+# restarts skip the work. On a fresh database, ROOT_PASSWORD must be set or
+# seeding (and boot) fails.
+#
+# skali overrides this with `bun build/server-entry.js` and runs the first two
+# steps once per release instead (deployment.releaseCommand in skali.yaml), so
+# a replica start never races a migration.
 CMD ["sh", "-c", "bun scripts/db/migrate.ts && bun scripts/db/seed/index.ts --root && bun build/server-entry.js"]

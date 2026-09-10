@@ -84,7 +84,7 @@ Conventions every service should follow (all demonstrated in `worker/`):
 | **Config** | Read **all** env in `internal/config`, return a validated struct. Fail fast. In dev, `godotenv` loads the root `.env`; in prod, compose injects it. |
 | **DB** | Connect to the same Postgres `/web` uses (`DATABASE_URL` / `POSTGRES_*`) via `shared/pg`. Retry the connection on boot; never migrate. |
 | **Lifecycle** | `main.go` wires a `context` cancelled on SIGINT/SIGTERM, drains in-flight work with a grace period, then exits. Unfinished work is recovered by the reaper, so nothing is lost on a deploy or a crash. |
-| **Container** | Multi-stage Dockerfile → `CGO_ENABLED=0` static binary in `gcr.io/distroless/static-debian12:nonroot`. No shell, no root, no healthcheck (rely on `restart: unless-stopped` + idempotent recovery). Build context is `./services` so the build can see `shared/`. |
+| **Container** | Multi-stage Dockerfile → `CGO_ENABLED=0` static binary in `gcr.io/distroless/static-debian12:nonroot`. No shell, no root. HTTP health probes on `HEALTH_PORT` (default 8081) via `shared/health` — `/healthz` (process up) and `/healthz/ready` (database reachable); skali gates rollouts on them, compose relies on `restart: unless-stopped` + idempotent recovery. Build context is `./services` so the build can see `shared/`. |
 | **Ports** | Don't publish host ports. Talk to Postgres over the Docker network; expose publicly only through the reverse proxy, and only for pattern 3 below. |
 | **Compose** | Add the service to **both** `docker-compose.dev.yaml` and `docker-compose.yaml`, with `depends_on: db: condition: service_healthy` in prod. |
 

@@ -16,6 +16,7 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"github.com/KilicerDev/trackr/services/shared/health"
 	"github.com/KilicerDev/trackr/services/shared/pg"
 )
 
@@ -53,6 +54,9 @@ type Config struct {
 	JobTypes []string
 	// Identifies this process in logs. WORKER_ID, default hostname.
 	WorkerID string
+	// Listen address for the HTTP health probes (/healthz, /healthz/ready).
+	// HEALTH_PORT, falling back to PORT (injected by `skali dev`), default 8081.
+	HealthAddr string
 
 	// SMTP / mail — consumed by the mail.send handler. SMTP_HOST empty → the
 	// worker logs emails instead of sending them (zero-config dev). Mirrors the
@@ -102,6 +106,7 @@ func Load() (Config, error) {
 		BackoffCap:          durationEnv("WORKER_BACKOFF_CAP", 10*time.Minute),
 		JobTypes:            listEnv("WORKER_JOB_TYPES"),
 		WorkerID:            os.Getenv("WORKER_ID"),
+		HealthAddr:          health.AddrFromEnv(),
 		SmtpHost:            os.Getenv("SMTP_HOST"),
 		SmtpPort:            smtpPort,
 		SmtpSecure:          boolEnv("SMTP_SECURE", smtpPort == 465),
