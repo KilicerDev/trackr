@@ -6,7 +6,7 @@ tracking, email ingestion and notifications, outbound webhooks, an MCP server
 for AI assistants, a CLI and a native iOS app sit on top of the same data.
 
 Licensed under the GNU AGPL v3 — see [`LICENSE`](LICENSE). Third-party
-licences are listed in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+licences are listed in [`docs/THIRD_PARTY_NOTICES.md`](docs/THIRD_PARTY_NOTICES.md).
 
 ## Layout
 
