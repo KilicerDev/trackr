@@ -10,11 +10,11 @@ updated: 2026-09-10
 | Service     | Image                                               | Role                                                                                                  |
 | ----------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `db`        | `postgres:16-alpine`                                | Data, plus the job queue. Published on `127.0.0.1:5432` only.                                         |
-| `app`       | built from `./web`                                  | The web app, API and collaboration server on port `3000`. No host port; put a reverse proxy in front. |
-| `worker`    | built from `./services` with `worker/Dockerfile`    | Emails, webhooks, push, digests, cleanup.                                                             |
-| `scheduler` | built from `./services` with `scheduler/Dockerfile` | Enqueues recurring jobs.                                                                              |
+| `app`       | `ghcr.io/kilicerdev/trackr-web`                     | The web app, API and collaboration server on port `3000`. No host port; put a reverse proxy in front. |
+| `worker`    | `ghcr.io/kilicerdev/trackr-worker`                  | Emails, webhooks, push, digests, cleanup.                                                             |
+| `scheduler` | `ghcr.io/kilicerdev/trackr-scheduler`               | Enqueues recurring jobs.                                                                              |
 
-The two Go services share the `./services` build context because they compile the same `shared/` packages. Attachments go to a Docker volume by default, or to any S3-compatible bucket.
+The images are published for `linux/amd64` and `linux/arm64` on every release; `TRACKR_VERSION` in `.env` pins a version (default `latest`). To build from source instead, run `docker compose up -d --build`: the two Go services share the `./services` build context because they compile the same `shared/` packages. Attachments go to a Docker volume by default, or to any S3-compatible bucket.
 
 ## Deploy
 
@@ -32,7 +32,8 @@ Fill in `POSTGRES_PASSWORD`, `BETTER_AUTH_SECRET` (32+ random characters) and `R
 ### Start
 
 ```sh
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 The app container runs migrations and seeds the root account on every start; both are idempotent. A failing migration aborts the start.

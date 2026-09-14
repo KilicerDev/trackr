@@ -47,7 +47,10 @@ services:
       retries: 5
       start_period: 10s
 
+  # Published images (ghcr.io, multi-arch) are the default. To run from
+  # source instead: `docker compose up -d --build` uses the build blocks.
   app:
+    image: ghcr.io/kilicerdev/trackr-web:${TRACKR_VERSION:-latest}
     build:
       context: ./web
       dockerfile: Dockerfile
@@ -110,6 +113,7 @@ services:
   # emails are logged, not sent). Scale with replicas; pin a replica to a subset
   # of job types via WORKER_JOB_TYPES.
   worker:
+    image: ghcr.io/kilicerdev/trackr-worker:${TRACKR_VERSION:-latest}
     build:
       context: ./services
       dockerfile: worker/Dockerfile
@@ -153,6 +157,7 @@ services:
   # Go scheduler — turns due rows in `schedules` into jobs (services/README.md).
   # SKIP LOCKED makes multiple replicas safe, but one is enough for most setups.
   scheduler:
+    image: ghcr.io/kilicerdev/trackr-scheduler:${TRACKR_VERSION:-latest}
     build:
       context: ./services
       dockerfile: scheduler/Dockerfile

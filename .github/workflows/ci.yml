@@ -1,0 +1,56 @@
+# Checks on every push and pull request: the web app's lint, type check and
+# unit tests, plus vet and tests for the Go CLI and services. Nothing here
+# needs a database; the smoke suites run locally against a live instance.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Web
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bunx prettier --check .
+      - run: bun run check
+      - run: bun run test:unit
+      # Advisory until the existing findings (svelte/prefer-svelte-reactivity
+      # and friends) are cleaned up; then drop continue-on-error.
+      - run: bunx eslint .
+        continue-on-error: true
+
+  go:
+    name: Go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: cli/go.mod
+          cache-dependency-path: |
+            cli/go.sum
+            services/*/go.sum
+      - name: CLI
+        working-directory: cli
+        run: |
+          go vet ./...
+          go test ./...
+      - name: Services
+        working-directory: services
+        # services/ is a go.work workspace: `./...` at its root matches nothing.
+        run: |
+          go vet ./worker/... ./scheduler/... ./shared/...
+          go test ./worker/... ./scheduler/... ./shared/...

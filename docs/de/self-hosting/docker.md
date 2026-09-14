@@ -10,11 +10,11 @@ updated: 2026-09-10
 | Dienst      | Image                                              | Rolle                                                                                           |
 | ----------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `db`        | `postgres:16-alpine`                               | Daten plus Job-Queue. Nur auf `127.0.0.1:5432` veröffentlicht.                                  |
-| `app`       | gebaut aus `./web`                                 | Web-App, API und Collaboration-Server auf Port `3000`. Kein Host-Port; ein Reverse-Proxy davor. |
-| `worker`    | gebaut aus `./services` mit `worker/Dockerfile`    | E-Mails, Webhooks, Push, Digests, Aufräumen.                                                    |
-| `scheduler` | gebaut aus `./services` mit `scheduler/Dockerfile` | Legt wiederkehrende Jobs in die Queue.                                                          |
+| `app`       | `ghcr.io/kilicerdev/trackr-web`                    | Web-App, API und Collaboration-Server auf Port `3000`. Kein Host-Port; ein Reverse-Proxy davor. |
+| `worker`    | `ghcr.io/kilicerdev/trackr-worker`                 | E-Mails, Webhooks, Push, Digests, Aufräumen.                                                    |
+| `scheduler` | `ghcr.io/kilicerdev/trackr-scheduler`              | Legt wiederkehrende Jobs in die Queue.                                                          |
 
-Die beiden Go-Dienste teilen sich den Build-Kontext `./services`, weil sie dieselben `shared/`-Pakete kompilieren. Anhänge landen standardmäßig in einem Docker-Volume oder in einem beliebigen S3-kompatiblen Bucket.
+Die Images werden bei jedem Release für `linux/amd64` und `linux/arm64` veröffentlicht; `TRACKR_VERSION` in `.env` pinnt eine Version (Standard `latest`). Wer stattdessen aus dem Quellcode bauen will, startet mit `docker compose up -d --build`: Die beiden Go-Dienste teilen sich den Build-Kontext `./services`, weil sie dieselben `shared/`-Pakete kompilieren. Anhänge landen standardmäßig in einem Docker-Volume oder in einem beliebigen S3-kompatiblen Bucket.
 
 ## Ausrollen
 
@@ -32,7 +32,8 @@ Trage `POSTGRES_PASSWORD`, `BETTER_AUTH_SECRET` (32+ zufällige Zeichen) und `RO
 ### Starten
 
 ```sh
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 Der App-Container führt bei jedem Start Migrationen aus und legt das Root-Konto an; beides ist idempotent. Eine fehlschlagende Migration bricht den Start ab.

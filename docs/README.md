@@ -71,7 +71,7 @@ git clone https://github.com/KilicerDev/trackr.git
 
 ### Start
 
-Run `docker compose up -d --build`.
+Run `docker compose up -d`.
 
 :::
 ````
