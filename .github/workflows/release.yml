@@ -72,9 +72,11 @@ jobs:
           cache-to: type=gha,scope=${{ matrix.image }}-${{ matrix.arch }},mode=max
 
       - name: Record digest
+        # File name is the bare hex: artifact paths may not contain ':'.
         run: |
           mkdir -p digests
-          touch "digests/${{ steps.build.outputs.digest }}"
+          digest="${{ steps.build.outputs.digest }}"
+          touch "digests/${digest#sha256:}"
 
       - uses: actions/upload-artifact@v4
         with:
