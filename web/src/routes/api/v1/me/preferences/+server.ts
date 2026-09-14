@@ -84,8 +84,7 @@ export const PATCH: RequestHandler = async ({ locals, request }) => {
 		patch.defaultLanding = body.defaultLanding;
 	}
 	if (body.weekStartsOn !== undefined) {
-		if (body.weekStartsOn !== 0 && body.weekStartsOn !== 1)
-			apiError(400, 'Invalid week start.');
+		if (body.weekStartsOn !== 0 && body.weekStartsOn !== 1) apiError(400, 'Invalid week start.');
 		patch.weekStartsOn = body.weekStartsOn;
 	}
 	if (body.locale !== undefined) {

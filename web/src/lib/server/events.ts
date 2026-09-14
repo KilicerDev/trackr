@@ -8,9 +8,7 @@
 // (see src/server.ts). A multi-instance deployment would need to swap this for
 // Postgres LISTEN/NOTIFY behind the same publish/subscribe signatures.
 
-export type AppEvent =
-	| { type: 'entity'; entityType: string; entityId: string }
-	| { type: 'inbox' };
+export type AppEvent = { type: 'entity'; entityType: string; entityId: string } | { type: 'inbox' };
 
 type Subscriber = (event: AppEvent) => void;
 

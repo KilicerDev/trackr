@@ -235,7 +235,9 @@
 				</span>
 				<span class="text-[14px]">{m.common_unassigned()}</span>
 				<span
-					class="ml-auto text-accent {values.includes('__unassigned__') ? 'opacity-100' : 'opacity-0'}"
+					class="ml-auto text-accent {values.includes('__unassigned__')
+						? 'opacity-100'
+						: 'opacity-0'}"
 				>
 					<Icon name="check" size={14} />
 				</span>

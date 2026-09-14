@@ -25,7 +25,9 @@
 	let creating = $state(false);
 
 	const byId = $derived(new Map(available.map((t) => [t.id, t])));
-	const selectedTags = $derived(selected.map((id) => byId.get(id)).filter((t): t is ChatTag => !!t));
+	const selectedTags = $derived(
+		selected.map((id) => byId.get(id)).filter((t): t is ChatTag => !!t)
+	);
 	const filtered = $derived(
 		available.filter((t) => t.label.toLowerCase().includes(query.trim().toLowerCase()))
 	);
@@ -82,7 +84,7 @@
 			<Icon name="plus" size={13} />
 			{m.chat_tags()}
 		</button>
-		<Popover open={open} onclose={() => (open = false)} minWidth={220} {dropUp}>
+		<Popover {open} onclose={() => (open = false)} minWidth={220} {dropUp}>
 			<div class="px-1 pb-1">
 				<input
 					bind:value={query}
@@ -112,7 +114,9 @@
 						class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-surface-2 disabled:opacity-50"
 					>
 						<Icon name="plus" size={13} class="text-text-3" />
-						<span class="truncate text-[14px] text-text-2">{m.chat_tag_create({ label: query.trim() })}</span>
+						<span class="truncate text-[14px] text-text-2"
+							>{m.chat_tag_create({ label: query.trim() })}</span
+						>
 					</button>
 				{/if}
 				{#if filtered.length === 0 && !showCreate}

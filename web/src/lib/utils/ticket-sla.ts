@@ -45,7 +45,11 @@ export function slaSignal(t: TicketRow): SlaSignal | null {
 	if (closed) {
 		const when = t.resolvedAt ?? t.closedAt;
 		if (when) {
-			return { tone: 'ok', dot: TONE_DOT.ok, label: m.tickets_sla_resolved({ when: relTime(when) }) };
+			return {
+				tone: 'ok',
+				dot: TONE_DOT.ok,
+				label: m.tickets_sla_resolved({ when: relTime(when) })
+			};
 		}
 	}
 	return null;

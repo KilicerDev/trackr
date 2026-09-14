@@ -34,9 +34,7 @@
 	let users = $derived.by(() => {
 		const source: AssignableUser[] =
 			providedUsers ?? (page.data as { users?: AssignableUser[] }).users ?? [];
-		const list = source.filter(
-			(u) => u.status !== 'disabled' && (!internalOnly || u.internal)
-		);
+		const list = source.filter((u) => u.status !== 'disabled' && (!internalOnly || u.internal));
 		if (!q) return list;
 		const needle = q.toLowerCase();
 		return list.filter(

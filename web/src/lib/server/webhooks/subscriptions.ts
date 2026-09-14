@@ -166,7 +166,10 @@ export async function setSubscriptionEnabled(id: string, enabled: boolean): Prom
 			.update(webhookDelivery)
 			.set({ status: 'cancelled', nextAttemptAt: null })
 			.where(
-				and(eq(webhookDelivery.subscriptionId, id), sql`${webhookDelivery.status} IN ('pending','failed')`)
+				and(
+					eq(webhookDelivery.subscriptionId, id),
+					sql`${webhookDelivery.status} IN ('pending','failed')`
+				)
 			);
 	}
 	return rows.length > 0;

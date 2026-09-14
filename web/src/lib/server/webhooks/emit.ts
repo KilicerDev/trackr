@@ -95,7 +95,10 @@ export function matches(sub: WebhookSubscription, input: EmitInput): boolean {
 	return true;
 }
 
-function buildPayload(id: string, input: EmitInput | { type: string; data: Record<string, unknown> }) {
+function buildPayload(
+	id: string,
+	input: EmitInput | { type: string; data: Record<string, unknown> }
+) {
 	const full = input as EmitInput;
 	return {
 		id,

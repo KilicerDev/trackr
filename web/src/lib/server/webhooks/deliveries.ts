@@ -91,7 +91,9 @@ export async function getDelivery(
 		})
 		.from(webhookDelivery)
 		.innerJoin(webhookEvent, eq(webhookEvent.id, webhookDelivery.eventId))
-		.where(and(eq(webhookDelivery.id, deliveryId), eq(webhookDelivery.subscriptionId, subscriptionId)))
+		.where(
+			and(eq(webhookDelivery.id, deliveryId), eq(webhookDelivery.subscriptionId, subscriptionId))
+		)
 		.limit(1);
 	if (!row) return null;
 	const attempts = await db
@@ -113,7 +115,9 @@ export async function redeliver(subscriptionId: string, deliveryId: string): Pro
 	const rows = await db
 		.update(webhookDelivery)
 		.set({ status: 'pending', nextAttemptAt: null, lastError: null })
-		.where(and(eq(webhookDelivery.id, deliveryId), eq(webhookDelivery.subscriptionId, subscriptionId)))
+		.where(
+			and(eq(webhookDelivery.id, deliveryId), eq(webhookDelivery.subscriptionId, subscriptionId))
+		)
 		.returning({ id: webhookDelivery.id, attempt: webhookDelivery.attempt });
 	if (!rows.length) return false;
 	await webhookDeliverJob.enqueue(

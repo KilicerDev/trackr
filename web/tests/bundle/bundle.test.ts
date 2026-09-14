@@ -38,7 +38,8 @@ if (!existsSync(CHUNKS)) {
 const chunkFiles = (await readdir(CHUNKS)).filter((f) => f.endsWith('.js'));
 const chunks = new Map<string, string>();
 for (const f of chunkFiles) chunks.set(f, await readFile(join(CHUNKS, f), 'utf8'));
-if (existsSync(SERVER_ENTRY)) chunks.set('../server-entry.js', await readFile(SERVER_ENTRY, 'utf8'));
+if (existsSync(SERVER_ENTRY))
+	chunks.set('../server-entry.js', await readFile(SERVER_ENTRY, 'utf8'));
 
 describe('server bundle keeps collab packages as single instances', () => {
 	for (const { pkg, marker } of SINGLETONS) {

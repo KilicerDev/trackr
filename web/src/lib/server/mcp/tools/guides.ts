@@ -95,7 +95,8 @@ export function registerGuideTools(
 		}),
 		{
 			title: 'Guide',
-			description: 'A guide for assistants — workspace-wide or personal to the user you act for (e.g. trackr://guide/server-install).',
+			description:
+				'A guide for assistants — workspace-wide or personal to the user you act for (e.g. trackr://guide/server-install).',
 			mimeType: 'text/markdown'
 		},
 		async (uri, vars) => {
