@@ -58,7 +58,7 @@ describe('deriveOrgKey', () => {
 	});
 
 	test('derived keys validate', () => {
-		for (const name of ['Siweb', 'Schneider Group', 'Maja Studio', 'KiloHertz']) {
+		for (const name of ['Siweb', 'Schneider Group', 'Maja Studio', 'Nordlicht Media']) {
 			expect(isValidOrgKey(deriveOrgKey(name)), name).toBe(true);
 		}
 	});

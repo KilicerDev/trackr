@@ -108,7 +108,7 @@ export const USERS: DemoUser[] = [
 	{
 		id: 'c1',
 		name: 'Renée Carter',
-		email: 'renee.carter@siweb.de',
+		email: 'renee.carter@siweb.example',
 		team: 'Siweb GmbH',
 		appRole: 'user',
 		org: 'SIWEB',
@@ -117,7 +117,7 @@ export const USERS: DemoUser[] = [
 	{
 		id: 'c2',
 		name: 'Pieter Janssen',
-		email: 'pieter.janssen@siweb.de',
+		email: 'pieter.janssen@siweb.example',
 		team: 'Siweb GmbH',
 		appRole: 'user',
 		org: 'SIWEB',
@@ -126,7 +126,7 @@ export const USERS: DemoUser[] = [
 	{
 		id: 'c3',
 		name: 'Sabine Koch',
-		email: 'sabine.koch@webim.agency',
+		email: 'sabine.koch@webim.example',
 		team: 'Webim Agency',
 		appRole: 'user',
 		org: 'WEBIM',
@@ -135,7 +135,7 @@ export const USERS: DemoUser[] = [
 	{
 		id: 'c4',
 		name: 'Josie Maja',
-		email: 'josie@maja.studio',
+		email: 'josie@maja.example',
 		team: 'Maja Studio',
 		appRole: 'user',
 		org: 'MAJA',
@@ -1454,7 +1454,7 @@ export const TICKETS: DemoTicket[] = [
 		key: 'WEBIM-4',
 		subject: 'Access for our new campaign manager',
 		description:
-			'Please add tim.brand@webim.agency as a member so he can see tickets and the chat.',
+			'Please add tim.brand@webim.example as a member so he can see tickets and the chat.',
 		status: 'open',
 		priority: 'medium',
 		category: 'general',
@@ -1800,7 +1800,7 @@ export const NOTES: DemoNote[] = [
 		owner: 'u0',
 		updatedAt: at(-9, 16, 0),
 		html:
-			'<h2>Access</h2><p>Staging admin: <code>admin@staging.siweb.de</code>, password in 1Password (Siweb vault).</p>' +
+			'<h2>Access</h2><p>Staging admin: <code>admin@staging.siweb.example</code>, password in 1Password (Siweb vault).</p>' +
 			'<h2>Gotchas</h2><ul><li><p>Nightly sync runs 02:00 CET, logs in <code>sync.log</code></p></li><li><p>Articles without EAN are skipped (SIWEB-55)</p></li><li><p>Payment gateway sandbox flag: <code>PG_FAIL=1</code></p></li></ul>'
 	},
 	{

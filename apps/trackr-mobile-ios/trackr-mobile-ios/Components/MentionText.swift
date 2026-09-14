@@ -87,7 +87,7 @@ enum Mentions {
 
     /// Serialize composer text: every `@Name` of a picked user becomes the
     /// `@[Name](id)` token the server resolves (longest names first so
-    /// "Anna Brandt" isn't clipped by "Anna").
+    /// "Max Muster" isn't clipped by "Max").
     static func tokenized(_ text: String, users: [UserRef]) -> String {
         var out = text
         for user in users.sorted(by: { $0.name.count > $1.name.count }) {

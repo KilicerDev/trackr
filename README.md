@@ -1,45 +1,47 @@
-# sv
+# trackr
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Work tracker for a small agency: support tickets per client organization,
+project tasks, an internal wiki, quick and meeting notes. Time logs, SLA
+tracking, email ingestion and notifications, outbound webhooks, an MCP server
+for AI assistants, a CLI and a native iOS app sit on top of the same data.
 
-## Creating a project
+Licensed under the GNU AGPL v3 — see [`LICENSE`](LICENSE). Third-party
+licences are listed in [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Layout
 
-```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
-
-```sh
-# recreate this project
-bun x sv@0.15.3 create --template minimal --types ts --add prettier eslint tailwindcss="plugins:typography,forms" sveltekit-adapter="adapter:node" drizzle="database:postgresql+postgresql:postgres.js+docker:yes" better-auth="demo:password" --install bun ./
-```
+| Path | What |
+|---|---|
+| `web/` | SvelteKit app: UI, `/api/v1` bearer API, `/api/mcp`, collab server, migrations, seeds, tests |
+| `services/worker/` | Go worker: email delivery and polling, push, webhooks, job queue |
+| `services/scheduler/` | Go scheduler: SLA checks, digests, recurring jobs |
+| `services/shared/` | Go code shared by the services |
+| `cli/` | Go CLI (`trackr`) against `/api/v1` |
+| `apps/trackr-mobile-ios/` | Native SwiftUI iOS app |
+| `skali.yaml`, `docker-compose.yaml` | Deployment manifests (see below) |
 
 ## Developing
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Requirements: [Bun](https://bun.sh), Go 1.25+, Docker (for Postgres) and, for
+the iOS app, Xcode.
 
 ```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+cp .env.example .env            # fill in what you need; defaults work for local dev
+cd web
+bun install
+bun run db:start                # Postgres in Docker
+bun run db:migrate
+bun run db:seed --all           # demo dataset incl. the test users
+bun run dev                     # http://127.0.0.1:5173
 ```
 
-## Building
+Sign in with the root user from `.env` (`ROOT_EMAIL` / `ROOT_PASSWORD`) or one
+of the demo users seeded by `db:seed --all`. The Go services run with
+`go run ./cmd/worker` and `go run ./cmd/scheduler` from their directories, or
+all together via `skali dev` (see Deploying).
 
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+For the iOS app open `apps/trackr-mobile-ios` in Xcode and set your own team
+under Signing & Capabilities; the project ships without a development team.
 
 ## Deploying
 

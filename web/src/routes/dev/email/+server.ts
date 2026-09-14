@@ -15,14 +15,14 @@ import type { Locale } from '$lib/paraglide/runtime';
 import { m } from '$lib/paraglide/messages';
 import type { RequestHandler } from './$types';
 
-const SAMPLE_URL = 'https://kilohertz.trackr.dev/tickets/0fffd4eb-c2da-4571-82c2-3cc6c7777b6e';
-const SETTINGS_URL = 'https://kilohertz.trackr.dev/me/settings';
+const SAMPLE_URL = 'https://siweb.trackr.dev/tickets/0fffd4eb-c2da-4571-82c2-3cc6c7777b6e';
+const SETTINGS_URL = 'https://siweb.trackr.dev/me/settings';
 
 async function sample(t: string, locale: Locale): Promise<{ subject: string; html?: string }> {
 	const de = locale === 'de';
 	const meta = (rows: [string, string][]) => rows.map(([label, value]) => ({ label, value }));
 	const commonMeta: [string, string][] = [
-		[m.email_meta_from(undefined, { locale }), 'Ertugrul Kilic'],
+		[m.email_meta_from(undefined, { locale }), 'Max Muster'],
 		[m.email_meta_status(undefined, { locale }), de ? 'Offen' : 'Open'],
 		[m.email_meta_priority(undefined, { locale }), de ? 'Hoch' : 'High'],
 		[m.email_meta_date(undefined, { locale }), de ? '17. Aug. 2026, 10:50' : 'Aug 17, 2026, 10:50']
@@ -57,8 +57,8 @@ async function sample(t: string, locale: Locale): Promise<{ subject: string; htm
 					heading: 'Spezial Offer Update',
 					meta: meta(commonMeta),
 					quote: de
-						? '@Ertugrul kannst du das bitte freigeben? Kunde wartet auf Rückmeldung.'
-						: '@Ertugrul can you approve this? Customer is waiting.',
+						? '@Max kannst du das bitte freigeben? Kunde wartet auf Rückmeldung.'
+						: '@Max can you approve this? Customer is waiting.',
 					ctaLabel: m.email_cta_ticket(undefined, { locale })
 				},
 				url: SAMPLE_URL,
@@ -92,7 +92,7 @@ async function sample(t: string, locale: Locale): Promise<{ subject: string; htm
 					ref: 'KH-42',
 					heading: de ? 'Landingpage Feedback einarbeiten' : 'Incorporate landing page feedback',
 					meta: meta([
-						[m.email_meta_from(undefined, { locale }), 'Ertugrul Kilic'],
+						[m.email_meta_from(undefined, { locale }), 'Max Muster'],
 						[
 							m.email_meta_date(undefined, { locale }),
 							de ? '17. Aug. 2026, 11:30' : 'Aug 17, 2026, 11:30'
@@ -108,8 +108,8 @@ async function sample(t: string, locale: Locale): Promise<{ subject: string; htm
 			return plainNotificationEmail({
 				to: 'preview@trackr.dev',
 				title: de
-					? '3 Aufgaben Ihnen zugewiesen — importiert in KiloHertz'
-					: '3 tasks assigned to you — imported into KiloHertz',
+					? '3 Aufgaben Ihnen zugewiesen — importiert in Siweb'
+					: '3 tasks assigned to you — imported into Siweb',
 				body: null,
 				url: SAMPLE_URL,
 				locale
@@ -117,7 +117,7 @@ async function sample(t: string, locale: Locale): Promise<{ subject: string; htm
 		case 'invite':
 			return invitationEmail({
 				to: 'preview@trackr.dev',
-				name: 'Ertugrul',
+				name: 'Max',
 				inviterName: 'Melis Aydın',
 				acceptUrl: SAMPLE_URL,
 				expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000)

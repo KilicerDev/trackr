@@ -26,4 +26,5 @@ usable cross-client.
 
 ## Targets
 
-- `trackr-mobile/` — Tauri 2 + SvelteKit mobile companion (see its README).
+- `trackr-mobile-ios/` — native SwiftUI iOS app. Open it in Xcode and set your
+  own team under Signing & Capabilities; no development team is checked in.

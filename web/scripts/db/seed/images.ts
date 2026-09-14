@@ -84,7 +84,7 @@ function checkoutError(): Promise<Buffer> {
 	${rect(864, 312, 352, 44, BG, 8, BORDER)}${text(880, 340, 'VISA •••• 4421', { size: 14 })}
 	${rect(864, 368, 352, 44, BG, 8, BORDER)}${text(880, 396, 'Exp. 08/28', { size: 14, fill: MUTED })}
 	${text(864, 446, 'Console: POST /api/checkout → 502', { size: 12, fill: '#ef5f5f', family: 'Menlo, monospace' })}`;
-	return svgToPng(browserFrame(w, h, 'https://shop.siweb.de/checkout', body));
+	return svgToPng(browserFrame(w, h, 'https://shop.siweb.example/checkout', body));
 }
 
 function skuSearch(): Promise<Buffer> {
@@ -119,7 +119,7 @@ function skuSearch(): Promise<Buffer> {
 		${dup ? text(w - 72, 254 + i * 70, 'duplicate row', { size: 12, fill: '#f0b64f', anchor: 'end' }) : ''}`
 		)
 		.join('')}`;
-	return svgToPng(browserFrame(w, h, 'https://shop.siweb.de/admin/articles?q=HP-220', body));
+	return svgToPng(browserFrame(w, h, 'https://shop.siweb.example/admin/articles?q=HP-220', body));
 }
 
 function dashboard(): Promise<Buffer> {

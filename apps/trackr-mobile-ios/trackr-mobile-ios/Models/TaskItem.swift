@@ -135,7 +135,7 @@ extension Int {
 
 extension TaskItem {
     static let sampleUsers = [
-        UserRef(name: "Ertugul Kilic", initials: "EK", color: Color(hex: 0x7A9CF0)),
+        UserRef(name: "Max Muster", initials: "MM", color: Color(hex: 0x7A9CF0)),
         UserRef(name: "Mara Steiner", initials: "MS", color: Color(hex: 0xC08BD6)),
         UserRef(name: "Jonas Weber", initials: "JW", color: Color(hex: 0x7FC8A9)),
     ]
@@ -220,14 +220,14 @@ extension TaskItem {
                      status: .done, priority: .low, type: .improvement,
                      project: "Trackr Web",
                      assignees: [sampleUsers[0]]),
-            TaskItem(id: "TRK-118", title: "Migrate email polling to Stalwart IMAP",
+            TaskItem(id: "TRK-118", title: "Migrate email polling to our own IMAP server",
                      status: .todo, priority: .high, type: .task,
                      project: "Infrastructure",
-                     details: "Replace the external provider with our own Stalwart instance, IMAP-poll based.",
+                     details: "Replace the external provider with our own mail server, IMAP-poll based.",
                      due: day(-2),
                      plannedFor: day(-8),
                      checklist: [
-                         ChecklistItem(text: "Stalwart instance on staging"),
+                         ChecklistItem(text: "Mail server on staging"),
                          ChecklistItem(text: "IMAP poll worker"),
                          ChecklistItem(text: "Cutover plan"),
                      ],

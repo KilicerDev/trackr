@@ -38,7 +38,7 @@ The conventions every service in this repo should follow:
 ```
 worker/
 ├── Dockerfile                  multi-stage → distroless static binary
-├── go.mod                      github.com/kilohertz-it/saas-template/services/worker
+├── go.mod                      github.com/KilicerDev/trackr/services/worker
 ├── cmd/worker/
 │   └── main.go                 config → postgres → reaper + claim pool → drain;
 │                               claim loop, per-job heartbeat, retry/backoff

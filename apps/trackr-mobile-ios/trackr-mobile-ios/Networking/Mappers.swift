@@ -273,7 +273,7 @@ enum Mapper {
     // MARK: Tickets
 
     static func orgRef(fromTicket dto: API.Ticket) -> OrgRef {
-        // "MEDI-14" → "MEDI"; slug-prefixed display ids keep everything
+        // "SIWEB-14" → "SIWEB"; slug-prefixed display ids keep everything
         // before the trailing number.
         let key = dto.displayId.split(separator: "-").dropLast().joined(separator: "-")
         return OrgRef(

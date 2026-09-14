@@ -104,7 +104,7 @@ WHERE state != 'idle';</code></pre><p>Kill long-running queries only after check
             // ── Meeting notes ──────────────────────────────────────────
             NoteItem(id: "m-infra-sync", kind: .meeting, title: "Weekly Infra Sync",
                      icon: "person.2",
-                     bodyHtml: #"<h2>Agenda</h2><ul><li><p>Stalwart migration status</p></li><li><p>Postgres 17 upgrade window</p></li></ul><h2>Notes</h2><p>IMAP poll worker is stable on staging — <strong>no dropped messages</strong> in 7 days. Cutover plan needs a rollback path before we schedule it.</p><blockquote><p>Decision: upgrade staging Postgres this Friday, production the week after.</p></blockquote><h2>Action items</h2><ul data-type="taskList"><li data-type="taskItem" data-checked="true"><label><input type="checkbox"></label><div><p>Write rollback plan for the cutover</p></div></li><li data-type="taskItem" data-checked="false"><label><input type="checkbox"></label><div><p>Announce staging maintenance window</p></div></li></ul>"#,
+                     bodyHtml: #"<h2>Agenda</h2><ul><li><p>Mail ingestion cutover status</p></li><li><p>Postgres 17 upgrade window</p></li></ul><h2>Notes</h2><p>IMAP poll worker is stable on staging — <strong>no dropped messages</strong> in 7 days. Cutover plan needs a rollback path before we schedule it.</p><blockquote><p>Decision: upgrade staging Postgres this Friday, production the week after.</p></blockquote><h2>Action items</h2><ul data-type="taskList"><li data-type="taskItem" data-checked="true"><label><input type="checkbox"></label><div><p>Write rollback plan for the cutover</p></div></li><li data-type="taskItem" data-checked="false"><label><input type="checkbox"></label><div><p>Announce staging maintenance window</p></div></li></ul>"#,
                      owner: users[1], updatedAt: ago(hours: 3),
                      meetingDate: day(0, hour: 10),
                      project: "Infrastructure", taskId: "TRK-118"),
@@ -114,15 +114,15 @@ WHERE state != 'idle';</code></pre><p>Kill long-running queries only after check
                      owner: users[0], updatedAt: ago(hours: 22),
                      meetingDate: day(-1, hour: 14),
                      project: "Mobile App", taskId: "TRK-142"),
-            NoteItem(id: "m-medizell", kind: .meeting, title: "Medizell quarterly check-in",
-                     icon: "cross.case",
-                     bodyHtml: #"<h2>Agenda</h2><ul><li><p>Practice software incidents</p></li><li><p>Website redesign kickoff</p></li></ul><h2>Notes</h2><p>Two freezes this quarter, both vendor-side. Dr. Brandt wants a <em>monthly status mail</em> going forward.</p>"#,
+            NoteItem(id: "m-siweb", kind: .meeting, title: "Siweb quarterly check-in",
+                     icon: "cart",
+                     bodyHtml: #"<h2>Agenda</h2><ul><li><p>Shop checkout incidents</p></li><li><p>Relaunch kickoff</p></li></ul><h2>Notes</h2><p>Two checkout outages this quarter, both on the payment-gateway side. Renée wants a <em>monthly status mail</em> going forward.</p>"#,
                      owner: users[2], updatedAt: ago(hours: 70),
                      meetingDate: day(-3, hour: 9),
-                     project: "Medizell Website", taskId: nil),
+                     project: "Siweb Shop Relaunch", taskId: nil),
             NoteItem(id: "m-q3", kind: .meeting, title: "Q3 planning",
                      icon: "calendar",
-                     bodyHtml: #"<h2>Focus</h2><ol><li><p>Native mobile app to TestFlight</p></li><li><p>Stalwart mail cutover</p></li><li><p>Medizell website build</p></li></ol><hr><p>Budget review moved to the next finance sync.</p>"#,
+                     bodyHtml: #"<h2>Focus</h2><ol><li><p>Native mobile app to TestFlight</p></li><li><p>Mail ingestion cutover</p></li><li><p>Siweb shop relaunch build</p></li></ol><hr><p>Budget review moved to the next finance sync.</p>"#,
                      owner: users[0], updatedAt: ago(hours: 200),
                      meetingDate: day(-8, hour: 11),
                      project: "Trackr Web", taskId: nil),
@@ -140,7 +140,7 @@ extension WikiPageItem {
         return [
             WikiPageItem(id: "w-handbook", parentId: nil, title: "Team Handbook",
                          icon: "book.closed",
-                         bodyHtml: #"<h1>Team Handbook</h1><p>How we work at <strong>KiloHertz IT</strong> — short, honest, always current.</p><h2>Principles</h2><ul><li><p>Tickets before chat — if it matters, it has a number</p></li><li><p>Every change has a rollback path</p></li><li><p>Client-facing replies within <strong>4 hours</strong> on business days</p></li></ul><h2>Tools</h2><p>Trackr for everything: <a href="https://trackr.kilohertz.dev/tasks">tasks</a>, tickets, notes and this wiki.</p>"#,
+                         bodyHtml: #"<h1>Team Handbook</h1><p>How we work at <strong>the agency</strong> — short, honest, always current.</p><h2>Principles</h2><ul><li><p>Tickets before chat — if it matters, it has a number</p></li><li><p>Every change has a rollback path</p></li><li><p>Client-facing replies within <strong>4 hours</strong> on business days</p></li></ul><h2>Tools</h2><p>Trackr for everything: <a href="https://trackr.example/tasks">tasks</a>, tickets, notes and this wiki.</p>"#,
                          updatedAt: ago(hours: 30), updatedBy: users[0], sortOrder: 0),
             WikiPageItem(id: "w-onboarding", parentId: nil, title: "Onboarding Checklist",
                          icon: "checklist",
@@ -156,22 +156,22 @@ pg_upgradecluster 15 main
 sudo systemctl start postgresql</code></pre><hr><p>Questions go to <strong>#infra</strong> — never upgrade alone on a Friday.</p>
 """#,
                          updatedAt: ago(hours: 12), updatedBy: users[1], sortOrder: 0),
-            WikiPageItem(id: "w-stalwart", parentId: "w-runbooks", title: "Stalwart Mail Setup",
+            WikiPageItem(id: "w-mail", parentId: "w-runbooks", title: "Mail Ingestion Setup",
                          icon: "envelope",
-                         bodyHtml: #"<h1>Stalwart Mail Setup</h1><p>Our own mail stack replacing the external provider — IMAP-poll based ingestion into trackr tickets.</p><h2>Architecture</h2><ul><li><p>Stalwart instance per environment</p></li><li><p>Poll worker checks <code>INBOX</code> every 30s</p></li><li><p>Messages become ticket replies via the threading headers</p></li></ul><blockquote><p>The poll worker must be idempotent — messages may be seen twice.</p></blockquote>"#,
+                         bodyHtml: #"<h1>Mail Ingestion Setup</h1><p>Our own mail stack replacing the external provider — IMAP-poll based ingestion into trackr tickets.</p><h2>Architecture</h2><ul><li><p>One mailbox per environment</p></li><li><p>Poll worker checks <code>INBOX</code> every 30s</p></li><li><p>Messages become ticket replies via the threading headers</p></li></ul><blockquote><p>The poll worker must be idempotent — messages may be seen twice.</p></blockquote>"#,
                          updatedAt: ago(hours: 45), updatedBy: users[1], sortOrder: 1),
             WikiPageItem(id: "w-clients", parentId: nil, title: "Clients",
                          icon: "folder", isFolder: true, sortOrder: 3),
-            WikiPageItem(id: "w-medizell", parentId: "w-clients", title: "Medizell — Practice Software",
-                         icon: "cross.case",
-                         bodyHtml: #"<h1>Medizell — Practice Software</h1><p>Vendor-hosted practice management, we own the infrastructure around it.</p><h2>Known issues</h2><ul><li><p>Freezes when the vendor pushes updates mid-day — <em>always reproduce before escalating</em></p></li><li><p>Terminal server sessions leak on hard resets</p></li></ul><h2>Contacts</h2><p>Escalation: vendor hotline, then <strong>Dr. Brandt</strong> for scheduling downtime.</p>"#,
+            WikiPageItem(id: "w-siweb", parentId: "w-clients", title: "Siweb — Shop Platform",
+                         icon: "cart",
+                         bodyHtml: #"<h1>Siweb — Shop Platform</h1><p>Vendor-hosted shop system, we own the infrastructure around it.</p><h2>Known issues</h2><ul><li><p>Checkout freezes when the payment gateway pushes updates mid-day — <em>always reproduce before escalating</em></p></li><li><p>Editor sessions leak on hard cache resets</p></li></ul><h2>Contacts</h2><p>Escalation: gateway hotline, then <strong>Renée Carter</strong> for scheduling downtime.</p>"#,
                          updatedAt: ago(hours: 60), updatedBy: users[2], sortOrder: 0),
-            WikiPageItem(id: "w-baumann", parentId: "w-clients", title: "Baumann — VPN Profile",
+            WikiPageItem(id: "w-webim", parentId: "w-clients", title: "webim — Landing Page Hosting",
                          icon: "network",
                          bodyHtml: #"""
-<h1>Baumann — VPN Profile</h1><p>Home-office VPN for ~20 users, SSL-based.</p><h2>Config</h2><pre><code>keepalive 10 60
-session-timeout none
-reneg-sec 0</code></pre><p>The <strong>session timeout fix</strong> from ticket BAUM-31 lives in the base profile since August.</p>
+<h1>webim — Landing Page Hosting</h1><p>Campaign landing pages for ~20 parallel campaigns, static hosting behind a CDN.</p><h2>Config</h2><pre><code>cache-control: max-age=300
+stale-while-revalidate: 600
+form-timeout: 60</code></pre><p>The <strong>form timeout fix</strong> from ticket WEBIM-31 lives in the base config since August.</p>
 """#,
                          updatedAt: ago(hours: 8), updatedBy: users[1], sortOrder: 1),
         ]

@@ -76,7 +76,7 @@ extension TimelineRow where Content == EmptyView {
     VStack(alignment: .leading, spacing: 18) {
         TimelineRow(
             node: .avatar(TaskItem.sampleUsers[0]),
-            name: "Ertugul Kilic", action: "commented", date: .now
+            name: "Max Muster", action: "commented", date: .now
         ) {
             MessageCard(text: "Looks good to me!")
         }

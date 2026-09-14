@@ -70,9 +70,9 @@ describe('instance rules', () => {
 	});
 
 	test('handoff round-trips through the fragment', () => {
-		const link = switchUrl('https://dk.trackr.dev', 'https://kilohertz.trackr.dev');
-		expect(link).toBe('https://dk.trackr.dev/#from=https%3A%2F%2Fkilohertz.trackr.dev');
-		expect(parseHandoffHash(new URL(link).hash)).toBe('https://kilohertz.trackr.dev');
+		const link = switchUrl('https://dk.trackr.dev', 'https://siweb.trackr.dev');
+		expect(link).toBe('https://dk.trackr.dev/#from=https%3A%2F%2Fsiweb.trackr.dev');
+		expect(parseHandoffHash(new URL(link).hash)).toBe('https://siweb.trackr.dev');
 		expect(parseHandoffHash('')).toBeNull();
 		expect(parseHandoffHash('#from=javascript:alert(1)')).toBeNull();
 		expect(parseHandoffHash('#other=1')).toBeNull();
