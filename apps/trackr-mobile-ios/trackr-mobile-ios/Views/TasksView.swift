@@ -2,9 +2,10 @@
 //  TasksView.swift
 //  trackr-mobile-ios
 //
-//  Task cards with the web toolbar's group-by / window / filters behind a
-//  native filter sheet. Tasks and the navigation path live in AppModel so
-//  other features (work sessions) can open a task detail.
+//  Root surface of the Tasks tab: page header, view chip + filter button,
+//  then a flat list — one collapsible group band per group with hairline
+//  rows. Tasks and the navigation path live in AppModel so other features
+//  (work sessions, deep links) can open a task detail.
 //
 
 import SwiftUI
@@ -14,98 +15,89 @@ struct TasksView: View {
 
     @State private var showingFilters = false
     @State private var showingViews = false
-    @State private var showingCreate = false
     @State private var collapsedGroups: Set<String> = []
 
     private var groups: [TaskGroup] { model.taskFilters.grouped(model.tasks) }
 
-    /// Grouped by project → the project chip on every row is redundant.
-    private func projectColor(for task: TaskItem) -> Color? {
-        guard model.taskFilters.group != .project else { return nil }
-        return model.projects.first { $0.name == task.project }?.color ?? .secondary
+    private var openCount: Int { model.tasks.count { $0.status != .done } }
+
+    /// Name of the saved view whose config equals the current filters —
+    /// "Custom view" when none matches (web ViewsMenu parity).
+    private var currentViewName: String {
+        let directories = ViewDirectories(model: model)
+        let match = model.savedTaskViews.first {
+            TaskFilters(webConfig: $0.config, directories: directories) == model.taskFilters
+        }
+        return match?.name ?? "Custom view"
+    }
+
+    /// Number of multi-select filters in use (the badge on Filter).
+    private var activeFilterCount: Int {
+        let f = model.taskFilters
+        return [f.statuses.isEmpty, f.priorities.isEmpty, f.assignees.isEmpty, f.projects.isEmpty]
+            .count { !$0 }
     }
 
     var body: some View {
         NavigationStack(path: $model.taskPath) {
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 14) {
-                    // Web ListView parity: one section container per group —
-                    // header band on top, rows joined by hairline dividers.
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    TKPageHeader("Tasks", meta: "\(openCount) open")
+                    toolbar
+                        .padding(.horizontal, TK.gutter)
+                        .padding(.top, 10)
+                        .padding(.bottom, 12)
+
                     ForEach(groups) { group in
-                        VStack(spacing: 0) {
-                            if !group.label.isEmpty {
-                                GroupHeader(
-                                    label: group.label,
-                                    color: group.color,
-                                    count: group.tasks.count,
-                                    collapsed: collapsedGroups.contains(group.id)
-                                ) {
-                                    withAnimation(.snappy(duration: 0.25)) {
-                                        if !collapsedGroups.insert(group.id).inserted {
-                                            collapsedGroups.remove(group.id)
-                                        }
+                        let collapsed = collapsedGroups.contains(group.id)
+                        if !group.label.isEmpty {
+                            TKGroupBand(
+                                title: group.label,
+                                color: group.color,
+                                count: group.tasks.count,
+                                collapsible: true,
+                                collapsed: collapsed
+                            ) {
+                                withAnimation(.snappy(duration: 0.2)) {
+                                    if !collapsedGroups.insert(group.id).inserted {
+                                        collapsedGroups.remove(group.id)
                                     }
-                                }
-                            }
-                            if group.label.isEmpty || !collapsedGroups.contains(group.id) {
-                                ForEach(Array(group.tasks.enumerated()), id: \.element.id) {
-                                    index, task in
-                                    if index > 0 {
-                                        Divider()
-                                            .overlay(Color.webBorderStrong)
-                                            .padding(.leading, 14)
-                                    }
-                                    NavigationLink(value: task) {
-                                        TaskCard(task: task, embedded: true, projectColor: projectColor(for: task))
-                                    }
-                                    .buttonStyle(.plain)
-                                    .taskContextMenu(for: task, model: model)
                                 }
                             }
                         }
-                        .sectionStyle()
+                        if group.label.isEmpty || !collapsed {
+                            ForEach(group.tasks) { task in
+                                TKHairline()
+                                TaskRow(
+                                    task: task,
+                                    model: model,
+                                    showProject: model.taskFilters.group != .project
+                                ) {
+                                    model.taskPath.append(task)
+                                }
+                                .taskContextMenu(for: task, model: model)
+                            }
+                        }
                     }
                     if groups.allSatisfy(\.tasks.isEmpty) {
-                        ContentUnavailableView(
-                            "No matching tasks",
-                            systemImage: "line.3.horizontal.decrease",
-                            description: Text("Try removing some filters.")
+                        TKHairline(color: TK.hairlineStrong)
+                        TKEmptyState(
+                            text: model.taskFilters.hasActiveFilters
+                                ? "No matching tasks. Try removing some filters."
+                                : "You're all caught up."
                         )
-                        .padding(.top, 60)
+                    } else {
+                        TKHairline()
                     }
                 }
-                .padding(.horizontal, 16)
                 .padding(.bottom, 24)
             }
-            .background(Color.webBackground)
+            .navigationTitle("Tasks")
+            .tkRootScreen(model)
             .refreshable { await model.sync?.refreshTasks() }
             .navigationDestination(for: TaskItem.self) { task in
                 TaskDetailView(task: task, model: model)
-            }
-            .navigationTitle("Tasks")
-            .toolbar {
-                // Views + filter share one capsule, Apple Music style.
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button {
-                        showingViews = true
-                    } label: {
-                        Image(systemName: "text.badge.plus")
-                    }
-                    Button {
-                        showingFilters = true
-                    } label: {
-                        Image(systemName: "line.3.horizontal.decrease")
-                    }
-                    .tint(model.taskFilters.hasActiveFilters ? .accentColor : nil)
-                }
-                ToolbarSpacer(.fixed, placement: .topBarTrailing)
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showingCreate = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                }
+                    .tkDetailScreen()
             }
             .sheet(isPresented: $showingFilters) {
                 TaskFiltersSheet(filters: $model.taskFilters, tasks: model.tasks)
@@ -130,10 +122,18 @@ struct TasksView: View {
                     onUpdate: { model.sync?.updateSavedView(.tasks, id: $0.id) }
                 )
             }
-            .sheet(isPresented: $showingCreate) {
-                CreateTaskSheet(tasks: model.tasks, model: model) { task, files in
-                    model.addTask(task, files: files)
-                }
+        }
+    }
+
+    private var toolbar: some View {
+        HStack(spacing: 8) {
+            TKViewChip(name: currentViewName) {
+                showingViews = true
+            }
+            .frame(maxWidth: 240, alignment: .leading)
+            Spacer(minLength: 8)
+            TKFilterButton(count: activeFilterCount) {
+                showingFilters = true
             }
         }
     }
@@ -141,4 +141,5 @@ struct TasksView: View {
 
 #Preview {
     TasksView(model: AppModel())
+        .preferredColorScheme(.dark)
 }

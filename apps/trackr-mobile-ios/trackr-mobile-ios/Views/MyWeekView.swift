@@ -2,9 +2,11 @@
 //  MyWeekView.swift
 //  trackr-mobile-ios
 //
-//  Native port of the web /week planner: Monday–Sunday day sections with
-//  per-day capacity bars, project sub-groups within a day, and the
-//  unscheduled backlog (past / mine / others) at the bottom.
+//  Native port of the web /week planner in the prototype's chrome: header
+//  with the date range, Today / prev-next / KW / NOW toolbar row with the
+//  week capacity, Monday–Sunday day bands with hairline task rows (play
+//  button starts a task-bound session) and an "+ Add task" row per day,
+//  then the unscheduled backlog (past / mine / others) at the bottom.
 //
 
 import SwiftUI
@@ -27,7 +29,7 @@ struct MyWeekView: View {
         var label: String {
             switch self {
             case .past: "Past"
-            case .mine: "My Tasks"
+            case .mine: "My tasks"
             case .others: "Others"
             }
         }
@@ -57,7 +59,7 @@ struct MyWeekView: View {
 
     private var weekRangeLabel: String {
         let fmt = Date.FormatStyle().month(.abbreviated).day()
-        return "\(weekStart.formatted(fmt)) — \(weekDates[6].formatted(fmt))"
+        return "\(weekStart.formatted(fmt)) – \(weekDates[6].formatted(fmt))"
     }
 
     // MARK: - Task buckets
@@ -85,8 +87,9 @@ struct MyWeekView: View {
         weekDates.prefix(5).reduce(0) { $0 + minutes(in: planned(on: $1)) }
     }
 
-    /// Per-project sub-sections within a day, alphabetical — so a mixed day
-    /// reads as "which project gets how much of it" at a glance.
+    /// Per-project sub-sections within a day, alphabetical — the rows are
+    /// listed in this order (each row carries its project dot + name) so a
+    /// mixed day still reads project by project.
     private func projectGroups(in tasks: [TaskItem]) -> [(name: String, color: Color, tasks: [TaskItem])] {
         let names = Array(Set(tasks.map(\.project)))
         return names
@@ -130,25 +133,26 @@ struct MyWeekView: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $model.weekPath) {
             ScrollView {
-                // Same sectioned-list system as the Tasks tab: every day is
-                // one bordered container with a surface header band.
-                LazyVStack(alignment: .leading, spacing: 14) {
-                    weekHeader
-                        .padding(.bottom, 4)
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    TKPageHeader("My week", meta: weekRangeLabel)
+                    weekToolbar
+                        .padding(.horizontal, TK.gutter)
+                        .padding(.top, 10)
+                        .padding(.bottom, 12)
 
                     ForEach(Array(weekDates.enumerated()), id: \.element) { index, day in
                         daySection(index: index, day: day)
                     }
 
                     unscheduledSection
-                        .padding(.top, 14)
+                        .padding(.top, 20)
                 }
-                .padding(.horizontal, 16)
                 .padding(.bottom, 24)
             }
-            .background(Color.webBackground)
+            .navigationTitle("My week")
+            .tkRootScreen(model)
             .refreshable { await model.sync?.refreshTasks() }
             .onAppear {
                 // Screen-appear revalidation, same as the Tasks tab.
@@ -156,217 +160,178 @@ struct MyWeekView: View {
             }
             .navigationDestination(for: TaskItem.self) { task in
                 TaskDetailView(task: task, model: model)
-            }
-            .navigationTitle("My Week")
-            .toolbar {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button {
-                        weekStart = Calendar.current.date(byAdding: .day, value: -7, to: weekStart)!
-                    } label: {
-                        Image(systemName: "chevron.left")
-                    }
-                    Button {
-                        weekStart = Calendar.current.date(byAdding: .day, value: 7, to: weekStart)!
-                    } label: {
-                        Image(systemName: "chevron.right")
-                    }
-                }
-                ToolbarSpacer(.fixed, placement: .topBarTrailing)
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        weekStart = MyWeekView.monday(of: .now)
-                    } label: {
-                        Image(systemName: "calendar.badge.clock")
-                    }
-                    .disabled(isCurrentWeek)
-                }
+                    .tkDetailScreen()
             }
         }
     }
 
-    private var weekHeader: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 7) {
-                    Text(weekLabel)
-                        .font(.system(size: 17, weight: .bold, design: .monospaced))
-                    if isCurrentWeek {
-                        Text("NOW")
-                            .font(.system(size: 10, weight: .semibold))
-                            .tracking(0.6)
-                            .foregroundStyle(Color.accentColor)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2.5)
-                            .background(Color.accentColor.opacity(0.12), in: .capsule)
-                    }
-                }
-                Text(weekRangeLabel)
-                    .font(.system(size: 13, design: .monospaced))
-                    .foregroundStyle(.secondary)
+    // MARK: - Toolbar
+
+    private var weekToolbar: some View {
+        HStack(spacing: 8) {
+            TKToolbarButton(action: { withAnimation(.snappy(duration: 0.2)) { weekStart = MyWeekView.monday(of: .now) } }) {
+                Text("Today")
             }
-            Spacer()
+            .opacity(isCurrentWeek ? 0.55 : 1)
+            .disabled(isCurrentWeek)
+
+            prevNext
+
+            Text(weekLabel)
+                .font(.tkMono(14, weight: .semibold))
+                .foregroundStyle(TK.text)
+            if isCurrentWeek {
+                TKPill(text: "Now")
+            }
+
+            Spacer(minLength: 8)
+
             VStack(alignment: .trailing, spacing: 5) {
                 Text("\(weekMinutes / 60)h / \(MyWeekView.weekCapacity / 60)h")
-                    .font(.system(size: 13, weight: .medium, design: .monospaced))
-                CapacityBar(
+                    .font(.tkMono(12))
+                    .foregroundStyle(TK.text2)
+                TKBar(
                     fraction: Double(weekMinutes) / Double(MyWeekView.weekCapacity),
-                    color: .accentColor
+                    color: weekMinutes > MyWeekView.weekCapacity ? TK.danger : TK.accent,
+                    height: 3,
+                    width: 64
                 )
-                .frame(width: 96)
             }
         }
-        .padding(.horizontal, 4)
     }
 
-    /// One bordered section container per day: surface header band on top,
-    /// project sub-headers and task rows joined by hairline dividers. An
-    /// empty day is just its band, so the week grid stays visible.
+    /// One 36pt pill, two halves split by a hairline.
+    private var prevNext: some View {
+        HStack(spacing: 0) {
+            Button {
+                withAnimation(.snappy(duration: 0.2)) {
+                    weekStart = Calendar.current.date(byAdding: .day, value: -7, to: weekStart)!
+                }
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(TK.text)
+                    .frame(width: 36, height: 36)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Previous week")
+            Rectangle().fill(TK.border).frame(width: 1, height: 36)
+            Button {
+                withAnimation(.snappy(duration: 0.2)) {
+                    weekStart = Calendar.current.date(byAdding: .day, value: 7, to: weekStart)!
+                }
+            } label: {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(TK.text)
+                    .frame(width: 36, height: 36)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Next week")
+        }
+        .background(TK.card, in: .rect(cornerRadius: TK.rChip))
+        .overlay(RoundedRectangle(cornerRadius: TK.rChip).strokeBorder(TK.border, lineWidth: 1))
+    }
+
+    // MARK: - Days
+
+    /// Day band, its task rows (project by project) and the add row. An
+    /// empty day is just its band + add row, so the week grid stays visible.
     @ViewBuilder
     private func daySection(index: Int, day: Date) -> some View {
         let tasks = planned(on: day)
-
-        VStack(spacing: 0) {
-            dayHeader(index: index, day: day, tasks: tasks)
-            ForEach(Array(projectGroups(in: tasks).enumerated()), id: \.element.name) {
-                groupIndex, group in
-                if groupIndex > 0 {
-                    Divider()
-                        .overlay(Color.webBorderStrong)
-                        .padding(.leading, 14)
-                }
-                HStack(spacing: 7) {
-                    Circle()
-                        .fill(group.color)
-                        .frame(width: 8, height: 8)
-                    Text(group.name)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(minutes(in: group.tasks).minutesFormatted)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(.horizontal, 14)
-                .padding(.top, 12)
-                ForEach(Array(group.tasks.enumerated()), id: \.element.id) { taskIndex, task in
-                    if taskIndex > 0 {
-                        Divider()
-                            .overlay(Color.webBorderStrong)
-                            .padding(.leading, 14)
-                    }
-                    NavigationLink(value: task) {
-                        TaskCard(task: task, showPlanned: false, embedded: true)
-                    }
-                    .buttonStyle(.plain)
-                    .taskContextMenu(for: task, model: model)
-                }
-            }
-        }
-        .sectionStyle()
-    }
-
-    private func dayHeader(index: Int, day: Date, tasks: [TaskItem]) -> some View {
         let mins = minutes(in: tasks)
         let isToday = Calendar.current.isDateInToday(day)
-        let isWeekend = index >= 5
-        let over = mins > MyWeekView.dayCapacity
 
-        return HStack(spacing: 7) {
-            Text(day.formatted(.dateTime.weekday(.wide)))
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(isToday ? Color.accentColor : isWeekend ? Color(.secondaryLabel) : Color(.label))
-            Text("\(Calendar.current.component(.day, from: day))")
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(.tertiary)
-            if !tasks.isEmpty {
-                Text("\(tasks.count)")
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(.tertiary)
+        TKDayBand(
+            name: day.formatted(.dateTime.weekday(.wide)),
+            date: day.formatted(.dateTime.day().month(.abbreviated)),
+            isToday: isToday,
+            muted: index >= 5,
+            count: tasks.count,
+            trailing: mins > 0 ? mins.minutesFormatted : "0m"
+        )
+        ForEach(projectGroups(in: tasks), id: \.name) { group in
+            ForEach(group.tasks) { task in
+                TKHairline()
+                TaskRow(
+                    task: task,
+                    model: model,
+                    leading: .projectDot,
+                    showProject: true,
+                    showPlay: true,
+                    timeLabel: timeMinutes(task).minutesFormatted
+                ) {
+                    model.weekPath.append(task)
+                }
+                .taskContextMenu(for: task, model: model)
             }
-            Spacer()
-            CapacityBar(
-                fraction: Double(mins) / Double(MyWeekView.dayCapacity),
-                color: over ? Color(hex: 0xEF4F5E) : isToday ? .accentColor : Color(.systemGray2)
-            )
-            .frame(width: 64)
-            Text(mins > 0 ? mins.minutesFormatted : "0m")
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(.secondary)
-                .frame(width: 52, alignment: .trailing)
         }
-        .padding(.horizontal, 14)
-        .frame(height: 38)
-        .frame(maxWidth: .infinity)
-        .background(Color.webSurface)
+        TKHairline()
+        addRow
     }
+
+    /// "+ Add task" — opens the create sheet as a task (the tab bar's "+"
+    /// path), scope left to the sheet.
+    private var addRow: some View {
+        Button {
+            model.createProjectName = nil
+            model.presentCreate()
+        } label: {
+            HStack(spacing: 0) {
+                Image(systemName: "plus")
+                    .font(.system(size: 16, weight: .regular))
+                    .frame(width: 36, height: 36)
+                Text("Add task")
+                    .font(.system(size: 14))
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(TK.text4)
+            .padding(.leading, 8)
+            .padding(.trailing, TK.gutter)
+            .frame(minHeight: 44)
+            .contentShape(.rect)
+        }
+        .buttonStyle(TKPressStyle())
+    }
+
+    // MARK: - Unscheduled
 
     private var unscheduledSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 7) {
-                Text("Unscheduled")
-                    .font(.system(size: 13, weight: .semibold))
-                Text("\(unscheduled.count)")
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(.tertiary)
-            }
-            .padding(.horizontal, 4)
-
-            Picker("Unscheduled", selection: $unscheduledTab) {
-                ForEach(UnscheduledTab.allCases) { tab in
-                    Text(tab.label).tag(tab)
-                }
-            }
-            .pickerStyle(.segmented)
+        VStack(alignment: .leading, spacing: 0) {
+            TKGroupBand(title: "Unscheduled", count: unscheduled.count)
+            TKSegmented(UnscheduledTab.allCases, selection: $unscheduledTab) { $0.label }
+                .padding(.horizontal, TK.gutter)
+                .padding(.vertical, 12)
 
             if unscheduled.isEmpty {
-                HStack(spacing: 7) {
-                    Image(systemName: "checkmark.circle")
-                        .font(.system(size: 13))
-                    Text("Nothing here — inbox zero.")
-                        .font(.system(size: 13))
-                }
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 6)
+                TKHairline()
+                TKEmptyState(text: "Nothing here — inbox zero.", padding: 28)
             } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(unscheduled.enumerated()), id: \.element.id) { index, task in
-                        if index > 0 {
-                            Divider()
-                                .overlay(Color.webBorderStrong)
-                                .padding(.leading, 14)
-                        }
-                        NavigationLink(value: task) {
-                            TaskCard(task: task, embedded: true)
-                        }
-                        .buttonStyle(.plain)
-                        .taskContextMenu(for: task, model: model)
+                ForEach(unscheduled) { task in
+                    TKHairline()
+                    TaskRow(
+                        task: task,
+                        model: model,
+                        leading: .projectDot,
+                        showProject: true,
+                        timeLabel: unscheduledTab == .past
+                            ? task.plannedFor?.formatted(.dateTime.day().month(.abbreviated))
+                            : nil
+                    ) {
+                        model.weekPath.append(task)
                     }
+                    .taskContextMenu(for: task, model: model)
                 }
-                .sectionStyle()
+                TKHairline()
             }
         }
-    }
-}
-
-/// Thin capacity meter, web parity with the day/week progress bars.
-private struct CapacityBar: View {
-    let fraction: Double
-    let color: Color
-
-    var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                Capsule().fill(Color(.systemGray5))
-                Capsule()
-                    .fill(color)
-                    .frame(width: geo.size.width * min(1, max(0, fraction)))
-            }
-        }
-        .frame(height: 4)
     }
 }
 
 #Preview {
     MyWeekView(model: AppModel())
+        .preferredColorScheme(.dark)
 }
