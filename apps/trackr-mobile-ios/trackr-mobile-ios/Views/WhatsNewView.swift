@@ -25,6 +25,26 @@ struct WhatsNewView: View {
     }
 
     private let releases: [Release] = [
+        Release(version: "1.1.0", name: "New Design", date: "September 2026", features: [
+            Feature(icon: "paintbrush.fill", title: "Rebuilt from the Ground Up",
+                    detail: "Every screen follows the new trackr design: flat lists with hairlines, mono keys and dates, cards only where they earn it — and it matches the web app."),
+            Feature(icon: "square.grid.2x2.fill", title: "New Navigation",
+                    detail: "My week, Tickets, Tasks and Search on the bottom bar with the create button in the middle; Projects, Chat, Notes, Meetings, Wiki and your account live behind the avatar; the bell opens your inbox."),
+            Feature(icon: "rectangle.split.3x1.fill", title: "Board Views",
+                    detail: "Tickets, tasks and your week can be shown as columns. Columns snap into place, and the week board opens on today."),
+            Feature(icon: "line.3.horizontal.decrease", title: "One Filter Sheet",
+                    detail: "Saved views, list or board, group by, sort and every filter live in one sheet behind the Filter button."),
+            Feature(icon: "bubble.left.and.bubble.right.fill", title: "Conversations as Chat",
+                    detail: "Ticket replies, chat threads and task comments read like a messenger: bubbles with the sender's name, your own messages on the right, day separators, amber internal notes."),
+            Feature(icon: "text.badge.checkmark", title: "Formatted Descriptions",
+                    detail: "Task and ticket descriptions and comments render their markdown — lists, bold, code, quotes — and tap to edit."),
+            Feature(icon: "plus.circle.fill", title: "One Create Sheet",
+                    detail: "The + button creates a ticket, a task or a work session from the same sheet, pre-scoped to the page you were on — a day in your week plans the task for that day."),
+            Feature(icon: "pause.circle.fill", title: "Pause a Session",
+                    detail: "Work sessions can be paused and resumed from the mini bar or the session sheet; the Live Activity freezes while paused."),
+            Feature(icon: "building.2.fill", title: "Your Instance's Branding",
+                    detail: "The top bar shows your server's name and logo. Theme (dark, light, system) is in Account settings."),
+        ]),
         Release(version: "1.0.5", name: "Sort & Saved Views", date: "September 2026", features: [
             Feature(icon: "arrow.up.arrow.down", title: "Sort Tasks and Tickets",
                     detail: "The filter sheet has a Sort by row — tasks by due date, priority, last updated, created or title; tickets by priority, last activity, created or subject. Tap the arrow to flip the direction."),
