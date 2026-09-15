@@ -162,6 +162,7 @@ final class SyncEngine {
         guard let fresh = try? await client.tasks() else { return }
         store.save("tasks", fresh)
         apply(tasks: fresh)
+        model.pruneOrphanedSession()
     }
 
     func refreshTickets() async {

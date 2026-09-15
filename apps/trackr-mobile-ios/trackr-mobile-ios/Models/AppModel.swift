@@ -201,8 +201,11 @@ final class AppModel {
     /// Mirrored to disk on every change so a killed process can resume it
     /// (SessionStore) — the Live Activity keeps counting meanwhile.
     var session = WorkSession() {
-        didSet { SessionStore.save(session) }
+        didSet { if persistsSession { SessionStore.save(session) } }
     }
+    /// Sample-data runs (previews, `--sample-data`) never write the session
+    /// to disk — a sample task would otherwise resurface after sign-in.
+    private let persistsSession: Bool
     var showingPlayer = false
 
     // Per-page view state, shared across tab switches and synced with the
@@ -239,6 +242,7 @@ final class AppModel {
     /// Previews and design work run on the bundled sample data; the real app
     /// starts empty and is filled by SyncEngine (cache first, then network).
     init(sampleData: Bool = true) {
+        persistsSession = !sampleData
         if sampleData {
             tasks = TaskItem.samples
             projects = ProjectItem.samples
@@ -389,6 +393,14 @@ final class AppModel {
     func restoreSession() {
         guard !session.isRunning, let saved = SessionStore.restore(author: me) else { return }
         session = saved
+    }
+
+    /// After the task list is loaded: a restored session bound to a task
+    /// that no longer exists (deleted, or from another account) is dropped.
+    func pruneOrphanedSession() {
+        guard let taskId = session.taskId, !tasks.isEmpty,
+              !tasks.contains(where: { $0.id == taskId }) else { return }
+        session = WorkSession()
     }
 
     func startSession(for project: ProjectRef) {
