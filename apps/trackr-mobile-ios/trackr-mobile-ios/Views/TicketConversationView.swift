@@ -2,10 +2,11 @@
 //  TicketConversationView.swift
 //  trackr-mobile-ios
 //
-//  The ticket's activity timeline, rendered inline on the detail page
-//  (no separate push any more): customer / agent replies as MessageCards,
-//  amber-tinted internal notes, and system events as icon nodes — all in
-//  time order. The composer lives on the detail's bottom inset.
+//  The ticket's conversation, rendered inline on the detail page: chat
+//  bubbles (others left with their avatar and name in their color, the
+//  signed-in user right in the accent tint, internal notes amber), day
+//  separators between days, and system events as plain icon rows in time
+//  order. The composer lives on the detail's bottom inset.
 //
 
 import SwiftUI
@@ -40,12 +41,17 @@ enum TicketTimelineEvent: Identifiable {
 
 struct TicketConversationView: View {
     let ticket: TicketItem
+    /// The signed-in user — their messages go on the right.
+    var me: UserRef? = nil
 
     private var events: [TicketTimelineEvent] { TicketTimelineEvent.events(for: ticket) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            ForEach(events) { event in
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(events.enumerated()), id: \.element.id) { index, event in
+                if index == 0 || !Calendar.current.isDate(events[index - 1].date, inSameDayAs: event.date) {
+                    daySeparator(event.date)
+                }
                 row(for: event).id(event.id)
             }
             if events.isEmpty {
@@ -56,36 +62,62 @@ struct TicketConversationView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        // The rail: a hairline behind the node column.
-        .background(alignment: .leading) {
-            if events.count > 1 {
-                Rectangle()
-                    .fill(TK.hairlineStrong)
-                    .frame(width: 1)
-                    .offset(x: TimelineRow<EmptyView>.nodeSize / 2)
-                    .padding(.vertical, 12)
-            }
-        }
+    }
+
+    // MARK: - Rows
+
+    private func isMine(_ user: UserRef) -> Bool {
+        guard let me else { return false }
+        if let mine = me.serverId, let theirs = user.serverId { return mine == theirs }
+        return me == user
+    }
+
+    /// WhatsApp-style centered date pill.
+    private func daySeparator(_ date: Date) -> some View {
+        let label: String = Calendar.current.isDateInToday(date)
+            ? "Today"
+            : Calendar.current.isDateInYesterday(date)
+                ? "Yesterday"
+                : date.formatted(.dateTime.day().month(.abbreviated).year())
+        return Text(label)
+            .font(.tkMono(11))
+            .foregroundStyle(TK.text3)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(TK.card, in: .capsule)
+            .overlay(Capsule().strokeBorder(TK.border, lineWidth: 1))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 4)
     }
 
     @ViewBuilder
     private func row(for event: TicketTimelineEvent) -> some View {
         switch event {
         case .message(let message):
-            TimelineRow(
-                node: .avatar(message.user),
-                name: message.user.name,
-                action: message.internalNote ? "added an" : "replied",
-                date: message.date,
-                tag: message.internalNote ? ("internal note", TK.amber) : nil
-            ) {
+            let mine = isMine(message.user)
+            HStack(alignment: .bottom, spacing: 8) {
+                if !mine {
+                    AvatarView(user: message.user, size: 28)
+                }
                 MessageCard(
                     text: message.text,
                     accent: message.internalNote ? TK.amber : nil,
                     attachments: message.attachments,
-                    pendingFiles: message.pendingFiles
+                    pendingFiles: message.pendingFiles,
+                    bubble: mine ? .outgoing : .incoming(name: message.user.name, color: message.user.color),
+                    time: message.date
                 )
+                .overlay(alignment: .topTrailing) {
+                    if message.internalNote {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(TK.amber)
+                            .padding(8)
+                    }
+                }
+                .frame(maxWidth: 300, alignment: mine ? .trailing : .leading)
             }
+            .frame(maxWidth: .infinity, alignment: mine ? .trailing : .leading)
         case .activity(let activity):
             TimelineRow(
                 node: .icon(activity.icon),
@@ -93,13 +125,14 @@ struct TicketConversationView: View {
                 action: activity.text,
                 date: activity.date
             )
+            .padding(.vertical, 2)
         }
     }
 }
 
 #Preview {
     ScrollView {
-        TicketConversationView(ticket: TicketItem.samples[1])
+        TicketConversationView(ticket: TicketItem.samples[1], me: TaskItem.sampleUsers[0])
             .padding(16)
     }
     .background(TK.bg)

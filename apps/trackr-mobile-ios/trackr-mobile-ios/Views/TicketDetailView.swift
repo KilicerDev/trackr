@@ -71,7 +71,7 @@ struct TicketDetailView: View {
                     }
                     VStack(alignment: .leading, spacing: 14) {
                         TKSectionLabel("Activity")
-                        TicketConversationView(ticket: ticket)
+                        TicketConversationView(ticket: ticket, me: model?.me)
                     }
                 }
                 .padding(.horizontal, TK.gutter)
@@ -82,6 +82,15 @@ struct TicketDetailView: View {
             .onChange(of: ticket.messages.count) {
                 if let last = TicketTimelineEvent.events(for: ticket).last {
                     withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                }
+            }
+            // Screenshot hook: `--scroll-bottom` jumps to the newest message.
+            .onAppear {
+                guard ProcessInfo.processInfo.arguments.contains("--scroll-bottom") else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                    if let last = TicketTimelineEvent.events(for: ticket).last {
+                        proxy.scrollTo(last.id, anchor: .bottom)
+                    }
                 }
             }
         }

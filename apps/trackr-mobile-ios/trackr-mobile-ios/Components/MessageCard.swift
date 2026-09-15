@@ -21,6 +21,17 @@ struct MessageCard: View {
     /// from their local bytes with a progress badge until the server copy
     /// (with real attachments) replaces the row.
     var pendingFiles: [PickedFile] = []
+    /// Chat-bubble variant (ticket conversation): sender name in the
+    /// sender's color on top, time bottom-right, no outline.
+    var bubble: Bubble? = nil
+    var time: Date? = nil
+
+    enum Bubble {
+        /// Someone else: name header in their color.
+        case incoming(name: String, color: Color)
+        /// The signed-in user: accent-tinted, no name.
+        case outgoing
+    }
 
     @Environment(\.attachmentStore) private var store
     @State private var previewURL: URL?
@@ -35,6 +46,11 @@ struct MessageCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if case .incoming(let name, let color) = bubble {
+                Text(name)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(color)
+            }
             if !text.isEmpty {
                 if MarkdownParser.hasBlockSyntax(text) {
                     RichContentView(markdown: text)
@@ -54,19 +70,33 @@ struct MessageCard: View {
             if !pendingFiles.isEmpty {
                 pendingRow
             }
+            if bubble != nil, let time {
+                Text(time.formatted(.dateTime.hour().minute()))
+                    .font(.tkMono(11))
+                    .foregroundStyle(TK.text3)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: bubble == nil ? .infinity : nil, alignment: .leading)
         .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(
-            accent?.opacity(0.07) ?? TK.card,
-            in: .rect(cornerRadius: 12)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(accent?.opacity(0.40) ?? TK.border, lineWidth: 1)
-        )
+        .padding(.vertical, bubble == nil ? 12 : 10)
+        .background(bubbleFill, in: .rect(cornerRadius: bubble == nil ? 12 : 16))
+        .overlay {
+            if bubble == nil {
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(accent?.opacity(0.40) ?? TK.border, lineWidth: 1)
+            }
+        }
         .quickLookPreview($previewURL)
+    }
+
+    private var bubbleFill: Color {
+        if let accent { return accent.opacity(bubble == nil ? 0.07 : 0.14) }
+        switch bubble {
+        case .outgoing: return TK.accent.opacity(0.16)
+        case .incoming: return TK.elevated
+        case nil: return TK.card
+        }
     }
 
     private var imageRow: some View {
