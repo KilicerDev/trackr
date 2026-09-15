@@ -81,7 +81,7 @@ struct MyWeekView: View {
         let day = Date.FormatStyle().day()
         let dayMonth = Date.FormatStyle().day().month(.abbreviated)
         return sameMonth
-            ? "\(weekStart.formatted(day)) – \(end.formatted(dayMonth))"
+            ? "\(weekStart.formatted(dayMonth)) – \(end.formatted(day))"
             : "\(weekStart.formatted(dayMonth)) – \(end.formatted(dayMonth))"
     }
 
@@ -347,7 +347,11 @@ struct MyWeekView: View {
     // MARK: - Board
 
     private var weekBoard: some View {
-        TKBoard(columns: weekColumns, columnWidth: 240) { column in
+        TKBoard(
+            columns: weekColumns,
+            columnWidth: 240,
+            initialColumn: weekColumns.first { $0.day.map { Calendar.current.isDateInToday($0) } ?? false }?.id
+        ) { column in
             if let day = column.day {
                 let tasks = planned(on: day)
                 let mins = minutes(in: tasks)

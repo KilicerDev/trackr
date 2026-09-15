@@ -113,9 +113,13 @@ struct TKBoardColumnHeader: View {
 struct TKBoard<Column: Identifiable, Header: View, Cards: View, Footer: View>: View {
     let columns: [Column]
     var columnWidth: CGFloat = 250
+    /// Column to scroll to on first appearance (the week's today).
+    var initialColumn: Column.ID? = nil
     @ViewBuilder var header: (Column) -> Header
     @ViewBuilder var cards: (Column) -> Cards
     @ViewBuilder var footer: (Column) -> Footer
+
+    @State private var position: Column.ID?
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -133,21 +137,30 @@ struct TKBoard<Column: Identifiable, Header: View, Cards: View, Footer: View>: V
                         .scrollBounceBehavior(.basedOnSize)
                     }
                     .frame(width: columnWidth)
+                    .id(column.id)
                 }
             }
-            .padding(.horizontal, TK.gutter)
+            .scrollTargetLayout()
             .padding(.top, 4)
             .frame(maxHeight: .infinity, alignment: .top)
         }
+        .contentMargins(.horizontal, TK.gutter, for: .scrollContent)
+        .scrollPosition(id: $position, anchor: .leading)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onAppear {
+            // Anchor deterministically: the layout settles after the shell
+            // insets appear, which otherwise leaves a random offset.
+            if position == nil { position = initialColumn ?? columns.first?.id }
+        }
     }
 }
 
 extension TKBoard where Footer == EmptyView {
-    init(columns: [Column], columnWidth: CGFloat = 250,
+    init(columns: [Column], columnWidth: CGFloat = 250, initialColumn: Column.ID? = nil,
          @ViewBuilder header: @escaping (Column) -> Header,
          @ViewBuilder cards: @escaping (Column) -> Cards) {
-        self.init(columns: columns, columnWidth: columnWidth, header: header, cards: cards) { _ in EmptyView() }
+        self.init(columns: columns, columnWidth: columnWidth, initialColumn: initialColumn,
+                  header: header, cards: cards) { _ in EmptyView() }
     }
 }
 
