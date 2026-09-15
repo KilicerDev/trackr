@@ -98,8 +98,11 @@ struct WorkspaceSwitcher: View {
                 .padding(.bottom, 6)
 
             HStack(spacing: 12) {
-                WorkspaceLogo(url: model.workspaceLogoURL, size: 34, barsHeight: 14, radius: 10)
-                    .background(TK.bg, in: .rect(cornerRadius: 10))
+                // Logo sits inset in the tile so its own edges never fight the
+                // tile's; no tile background when the instance has a logo.
+                WorkspaceLogo(url: model.workspaceLogoURL, size: 24, barsHeight: 14, radius: 6)
+                    .frame(width: 34, height: 34)
+                    .background(model.workspaceLogoURL == nil ? TK.bg : .clear, in: .rect(cornerRadius: 10))
                 VStack(alignment: .leading, spacing: 1) {
                     Text(model.workspaceLabel)
                         .font(.system(size: 15, weight: .semibold))
