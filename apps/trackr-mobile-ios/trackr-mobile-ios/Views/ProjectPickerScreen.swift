@@ -2,9 +2,10 @@
 //  ProjectPickerScreen.swift
 //  trackr-mobile-ios
 //
-//  Searchable project picker for big workspaces (50+ projects) — pushed from
-//  a Form row instead of an endless inline Menu. Favorites and recently-used
-//  projects surface first; typing filters the whole list.
+//  Searchable project picker for big workspaces (50+ projects) — a
+//  `TKPickerSheet`-styled sheet with Favorites / Recent / All bands.
+//  Favorites and recently-used projects surface first; typing filters the
+//  whole list. Presented with `.sheet` from the create sheet's scope chip.
 //
 
 import SwiftUI
@@ -41,25 +42,53 @@ struct ProjectPickerScreen: View {
         all.filter { $0.name.localizedCaseInsensitiveContains(query) }
     }
 
+    private struct Band: Identifiable {
+        let title: String?
+        let rows: [ProjectChoice]
+        var id: String { title ?? "all" }
+    }
+
+    private var bands: [Band] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard q.isEmpty else { return [Band(title: nil, rows: filtered)] }
+        var out: [Band] = []
+        if !favorites.isEmpty { out.append(Band(title: "Favorites", rows: favorites)) }
+        if !recentChoices.isEmpty { out.append(Band(title: "Recent", rows: recentChoices)) }
+        out.append(Band(title: out.isEmpty ? nil : "All projects", rows: all))
+        return out
+    }
+
     var body: some View {
-        List {
-            if query.isEmpty {
-                if !favorites.isEmpty {
-                    Section("Favorites") { ForEach(favorites, id: \.name) { row($0) } }
+        VStack(spacing: 12) {
+            TKSheetHeader(title: "Project")
+            TKSearchField(text: $query, placeholder: "Search projects…", height: 42, autoFocus: choices.count > 8)
+                .padding(.horizontal, TK.gutter)
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(bands) { band in
+                        if let title = band.title {
+                            TKGroupBand(title: title, count: band.rows.count)
+                        }
+                        ForEach(band.rows, id: \.name) { choice in
+                            row(choice)
+                            if choice != band.rows.last {
+                                TKHairline(color: TK.hairlineStrong, leading: 14)
+                            }
+                        }
+                    }
+                    if bands.allSatisfy(\.rows.isEmpty) {
+                        TKEmptyState(text: "No matches", padding: 24)
+                    }
                 }
-                if !recentChoices.isEmpty {
-                    Section("Recent") { ForEach(recentChoices, id: \.name) { row($0) } }
-                }
-                Section(favorites.isEmpty && recentChoices.isEmpty ? "" : "All projects") {
-                    ForEach(all, id: \.name) { row($0) }
-                }
-            } else {
-                ForEach(filtered, id: \.name) { row($0) }
+                .background(TK.bg, in: .rect(cornerRadius: TK.rCardSm))
+                .clipShape(.rect(cornerRadius: TK.rCardSm))
+                .overlay(RoundedRectangle(cornerRadius: TK.rCardSm).strokeBorder(TK.border, lineWidth: 1))
+                .padding(.horizontal, TK.gutter)
+                .padding(.bottom, 24)
             }
+            .scrollDismissesKeyboard(.interactively)
         }
-        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always))
-        .navigationTitle("Project")
-        .navigationBarTitleDisplayMode(.inline)
+        .tkSheet(detents: [.large])
     }
 
     private func row(_ choice: ProjectChoice) -> some View {
@@ -67,33 +96,45 @@ struct ProjectPickerScreen: View {
             selection = choice.name
             dismiss()
         } label: {
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(choice.color)
-                    .frame(width: 10, height: 10)
+            HStack(spacing: 12) {
+                Text(String(choice.name.prefix(1)).uppercased())
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 26, height: 26)
+                    .background(choice.color, in: .rect(cornerRadius: 7))
                 Text(choice.name)
-                    .foregroundStyle(Color(.label))
+                    .font(.system(size: 16))
+                    .foregroundStyle(TK.text)
+                    .lineLimit(1)
+                if choice.isFavorite {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(TK.amber)
+                }
                 Spacer()
                 if choice.name == selection {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Color.accentColor)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(TK.accent)
                 }
             }
+            .padding(.horizontal, 14)
+            .frame(minHeight: 50)
+            .contentShape(.rect)
         }
+        .buttonStyle(TKPressStyle())
     }
 }
 
 #Preview {
-    NavigationStack {
+    Color.clear.sheet(isPresented: .constant(true)) {
         ProjectPickerScreen(
-            choices: [
-                ProjectChoice(name: "Webim Campaign", color: .blue, isFavorite: true),
-                ProjectChoice(name: "Maja Demo", color: .purple),
-                ProjectChoice(name: "Trackr Internal", color: .orange)
-            ],
-            recents: ["Maja Demo"],
-            selection: .constant("Trackr Internal")
+            choices: ProjectItem.samples.map {
+                ProjectChoice(name: $0.name, color: $0.color, isFavorite: $0.isFavorite)
+            },
+            recents: ["Siweb Shop Relaunch"],
+            selection: .constant("Trackr Web")
         )
     }
+    .preferredColorScheme(.dark)
 }
