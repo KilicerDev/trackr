@@ -145,6 +145,8 @@ struct TKBoard<Column: Identifiable, Header: View, Cards: View, Footer: View>: V
             .frame(maxHeight: .infinity, alignment: .top)
         }
         .contentMargins(.horizontal, TK.gutter, for: .scrollContent)
+        // Paging feel: every swipe settles with a column at the leading edge.
+        .scrollTargetBehavior(.viewAligned)
         .scrollPosition(id: $position, anchor: .leading)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
