@@ -3,8 +3,8 @@
 //  trackr-mobile-ios
 //
 //  Files staged on a create sheet before the entity exists. The sheet holds
-//  one `FileStaging` value, renders `StagedFilesSection` inside its Form and
-//  attaches `.fileStaging(...)` to the Form so the pickers + error alert
+//  one `FileStaging` value, renders `StagedFilesSection` in its body and
+//  attaches `.fileStaging(...)` to the sheet so the pickers + error alert
 //  live in one place. On create, `files` rides along in the same multipart
 //  request as the entity, so the server can list them in the webhook.
 //
@@ -40,29 +40,72 @@ struct FileStaging {
     }
 }
 
-/// The "Attachments" Form section: photo/file sources + staged chips.
+/// The "Attachments" block of a create sheet: a card chip strip of the
+/// staged files (thumbnail 32 · name · size · remove) plus a dashed
+/// "Attach" chip that opens the source chooser (photos / files).
 struct StagedFilesSection: View {
     @Binding var staging: FileStaging
+    @State private var choosingSource = false
+    @State private var pendingSource: Source?
+
+    private enum Source: String, CaseIterable, Identifiable {
+        case photos, files
+        var id: String { rawValue }
+    }
+
+    private var full: Bool { staging.files.count >= AttachmentRules.maxFilesPerBatch }
 
     var body: some View {
-        Section("Attachments") {
-            Button {
-                staging.showingPhotos = true
-            } label: {
-                AttachmentSourceLabel(title: "Photo Library", systemImage: "photo.on.rectangle")
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                TKSectionLabel("Attachments")
+                if !staging.files.isEmpty {
+                    Text("\(staging.files.count)")
+                        .font(.tkMono(11))
+                        .foregroundStyle(TK.text3)
+                }
+                Spacer()
             }
-            Button {
-                staging.showingFiles = true
-            } label: {
-                AttachmentSourceLabel(title: "Choose Files", systemImage: "folder")
-            }
-            if !staging.files.isEmpty {
-                ChipFlow(spacing: 6) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
                     ForEach(staging.files) { file in
                         StagedFileChip(file: file) { staging.remove(file) }
                     }
+                    TKGhostChip(title: "Attach", icon: "paperclip", height: 40) {
+                        choosingSource = true
+                    }
+                    .disabled(full)
+                    .opacity(full ? 0.4 : 1)
                 }
+                .padding(10)
             }
+            .tkCard(padding: nil)
+        }
+        .sheet(isPresented: $choosingSource, onDismiss: openPendingSource) {
+            TKPickerSheet(
+                title: "Attach",
+                options: [
+                    TKPickerOption(Source.photos, label: "Photo Library") {
+                        TKPickerIcon.symbol("photo.on.rectangle")
+                    },
+                    TKPickerOption(Source.files, label: "Choose Files") {
+                        TKPickerIcon.symbol("folder")
+                    },
+                ],
+                selected: nil
+            ) { pendingSource = $0 }
+        }
+    }
+
+    /// The system pickers are hosted by `.fileStaging` on the sheet; open
+    /// them only once the chooser has slid away so the presentations don't
+    /// collide.
+    private func openPendingSource() {
+        guard let source = pendingSource else { return }
+        pendingSource = nil
+        switch source {
+        case .photos: staging.showingPhotos = true
+        case .files: staging.showingFiles = true
         }
     }
 }
@@ -72,28 +115,52 @@ struct StagedFileChip: View {
     let onRemove: () -> Void
 
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: file.isImage ? "photo" : "doc")
-                .font(.system(size: 12))
-                .foregroundStyle(Color(.secondaryLabel))
-            Text(file.filename)
-                .font(.system(size: 13, weight: .medium))
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(maxWidth: 160, alignment: .leading)
-            Text(file.sizeFormatted)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
+        HStack(spacing: 8) {
+            thumbnail
+            VStack(alignment: .leading, spacing: 1) {
+                Text(file.filename)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(TK.text)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: 120, alignment: .leading)
+                Text(file.sizeFormatted)
+                    .font(.tkMono(11))
+                    .foregroundStyle(TK.text3)
+            }
             Button(action: onRemove) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 14))
-                    .foregroundStyle(Color(.tertiaryLabel))
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(TK.text3)
+                    .frame(width: 24, height: 24)
+                    .background(TK.mono(0.08), in: .circle)
+                    .contentShape(.circle)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Remove \(file.filename)")
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Color(.tertiarySystemFill), in: .capsule)
+        .padding(.leading, 4)
+        .padding(.trailing, 6)
+        .frame(height: 40)
+        .background(TK.bg, in: .rect(cornerRadius: TK.rChip))
+        .overlay(RoundedRectangle(cornerRadius: TK.rChip).strokeBorder(TK.borderStrong, lineWidth: 1))
+    }
+
+    @ViewBuilder
+    private var thumbnail: some View {
+        if file.isImage, let image = UIImage(data: file.data) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 32, height: 32)
+                .clipShape(.rect(cornerRadius: 7))
+        } else {
+            Image(systemName: "doc")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(TK.text2)
+                .frame(width: 32, height: 32)
+                .background(TK.mono(0.06), in: .rect(cornerRadius: 7))
+        }
     }
 }
 
@@ -115,4 +182,18 @@ extension View {
             Text(staging.wrappedValue.error ?? "")
         }
     }
+}
+
+#Preview {
+    @Previewable @State var staging = FileStaging(files: [
+        PickedFile(filename: "screenshot-2026-09-14.png", mimeType: "image/png", data: Data(count: 240_000)),
+        PickedFile(filename: "invoice.pdf", mimeType: "application/pdf", data: Data(count: 1_200_000)),
+    ])
+    VStack {
+        StagedFilesSection(staging: $staging)
+    }
+    .padding(16)
+    .frame(maxHeight: .infinity)
+    .background(TK.bgRaised)
+    .preferredColorScheme(.dark)
 }
