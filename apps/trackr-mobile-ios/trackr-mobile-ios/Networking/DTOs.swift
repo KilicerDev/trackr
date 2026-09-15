@@ -10,11 +10,11 @@
 
 import Foundation
 
-enum API {
+nonisolated enum API {
     // MARK: - Instance & session
 
-    struct Instance: Codable {
-        struct Branding: Codable {
+    nonisolated struct Instance: Codable {
+        nonisolated struct Branding: Codable {
             let name: String?
             let logoUrl: String?
         }
@@ -25,25 +25,25 @@ enum API {
         let branding: Branding?
     }
 
-    struct DisplayUser: Codable {
+    nonisolated struct DisplayUser: Codable {
         let name: String
         let color: String
     }
 
-    struct PickerUser: Codable {
+    nonisolated struct PickerUser: Codable {
         let id: String
         let name: String
         let color: String
     }
 
-    struct Me: Codable {
-        struct User: Codable {
+    nonisolated struct Me: Codable {
+        nonisolated struct User: Codable {
             let id: String
             let name: String
             let email: String
             let image: String?
         }
-        struct Surfaces: Codable {
+        nonisolated struct Surfaces: Codable {
             let tickets: Bool
             let chat: Bool
             let tasks: Bool
@@ -52,18 +52,18 @@ enum API {
             let notes: Bool
             let admin: Bool
         }
-        struct QuickCreate: Codable {
+        nonisolated struct QuickCreate: Codable {
             let ticket: Bool
             let task: Bool
             let note: Bool
         }
-        struct Capabilities: Codable {
+        nonisolated struct Capabilities: Codable {
             let userType: String
             let isAdmin: Bool
             let surfaces: Surfaces
             let quickCreate: QuickCreate
         }
-        struct Org: Codable {
+        nonisolated struct Org: Codable {
             let id: String
             let slug: String
             let name: String
@@ -78,13 +78,13 @@ enum API {
 
     // MARK: - Tasks
 
-    struct ChecklistEntry: Codable {
+    nonisolated struct ChecklistEntry: Codable {
         let id: String?
         let text: String
         let done: Bool
     }
 
-    struct TaskComment: Codable {
+    nonisolated struct TaskComment: Codable {
         let id: String?
         let user: String
         let date: String
@@ -93,7 +93,7 @@ enum API {
         let files: [Attachment]?
     }
 
-    struct TaskTimeLog: Codable {
+    nonisolated struct TaskTimeLog: Codable {
         let user: String
         let date: String
         let minutes: Int
@@ -101,7 +101,7 @@ enum API {
         let createdAt: String?
     }
 
-    struct Task: Codable {
+    nonisolated struct Task: Codable {
         let id: String  // displayId, e.g. "TRK-142"
         let uuid: String?
         let title: String
@@ -125,25 +125,25 @@ enum API {
     }
 
     /// Back-link from a converted task to its source ticket.
-    struct SourceTicket: Codable {
+    nonisolated struct SourceTicket: Codable {
         let id: String
         let displayId: String
     }
 
     /// Back-link from a ticket to a task converted out of it.
-    struct LinkedTask: Codable {
+    nonisolated struct LinkedTask: Codable {
         let id: String
         let displayId: String
         let title: String
         let status: String
     }
 
-    struct TasksResponse: Codable {
+    nonisolated struct TasksResponse: Codable {
         let tasks: [Task]
         let users: [String: DisplayUser]
     }
 
-    struct TaskDetailResponse: Codable {
+    nonisolated struct TaskDetailResponse: Codable {
         let task: Task
         let attachments: [Attachment]?
         let authors: [String: DisplayUser]
@@ -152,7 +152,7 @@ enum API {
         let canComment: Bool
     }
 
-    struct CreatedResponse: Codable {
+    nonisolated struct CreatedResponse: Codable {
         let id: String
         let displayId: String?
     }
@@ -162,7 +162,7 @@ enum API {
     /// AttachmentPublic from web/src/lib/server/attachments.ts — served by
     /// /api/attachments (cookie or bearer) and embedded in v1 detail
     /// responses.
-    struct Attachment: Codable {
+    nonisolated struct Attachment: Codable {
         let id: String
         let entityType: String
         let entityId: String
@@ -176,21 +176,21 @@ enum API {
         let createdAt: String
     }
 
-    struct AttachmentsResponse: Codable {
+    nonisolated struct AttachmentsResponse: Codable {
         let attachments: [Attachment]
     }
 
-    struct AttachmentUploadResponse: Codable {
+    nonisolated struct AttachmentUploadResponse: Codable {
         let attachment: Attachment
     }
 
-    struct OkResponse: Codable {
+    nonisolated struct OkResponse: Codable {
         let ok: Bool
     }
 
     // MARK: - Project activity
 
-    struct ProjectActivityActor: Codable {
+    nonisolated struct ProjectActivityActor: Codable {
         let id: String
         let name: String
         let color: String
@@ -198,7 +198,7 @@ enum API {
 
     /// One history line. `text` is pre-rendered by the server for typed
     /// events; for `type == "comment"` it is the comment body.
-    struct ProjectActivityItem: Codable {
+    nonisolated struct ProjectActivityItem: Codable {
         let id: String
         let type: String
         let taskId: String?
@@ -208,13 +208,13 @@ enum API {
         let actor: ProjectActivityActor?
     }
 
-    struct ProjectActivityResponse: Codable {
+    nonisolated struct ProjectActivityResponse: Codable {
         let items: [ProjectActivityItem]
     }
 
     // MARK: - Tickets
 
-    struct Ticket: Codable {
+    nonisolated struct Ticket: Codable {
         let id: String  // uuid
         let orgId: String
         let orgSlug: String
@@ -241,12 +241,12 @@ enum API {
         let updatedAt: String
     }
 
-    struct TicketsResponse: Codable {
+    nonisolated struct TicketsResponse: Codable {
         let tickets: [Ticket]
         let users: [String: DisplayUser]
     }
 
-    struct TicketMessage: Codable {
+    nonisolated struct TicketMessage: Codable {
         let id: String
         let authorId: String?
         let body: String
@@ -256,7 +256,7 @@ enum API {
         let attachments: [Attachment]?
     }
 
-    struct TicketDetailResponse: Codable {
+    nonisolated struct TicketDetailResponse: Codable {
         let ticket: Ticket
         let attachments: [Attachment]?
         let messages: [TicketMessage]
@@ -270,14 +270,14 @@ enum API {
 
     // MARK: - Chat
 
-    struct ChatTag: Codable {
+    nonisolated struct ChatTag: Codable {
         let id: String
         let label: String
         let color: String?
     }
 
-    struct ChatMessage: Codable {
-        struct Meta: Codable {
+    nonisolated struct ChatMessage: Codable {
+        nonisolated struct Meta: Codable {
             let event: String?
             let ticketId: String?
             let displayId: String?
@@ -293,7 +293,7 @@ enum API {
         let files: [Attachment]?
     }
 
-    struct ChatThread: Codable {
+    nonisolated struct ChatThread: Codable {
         let id: String
         let title: String?
         let status: String
@@ -304,15 +304,15 @@ enum API {
         let messages: [ChatMessage]
     }
 
-    struct ChatFeedResponse: Codable {
+    nonisolated struct ChatFeedResponse: Codable {
         let threads: [ChatThread]
         let tags: [ChatTag]
         let authors: [String: DisplayUser]
         let unreadThreadIds: [String]
     }
 
-    struct ChatThreadDetailResponse: Codable {
-        struct ThreadInfo: Codable {
+    nonisolated struct ChatThreadDetailResponse: Codable {
+        nonisolated struct ThreadInfo: Codable {
             let id: String
             let title: String?
             let orgId: String
@@ -322,13 +322,13 @@ enum API {
         let authors: [String: DisplayUser]
     }
 
-    struct ThreadCreatedResponse: Codable {
+    nonisolated struct ThreadCreatedResponse: Codable {
         let threadId: String
     }
 
     // MARK: - Notes & wiki
 
-    struct NoteListItem: Codable {
+    nonisolated struct NoteListItem: Codable {
         let id: String
         let kind: String
         let title: String
@@ -338,13 +338,13 @@ enum API {
         let meetingDate: String?
     }
 
-    struct NotesListResponse: Codable {
+    nonisolated struct NotesListResponse: Codable {
         let quick: [NoteListItem]
         let meetings: [NoteListItem]
         let shared: [NoteListItem]
     }
 
-    struct NoteDetail: Codable {
+    nonisolated struct NoteDetail: Codable {
         let id: String
         let kind: String
         let title: String
@@ -357,11 +357,11 @@ enum API {
         let updatedAt: String
     }
 
-    struct NoteDetailResponse: Codable {
+    nonisolated struct NoteDetailResponse: Codable {
         let note: NoteDetail
     }
 
-    struct WikiTreeNode: Codable {
+    nonisolated struct WikiTreeNode: Codable {
         let id: String
         let parentId: String?
         let title: String
@@ -370,11 +370,11 @@ enum API {
         let sortOrder: Int
     }
 
-    struct WikiTreeResponse: Codable {
+    nonisolated struct WikiTreeResponse: Codable {
         let pages: [WikiTreeNode]
     }
 
-    struct WikiPageDetail: Codable {
+    nonisolated struct WikiPageDetail: Codable {
         let id: String
         let title: String
         let icon: String?
@@ -383,18 +383,18 @@ enum API {
         let updatedAt: String
     }
 
-    struct WikiPageResponse: Codable {
+    nonisolated struct WikiPageResponse: Codable {
         let page: WikiPageDetail
     }
 
     // MARK: - Projects
 
-    struct ProjectMember: Codable {
+    nonisolated struct ProjectMember: Codable {
         let id: String
         let name: String
     }
 
-    struct Project: Codable {
+    nonisolated struct Project: Codable {
         let id: String
         let key: String
         let name: String
@@ -409,13 +409,13 @@ enum API {
         let updatedAt: String
     }
 
-    struct ProjectsResponse: Codable {
+    nonisolated struct ProjectsResponse: Codable {
         let projects: [Project]
     }
 
     // MARK: - Inbox
 
-    struct InboxItem: Codable {
+    nonisolated struct InboxItem: Codable {
         let id: String
         let kind: String
         let title: String
@@ -428,19 +428,19 @@ enum API {
         let createdAt: String
     }
 
-    struct InboxResponse: Codable {
+    nonisolated struct InboxResponse: Codable {
         let items: [InboxItem]
         let actors: [String: DisplayUser]
         let nextCursor: String?
     }
 
-    struct BadgeResponse: Codable {
+    nonisolated struct BadgeResponse: Codable {
         let unread: Int
     }
 
     // MARK: - Search
 
-    struct SearchResult: Codable {
+    nonisolated struct SearchResult: Codable {
         let type: String
         let id: String
         let title: String
@@ -448,35 +448,35 @@ enum API {
         let url: String
     }
 
-    struct SearchResponse: Codable {
+    nonisolated struct SearchResponse: Codable {
         let results: [SearchResult]
     }
 
     // MARK: - Preferences
 
-    struct NotificationChannelPref: Codable {
+    nonisolated struct NotificationChannelPref: Codable {
         var email: String  // off | instant | digest
         var inApp: Bool
     }
 
-    struct QuietHours: Codable {
+    nonisolated struct QuietHours: Codable {
         var enabled: Bool
         var start: String
         var end: String
         var weekends: Bool
     }
 
-    struct DigestConfig: Codable {
+    nonisolated struct DigestConfig: Codable {
         var frequency: String  // hourly | daily
         var hour: Int
     }
 
-    struct NotificationScope: Codable {
+    nonisolated struct NotificationScope: Codable {
         var tickets: String  // all | participating | mentions
         var chat: String
     }
 
-    struct Preferences: Codable {
+    nonisolated struct Preferences: Codable {
         var theme: String
         var density: String
         var defaultLanding: String
@@ -488,19 +488,19 @@ enum API {
         var notificationScope: NotificationScope
     }
 
-    struct PreferencesResponse: Codable {
+    nonisolated struct PreferencesResponse: Codable {
         let preferences: Preferences
     }
 
     /// GET /api/v1/me/views — the web pages' per-key view bookkeeping
     /// (saved views + last-used filters), kept raw: configs are opaque blobs.
-    struct ViewStateResponse: Codable {
+    nonisolated struct ViewStateResponse: Codable {
         let viewState: [String: JSONValue]
     }
 
     // MARK: - Events (SSE payloads)
 
-    struct Event: Codable {
+    nonisolated struct Event: Codable {
         let type: String  // entity | inbox
         let entityType: String?
         let entityId: String?
@@ -509,7 +509,7 @@ enum API {
 
 // MARK: - Date parsing
 
-enum APIDate {
+nonisolated enum APIDate {
     private static let iso: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

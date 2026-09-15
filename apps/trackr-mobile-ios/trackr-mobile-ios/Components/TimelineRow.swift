@@ -41,15 +41,19 @@ struct TimelineRow<Content: View>: View {
     }
 
     private var header: some View {
-        var line = Text(name).font(.system(size: 13, weight: .semibold)).foregroundColor(TK.text)
-        line = line + Text(" \(action)").font(.system(size: 13)).foregroundColor(TK.mono(0.65))
-        if let tag {
-            line = line + Text(" \(tag.text)").font(.system(size: 13)).foregroundColor(tag.color)
-        }
-        line = line + Text(" · ").font(.system(size: 13)).foregroundColor(TK.mono(0.65))
-        line = line + Text(date.formatted(.dateTime.day().month(.abbreviated)))
+        let who = Text(name).font(.system(size: 13, weight: .semibold)).foregroundColor(TK.text)
+        let when = Text(date.formatted(.dateTime.day().month(.abbreviated)))
             .font(.tkMono(11)).foregroundColor(TK.text3)
+        let line: Text
+        if let tag {
+            let tagged = Text(tag.text).foregroundColor(tag.color)
+            line = Text("\(who) \(action) \(tagged) · \(when)")
+        } else {
+            line = Text("\(who) \(action) · \(when)")
+        }
         return line
+            .font(.system(size: 13))
+            .foregroundColor(TK.mono(0.65))
     }
 
     @ViewBuilder

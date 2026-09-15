@@ -268,8 +268,8 @@ struct InboxRow: View {
     /// "**Mara** New comment on" — the actor in medium weight when known.
     private func actionLine(_ action: String) -> Text {
         if let actor {
-            return Text(actor.name).fontWeight(.semibold).foregroundStyle(unread ? TK.text : TK.text2)
-                + Text(" \(action)")
+            let who = Text(actor.name).fontWeight(.semibold).foregroundStyle(unread ? TK.text : TK.text2)
+            return Text("\(who) \(action)")
         }
         return Text(action)
     }

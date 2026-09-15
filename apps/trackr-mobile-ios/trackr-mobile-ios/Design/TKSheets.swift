@@ -103,7 +103,7 @@ struct TKPickerSheet<Value: Hashable>: View {
     private var detent: PresentationDetent {
         let rows = CGFloat(min(options.count, 9))
         let extra: CGFloat = searchable ? 54 : 0
-        return .height(min(UIScreen.main.bounds.height * 0.8, 120 + extra + rows * 50))
+        return .height(min(720, 120 + extra + rows * 50))
     }
 
     var body: some View {

@@ -118,7 +118,7 @@ enum TK {
     // MARK: Helpers
 
     /// Dark/light pair, switching with the interface style.
-    static func dyn(dark: UInt32, light: UInt32) -> Color {
+    nonisolated static func dyn(dark: UInt32, light: UInt32) -> Color {
         Color(uiColor: UIColor { traits in
             traits.userInterfaceStyle == .dark
                 ? UIColor(hex: dark) : UIColor(hex: light)
@@ -127,7 +127,7 @@ enum TK {
 
     /// White-with-alpha in dark, black-with-alpha in light — the prototype
     /// builds every line and secondary text this way.
-    static func mono(_ alpha: CGFloat) -> Color {
+    nonisolated static func mono(_ alpha: CGFloat) -> Color {
         Color(uiColor: UIColor { traits in
             traits.userInterfaceStyle == .dark
                 ? UIColor.white.withAlphaComponent(alpha)
@@ -136,9 +136,9 @@ enum TK {
     }
 
     /// Icon/status tile background: `color + 1f` in the prototype.
-    static func tint(_ color: Color) -> Color { color.opacity(0.12) }
+    nonisolated static func tint(_ color: Color) -> Color { color.opacity(0.12) }
     /// Icon/status tile outline: `color + 55`.
-    static func tintBorder(_ color: Color) -> Color { color.opacity(0.33) }
+    nonisolated static func tintBorder(_ color: Color) -> Color { color.opacity(0.33) }
 }
 
 extension UIColor {

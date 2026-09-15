@@ -129,7 +129,8 @@ final class AuthSession {
                 KeychainStore.token = fresh
             },
             onUnauthorized: { [weak self] in
-                Task { @MainActor in self?.forgetSession() }
+                let session = self
+                Task { @MainActor in session?.forgetSession() }
             }
         )
         self.client = client

@@ -11,7 +11,7 @@ import Foundation
 import OSLog
 import Security
 
-enum KeychainStore {
+nonisolated enum KeychainStore {
     private static let service = "dev.kilicer.trackr.session"
     private static let account = "bearer-token"
     private static let log = Logger(subsystem: "dev.kilicer.trackr", category: "keychain")
