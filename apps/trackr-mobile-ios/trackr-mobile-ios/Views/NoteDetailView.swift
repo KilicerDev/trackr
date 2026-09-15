@@ -2,9 +2,10 @@
 //  NoteDetailView.swift
 //  trackr-mobile-ios
 //
-//  A note rendered natively: icon, title, meta chips (meeting date,
-//  linked project/task), then the document via RichContentView.
-//  Read-only — editing stays on desktop until the editing lane lands.
+//  A note as a detail screen: icon tile + 22pt title, mono meta line,
+//  meeting chips (date, project, task), then the document via
+//  RichContentView. Read-only — editing stays on desktop until the
+//  editing lane lands; pin toggles for own quick notes.
 //
 
 import SwiftUI
@@ -24,62 +25,94 @@ struct NoteDetailView: View {
         }
     }
 
+    private var canPin: Bool { current.kind == .quick && current.sharedBy == nil }
+
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 10) {
-                    Image(systemName: current.icon)
-                        .font(.system(size: 19, weight: .medium))
-                        .foregroundStyle(Color.accentColor)
-                        .frame(width: 42, height: 42)
-                        .background(Color.accentColor.opacity(0.10), in: .rect(cornerRadius: 12))
-                    VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
+                    TKIconTile(systemImage: current.icon, size: 36, color: TK.accent, fill: TK.accentSoft)
+                    VStack(alignment: .leading, spacing: 5) {
                         Text(current.title)
-                            .font(.system(size: 22, weight: .semibold))
+                            .font(.tkDetailTitle)
+                            .tkTitleTracking()
+                            .foregroundStyle(TK.text)
+                            .fixedSize(horizontal: false, vertical: true)
                         Text(metaLine)
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
+                            .font(.tkMono(11))
+                            .foregroundStyle(TK.text3)
                     }
                 }
                 if current.kind == .meeting {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            if let date = current.meetingDate {
-                                metaChip(icon: "calendar",
-                                         label: date.formatted(.dateTime.weekday(.abbreviated)
-                                            .day().month(.abbreviated).hour().minute()))
-                            }
-                            if let project = current.project {
-                                metaChip(dot: projectColor ?? Color(hex: 0x7C7C84), label: project)
-                            }
-                            if let taskId = current.taskId {
-                                metaChip(icon: "checklist", label: taskId, mono: true)
+                    ChipFlow(spacing: 8) {
+                        if let date = current.meetingDate {
+                            PropertyChip(style: .filled) {
+                                Image(systemName: "calendar")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(TK.text3)
+                                Text(date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated)))
+                                Text(date.formatted(.dateTime.hour().minute()))
+                                    .font(.tkMono(13))
+                                    .foregroundStyle(TK.text2)
                             }
                         }
+                        if let project = current.project {
+                            PropertyChip(style: .filled) {
+                                TKDot(color: projectColor ?? Color(hex: 0x7C7C84))
+                                Text(project)
+                            }
+                        }
+                        if let taskId = current.taskId {
+                            Button {
+                                if let task = model.tasks.first(where: { $0.id == taskId }) {
+                                    model.open(task)
+                                }
+                            } label: {
+                                PropertyChip(style: .filled) {
+                                    Image(systemName: "checkmark.square")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundStyle(TK.text3)
+                                    Text(taskId)
+                                        .font(.tkMono(13))
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
+                    .padding(.top, 2)
                 }
-                Divider()
+                TKHairline(color: TK.border)
+                    .padding(.vertical, 6)
                 RichContentView(html: current.bodyHtml)
             }
-            .padding(16)
-            .padding(.bottom, 16)
+            .padding(.horizontal, TK.gutter)
+            .padding(.top, 10)
+            .padding(.bottom, 32)
         }
-        .background(Color.webBackground)
+        .tkDetailScreen()
         .onAppear {
             // The list payload has no body — fetch it when the note opens.
             Task { await model.sync?.loadNoteBody(id: note.id) }
         }
-        .navigationTitle(current.kind == .meeting ? "Meeting Note" : "Note")
-        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if current.kind == .quick && current.sharedBy == nil {
+            ToolbarItem(placement: .principal) {
+                Text(current.kind == .meeting ? "Meeting note" : "Note")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(TK.text2)
+            }
+            if canPin {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         togglePin()
                     } label: {
                         Image(systemName: current.pinned ? "pin.fill" : "pin")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(current.pinned ? TK.accent : TK.text)
+                            .frame(width: 36, height: 36)
+                            .contentShape(.rect)
                     }
-                    .tint(current.pinned ? .accentColor : nil)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(current.pinned ? "Unpin" : "Pin")
                 }
             }
         }
@@ -88,46 +121,31 @@ struct NoteDetailView: View {
     private var metaLine: String {
         var parts: [String] = []
         if let sharedBy = current.sharedBy {
-            parts.append("Shared by \(sharedBy.name)")
+            parts.append("shared by \(sharedBy.name)")
         } else if let owner = current.owner {
             parts.append(owner.name)
         }
-        parts.append("Edited \(current.updatedAt.relativeShort)")
+        parts.append("edited \(current.updatedAt.relativeShort)")
         return parts.joined(separator: " · ")
     }
 
     private func togglePin() {
         guard let index = model.notes.firstIndex(where: { $0.id == note.id }) else { return }
         model.notes[index].pinned.toggle()
-    }
-
-    private func metaChip(
-        icon: String? = nil, dot: Color? = nil, label: String, mono: Bool = false
-    ) -> some View {
-        HStack(spacing: 5) {
-            if let icon {
-                Image(systemName: icon)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-            if let dot {
-                Circle()
-                    .fill(dot)
-                    .frame(width: 7, height: 7)
-            }
-            Text(label)
-                .font(.system(size: 12, weight: .medium, design: mono ? .monospaced : .default))
-                .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 9)
-        .frame(height: 26)
-        .background(Color(.secondarySystemGroupedBackground), in: .capsule)
-        .overlay(Capsule().strokeBorder(Color(.separator).opacity(0.4), lineWidth: 0.5))
+        model.toast(model.notes[index].pinned ? "Pinned" : "Unpinned")
     }
 }
 
-#Preview {
+#Preview("Meeting") {
     NavigationStack {
         NoteDetailView(model: AppModel(), note: NoteItem.samples[4])
     }
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Quick note") {
+    NavigationStack {
+        NoteDetailView(model: AppModel(), note: NoteItem.samples[0])
+    }
+    .preferredColorScheme(.dark)
 }

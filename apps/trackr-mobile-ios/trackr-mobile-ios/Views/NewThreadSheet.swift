@@ -3,7 +3,9 @@
 //  trackr-mobile-ios
 //
 //  New chat thread in the active org: title, message, tags — the web
-//  feed's always-open composer as a native sheet.
+//  feed's always-open composer as a prototype sheet (header, bordered
+//  inputs, tag chips + dashed "+ Tags" opening a multi-select picker,
+//  Cancel / Post footer).
 //
 
 import SwiftUI
@@ -11,12 +13,16 @@ import SwiftUI
 struct NewThreadSheet: View {
     let org: OrgRef
     var availableTags: [ChatTag] = ChatThread.sampleTags
+    /// Author of the optimistic root message (replaced by server data on
+    /// refetch).
+    var author: UserRef = TaskItem.sampleUsers[0]
     let onCreate: (ChatThread) -> Void
     @Environment(\.dismiss) private var dismiss
 
     @State private var title = ""
     @State private var body_ = ""
-    @State private var tags: Set<ChatTag> = []
+    @State private var tags: [ChatTag] = []
+    @State private var showingTags = false
 
     private var canCreate: Bool {
         !title.trimmingCharacters(in: .whitespaces).isEmpty
@@ -24,61 +30,81 @@ struct NewThreadSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("What's it about?", text: $title)
-                        .font(.system(size: 20, weight: .semibold))
-                    TextField("Write your message…", text: $body_, axis: .vertical)
-                        .lineLimit(5...12)
-                        .font(.system(size: 15))
-                }
-
-                Section("Tags") {
-                    MultiSelectRow(
-                        title: "Tags",
-                        options: availableTags.map { ($0, $0.label) },
-                        selection: $tags
-                    )
-                }
-
-                Section {
-                    LabeledContent("Organization") {
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(org.color)
-                                .frame(width: 8, height: 8)
-                            Text(org.name)
+        VStack(spacing: 0) {
+            TKSheetHeader(title: "New thread")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 6) {
+                        Text("in")
+                            .font(.system(size: 13))
+                            .foregroundStyle(TK.text3)
+                        TKDot(color: org.color)
+                        Text(org.name)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(TK.text2)
+                    }
+                    TKTextInput(text: $title, placeholder: "What's it about?")
+                    TKTextArea(text: $body_, placeholder: "Write your message…", minHeight: 150)
+                    TKSectionLabel("Tags")
+                        .padding(.top, 4)
+                    ChipFlow(spacing: 8) {
+                        ForEach(tags, id: \.self) { tag in
+                            Button {
+                                tags.removeAll { $0 == tag }
+                            } label: {
+                                PropertyChip(style: .filled) {
+                                    TKDot(color: tag.color, size: 6)
+                                    Text(tag.label)
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundStyle(TK.text4)
+                                }
+                            }
+                            .buttonStyle(.plain)
                         }
+                        TKDashedChip(title: tags.isEmpty ? "Tags" : "Add") { showingTags = true }
                     }
                 }
+                .padding(.horizontal, TK.gutter)
+                .padding(.top, 16)
+                .padding(.bottom, 24)
             }
-            .navigationTitle("New Thread")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Post") { create() }
-                        .fontWeight(.semibold)
-                        .disabled(!canCreate)
+            .scrollDismissesKeyboard(.interactively)
+            TKSheetFooter(cta: "Post", enabled: canCreate, onCancel: { dismiss() }, onConfirm: create)
+        }
+        .tkSheet()
+        .sheet(isPresented: $showingTags) {
+            TKPickerSheet(
+                title: "Tags",
+                options: availableTags.map { tag in
+                    TKPickerOption(tag, label: tag.label) {
+                        HStack(spacing: 8) {
+                            TKCheckCircle(done: tags.contains(tag), size: 18)
+                            TKDot(color: tag.color)
+                        }
+                    }
+                },
+                selected: nil,
+                dismissOnPick: false
+            ) { tag in
+                if let index = tags.firstIndex(of: tag) {
+                    tags.remove(at: index)
+                } else {
+                    tags.append(tag)
                 }
             }
         }
-        .presentationDetents([.medium, .large])
     }
 
     private func create() {
-        let me = TaskItem.sampleUsers[0]  // replaced by server data on refetch
         let thread = ChatThread(
             id: "th-\(UUID().uuidString.prefix(8))",
             org: org,
             title: title.trimmingCharacters(in: .whitespaces),
-            tags: Array(tags),
+            tags: tags,
             messages: [
                 ChatMessageItem(
-                    user: me, date: .now,
+                    user: author, date: .now,
                     text: body_.trimmingCharacters(in: .whitespacesAndNewlines)
                 ),
             ]
@@ -92,4 +118,5 @@ struct NewThreadSheet: View {
     Color.clear.sheet(isPresented: .constant(true)) {
         NewThreadSheet(org: TicketItem.sampleOrgs[0]) { _ in }
     }
+    .preferredColorScheme(.dark)
 }
