@@ -21,7 +21,7 @@ struct TKTopBar: View {
                 withAnimation(.easeOut(duration: 0.15)) { model.showingWorkspaces = true }
             } label: {
                 HStack(spacing: 8) {
-                    BrandMarkBars(height: 14)
+                    WorkspaceLogo(url: model.workspaceLogoURL, size: 20, barsHeight: 14)
                     Text(model.workspaceLabel)
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(TK.text)
@@ -78,6 +78,34 @@ struct TKTopBar: View {
         .padding(.horizontal, TK.gutter)
         .frame(height: Self.height)
         .background(TK.bg)
+    }
+}
+
+/// Instance logo (server branding) with the trackr bars as fallback.
+struct WorkspaceLogo: View {
+    let url: URL?
+    var size: CGFloat = 20
+    var barsHeight: CGFloat = 14
+    var radius: CGFloat = 5
+
+    var body: some View {
+        if let url {
+            AsyncImage(url: url) { phase in
+                if let image = phase.image {
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: size, height: size)
+                        .clipShape(.rect(cornerRadius: radius))
+                } else {
+                    BrandMarkBars(height: barsHeight)
+                        .frame(width: size, height: size)
+                }
+            }
+        } else {
+            BrandMarkBars(height: barsHeight)
+                .frame(width: size, height: size)
+        }
     }
 }
 

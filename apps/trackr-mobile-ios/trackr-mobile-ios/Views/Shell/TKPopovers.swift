@@ -98,8 +98,7 @@ struct WorkspaceSwitcher: View {
                 .padding(.bottom, 6)
 
             HStack(spacing: 12) {
-                BrandMarkBars(height: 14)
-                    .frame(width: 34, height: 34)
+                WorkspaceLogo(url: model.workspaceLogoURL, size: 34, barsHeight: 14, radius: 10)
                     .background(TK.bg, in: .rect(cornerRadius: 10))
                 VStack(alignment: .leading, spacing: 1) {
                     Text(model.workspaceLabel)

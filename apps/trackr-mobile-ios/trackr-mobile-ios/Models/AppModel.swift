@@ -227,6 +227,9 @@ final class AppModel {
     /// Server branding name (GET /api/v1/instance) — the top bar's workspace
     /// label; falls back to the host.
     var workspaceName: String?
+    /// Server branding logo (absolute, public) — the top bar and switcher
+    /// tile; nil falls back to the trackr bars.
+    var workspaceLogoURL: URL?
     var currentUser: UserRef?
     var currentUserEmail = ""
     var isStaff = true

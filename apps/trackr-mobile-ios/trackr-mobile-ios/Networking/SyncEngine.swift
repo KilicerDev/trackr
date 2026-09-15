@@ -57,12 +57,16 @@ final class SyncEngine {
         let hadCache = bootstrapFromCache()
         isColdStarting = !hadCache
         model.workspaceName = UserDefaults.standard.string(forKey: "trackr.workspaceName")
+        model.workspaceLogoURL = UserDefaults.standard.url(forKey: "trackr.workspaceLogo")
         Task { [weak self] in
             guard let self, let instance = try? await client.instance() else { return }
             if let name = instance.branding?.name, !name.isEmpty {
                 model.workspaceName = name
                 UserDefaults.standard.set(name, forKey: "trackr.workspaceName")
             }
+            let logo = instance.branding?.logoUrl.flatMap { URL(string: $0) }
+            model.workspaceLogoURL = logo
+            UserDefaults.standard.set(logo, forKey: "trackr.workspaceLogo")
         }
         let cap = Task {  [weak self] in
             try? await Task.sleep(for: .seconds(6))
