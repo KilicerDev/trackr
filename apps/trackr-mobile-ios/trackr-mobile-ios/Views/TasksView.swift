@@ -16,6 +16,11 @@ struct TasksView: View {
     @State private var showingFilters = false
     @State private var showingViews = false
     @State private var collapsedGroups: Set<String> = []
+    @AppStorage("trackr.tasksLayout") private var layoutRaw = TKLayout.list.rawValue
+
+    private var layout: Binding<TKLayout> {
+        Binding(get: { TKLayout(rawValue: layoutRaw) ?? .list }, set: { layoutRaw = $0.rawValue })
+    }
 
     private var groups: [TaskGroup] { model.taskFilters.grouped(model.tasks) }
 
@@ -40,61 +45,33 @@ struct TasksView: View {
 
     var body: some View {
         NavigationStack(path: $model.taskPath) {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    TKPageHeader("Tasks", meta: "\(openCount) open")
-                    toolbar
-                        .padding(.horizontal, TK.gutter)
-                        .padding(.top, 10)
-                        .padding(.bottom, 12)
-
-                    ForEach(groups) { group in
-                        let collapsed = collapsedGroups.contains(group.id)
-                        if !group.label.isEmpty {
-                            TKGroupBand(
-                                title: group.label,
-                                color: group.color,
-                                count: group.tasks.count,
-                                collapsible: true,
-                                collapsed: collapsed
-                            ) {
-                                withAnimation(.snappy(duration: 0.2)) {
-                                    if !collapsedGroups.insert(group.id).inserted {
-                                        collapsedGroups.remove(group.id)
-                                    }
-                                }
-                            }
-                        }
-                        if group.label.isEmpty || !collapsed {
-                            ForEach(group.tasks) { task in
-                                TKHairline()
-                                TaskRow(
-                                    task: task,
-                                    model: model,
-                                    showProject: model.taskFilters.group != .project
-                                ) {
-                                    model.taskPath.append(task)
-                                }
-                                .taskContextMenu(for: task, model: model)
-                            }
-                        }
+            Group {
+                if layout.wrappedValue == .board && !groups.allSatisfy(\.tasks.isEmpty) {
+                    VStack(spacing: 0) {
+                        TKPageHeader("Tasks", meta: "\(openCount) open")
+                        toolbar
+                            .padding(.horizontal, TK.gutter)
+                            .padding(.top, 10)
+                            .padding(.bottom, 12)
+                        board
                     }
-                    if groups.allSatisfy(\.tasks.isEmpty) {
-                        TKHairline(color: TK.hairlineStrong)
-                        TKEmptyState(
-                            text: model.taskFilters.hasActiveFilters
-                                ? "No matching tasks. Try removing some filters."
-                                : "You're all caught up."
-                        )
-                    } else {
-                        TKHairline()
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            TKPageHeader("Tasks", meta: "\(openCount) open")
+                            toolbar
+                                .padding(.horizontal, TK.gutter)
+                                .padding(.top, 10)
+                                .padding(.bottom, 12)
+                            list
+                        }
+                        .padding(.bottom, 24)
                     }
+                    .refreshable { await model.sync?.refreshTasks() }
                 }
-                .padding(.bottom, 24)
             }
             .navigationTitle("Tasks")
             .tkRootScreen(model)
-            .refreshable { await model.sync?.refreshTasks() }
             .navigationDestination(for: TaskItem.self) { task in
                 TaskDetailView(task: task, model: model)
                     .tkDetailScreen()
@@ -113,13 +90,79 @@ struct TasksView: View {
         }
     }
 
+    @ViewBuilder
+    private var list: some View {
+        ForEach(groups) { group in
+            let collapsed = collapsedGroups.contains(group.id)
+            if !group.label.isEmpty {
+                TKGroupBand(
+                    title: group.label,
+                    color: group.color,
+                    count: group.tasks.count,
+                    collapsible: true,
+                    collapsed: collapsed
+                ) {
+                    withAnimation(.snappy(duration: 0.2)) {
+                        if !collapsedGroups.insert(group.id).inserted {
+                            collapsedGroups.remove(group.id)
+                        }
+                    }
+                }
+            }
+            if group.label.isEmpty || !collapsed {
+                ForEach(group.tasks) { task in
+                    TKHairline()
+                    TaskRow(
+                        task: task,
+                        model: model,
+                        showProject: model.taskFilters.group != .project
+                    ) {
+                        model.taskPath.append(task)
+                    }
+                    .taskContextMenu(for: task, model: model)
+                }
+            }
+        }
+        if groups.allSatisfy(\.tasks.isEmpty) {
+            TKHairline(color: TK.hairlineStrong)
+            TKEmptyState(
+                text: model.taskFilters.hasActiveFilters
+                    ? "No matching tasks. Try removing some filters."
+                    : "You're all caught up."
+            )
+        } else {
+            TKHairline()
+        }
+    }
+
+    private var board: some View {
+        TKBoard(columns: groups.filter { !$0.tasks.isEmpty || !$0.label.isEmpty }) { group in
+            TKBoardColumnHeader(
+                title: group.label.isEmpty ? "All tasks" : group.label,
+                color: group.color,
+                count: group.tasks.count
+            )
+        } cards: { group in
+            ForEach(group.tasks) { task in
+                Button {
+                    model.taskPath.append(task)
+                } label: {
+                    TaskBoardCard(task: task, model: model, showProject: model.taskFilters.group != .project)
+                }
+                .buttonStyle(TKScaleStyle())
+                .taskContextMenu(for: task, model: model)
+            }
+        }
+    }
+
     private var toolbar: some View {
         HStack(spacing: 8) {
             TKViewChip(name: currentViewName) {
                 showingViews = true
             }
             .frame(maxWidth: 240, alignment: .leading)
-            Spacer(minLength: 8)
+            Spacer(minLength: 4)
+            TKLayoutSegment(layout: layout)
             TKFilterButton(count: activeFilterCount) {
                 showingFilters = true
             }

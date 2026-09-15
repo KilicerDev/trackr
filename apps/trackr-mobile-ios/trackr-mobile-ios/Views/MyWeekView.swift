@@ -16,6 +16,23 @@ struct MyWeekView: View {
 
     @State private var weekStart = MyWeekView.monday(of: .now)
     @State private var unscheduledTab: UnscheduledTab = .past
+    @AppStorage("trackr.weekLayout") private var layoutRaw = TKLayout.list.rawValue
+
+    private var layout: Binding<TKLayout> {
+        Binding(get: { TKLayout(rawValue: layoutRaw) ?? .list }, set: { layoutRaw = $0.rawValue })
+    }
+
+    /// Board columns: the seven days, then Unscheduled.
+    private struct WeekColumn: Identifiable {
+        let index: Int
+        let day: Date?
+        var id: String { day.map { "\($0.timeIntervalSinceReferenceDate)" } ?? "unscheduled" }
+    }
+
+    private var weekColumns: [WeekColumn] {
+        weekDates.enumerated().map { WeekColumn(index: $0.offset, day: $0.element) }
+            + [WeekColumn(index: 7, day: nil)]
+    }
 
     // Web parity (week/+page.svelte): 8h day capacity, 5×8h week capacity,
     // tasks without any time information count as 1h.
@@ -57,9 +74,15 @@ struct MyWeekView: View {
         return "KW" + String(format: "%02d", week)
     }
 
+    /// Compact range: "14 – 20 Sep", "28 Sep – 4 Oct" across a month edge.
     private var weekRangeLabel: String {
-        let fmt = Date.FormatStyle().month(.abbreviated).day()
-        return "\(weekStart.formatted(fmt)) – \(weekDates[6].formatted(fmt))"
+        let end = weekDates[6]
+        let sameMonth = Calendar.current.isDate(weekStart, equalTo: end, toGranularity: .month)
+        let day = Date.FormatStyle().day()
+        let dayMonth = Date.FormatStyle().day().month(.abbreviated)
+        return sameMonth
+            ? "\(weekStart.formatted(day)) – \(end.formatted(dayMonth))"
+            : "\(weekStart.formatted(dayMonth)) – \(end.formatted(dayMonth))"
     }
 
     // MARK: - Task buckets
@@ -132,28 +155,53 @@ struct MyWeekView: View {
 
     // MARK: - Body
 
+    private var header: some View {
+        TKPageHeader("My week") {
+            HStack(spacing: 10) {
+                Text(weekRangeLabel)
+                    .font(.tkMono(12))
+                    .foregroundStyle(TK.text3)
+                    .lineLimit(1)
+                TKLayoutSegment(layout: layout)
+            }
+        }
+    }
+
     var body: some View {
         NavigationStack(path: $model.weekPath) {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    TKPageHeader("My week", meta: weekRangeLabel)
-                    weekToolbar
-                        .padding(.horizontal, TK.gutter)
-                        .padding(.top, 10)
-                        .padding(.bottom, 12)
-
-                    ForEach(Array(weekDates.enumerated()), id: \.element) { index, day in
-                        daySection(index: index, day: day)
+            Group {
+                if layout.wrappedValue == .board {
+                    VStack(spacing: 0) {
+                        header
+                        weekToolbar
+                            .padding(.horizontal, TK.gutter)
+                            .padding(.top, 10)
+                            .padding(.bottom, 12)
+                        weekBoard
                     }
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            header
+                            weekToolbar
+                                .padding(.horizontal, TK.gutter)
+                                .padding(.top, 10)
+                                .padding(.bottom, 12)
 
-                    unscheduledSection
-                        .padding(.top, 20)
+                            ForEach(Array(weekDates.enumerated()), id: \.element) { index, day in
+                                daySection(index: index, day: day)
+                            }
+
+                            unscheduledSection
+                                .padding(.top, 20)
+                        }
+                        .padding(.bottom, 24)
+                    }
+                    .refreshable { await model.sync?.refreshTasks() }
                 }
-                .padding(.bottom, 24)
             }
             .navigationTitle("My week")
             .tkRootScreen(model)
-            .refreshable { await model.sync?.refreshTasks() }
             .onAppear {
                 // Screen-appear revalidation, same as the Tasks tab.
                 Task { await model.sync?.refreshTasks() }
@@ -294,6 +342,61 @@ struct MyWeekView: View {
             .contentShape(.rect)
         }
         .buttonStyle(TKPressStyle())
+    }
+
+    // MARK: - Board
+
+    private var weekBoard: some View {
+        TKBoard(columns: weekColumns, columnWidth: 240) { column in
+            if let day = column.day {
+                let tasks = planned(on: day)
+                let mins = minutes(in: tasks)
+                let isToday = Calendar.current.isDateInToday(day)
+                TKBoardColumnHeader(
+                    title: day.formatted(.dateTime.weekday(.abbreviated)),
+                    count: tasks.count,
+                    titleColor: isToday ? TK.accent : column.index >= 5 ? TK.text2 : TK.text,
+                    pill: isToday ? "Today" : nil,
+                    subtitle: day.formatted(.dateTime.day().month(.abbreviated)),
+                    trailing: mins > 0 ? mins.minutesFormatted : "0m"
+                )
+            } else {
+                TKBoardColumnHeader(title: "Unscheduled", count: unscheduled.count)
+            }
+        } cards: { column in
+            if let day = column.day {
+                ForEach(planned(on: day)) { task in
+                    boardCard(task, timeLabel: timeMinutes(task).minutesFormatted, play: true)
+                }
+            } else {
+                TKSegmented(UnscheduledTab.allCases, selection: $unscheduledTab) { $0.label }
+                ForEach(unscheduled) { task in
+                    boardCard(
+                        task,
+                        timeLabel: unscheduledTab == .past
+                            ? task.plannedFor?.formatted(.dateTime.day().month(.abbreviated)) : nil,
+                        play: false
+                    )
+                }
+                if unscheduled.isEmpty {
+                    TKEmptyState(text: "Nothing here — inbox zero.", padding: 20)
+                }
+            }
+        } footer: { column in
+            if let day = column.day {
+                TKBoardAddButton { model.presentCreate(kind: .task, plannedFor: day) }
+            }
+        }
+    }
+
+    private func boardCard(_ task: TaskItem, timeLabel: String?, play: Bool) -> some View {
+        Button {
+            model.weekPath.append(task)
+        } label: {
+            TaskBoardCard(task: task, model: model, showPlay: play, timeLabel: timeLabel)
+        }
+        .buttonStyle(TKScaleStyle())
+        .taskContextMenu(for: task, model: model)
     }
 
     // MARK: - Unscheduled

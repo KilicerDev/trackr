@@ -184,6 +184,89 @@ struct TaskRow: View {
     }
 }
 
+/// Board card (tasks board, week board): key + type, title, project ·
+/// due · avatar; optional play button for the week.
+struct TaskBoardCard: View {
+    let task: TaskItem
+    var model: AppModel? = nil
+    var showPlay = false
+    var showProject = true
+    var timeLabel: String? = nil
+
+    private var live: TaskItem { model?.tasks.first { $0.id == task.id } ?? task }
+    private var done: Bool { live.status == .done }
+    private var projectColor: Color {
+        model?.projects.first { $0.name == live.project }?.color ?? TK.text3
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                TypeBadge(type: live.type, showLabel: false, size: 18)
+                Text(live.id)
+                    .font(.tkMono(11))
+                    .foregroundStyle(TK.text3)
+                Spacer(minLength: 4)
+                if live.priority != .none {
+                    PriorityBars(priority: live.priority)
+                }
+                if showPlay, let model {
+                    let running = model.session.isRunning
+                    let thisTask = model.session.taskId == live.id
+                    TKPlayButton(active: !running || thisTask) {
+                        if thisTask { model.showingPlayer = true } else if !running { model.startSession(for: live) }
+                    }
+                    .frame(width: 24, height: 24)
+                }
+            }
+            Text(live.title)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(done ? TK.text2 : TK.text)
+                .strikethrough(done, color: TK.text3)
+                .lineLimit(3)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 6) {
+                if showProject {
+                    Circle().fill(projectColor).frame(width: 6, height: 6)
+                    Text(live.project)
+                        .font(.tkMetaSm)
+                        .foregroundStyle(TK.text3)
+                        .lineLimit(1)
+                }
+                if live.checklistTotal > 0 {
+                    Text("☑ \(live.checklistDone)/\(live.checklistTotal)")
+                        .font(.tkMono(11))
+                        .foregroundStyle(live.checklistDone == live.checklistTotal ? TK.success : TK.text3)
+                        .fixedSize()
+                }
+                Spacer(minLength: 4)
+                if let countdown = live.dueCountdown {
+                    Text(countdown.label)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(countdown.tone.color ?? TK.text3)
+                } else if let due = live.due {
+                    Text(due.formatted(.dateTime.day().month(.abbreviated)))
+                        .font(.tkMono(11))
+                        .foregroundStyle(TK.text3)
+                }
+                if let timeLabel {
+                    Text(timeLabel)
+                        .font(.tkMono(11))
+                        .foregroundStyle(TK.text3)
+                }
+                if let first = live.assignees.first {
+                    AvatarView(user: first, size: 22)
+                }
+            }
+            .lineLimit(1)
+        }
+        .tkCard(radius: TK.rCardSm, padding: 12)
+        .opacity(done ? 0.55 : 1)
+        .contentShape(.rect)
+    }
+}
+
 #Preview("List") {
     let model = AppModel()
     return ScrollView {

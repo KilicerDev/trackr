@@ -290,8 +290,6 @@ struct TaskDetailView: View {
                     PriorityBars(priority: task.priority)
                     Text(task.priority.label)
                 }
-            }
-            ChipFlow {
                 assigneeChip
                 dueChip
                 plannedChip

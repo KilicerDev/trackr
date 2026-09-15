@@ -223,9 +223,9 @@ struct ViewOptionsConfig {
     /// Visible items with the current filters; nil hides the footer.
     var count: Int?
     var savedViews: SavedViewsHooks?
-    /// Tickets: the List/Board segmented row (bound to
-    /// `@AppStorage("trackr.ticketsLayout")` inside the body).
-    var showsLayoutSegment = false
+    /// The List/Board segmented row, bound to this `@AppStorage` key
+    /// ("trackr.ticketsLayout" / "trackr.tasksLayout"); nil hides it.
+    var layoutKey: String? = nil
     var layout: [ViewOptionsLayoutRow] = []
     var filters: [ViewOptionsFilterRow] = []
     var canClearAll = false
@@ -246,6 +246,7 @@ struct ViewOptionsConfig {
             noun: "tasks",
             count: f.grouped(tasks).reduce(0) { $0 + $1.tasks.count },
             savedViews: savedViews,
+            layoutKey: "trackr.tasksLayout",
             layout: [
                 layoutRow(id: "group", label: "Group by", options: GroupBy.allCases, selected: f.group,
                           label: \.label) { filters.wrappedValue.group = $0 },
@@ -293,7 +294,7 @@ struct ViewOptionsConfig {
             noun: "tickets",
             count: f.grouped(tickets).reduce(0) { $0 + $1.tickets.count },
             savedViews: savedViews,
-            showsLayoutSegment: true,
+            layoutKey: "trackr.ticketsLayout",
             layout: [
                 layoutRow(id: "group", label: "Group by", options: TicketGroupBy.allCases, selected: f.group,
                           label: \.label) { filters.wrappedValue.group = $0 },
@@ -422,7 +423,6 @@ struct ViewOptionsConfig {
 struct ViewOptionsBody: View {
     let config: ViewOptionsConfig
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("trackr.ticketsLayout") private var ticketsLayout = "list"
     @State private var presented: Presented?
 
     private enum Presented: Identifiable {
@@ -449,7 +449,7 @@ struct ViewOptionsBody: View {
                     if let hooks = config.savedViews {
                         savedViewsSection(hooks)
                     }
-                    if config.showsLayoutSegment || !config.layout.isEmpty {
+                    if config.layoutKey != nil || !config.layout.isEmpty {
                         layoutSection
                     }
                     if !config.filters.isEmpty {
@@ -543,12 +543,8 @@ struct ViewOptionsBody: View {
         VStack(alignment: .leading, spacing: 10) {
             TKSectionLabel("Layout")
             VStack(spacing: 0) {
-                if config.showsLayoutSegment {
-                    TKRow(label: "View") {
-                        TKSegmented(["list", "board"], selection: $ticketsLayout, fill: TK.card) {
-                            $0 == "list" ? "List" : "Board"
-                        }
-                    }
+                if let layoutKey = config.layoutKey {
+                    TKLayoutSegmentRow(key: layoutKey)
                     if !config.layout.isEmpty { TKHairline(color: TK.hairlineStrong) }
                 }
                 ForEach(config.layout) { row in

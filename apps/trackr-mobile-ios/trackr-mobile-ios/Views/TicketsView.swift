@@ -10,28 +10,17 @@
 
 import SwiftUI
 
-enum TicketsLayout: String, CaseIterable {
-    case list, board
-
-    var systemImage: String {
-        switch self {
-        case .list: "list.bullet"
-        case .board: "rectangle.split.3x1"
-        }
-    }
-}
-
 struct TicketsView: View {
     @Bindable var model: AppModel
 
-    @AppStorage("trackr.ticketsLayout") private var layoutRaw = TicketsLayout.list.rawValue
+    @AppStorage("trackr.ticketsLayout") private var layoutRaw = TKLayout.list.rawValue
     @State private var showingFilters = false
     @State private var showingViews = false
     @State private var collapsedGroups: Set<String> = []
 
-    private var layout: Binding<TicketsLayout> {
+    private var layout: Binding<TKLayout> {
         Binding(
-            get: { TicketsLayout(rawValue: layoutRaw) ?? .list },
+            get: { TKLayout(rawValue: layoutRaw) ?? .list },
             set: { layoutRaw = $0.rawValue }
         )
     }
@@ -63,24 +52,32 @@ struct TicketsView: View {
 
     var body: some View {
         NavigationStack(path: $model.ticketPath) {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    TKPageHeader("Tickets", meta: "\(openCount) open")
-                    toolbarRow
-                    if isEmpty {
-                        TKEmptyState(
-                            text: model.tickets.isEmpty
-                                ? "No tickets yet." : "No tickets match these filters."
-                        )
-                    } else if layout.wrappedValue == .list {
-                        list
-                    } else {
+            Group {
+                if layout.wrappedValue == .board && !isEmpty {
+                    VStack(spacing: 0) {
+                        TKPageHeader("Tickets", meta: "\(openCount) open")
+                        toolbarRow
                         board
                     }
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            TKPageHeader("Tickets", meta: "\(openCount) open")
+                            toolbarRow
+                            if isEmpty {
+                                TKEmptyState(
+                                    text: model.tickets.isEmpty
+                                        ? "No tickets yet." : "No tickets match these filters."
+                                )
+                            } else {
+                                list
+                            }
+                        }
+                        .padding(.bottom, 24)
+                    }
+                    .refreshable { await model.sync?.refreshTickets() }
                 }
-                .padding(.bottom, 24)
             }
-            .refreshable { await model.sync?.refreshTickets() }
             .tkRootScreen(model)
             .navigationDestination(for: TicketItem.self) { ticket in
                 TicketDetailView(ticket: ticket, model: model)
@@ -102,11 +99,7 @@ struct TicketsView: View {
             TKViewChip(name: currentViewName) { showingViews = true }
                 .frame(maxWidth: 220, alignment: .leading)
             Spacer(minLength: 4)
-            TKSegmented(options: TicketsLayout.allCases, selection: layout) { option in
-                Image(systemName: option.systemImage)
-                    .font(.system(size: 13, weight: .medium))
-                    .frame(width: 14, height: 22)
-            }
+            TKLayoutSegment(layout: layout)
             TKFilterButton(count: filterCount) { showingFilters = true }
         }
         .padding(.horizontal, TK.gutter)
@@ -152,37 +145,13 @@ struct TicketsView: View {
     // MARK: - Board
 
     private var board: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: 12) {
-                ForEach(groups) { group in
-                    boardColumn(group)
-                }
-            }
-            .padding(.horizontal, TK.gutter)
-            .padding(.top, 4)
-        }
-    }
-
-    private func boardColumn(_ group: TicketGroup) -> some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
-                if let color = group.color {
-                    TKDot(color: color)
-                }
-                Text(group.label.isEmpty ? "All tickets" : group.label)
-                    .font(.tkGroup)
-                    .foregroundStyle(TK.text)
-                    .lineLimit(1)
-                Text("\(group.tickets.count)")
-                    .font(.tkMono(12))
-                    .foregroundStyle(TK.text3)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 12)
-            .frame(height: 40)
-            .background(TK.bgRaised, in: .rect(cornerRadius: TK.rChip))
-            .overlay(RoundedRectangle(cornerRadius: TK.rChip).strokeBorder(TK.border, lineWidth: 1))
-
+        TKBoard(columns: groups) { group in
+            TKBoardColumnHeader(
+                title: group.label.isEmpty ? "All tickets" : group.label,
+                color: group.color,
+                count: group.tickets.count
+            )
+        } cards: { group in
             ForEach(group.tickets) { ticket in
                 NavigationLink(value: ticket) {
                     TicketBoardCard(ticket: ticket)
@@ -191,7 +160,6 @@ struct TicketsView: View {
                 .ticketContextMenu(for: ticket, model: model)
             }
         }
-        .frame(width: 250)
     }
 }
 
