@@ -25,6 +25,14 @@ struct WhatsNewView: View {
     }
 
     private let releases: [Release] = [
+        Release(version: "1.1.1", name: "Tags & Planning", date: "September 2026", features: [
+            Feature(icon: "tag.fill", title: "Tags on Every Row",
+                    detail: "Task and ticket rows and board cards show their tags on a third line — on Tasks, Tickets and My week."),
+            Feature(icon: "bookmark.fill", title: "Planned Date at a Glance",
+                    detail: "Tasks that are planned for a day carry an accent bookmark chip with the date in the Tasks list and board."),
+            Feature(icon: "checkmark.seal.fill", title: "Warning-free Build",
+                    detail: "The app compiles clean under Xcode 26 — no deprecated APIs, no actor-isolation warnings."),
+        ]),
         Release(version: "1.1.0", name: "New Design", date: "September 2026", features: [
             Feature(icon: "paintbrush.fill", title: "Rebuilt from the Ground Up",
                     detail: "Every screen follows the new trackr design: flat lists with hairlines, mono keys and dates, cards only where they earn it — and it matches the web app."),
