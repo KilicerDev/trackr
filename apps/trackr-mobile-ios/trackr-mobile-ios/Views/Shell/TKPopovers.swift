@@ -100,9 +100,8 @@ struct WorkspaceSwitcher: View {
             HStack(spacing: 12) {
                 // Logo sits inset in the tile so its own edges never fight the
                 // tile's; no tile background when the instance has a logo.
-                WorkspaceLogo(url: model.workspaceLogoURL, size: 24, barsHeight: 14, radius: 6)
+                WorkspaceLogo(url: model.workspaceLogoURL, loaded: model.brandingLoaded, size: 24, radius: 6)
                     .frame(width: 34, height: 34)
-                    .background(model.workspaceLogoURL == nil ? TK.bg : .clear, in: .rect(cornerRadius: 10))
                 VStack(alignment: .leading, spacing: 1) {
                     Text(model.workspaceLabel)
                         .font(.system(size: 15, weight: .semibold))

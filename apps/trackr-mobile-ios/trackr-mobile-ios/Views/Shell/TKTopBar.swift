@@ -21,7 +21,7 @@ struct TKTopBar: View {
                 withAnimation(.easeOut(duration: 0.15)) { model.showingWorkspaces = true }
             } label: {
                 HStack(spacing: 8) {
-                    WorkspaceLogo(url: model.workspaceLogoURL, size: 20, barsHeight: 14)
+                    WorkspaceLogo(url: model.workspaceLogoURL, loaded: model.brandingLoaded, size: 20)
                     Text(model.workspaceLabel)
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(TK.text)
@@ -81,52 +81,48 @@ struct TKTopBar: View {
     }
 }
 
-/// Instance logo (server branding) with the trackr bars as fallback.
+/// Instance logo: the server's branding logo, a spinner until the instance
+/// answered on first launch, and the trackr logo when no logo is set.
 struct WorkspaceLogo: View {
     let url: URL?
+    /// False until GET /api/v1/instance answered (or a cached value exists).
+    var loaded = true
     var size: CGFloat = 20
-    var barsHeight: CGFloat = 14
     var radius: CGFloat = 5
 
     var body: some View {
-        if let url {
-            AsyncImage(url: url) { phase in
-                if let image = phase.image {
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: size, height: size)
-                        .clipShape(.rect(cornerRadius: radius))
-                } else {
-                    BrandMarkBars(height: barsHeight)
-                        .frame(width: size, height: size)
+        Group {
+            if let url {
+                AsyncImage(url: url) { phase in
+                    if let image = phase.image {
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .clipShape(.rect(cornerRadius: radius))
+                    } else if phase.error != nil {
+                        fallback
+                    } else {
+                        spinner
+                    }
                 }
+            } else if loaded {
+                fallback
+            } else {
+                spinner
             }
-        } else {
-            BrandMarkBars(height: barsHeight)
-                .frame(width: size, height: size)
         }
+        .frame(width: size, height: size)
     }
-}
 
-/// The four-bar logo used inline in the workspace button and tiles
-/// (prototype: 3pt bars in violet / purple / red / teal).
-struct BrandMarkBars: View {
-    var height: CGFloat = 14
+    private var fallback: some View {
+        BrandMark(color: TK.accent)
+            .frame(width: size * 0.75, height: size * 0.75)
+    }
 
-    private let bars: [(color: UInt32, scale: CGFloat)] = [
-        (0x7C5CFF, 6 / 14), (0xA94CFF, 10 / 14), (0xFF3D5E, 1), (0x4CC3C3, 9 / 14),
-    ]
-
-    var body: some View {
-        HStack(alignment: .bottom, spacing: 2) {
-            ForEach(Array(bars.enumerated()), id: \.offset) { _, bar in
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color(hex: bar.color))
-                    .frame(width: 3, height: height * bar.scale)
-            }
-        }
-        .frame(height: height, alignment: .bottom)
+    private var spinner: some View {
+        ProgressView()
+            .controlSize(.mini)
+            .tint(TK.text3)
     }
 }
 

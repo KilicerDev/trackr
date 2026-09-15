@@ -230,6 +230,9 @@ final class AppModel {
     /// Server branding logo (absolute, public) — the top bar and switcher
     /// tile; nil falls back to the trackr bars.
     var workspaceLogoURL: URL?
+    /// True once the instance branding is known (cached or fetched); the
+    /// logo slot shows a spinner until then. Sample data counts as known.
+    var brandingLoaded = false
     var currentUser: UserRef?
     var currentUserEmail = ""
     var isStaff = true
@@ -258,6 +261,7 @@ final class AppModel {
             assignableUsers = TaskItem.sampleUsers
             chatTags = ChatThread.sampleTags
             workspaceName = "KiloHertz GmbH"
+            brandingLoaded = true
         }
     }
 
