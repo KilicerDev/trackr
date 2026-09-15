@@ -874,7 +874,15 @@ final class SyncEngine {
     private func pushSavedViews(_ key: ViewKey, _ views: [SavedViewEntry]) {
         let patch = JSONValue.object(["savedViews": .array(views.map(\.asJSON))])
         Task {
-            try? await client.updateViews(key: key.rawValue, patch: patch)
+            do {
+                try await client.updateViews(key: key.rawValue, patch: patch)
+            } catch {
+                // Keep the optimistic list on screen (a refresh would revert
+                // it) and say so — a silent revert reads as "nothing happened".
+                print("[sync] saved views push failed for \(key.rawValue):", error)
+                model.toast("Couldn't save the view — \(error.localizedDescription)")
+                return
+            }
             await refreshViews()
         }
     }

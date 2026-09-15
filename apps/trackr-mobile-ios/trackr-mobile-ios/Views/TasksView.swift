@@ -102,6 +102,11 @@ struct TasksView: View {
             .sheet(isPresented: $showingFilters) {
                 ViewOptionsSheet(model: model, context: .tasks)
             }
+            // Screenshot hook: `--view-options` opens the sheet at launch.
+            .onAppear {
+                guard ProcessInfo.processInfo.arguments.contains("--view-options"), model.selectedTab == .tasks else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { showingFilters = true }
+            }
             .sheet(isPresented: $showingViews) {
                 ViewOptionsSheet(model: model, context: .tasks)
             }

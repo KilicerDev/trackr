@@ -201,7 +201,15 @@ struct TKTextPromptSheet: View {
             .padding(.bottom, 16)
         }
         .tkSheet(detents: [.height(hint == nil ? 230 : 256)])
-        .onAppear { focused = true }
+        .onAppear {
+            focused = true
+            // Screenshot hook: `--auto-save-view <name>` types and confirms.
+            let args = ProcessInfo.processInfo.arguments
+            if let i = args.firstIndex(of: "--auto-save-view"), i + 1 < args.count {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { text = args[i + 1] }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) { confirm() }
+            }
+        }
     }
 }
 

@@ -92,11 +92,70 @@ struct ViewOptionsSheet: View {
                     }
                 }
             },
-            onCreate: { [model] name in model.sync?.createSavedView(key, name: name) },
-            onRename: { [model] entry, name in model.sync?.renameSavedView(key, id: entry.id, to: name) },
-            onDelete: { [model] entry in model.sync?.deleteSavedView(key, id: entry.id) },
-            onUpdate: { [model] entry in model.sync?.updateSavedView(key, id: entry.id) }
+            onCreate: { [model] name in
+                if let sync = model.sync {
+                    sync.createSavedView(key, name: name)
+                } else {
+                    // Previews / sample data: keep the list locally.
+                    var list = Self.savedViews(model, key)
+                    let config = Self.currentConfig(model, key)
+                    list.append(SavedViewEntry(id: UUID().uuidString.lowercased(), name: name, config: config))
+                    Self.setSavedViews(model, key, list)
+                }
+            },
+            onRename: { [model] entry, name in
+                if let sync = model.sync {
+                    sync.renameSavedView(key, id: entry.id, to: name)
+                } else {
+                    var list = Self.savedViews(model, key)
+                    if let i = list.firstIndex(where: { $0.id == entry.id }) { list[i].name = name }
+                    Self.setSavedViews(model, key, list)
+                }
+            },
+            onDelete: { [model] entry in
+                if let sync = model.sync {
+                    sync.deleteSavedView(key, id: entry.id)
+                } else {
+                    Self.setSavedViews(model, key, Self.savedViews(model, key).filter { $0.id != entry.id })
+                }
+            },
+            onUpdate: { [model] entry in
+                if let sync = model.sync {
+                    sync.updateSavedView(key, id: entry.id)
+                } else {
+                    var list = Self.savedViews(model, key)
+                    if let i = list.firstIndex(where: { $0.id == entry.id }) {
+                        list[i].config = Self.currentConfig(model, key)
+                    }
+                    Self.setSavedViews(model, key, list)
+                }
+            }
         )
+    }
+
+    private static func savedViews(_ model: AppModel, _ key: ViewKey) -> [SavedViewEntry] {
+        switch key {
+        case .tasks: model.savedTaskViews
+        case .tickets: model.savedTicketViews
+        case .projects: model.savedProjectViews
+        }
+    }
+
+    private static func setSavedViews(_ model: AppModel, _ key: ViewKey, _ views: [SavedViewEntry]) {
+        switch key {
+        case .tasks: model.savedTaskViews = views
+        case .tickets: model.savedTicketViews = views
+        case .projects: model.savedProjectViews = views
+        }
+    }
+
+    private static func currentConfig(_ model: AppModel, _ key: ViewKey) -> JSONValue {
+        let directories = ViewDirectories(model: model)
+        return switch key {
+        case .tasks: model.taskFilters.webConfig(directories: directories)
+        case .tickets: model.ticketFilters.webConfig(directories: directories)
+        case .projects: model.projectFilters.webConfig(directories: directories)
+        }
     }
 }
 
@@ -415,6 +474,11 @@ struct ViewOptionsBody: View {
         }
         .tkSheet(detents: [.large])
         .sheet(item: $presented) { sheet($0) }
+        // Screenshot hook: `--auto-save-view <name>` opens the save prompt.
+        .onAppear {
+            guard ProcessInfo.processInfo.arguments.contains("--auto-save-view") else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { presented = .newView }
+        }
     }
 
     // MARK: Saved views
