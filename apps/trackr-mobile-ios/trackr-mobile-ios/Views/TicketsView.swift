@@ -87,27 +87,10 @@ struct TicketsView: View {
                     .tkDetailScreen()
             }
             .sheet(isPresented: $showingFilters) {
-                TicketFiltersSheet(filters: $model.ticketFilters, tickets: model.tickets)
+                ViewOptionsSheet(model: model, context: .tickets)
             }
             .sheet(isPresented: $showingViews) {
-                SavedViewsSheet(
-                    entries: model.savedTicketViews,
-                    summary: {
-                        TicketFilters(
-                            webConfig: $0.config, directories: ViewDirectories(model: model)
-                        ).summary
-                    },
-                    isActive: {
-                        TicketFilters(
-                            webConfig: $0.config, directories: ViewDirectories(model: model)
-                        ) == model.ticketFilters
-                    },
-                    onApply: { model.sync?.applySavedView(.tickets, entry: $0) },
-                    onCreate: { model.sync?.createSavedView(.tickets, name: $0) },
-                    onRename: { model.sync?.renameSavedView(.tickets, id: $0.id, to: $1) },
-                    onDelete: { model.sync?.deleteSavedView(.tickets, id: $0.id) },
-                    onUpdate: { model.sync?.updateSavedView(.tickets, id: $0.id) }
-                )
+                ViewOptionsSheet(model: model, context: .tickets)
             }
         }
     }

@@ -73,6 +73,12 @@ segment 9/7 · button 11 · input 14. Gutter 16.
 | `TimelineRow(node:name:action:date:tag:) { MessageCard }` | activity rows |
 | `MessageComposer(text:placeholder:mentionCandidates:onSend:/onSendFiles:accent:)` | bottom composer |
 | `ChipFlow` | wrapping chip row |
+| `TKMultiPickerSheet(title:options:selected:/isSelected:onToggle:onClear:)` | multi-select picker (assignees, filters) — `Design/TKExtras+Sheets.swift` |
+| `TKTextPromptSheet` / `TKValueRow` / `TKBookmarkChip` / `TKGhostChip` / `TKChipButton` | view-options + create sheet parts — `TKExtras+Sheets.swift` |
+| `TKPill` / `TKDayBand` / `TKPlayButton` | week chrome — `TKExtras+Tasks.swift` |
+| `TKIconTile` / `TKDaySeparator` / `TKColorTagChip` / `TKTextArea` / `TKDashedChip` / `TKSheetFooter` / `TKPlusButton` | content screens — `TKExtras+Content.swift` |
+| `ViewOptionsSheet(model:context:)` | the one filter / saved-view / layout sheet for tasks, tickets, projects |
+| `CreateSheet(model:)` / `CreateEntityForm` | the "+" sheet (ticket / task / session) |
 
 Pickers: **always** `TKPickerSheet` presented with `.sheet(item:)` — never
 `Menu`/`Picker`. Dates: `TKDatePickerSheet`.
@@ -260,5 +266,6 @@ the existing Done? confirm.
    launch --terminate-running-process <udid> com.kilicer.trackr-mobile-ios
    --sample-data --tab <week|tickets|tasks|search|inbox|projects|chat|notes|meetings|wiki|settings>`
    and `xcrun simctl io <udid> screenshot out.png` (set `xcrun simctl ui
-   <udid> appearance dark` first). Deep links for details: `xcrun simctl
-   openurl` is not wired; use previews for detail screens.
+   <udid> appearance dark` first). More launch args: `--open task:TRK-142`,
+   `--open ticket:SIWEB-24`, `--open project:TRK`, `--session` (+ `--player`
+   for the session sheet), `--create ticket|task|session`.

@@ -164,6 +164,8 @@ final class AppModel {
     /// sheet seeds its scope from it.
     var createProjectName: String?
     var createOrgKey: String?
+    /// Week "+ Add task": the day the new task is planned for.
+    var createPlannedFor: Date?
 
     private(set) var toastMessage: String?
     private var toastTask: Task<Void, Never>?
@@ -180,11 +182,21 @@ final class AppModel {
     }
 
     /// "+" on the tab bar: ticket on the tickets tab, otherwise a task.
-    func presentCreate() {
-        createKind = selectedTab == .tickets ? .ticket : .task
+    /// Screens pass their scope (project page, week day, org) as seeds; the
+    /// seeds are cleared when the sheet closes (`clearCreateSeeds`).
+    func presentCreate(kind: CreateKind? = nil, projectName: String? = nil,
+                       orgKey: String? = nil, plannedFor: Date? = nil) {
+        createKind = kind ?? (selectedTab == .tickets ? .ticket : .task)
+        createProjectName = projectName
+        createOrgKey = orgKey
+        createPlannedFor = plannedFor
+        showingCreate = true
+    }
+
+    func clearCreateSeeds() {
         createProjectName = nil
         createOrgKey = nil
-        showingCreate = true
+        createPlannedFor = nil
     }
     /// Mirrored to disk on every change so a killed process can resume it
     /// (SessionStore) — the Live Activity keeps counting meanwhile.
@@ -274,8 +286,10 @@ final class AppModel {
             priority: task.priority,
             type: task.type,
             due: task.due,
+            plannedFor: task.plannedFor,
             estimate: task.estimate,
             assignees: task.assignees,
+            tags: task.tags,
             checklist: task.checklist,
             files: files
         )

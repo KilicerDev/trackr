@@ -46,7 +46,7 @@ struct MeetingsView: View {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     TKPageHeader("Meetings") {
                         HStack(spacing: 10) {
-                            Text("\(meetings.count) notes")
+                            Text("\(meetings.count) meetings")
                                 .font(.tkMono(12))
                                 .foregroundStyle(TK.text3)
                             TKPlusButton(label: "New meeting") { showingCreate = true }

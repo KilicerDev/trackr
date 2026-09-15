@@ -270,15 +270,14 @@ struct MyWeekView: View {
             }
         }
         TKHairline()
-        addRow
+        addRow(plannedFor: day)
     }
 
-    /// "+ Add task" — opens the create sheet as a task (the tab bar's "+"
-    /// path), scope left to the sheet.
-    private var addRow: some View {
+    /// "+ Add task" — opens the create sheet as a task planned for the day
+    /// (the tab bar's "+" path), scope left to the sheet.
+    private func addRow(plannedFor day: Date?) -> some View {
         Button {
-            model.createProjectName = nil
-            model.presentCreate()
+            model.presentCreate(kind: .task, plannedFor: day)
         } label: {
             HStack(spacing: 0) {
                 Image(systemName: "plus")

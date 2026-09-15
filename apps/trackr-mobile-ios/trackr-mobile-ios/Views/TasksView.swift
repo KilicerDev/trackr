@@ -100,27 +100,10 @@ struct TasksView: View {
                     .tkDetailScreen()
             }
             .sheet(isPresented: $showingFilters) {
-                TaskFiltersSheet(filters: $model.taskFilters, tasks: model.tasks)
+                ViewOptionsSheet(model: model, context: .tasks)
             }
             .sheet(isPresented: $showingViews) {
-                SavedViewsSheet(
-                    entries: model.savedTaskViews,
-                    summary: {
-                        TaskFilters(
-                            webConfig: $0.config, directories: ViewDirectories(model: model)
-                        ).summary
-                    },
-                    isActive: {
-                        TaskFilters(
-                            webConfig: $0.config, directories: ViewDirectories(model: model)
-                        ) == model.taskFilters
-                    },
-                    onApply: { model.sync?.applySavedView(.tasks, entry: $0) },
-                    onCreate: { model.sync?.createSavedView(.tasks, name: $0) },
-                    onRename: { model.sync?.renameSavedView(.tasks, id: $0.id, to: $1) },
-                    onDelete: { model.sync?.deleteSavedView(.tasks, id: $0.id) },
-                    onUpdate: { model.sync?.updateSavedView(.tasks, id: $0.id) }
-                )
+                ViewOptionsSheet(model: model, context: .tasks)
             }
         }
     }

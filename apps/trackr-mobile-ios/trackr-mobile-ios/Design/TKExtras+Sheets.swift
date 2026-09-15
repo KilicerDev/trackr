@@ -26,6 +26,31 @@ struct TKMultiPickerSheet<Value: Hashable>: View {
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
 
+    init(title: String, options: [TKPickerOption<Value>], selected: Set<Value>,
+         searchable: Bool = false, searchPlaceholder: String = "Search…",
+         onToggle: @escaping (Value) -> Void, onClear: (() -> Void)? = nil) {
+        self.title = title
+        self.options = options
+        self.selected = selected
+        self.searchable = searchable
+        self.searchPlaceholder = searchPlaceholder
+        self.onToggle = onToggle
+        self.onClear = onClear
+    }
+
+    /// Predicate form for call sites that don't keep a `Set` (e.g. the task
+    /// assignees array).
+    init(title: String, options: [TKPickerOption<Value>], isSelected: (Value) -> Bool,
+         searchable: Bool = false, searchPlaceholder: String = "Search…",
+         onToggle: @escaping (Value) -> Void, onClear: (() -> Void)? = nil) {
+        self.init(
+            title: title, options: options,
+            selected: Set(options.map(\.value).filter(isSelected)),
+            searchable: searchable, searchPlaceholder: searchPlaceholder,
+            onToggle: onToggle, onClear: onClear
+        )
+    }
+
     private var filtered: [TKPickerOption<Value>] {
         let q = query.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return options }

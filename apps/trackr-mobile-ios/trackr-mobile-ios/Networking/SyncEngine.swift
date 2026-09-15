@@ -414,8 +414,10 @@ final class SyncEngine {
         priority: TaskPriority,
         type: TaskType,
         due: Date?,
+        plannedFor: Date? = nil,
         estimate: Int?,
         assignees: [UserRef],
+        tags: [String] = [],
         checklist: [ChecklistItem],
         files: [PickedFile] = []
     ) {
@@ -432,7 +434,9 @@ final class SyncEngine {
                         type: type.apiValue,
                         due: due.map { APIDate.dayString($0) },
                         estimate: estimate,
-                        assigneeIds: assignees.compactMap(\.serverId)
+                        tags: tags.isEmpty ? nil : tags,
+                        assigneeIds: assignees.compactMap(\.serverId),
+                        plannedFor: plannedFor.map { APIDate.dayString($0) }
                     ),
                     files: files
                 )

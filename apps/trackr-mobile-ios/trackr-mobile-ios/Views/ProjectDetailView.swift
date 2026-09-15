@@ -112,12 +112,9 @@ struct ProjectDetailView: View {
 
     // MARK: - Actions
 
-    /// The shared "+" sheet, scoped to this project (presentCreate resets
-    /// the scope, so it is set right after).
+    /// The shared "+" sheet, scoped to this project.
     private func createTask() {
-        model.presentCreate()
-        model.createKind = .task
-        model.createProjectName = project.name
+        model.presentCreate(kind: .task, projectName: project.name)
     }
 
     private func startSession() {

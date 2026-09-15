@@ -45,7 +45,7 @@ struct AppShell: View {
         .animation(.easeOut(duration: 0.15), value: model.showingWorkspaces)
         .animation(.easeOut(duration: 0.15), value: model.showingAccountMenu)
         .tkToast(model, bottomPadding: model.isShowingDetail ? 80 : TK.tabBarHeight + 46)
-        .sheet(isPresented: $model.showingCreate) {
+        .sheet(isPresented: $model.showingCreate, onDismiss: model.clearCreateSeeds) {
             CreateSheet(model: model)
         }
         .sheet(isPresented: $model.showingPlayer, onDismiss: model.clearSessionAfterDismiss) {

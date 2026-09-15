@@ -32,7 +32,15 @@ struct RootView: View {
                 model.open(task)
             } else if parts.count == 2, parts[0] == "ticket", let ticket = model.tickets.first(where: { $0.id == parts[1] }) {
                 model.open(ticket)
+            } else if parts.count == 2, parts[0] == "project", let project = model.projects.first(where: { $0.key == parts[1] }) {
+                model.selectedTab = .projects
+                model.projectsPath.append(project)
             }
+        }
+        // `--create ticket|task|session` opens the create sheet.
+        if let index = args.firstIndex(of: "--create"), index + 1 < args.count,
+           let kind = CreateKind(rawValue: args[index + 1]) {
+            model.presentCreate(kind: kind)
         }
         if args.contains("--session"), let task = model.tasks.first(where: { $0.status == .inProgress }) {
             model.startSession(for: task)

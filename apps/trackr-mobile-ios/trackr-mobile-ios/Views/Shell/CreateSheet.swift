@@ -28,6 +28,7 @@ struct CreateSheet: View {
             allowsKindSwitch: true,
             initialProject: model.createProjectName,
             initialOrgKey: model.createOrgKey,
+            initialPlannedFor: model.createPlannedFor,
             onCreateTask: { task, files in
                 model.addTask(task, files: files)
                 model.toast("\(task.id) created")
@@ -54,6 +55,8 @@ struct CreateEntityForm: View {
     /// Preselected scope (project name for tasks, org key for tickets).
     var initialProject: String? = nil
     var initialOrgKey: String? = nil
+    /// Week "+ Add task": the new task is planned for that day.
+    var initialPlannedFor: Date? = nil
     /// Seeds for flows that prefill the sheet (ticket → task conversion).
     var initialTitle: String? = nil
     var initialPriority: TaskPriority? = nil
@@ -615,6 +618,7 @@ struct CreateEntityForm: View {
             project: project,
             details: details.trimmingCharacters(in: .whitespacesAndNewlines),
             due: due,
+            plannedFor: initialPlannedFor,
             estimate: estimate,
             assignees: assignees.sorted { $0.name < $1.name }
         )
