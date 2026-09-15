@@ -21,6 +21,9 @@ struct MessageComposer: View {
     /// Files-aware send; providing it enables the paperclip + staging strip
     /// and takes precedence over `onSend`. Staged files clear on send.
     var onSendFiles: (([PickedFile]) -> Void)? = nil
+    /// Tinted outline (the ticket internal-note amber) — nil keeps the
+    /// neutral border.
+    var accent: Color? = nil
 
     /// What the user sees and edits — plain `@Name` runs.
     @State private var display = ""
@@ -68,9 +71,7 @@ struct MessageComposer: View {
             }
             field
         }
-        // Match the tab bar cluster's horizontal inset below it.
-        .padding(.horizontal, 20)
-        .padding(.bottom, 6)
+        .padding(.horizontal, 12)
         .onChange(of: display) { _, new in
             picked.removeAll { !new.contains("@\($0.name)") }
             text = Mentions.tokenized(new, users: picked)
@@ -105,13 +106,13 @@ struct MessageComposer: View {
                             AvatarView(user: user, size: 20)
                             Text(user.name)
                                 .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(TK.text)
                         }
                         .padding(.leading, 4)
                         .padding(.trailing, 10)
                         .frame(height: 30)
-                        .background(.ultraThinMaterial, in: .capsule)
-                        .overlay(Capsule().strokeBorder(Color(.separator).opacity(0.4), lineWidth: 0.5))
+                        .background(TK.elevated, in: .capsule)
+                        .overlay(Capsule().strokeBorder(TK.borderStrong, lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                 }
@@ -144,20 +145,20 @@ struct MessageComposer: View {
             } else {
                 Image(systemName: "doc")
                     .font(.system(size: 15))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TK.text2)
                     .frame(width: 32, height: 32)
-                    .background(Color(.systemGray6), in: .rect(cornerRadius: 7))
+                    .background(TK.elevated2, in: .rect(cornerRadius: 7))
             }
             VStack(alignment: .leading, spacing: 1) {
                 Text(file.filename)
                     .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(TK.text)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .frame(maxWidth: 120, alignment: .leading)
                 Text(file.sizeFormatted)
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TK.text2)
             }
             Button {
                 staged.removeAll { $0.id == file.id }
@@ -169,10 +170,10 @@ struct MessageComposer: View {
             .buttonStyle(.plain)
         }
         .padding(6)
-        .background(.ultraThinMaterial, in: .rect(cornerRadius: 10))
+        .background(TK.elevated, in: .rect(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(Color(.separator).opacity(0.4), lineWidth: 0.5)
+                .strokeBorder(TK.borderStrong, lineWidth: 1)
         )
     }
 
@@ -202,7 +203,15 @@ struct MessageComposer: View {
     }
 
     private var field: some View {
-        HStack(alignment: .bottom, spacing: 10) {
+        HStack(alignment: .bottom, spacing: 8) {
+            TextField(placeholder, text: $display, axis: .vertical)
+                .font(.system(size: 15))
+                .foregroundStyle(TK.text)
+                .lineLimit(1...5)
+                .padding(.leading, 14)
+                .padding(.vertical, 8)
+                .frame(minHeight: 36)
+
             if onSendFiles != nil {
                 Menu {
                     if AttachmentCameraView.isAvailable {
@@ -224,32 +233,29 @@ struct MessageComposer: View {
                     }
                 } label: {
                     Image(systemName: "paperclip")
-                        .font(.system(size: 17))
-                        .foregroundStyle(Color(.secondaryLabel))
-                        .frame(width: 34, height: 34)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(TK.text2)
+                        .frame(width: 36, height: 36)
+                        .contentShape(.rect)
                 }
             }
 
-            TextField(placeholder, text: $display, axis: .vertical)
-                .font(.system(size: 15))
-                .lineLimit(1...5)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 7)
-
             Button(action: send) {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 28))
-                    .foregroundStyle(isEmpty ? Color(.tertiaryLabel) : Color.accentColor)
+                Image(systemName: "paperplane")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .background(isEmpty ? TK.accent.opacity(0.3) : TK.accent, in: .rect(cornerRadius: 10))
             }
+            .buttonStyle(TKScaleStyle())
             .disabled(isEmpty)
-            .padding(.bottom, 3)
+            .animation(.easeOut(duration: 0.2), value: isEmpty)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(.ultraThinMaterial, in: .rect(cornerRadius: 22))
+        .padding(6)
+        .background(TK.card, in: .rect(cornerRadius: TK.rCard))
         .overlay(
-            RoundedRectangle(cornerRadius: 22)
-                .strokeBorder(Color(.separator).opacity(0.4), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: TK.rCard)
+                .strokeBorder(accent?.opacity(0.5) ?? TK.borderStrong, lineWidth: 1)
         )
     }
 }
@@ -260,5 +266,6 @@ struct MessageComposer: View {
         Spacer()
         MessageComposer(text: $text, onSendFiles: { _ in })
     }
-    .background(Color.webBackground)
+    .background(TK.bg)
+    .preferredColorScheme(.dark)
 }

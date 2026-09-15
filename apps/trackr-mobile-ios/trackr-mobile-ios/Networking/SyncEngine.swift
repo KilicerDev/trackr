@@ -56,6 +56,14 @@ final class SyncEngine {
     func start() async {
         let hadCache = bootstrapFromCache()
         isColdStarting = !hadCache
+        model.workspaceName = UserDefaults.standard.string(forKey: "trackr.workspaceName")
+        Task { [weak self] in
+            guard let self, let instance = try? await client.instance() else { return }
+            if let name = instance.branding?.name, !name.isEmpty {
+                model.workspaceName = name
+                UserDefaults.standard.set(name, forKey: "trackr.workspaceName")
+            }
+        }
         let cap = Task {  [weak self] in
             try? await Task.sleep(for: .seconds(6))
             self?.isColdStarting = false

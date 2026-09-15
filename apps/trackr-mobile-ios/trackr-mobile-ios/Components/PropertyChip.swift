@@ -2,65 +2,75 @@
 //  PropertyChip.swift
 //  trackr-mobile-ios
 //
-//  Web parity (TaskPropertyRail.svelte / Inspector chips): neutral surface
-//  buttons — colored glyph, primary label, hairline border. Empty fields
-//  render as dashed ghost chips, the planned date as an accent-tinted chip.
+//  The prototype's property chip (detail views, create sheet): 38pt tall,
+//  radius 10, card fill with the strong border, 14pt medium label, optional
+//  trailing chevron when the chip opens a picker. Empty fields render as
+//  dashed ghost chips, the planned date as an accent-tinted chip.
 //
 
 import SwiftUI
 
 enum PropertyChipStyle {
-    /// Value set: surface background + solid hairline border, primary text.
+    /// Value set: card fill + strong hairline border, primary text.
     case filled
-    /// No value yet: dashed border, no fill, tertiary text.
+    /// No value yet: dashed border, no fill, secondary text.
     case empty
-    /// Planned-for date: accent-tinted fill, accent text, no border.
+    /// Planned-for date / selected filter: accent-tinted fill + accent border.
     case accent
 }
 
 struct PropertyChip<Content: View>: View {
     var style: PropertyChipStyle = .filled
+    /// Trailing 10pt chevron — set on chips that open a picker.
+    var chevron = false
+    /// Tighter leading padding for chips that start with an avatar/tile.
+    var leadingInset: CGFloat = 12
     @ViewBuilder var content: () -> Content
 
     var body: some View {
-        HStack(spacing: 6, content: content)
-            .font(.system(size: 14))
-            .foregroundStyle(foreground)
-            .padding(.horizontal, 11)
-            .frame(height: 34)
-            .background(background, in: .rect(cornerRadius: 10))
-            .overlay {
-                switch style {
-                case .filled:
-                    RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(Color(.separator).opacity(0.5), lineWidth: 1)
-                case .empty:
-                    RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(
-                            Color(.separator).opacity(0.8),
-                            style: StrokeStyle(lineWidth: 1, dash: [4, 3])
-                        )
-                case .accent:
-                    EmptyView()
-                }
+        HStack(spacing: 8) {
+            content()
+            if chevron {
+                TKChevron()
             }
+        }
+        .font(.tkChip)
+        .foregroundStyle(foreground)
+        .padding(.leading, leadingInset)
+        .padding(.trailing, 12)
+        .frame(height: 38)
+        .background(background, in: .rect(cornerRadius: TK.rChip))
+        .overlay {
+            switch style {
+            case .filled:
+                RoundedRectangle(cornerRadius: TK.rChip)
+                    .strokeBorder(TK.borderStrong, lineWidth: 1)
+            case .empty:
+                RoundedRectangle(cornerRadius: TK.rChip)
+                    .strokeBorder(TK.borderDashed, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+            case .accent:
+                RoundedRectangle(cornerRadius: TK.rChip)
+                    .strokeBorder(TK.accentBorder, lineWidth: 1)
+            }
+        }
+        .contentShape(.rect)
     }
 
     // Concrete colors on purpose: inside Menu labels the hierarchical
     // styles derive from the accent tint and render pink.
     private var foreground: Color {
         switch style {
-        case .filled: Color.primary
-        case .empty: Color(.tertiaryLabel)
-        case .accent: Color.accentColor
+        case .filled: TK.text
+        case .empty: TK.text2
+        case .accent: TK.accent
         }
     }
 
     private var background: Color {
         switch style {
-        case .filled: Color(.secondarySystemGroupedBackground)
+        case .filled: TK.card
         case .empty: .clear
-        case .accent: Color.accentColor.opacity(0.14)
+        case .accent: TK.accentSoft
         }
     }
 }
@@ -107,30 +117,32 @@ struct ChipFlow: Layout {
 
 #Preview {
     ChipFlow {
-        PropertyChip {
+        PropertyChip(chevron: true, leadingInset: 10) {
             TypeBadge(type: .feature, showLabel: false)
             Text("Feature")
         }
-        PropertyChip {
-            StatusDot(status: .inProgress, size: 14)
+        PropertyChip(chevron: true, leadingInset: 10) {
+            StatusDot(status: .inProgress, size: 18)
             Text("In Progress")
         }
-        PropertyChip {
+        PropertyChip(chevron: true, leadingInset: 10) {
             PriorityBars(priority: .high)
             Text("High")
         }
-        PropertyChip(style: .empty) {
+        PropertyChip(style: .empty, chevron: true) {
             Image(systemName: "calendar").font(.system(size: 12))
             Text("Due date")
         }
         PropertyChip(style: .accent) {
             Image(systemName: "bookmark").font(.system(size: 12))
-            Text("Aug 22, 2026").monospaced()
+            Text("Aug 22, 2026").font(.tkMono(14))
         }
         PropertyChip {
-            Text("Est").foregroundStyle(Color(.secondaryLabel))
-            Text("8h").monospaced()
+            Text("Est").foregroundStyle(TK.text2)
+            Text("8h").font(.tkMono(14))
         }
     }
     .padding()
+    .background(TK.bg)
+    .preferredColorScheme(.dark)
 }

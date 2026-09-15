@@ -38,7 +38,7 @@ struct WorkSessionLiveActivity: Widget {
                 DynamicIslandExpandedRegion(.trailing) {
                     // Claims its full width so the center text can't squeeze
                     // the digits onto two lines.
-                    Timer(startedAt: context.state.startedAt, size: 20)
+                    Timer(startedAt: context.state.startedAt, pausedAt: context.state.pausedAt, size: 20)
                         .fixedSize()
                         .padding(.trailing, 4)
                 }
@@ -52,7 +52,7 @@ struct WorkSessionLiveActivity: Widget {
             } compactLeading: {
                 ProjectTile(attributes: context.attributes, size: 22)
             } compactTrailing: {
-                Timer(startedAt: context.state.startedAt, size: 14)
+                Timer(startedAt: context.state.startedAt, pausedAt: context.state.pausedAt, size: 14)
                     .foregroundStyle(context.attributes.projectColor)
                     .frame(maxWidth: 60)
             } minimal: {
@@ -88,7 +88,7 @@ private struct LockScreenView: View {
                 }
             }
             Spacer(minLength: 8)
-            Timer(startedAt: context.state.startedAt, size: 28)
+            Timer(startedAt: context.state.startedAt, pausedAt: context.state.pausedAt, size: 28)
         }
         .padding(16)
         .activityBackgroundTint(Color(.systemBackground).opacity(0.85))
@@ -124,14 +124,28 @@ private struct ProjectTile: View {
 /// Counts up on its own — no activity updates needed for the clock.
 private struct Timer: View {
     let startedAt: Date
+    var pausedAt: Date? = nil
     let size: CGFloat
 
     var body: some View {
-        Text(timerInterval: startedAt...Date.distantFuture, countsDown: false)
-            .font(.system(size: size, weight: .semibold, design: .rounded))
-            .monospacedDigit()
-            .lineLimit(1)
-            .multilineTextAlignment(.trailing)
+        Group {
+            if let pausedAt {
+                // Frozen working time while paused.
+                Text(Self.format(pausedAt.timeIntervalSince(startedAt)))
+            } else {
+                Text(timerInterval: startedAt...Date.distantFuture, countsDown: false)
+            }
+        }
+        .font(.system(size: size, weight: .semibold, design: .rounded))
+        .monospacedDigit()
+        .lineLimit(1)
+        .multilineTextAlignment(.trailing)
+    }
+
+    private static func format(_ interval: TimeInterval) -> String {
+        let total = max(0, Int(interval))
+        let h = total / 3600, m = total % 3600 / 60, s = total % 60
+        return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%02d:%02d", m, s)
     }
 }
 

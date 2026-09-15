@@ -23,11 +23,11 @@ struct TagChip: View {
 
     var body: some View {
         Text(tag)
-            .font(.system(size: 12, weight: .medium, design: .monospaced))
+            .font(.tkMono(11))
             .foregroundStyle(Self.color(for: tag))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(Self.color(for: tag).opacity(0.14), in: .rect(cornerRadius: 6))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Self.color(for: tag).opacity(0.15), in: .rect(cornerRadius: 5))
     }
 }
 

@@ -24,9 +24,9 @@ struct AvatarView: View {
             } else {
                 Text("?")
                     .font(.system(size: max(9, size * 0.45)))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(TK.text2)
                     .frame(width: size, height: size)
-                    .background(.quaternary, in: .circle)
+                    .background(TK.elevated2, in: .circle)
                     .accessibilityLabel("Unassigned")
             }
         }

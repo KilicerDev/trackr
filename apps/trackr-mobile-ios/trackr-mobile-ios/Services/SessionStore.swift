@@ -23,6 +23,8 @@ enum SessionStore {
         var startedAt: Date
         var taskId: String?
         var notes: [Note]
+        var pausedAccumulated: TimeInterval?
+        var pauseStartedAt: Date?
 
         struct Note: Codable {
             var id: String
@@ -42,7 +44,9 @@ enum SessionStore {
             title: session.title,
             startedAt: startedAt,
             taskId: session.taskId,
-            notes: session.notes.map { .init(id: $0.id, date: $0.date, text: $0.text) }
+            notes: session.notes.map { .init(id: $0.id, date: $0.date, text: $0.text) },
+            pausedAccumulated: session.pausedAccumulated,
+            pauseStartedAt: session.pauseStartedAt
         )
         if let data = try? JSONEncoder().encode(snapshot) {
             UserDefaults.standard.set(data, forKey: key)
@@ -58,7 +62,9 @@ enum SessionStore {
             title: snapshot.title,
             startedAt: snapshot.startedAt,
             notes: snapshot.notes.map { TaskComment(id: $0.id, user: author, date: $0.date, text: $0.text) },
-            taskId: snapshot.taskId
+            taskId: snapshot.taskId,
+            pausedAccumulated: snapshot.pausedAccumulated ?? 0,
+            pauseStartedAt: snapshot.pauseStartedAt
         )
     }
 }

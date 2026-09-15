@@ -8,13 +8,52 @@
 
 import SwiftUI
 
-enum AppTab: Hashable {
-    case home, tickets, tasks, plan, search
+/// Every surface hosted by the tab shell. The bottom bar shows the four
+/// `mainTabs`; the rest are reached from the top bar (inbox bell, account
+/// menu) and render in the same shell without a highlighted tab.
+enum AppTab: Hashable, CaseIterable {
+    case week, tickets, tasks, search
+    case inbox, projects, chat, notes, meetings, wiki, settings
+
+    static let mainTabs: [AppTab] = [.week, .tickets, .tasks, .search]
+
+    var title: String {
+        switch self {
+        case .week: "My week"
+        case .tickets: "Tickets"
+        case .tasks: "Tasks"
+        case .search: "Search"
+        case .inbox: "Inbox"
+        case .projects: "Projects"
+        case .chat: "Chat"
+        case .notes: "Notes"
+        case .meetings: "Meetings"
+        case .wiki: "Wiki"
+        case .settings: "Account"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .week: "calendar"
+        case .tickets: "ticket"
+        case .tasks: "checkmark.square"
+        case .search: "magnifyingglass"
+        case .inbox: "bell"
+        case .projects: "folder"
+        case .chat: "bubble.left.and.bubble.right"
+        case .notes: "note.text"
+        case .meetings: "person.2"
+        case .wiki: "book"
+        case .settings: "gearshape"
+        }
+    }
 }
 
-/// Value-based routes for the Home tab's navigation stack.
-enum HomeRoute: Hashable {
-    case allProjects, notes, meetings, wiki, chat, inbox
+/// What the create sheet builds — seeded from the current tab.
+enum CreateKind: String, CaseIterable, Identifiable {
+    case ticket, task, session
+    var id: String { rawValue }
 }
 
 struct ProjectRef: Identifiable, Hashable {
@@ -32,8 +71,25 @@ struct WorkSession {
     /// Local id of the task this session was started from (nil = free
     /// session that materializes into a new task on Done).
     var taskId: String?
+    /// Seconds spent paused so far (excluded from the elapsed time).
+    var pausedAccumulated: TimeInterval = 0
+    /// When the current pause began; nil while recording.
+    var pauseStartedAt: Date?
+
     var isRunning: Bool { startedAt != nil }
     var isTaskBound: Bool { taskId != nil }
+    var isPaused: Bool { pauseStartedAt != nil }
+
+    /// Instant a count-up timer should start from to show working time
+    /// (start shifted by the pauses) — for `Text(_, style: .timer)`.
+    var effectiveStart: Date? { startedAt.map { $0.addingTimeInterval(pausedAccumulated) } }
+
+    /// Working time so far, frozen while paused.
+    func elapsed(at now: Date) -> TimeInterval {
+        guard let startedAt else { return 0 }
+        let end = pauseStartedAt ?? now
+        return max(0, end.timeIntervalSince(startedAt) - pausedAccumulated)
+    }
 }
 
 @Observable @MainActor
@@ -44,19 +100,98 @@ final class AppModel {
     var notes: [NoteItem] = []
     var wikiPages: [WikiPageItem] = []
     var chatThreads: [ChatThread] = []
-    var selectedTab: AppTab = .home
+    var selectedTab: AppTab = .week
     var taskPath: [TaskItem] = []
     var ticketPath: [TicketItem] = []
-    var homePath = NavigationPath()
+    /// Navigation stacks of the other surfaces (week pushes task details,
+    /// search/inbox push anything, chat pushes threads, projects push
+    /// project details). Centralized so the shell knows when a detail is
+    /// on top (bottom chrome hides) and deep links can push into them.
+    var weekPath = NavigationPath()
+    var searchPath = NavigationPath()
+    var inboxPath = NavigationPath()
+    var projectsPath = NavigationPath()
+    var chatPath = NavigationPath()
+    var notesPath = NavigationPath()
+    var meetingsPath = NavigationPath()
+    var wikiPath = NavigationPath()
+    var settingsPath = NavigationPath()
+
+    /// True while the selected surface shows a pushed detail — the tab bar
+    /// and top bar belong to the roots only (prototype: details are full
+    /// screen with their own bottom composer).
+    var isShowingDetail: Bool {
+        switch selectedTab {
+        case .tasks: !taskPath.isEmpty
+        case .tickets: !ticketPath.isEmpty
+        case .week: !weekPath.isEmpty
+        case .search: !searchPath.isEmpty
+        case .inbox: !inboxPath.isEmpty
+        case .projects: !projectsPath.isEmpty
+        case .chat: !chatPath.isEmpty
+        case .notes: !notesPath.isEmpty
+        case .meetings: !meetingsPath.isEmpty
+        case .wiki: !wikiPath.isEmpty
+        case .settings: !settingsPath.isEmpty
+        }
+    }
+
+    /// Switch to a surface at its root (top-bar menu items).
+    func go(_ tab: AppTab) {
+        selectedTab = tab
+        showingWorkspaces = false
+        showingAccountMenu = false
+    }
+
+    /// Open a task's detail on the Tasks tab from anywhere.
+    func open(_ task: TaskItem) {
+        selectedTab = .tasks
+        taskPath = [task]
+    }
+
+    /// Open a ticket's detail on the Tickets tab from anywhere.
+    func open(_ ticket: TicketItem) {
+        selectedTab = .tickets
+        ticketPath = [ticket]
+    }
+
+    // Shell overlays (top-bar popovers, create sheet, toast).
+    var showingWorkspaces = false
+    var showingAccountMenu = false
+    var showingCreate = false
+    var createKind: CreateKind = .task
+    /// The list/detail that was on screen when "+" was tapped — the create
+    /// sheet seeds its scope from it.
+    var createProjectName: String?
+    var createOrgKey: String?
+
+    private(set) var toastMessage: String?
+    private var toastTask: Task<Void, Never>?
+
+    /// Transient confirmation pill above the bottom chrome (~1.8 s).
+    func toast(_ message: String) {
+        toastTask?.cancel()
+        toastMessage = message
+        toastTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.8))
+            guard !Task.isCancelled else { return }
+            self?.toastMessage = nil
+        }
+    }
+
+    /// "+" on the tab bar: ticket on the tickets tab, otherwise a task.
+    func presentCreate() {
+        createKind = selectedTab == .tickets ? .ticket : .task
+        createProjectName = nil
+        createOrgKey = nil
+        showingCreate = true
+    }
     /// Mirrored to disk on every change so a killed process can resume it
     /// (SessionStore) — the Live Activity keeps counting meanwhile.
     var session = WorkSession() {
         didSet { SessionStore.save(session) }
     }
     var showingPlayer = false
-    /// A chat thread is on top of the home stack — HomeView hides the tab
-    /// bar while set; cleared when the path pops (see HomeView).
-    var chatThreadOpen = false
 
     // Per-page view state, shared across tab switches and synced with the
     // web's view_state (SyncEngine persists it locally + server-side).
@@ -74,6 +209,9 @@ final class AppModel {
     var savedProjectViews: [SavedViewEntry] = []
 
     // Session context, filled by SyncEngine from /api/v1/me.
+    /// Server branding name (GET /api/v1/instance) — the top bar's workspace
+    /// label; falls back to the host.
+    var workspaceName: String?
     var currentUser: UserRef?
     var currentUserEmail = ""
     var isStaff = true
@@ -100,7 +238,14 @@ final class AppModel {
             orgs = TicketItem.sampleOrgs
             assignableUsers = TaskItem.sampleUsers
             chatTags = ChatThread.sampleTags
+            workspaceName = "KiloHertz GmbH"
         }
+    }
+
+    /// Top-bar label: branding name, else the server host, else "trackr".
+    var workspaceLabel: String {
+        if let workspaceName, !workspaceName.isEmpty { return workspaceName }
+        return ServerConfig.savedHost?.host() ?? "trackr"
     }
 
     var me: UserRef { currentUser ?? TaskItem.sampleUsers[0] }
@@ -132,6 +277,22 @@ final class AppModel {
             estimate: task.estimate,
             assignees: task.assignees,
             checklist: task.checklist,
+            files: files
+        )
+    }
+
+    /// Optimistically insert a locally-built ticket and push it to the
+    /// server (with staged files in the same request).
+    func addTicket(_ ticket: TicketItem, files: [PickedFile] = []) {
+        tickets.insert(ticket, at: 0)
+        guard let orgId = ticket.org.serverId else { return }
+        sync?.createTicket(
+            orgId: orgId,
+            subject: ticket.subject,
+            description: ticket.messages.first?.text,
+            priority: ticket.priority,
+            category: ticket.category,
+            assignees: ticket.assignees,
             files: files
         )
     }
@@ -181,22 +342,32 @@ final class AppModel {
                 }
             }
         case "chat":
-            selectedTab = .home
+            selectedTab = .chat
             var fresh = NavigationPath()
-            fresh.append(HomeRoute.chat)
             if parts.count > 1, let thread = chatThreads.first(where: { $0.id == parts[1] }) {
                 fresh.append(thread)
             }
-            homePath = fresh
+            chatPath = fresh
         case "inbox":
-            selectedTab = .home
-            var fresh = NavigationPath()
-            fresh.append(HomeRoute.inbox)
-            homePath = fresh
+            selectedTab = .inbox
+            inboxPath = NavigationPath()
         case "week":
-            selectedTab = .plan
+            selectedTab = .week
+        case "projects":
+            selectedTab = .projects
         default:
-            selectedTab = .home
+            selectedTab = .week
+        }
+    }
+
+    /// Pause / resume the running session (mini bar + session sheet).
+    func togglePause() {
+        guard session.isRunning else { return }
+        if let pauseStartedAt = session.pauseStartedAt {
+            session.pausedAccumulated += Date.now.timeIntervalSince(pauseStartedAt)
+            session.pauseStartedAt = nil
+        } else {
+            session.pauseStartedAt = .now
         }
     }
 
@@ -264,8 +435,8 @@ final class AppModel {
     /// Materialize the session into a task — elapsed time becomes a time
     /// log, session notes become comments — and open its detail page.
     func finishSession(as status: TaskStatus?) {
-        guard let startedAt = session.startedAt, let project = session.project else { return }
-        let minutes = max(1, Int(Date.now.timeIntervalSince(startedAt) / 60))
+        guard session.startedAt != nil, let project = session.project else { return }
+        let minutes = max(1, Int(session.elapsed(at: .now) / 60))
         if let taskId = session.taskId {
             finishBoundSession(taskId: taskId, status: status, minutes: minutes)
             return

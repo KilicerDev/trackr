@@ -14,9 +14,15 @@ enum API {
     // MARK: - Instance & session
 
     struct Instance: Codable {
+        struct Branding: Codable {
+            let name: String?
+            let logoUrl: String?
+        }
         let name: String
         let version: String?
         let api: Int?
+        /// Workspace display name + logo (server branding settings).
+        let branding: Branding?
     }
 
     struct DisplayUser: Codable {

@@ -38,6 +38,7 @@ struct MessageCard: View {
             if !text.isEmpty {
                 Text(Mentions.attributed(text))
                     .font(.system(size: 15))
+                    .foregroundStyle(TK.mono(0.88))
                     .lineSpacing(3)
             }
             if !imageAttachments.isEmpty {
@@ -51,17 +52,15 @@ struct MessageCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .background(
-            accent?.opacity(0.10) ?? Color(.secondarySystemGroupedBackground),
+            accent?.opacity(0.07) ?? TK.card,
             in: .rect(cornerRadius: 12)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(
-                    accent?.opacity(0.30) ?? Color(.separator).opacity(0.4),
-                    lineWidth: accent == nil ? 0.5 : 1
-                )
+                .strokeBorder(accent?.opacity(0.40) ?? TK.border, lineWidth: 1)
         )
         .quickLookPreview($previewURL)
     }
@@ -93,7 +92,7 @@ struct MessageCard: View {
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
                         } else {
-                            Color(.systemGray6)
+                            TK.elevated
                             VStack(spacing: 4) {
                                 Image(systemName: "doc")
                                     .font(.system(size: 20))
@@ -132,5 +131,6 @@ struct MessageCard: View {
 #Preview {
     MessageCard(text: "Root cause: Outlook inverts any background darker than #333.")
         .padding()
-        .background(Color.webBackground)
+        .background(TK.bg)
+        .preferredColorScheme(.dark)
 }

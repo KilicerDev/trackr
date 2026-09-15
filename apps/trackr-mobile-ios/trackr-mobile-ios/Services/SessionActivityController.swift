@@ -32,7 +32,10 @@ final class SessionActivityController {
     func reconcile(with session: WorkSession) {
         let existing = Activity<WorkSessionAttributes>.activities
         let match = session.isRunning
-            ? existing.first { $0.content.state.startedAt == session.startedAt }
+            ? existing.first {
+                $0.attributes.sessionStartedAt == session.startedAt
+                    || $0.content.state.startedAt == session.startedAt
+            }
             : nil
         for stale in existing where stale.id != match?.id {
             Task { await stale.end(nil, dismissalPolicy: .immediate) }
@@ -48,7 +51,8 @@ final class SessionActivityController {
         let attributes = WorkSessionAttributes(
             projectName: project.name,
             projectColorHex: project.color.hexValue,
-            taskKey: session.taskId
+            taskKey: session.taskId,
+            sessionStartedAt: startedAt
         )
         let content = ActivityContent(state: state(for: session, startedAt: startedAt), staleDate: nil)
         do {
@@ -86,7 +90,12 @@ final class SessionActivityController {
     // MARK: - Private
 
     private func state(for session: WorkSession, startedAt: Date) -> WorkSessionAttributes.ContentState {
-        .init(startedAt: startedAt, title: session.title, noteCount: session.notes.count)
+        .init(
+            startedAt: session.effectiveStart ?? startedAt,
+            pausedAt: session.pauseStartedAt.map { $0.addingTimeInterval(-session.pausedAccumulated) },
+            title: session.title,
+            noteCount: session.notes.count
+        )
     }
 
     /// Per-activity APNs token (rotates): registered with the server under

@@ -13,7 +13,12 @@ import Foundation
 
 struct WorkSessionAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
+        /// Timer origin — the session start shifted by the pauses, so the
+        /// count-up shows working time.
         var startedAt: Date
+        /// Set while paused: the views show the frozen elapsed time
+        /// (`pausedAt - startedAt`) instead of a running timer.
+        var pausedAt: Date?
         /// Session title — editable for free sessions, so it lives in state.
         var title: String
         var noteCount: Int
@@ -25,6 +30,8 @@ struct WorkSessionAttributes: ActivityAttributes {
     var projectColorHex: UInt32
     /// Bound sessions: the task key ("TRK-112"); nil for free sessions.
     var taskKey: String?
+    /// The session's real start — identifies the activity across relaunches.
+    var sessionStartedAt: Date?
 
     var projectInitial: String { String(projectName.prefix(1)) }
 }

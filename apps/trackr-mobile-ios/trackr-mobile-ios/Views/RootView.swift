@@ -11,8 +11,36 @@ import SwiftUI
 
 struct RootView: View {
     var push: PushRegistrar? = nil
+    /// `--sample-data` launch argument: skip sign-in and run the shell on
+    /// the bundled sample data (design work, simulator screenshots).
+    private static let sampleMode = ProcessInfo.processInfo.arguments.contains("--sample-data")
     @State private var auth = AuthSession()
-    @State private var model = AppModel(sampleData: false)
+    @State private var model: AppModel = {
+        let model = AppModel(sampleData: RootView.sampleMode)
+        // `--tab <name>` picks the initial surface (simulator screenshots
+        // can't tap the tab bar from the CLI).
+        let args = ProcessInfo.processInfo.arguments
+        if let index = args.firstIndex(of: "--tab"), index + 1 < args.count,
+           let tab = AppTab.allCases.first(where: { "\($0)" == args[index + 1] }) {
+            model.selectedTab = tab
+        }
+        // `--open task:TRK-118` / `--open ticket:MEDI-14` pushes a sample
+        // detail; `--session` starts a sample work session (mini bar).
+        if let index = args.firstIndex(of: "--open"), index + 1 < args.count {
+            let parts = args[index + 1].split(separator: ":", maxSplits: 1).map(String.init)
+            if parts.count == 2, parts[0] == "task", let task = model.tasks.first(where: { $0.id == parts[1] }) {
+                model.open(task)
+            } else if parts.count == 2, parts[0] == "ticket", let ticket = model.tickets.first(where: { $0.id == parts[1] }) {
+                model.open(ticket)
+            }
+        }
+        if args.contains("--session"), let task = model.tasks.first(where: { $0.status == .inProgress }) {
+            model.startSession(for: task)
+            model.showingPlayer = args.contains("--player")
+        }
+        return model
+    }()
+    @AppStorage("trackr.theme") private var theme = "system"
     @State private var engine: SyncEngine?
     @State private var attachmentStore: AttachmentStore?
     @State private var sessionActivity: SessionActivityController?
@@ -21,7 +49,26 @@ struct RootView: View {
     @State private var openPlayerWhenReady = false
     @Environment(\.scenePhase) private var scenePhase
 
+    private var colorScheme: ColorScheme? {
+        switch theme {
+        case "dark": .dark
+        case "light": .light
+        default: nil
+        }
+    }
+
     var body: some View {
+        Group {
+            if Self.sampleMode {
+                AppShell(model: model)
+            } else {
+                signedInOrOut
+            }
+        }
+        .preferredColorScheme(colorScheme)
+    }
+
+    private var signedInOrOut: some View {
         Group {
             switch auth.phase {
             case .launching:
@@ -33,7 +80,7 @@ struct RootView: View {
                 // from — keep the brand screen up until the first refresh
                 // lands (capped in SyncEngine) instead of showing empty tabs.
                 ZStack {
-                    ContentView(model: model, auth: auth)
+                    AppShell(model: model, auth: auth)
                     if engine?.isColdStarting == true {
                         LaunchView()
                             .transition(.opacity)
@@ -99,6 +146,9 @@ struct RootView: View {
             if !showing { sessionActivity?.update(model.session) }
         }
         .onChange(of: model.session.notes.count) {
+            sessionActivity?.update(model.session)
+        }
+        .onChange(of: model.session.pauseStartedAt) {
             sessionActivity?.update(model.session)
         }
         // trackr://session — the Live Activity tap lands in the player.

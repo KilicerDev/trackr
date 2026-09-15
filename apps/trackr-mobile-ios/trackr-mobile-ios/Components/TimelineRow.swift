@@ -2,9 +2,9 @@
 //  TimelineRow.swift
 //  trackr-mobile-ios
 //
-//  Web parity (Inspector activity timeline): an event on the vertical
-//  rail — avatar node for authored events, icon node for system events,
-//  header line "Name action · date", optional content below.
+//  Prototype activity row: 26pt avatar node (or an icon tile for system
+//  events), then "**Name** action · mono date" on one 13pt line; the
+//  optional content (a MessageCard) hangs below, indented past the node.
 //
 //  Reusable for task comments, ticket messages, and chat.
 //
@@ -21,30 +21,35 @@ struct TimelineRow<Content: View>: View {
     let name: String
     let action: String
     let date: Date
+    /// Extra tinted word after the action ("internal note" in amber).
+    var tag: (text: String, color: Color)? = nil
     @ViewBuilder var content: Content
 
-    /// Width of the node column — the rail line should run at half this.
-    static var nodeSize: CGFloat { 24 }
+    /// Width of the node column — content indents by this + spacing.
+    static var nodeSize: CGFloat { 26 }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            nodeView
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 5) {
-                    Text(name)
-                        .font(.system(size: 14, weight: .medium))
-                    Text(action)
-                        .font(.system(size: 14))
-                        .foregroundStyle(.secondary)
-                    Text("· \(date.formatted(.dateTime.day().month(.abbreviated)))")
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(.top, 3)
-                .lineLimit(1)
-                content
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .center, spacing: 10) {
+                nodeView
+                header
+                    .lineLimit(2)
             }
+            content
+                .padding(.leading, Self.nodeSize + 10)
         }
+    }
+
+    private var header: some View {
+        var line = Text(name).font(.system(size: 13, weight: .semibold)).foregroundColor(TK.text)
+        line = line + Text(" \(action)").font(.system(size: 13)).foregroundColor(TK.mono(0.65))
+        if let tag {
+            line = line + Text(" \(tag.text)").font(.system(size: 13)).foregroundColor(tag.color)
+        }
+        line = line + Text(" · ").font(.system(size: 13)).foregroundColor(TK.mono(0.65))
+        line = line + Text(date.formatted(.dateTime.day().month(.abbreviated)))
+            .font(.tkMono(11)).foregroundColor(TK.text3)
+        return line
     }
 
     @ViewBuilder
@@ -52,33 +57,37 @@ struct TimelineRow<Content: View>: View {
         switch node {
         case .avatar(let user):
             AvatarView(user: user, size: Self.nodeSize)
-                .overlay(
-                    Circle().strokeBorder(Color.webBackground, lineWidth: 2)
-                )
         case .icon(let systemImage):
             Image(systemName: systemImage)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(TK.text2)
                 .frame(width: Self.nodeSize, height: Self.nodeSize)
-                .background(Color(.secondarySystemGroupedBackground), in: .circle)
-                .overlay(Circle().strokeBorder(Color(.separator).opacity(0.5), lineWidth: 0.5))
+                .background(TK.elevated2, in: .circle)
         }
     }
 }
 
 extension TimelineRow where Content == EmptyView {
-    init(node: Node, name: String, action: String, date: Date) {
-        self.init(node: node, name: name, action: action, date: date) { EmptyView() }
+    init(node: Node, name: String, action: String, date: Date,
+         tag: (text: String, color: Color)? = nil) {
+        self.init(node: node, name: name, action: action, date: date, tag: tag) { EmptyView() }
     }
 }
 
 #Preview {
-    VStack(alignment: .leading, spacing: 18) {
+    VStack(alignment: .leading, spacing: 14) {
         TimelineRow(
             node: .avatar(TaskItem.sampleUsers[0]),
-            name: "Max Muster", action: "commented", date: .now
+            name: "Max Muster", action: "replied", date: .now
         ) {
             MessageCard(text: "Looks good to me!")
+        }
+        TimelineRow(
+            node: .avatar(TaskItem.sampleUsers[1]),
+            name: "Mara Steiner", action: "added an", date: .now,
+            tag: ("internal note", TK.amber)
+        ) {
+            MessageCard(text: "Linked to task SIWEB-78.", accent: TK.amber)
         }
         TimelineRow(
             node: .icon("clock"),
@@ -86,5 +95,6 @@ extension TimelineRow where Content == EmptyView {
         )
     }
     .padding()
-    .background(Color.webBackground)
+    .background(TK.bg)
+    .preferredColorScheme(.dark)
 }
