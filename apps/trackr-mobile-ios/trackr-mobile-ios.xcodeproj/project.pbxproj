@@ -376,6 +376,7 @@
 				CODE_SIGN_ENTITLEMENTS = "trackr-mobile-ios/trackr-mobile-ios.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 5;
+				DEVELOPMENT_TEAM = J3VZ2P29VG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "trackr-mobile-ios/Info.plist";
@@ -410,6 +411,7 @@
 				CODE_SIGN_ENTITLEMENTS = "trackr-mobile-ios/trackr-mobile-ios.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 5;
+				DEVELOPMENT_TEAM = J3VZ2P29VG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "trackr-mobile-ios/Info.plist";
@@ -443,6 +445,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 5;
+				DEVELOPMENT_TEAM = J3VZ2P29VG;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "trackr-mobile-ios-live/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Trackr Session";
@@ -474,6 +477,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 5;
+				DEVELOPMENT_TEAM = J3VZ2P29VG;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "trackr-mobile-ios-live/Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Trackr Session";

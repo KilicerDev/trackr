@@ -136,7 +136,11 @@ struct TKBoard<Column: Identifiable, Header: View, Cards: View, Footer: View>: V
                         }
                         .scrollBounceBehavior(.basedOnSize)
                     }
-                    .frame(width: columnWidth)
+                    // Nearly full width with the next column peeking in, so a
+                    // swipe reads as paging; `columnWidth` is the floor.
+                    .containerRelativeFrame(.horizontal) { length, _ in
+                        max(columnWidth, length - 2 * TK.gutter - 40)
+                    }
                     .id(column.id)
                 }
             }
