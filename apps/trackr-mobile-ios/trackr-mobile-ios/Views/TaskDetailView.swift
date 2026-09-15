@@ -21,6 +21,8 @@ struct TaskDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var baseline: TaskItem?
+    @State private var editingDescription = false
+    @FocusState private var descriptionFocused: Bool
     @State private var deleted = false
 
     /// The shared model's copy of this task — nil in previews.
@@ -500,15 +502,38 @@ struct TaskDetailView: View {
         .buttonStyle(TKScaleStyle())
     }
 
+    /// Rendered markdown; tapping it (or an empty description) opens the
+    /// raw editor, "Done" returns to the rendered view.
+    @ViewBuilder
     private var descriptionField: some View {
-        TextField(
-            "", text: $task.details,
-            prompt: Text("Add a description…").foregroundStyle(TK.text4),
-            axis: .vertical
-        )
-        .font(.system(size: 15))
-        .foregroundStyle(TK.textBody)
-        .lineSpacing(4)
+        if editingDescription || task.details.isEmpty {
+            VStack(alignment: .trailing, spacing: 6) {
+                TextField(
+                    "", text: $task.details,
+                    prompt: Text("Add a description…").foregroundStyle(TK.text4),
+                    axis: .vertical
+                )
+                .font(.system(size: 15))
+                .foregroundStyle(TK.textBody)
+                .lineSpacing(4)
+                .focused($descriptionFocused)
+                if editingDescription {
+                    TKQuietButton(title: "Done", color: TK.accent, weight: .medium) {
+                        editingDescription = false
+                        descriptionFocused = false
+                    }
+                }
+            }
+        } else {
+            Button {
+                editingDescription = true
+                descriptionFocused = true
+            } label: {
+                RichContentView(markdown: task.details)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     private var checklistSection: some View {

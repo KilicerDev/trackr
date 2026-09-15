@@ -36,10 +36,14 @@ struct MessageCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if !text.isEmpty {
-                Text(Mentions.attributed(text))
-                    .font(.system(size: 15))
-                    .foregroundStyle(TK.mono(0.88))
-                    .lineSpacing(3)
+                if MarkdownParser.hasBlockSyntax(text) {
+                    RichContentView(markdown: text)
+                } else {
+                    Text(MarkdownParser.inline(text))
+                        .font(.system(size: 15))
+                        .foregroundStyle(TK.mono(0.88))
+                        .lineSpacing(3)
+                }
             }
             if !imageAttachments.isEmpty {
                 imageRow

@@ -13,7 +13,12 @@ import QuickLook
 import SwiftUI
 
 struct RichContentView: View {
-    let html: String
+    enum Source: Hashable {
+        case html(String)
+        case markdown(String)
+    }
+
+    let source: Source
     /// Drop a leading h1 when the screen already draws the title above
     /// the document (wiki pages carry their title as the first heading).
     var hidesLeadingHeading = false
@@ -24,8 +29,13 @@ struct RichContentView: View {
     @State private var blocks: [NoteBlock] = []
 
     init(html: String, hidesLeadingHeading: Bool = false) {
-        self.html = html
+        self.source = .html(html)
         self.hidesLeadingHeading = hidesLeadingHeading
+    }
+
+    /// Task / ticket descriptions and comment bodies (markdown).
+    init(markdown: String) {
+        self.source = .markdown(markdown)
     }
 
     var body: some View {
@@ -37,8 +47,11 @@ struct RichContentView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .textSelection(.enabled)
         .tint(TK.accent)
-        .task(id: html) {
-            var parsed = RichContentParser.parse(html)
+        .task(id: source) {
+            var parsed: [NoteBlock] = switch source {
+            case .html(let html): RichContentParser.parse(html)
+            case .markdown(let markdown): MarkdownParser.parse(markdown)
+            }
             if hidesLeadingHeading, let first = parsed.first,
                case .heading(let level, _) = first.kind, level == 1 {
                 parsed.removeFirst()

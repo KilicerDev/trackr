@@ -59,11 +59,7 @@ struct TicketDetailView: View {
                         .fixedSize(horizontal: false, vertical: true)
                     chips
                     if !ticket.details.isEmpty {
-                        Text(Mentions.attributed(ticket.details))
-                            .font(.system(size: 15))
-                            .foregroundStyle(TK.textBody)
-                            .lineSpacing(3)
-                            .fixedSize(horizontal: false, vertical: true)
+                        RichContentView(markdown: ticket.details)
                     }
                     actionStrip
                     detailsCard

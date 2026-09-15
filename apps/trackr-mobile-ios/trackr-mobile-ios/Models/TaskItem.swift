@@ -149,7 +149,7 @@ extension TaskItem {
             TaskItem(id: "TRK-142", title: "Native iOS tab bar with Liquid Glass",
                      status: .inProgress, priority: .high, type: .feature,
                      project: "Mobile App",
-                     details: "Rebuild the mobile shell as a native SwiftUI app. Start with the new iOS 26 tab bar, then port the task views screen by screen.",
+                     details: "Rebuild the mobile shell as a native SwiftUI app:\n\n1. **Shell:** start with the new iOS 26 tab bar and the shared top bar.\n2. **Lists** — port the task views screen by screen, `TaskRow` first.\n3. **Details** with the `PropertyChip` row, not the old Inspector.\n\n> Keep the web taxonomy colors — never the prototype hexes.",
                      due: day(1),
                      plannedFor: day(1),
                      checklist: [
