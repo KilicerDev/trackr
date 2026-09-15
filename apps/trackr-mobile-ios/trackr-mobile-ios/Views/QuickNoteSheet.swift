@@ -3,12 +3,15 @@
 //  trackr-mobile-ios
 //
 //  Frictionless quick capture — title plus plain text, exactly the
-//  POST /api/v1/notes contract (text becomes simple paragraphs).
+//  POST /api/v1/notes contract (text becomes simple paragraphs). Sheet
+//  chrome: header, bordered title input, big editor card, Cancel / Save.
 //
 
 import SwiftUI
 
 struct QuickNoteSheet: View {
+    /// Owner of the optimistic note (replaced by server data on refetch).
+    var author: UserRef = TaskItem.sampleUsers[0]
     /// Local note for optimistic insert + the raw text for the API (the
     /// server seeds its own HTML from plain text).
     let onCreate: (NoteItem, _ plainText: String) -> Void
@@ -18,33 +21,30 @@ struct QuickNoteSheet: View {
     @State private var text = ""
     @FocusState private var titleFocused: Bool
 
+    private var canSave: Bool { !title.trimmingCharacters(in: .whitespaces).isEmpty }
+
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("Note title", text: $title)
-                        .font(.system(size: 20, weight: .semibold))
+        VStack(spacing: 0) {
+            TKSheetHeader(title: "Quick note")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    TKTextInput(text: $title, placeholder: "Note title")
                         .focused($titleFocused)
-                    TextField("Start writing…", text: $text, axis: .vertical)
-                        .lineLimit(6...16)
-                        .font(.system(size: 15))
+                    TKTextArea(text: $text, placeholder: "Start writing…", minHeight: 220)
+                    Text("Plain text — each line becomes a paragraph.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(TK.text4)
+                        .padding(.leading, 4)
                 }
+                .padding(.horizontal, TK.gutter)
+                .padding(.top, 16)
+                .padding(.bottom, 24)
             }
-            .navigationTitle("Quick Note")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Create") { create() }
-                        .fontWeight(.semibold)
-                        .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-            .onAppear { titleFocused = true }
+            .scrollDismissesKeyboard(.interactively)
+            TKSheetFooter(cta: "Save", enabled: canSave, onCancel: { dismiss() }, onConfirm: create)
         }
-        .presentationDetents([.medium, .large])
+        .tkSheet()
+        .onAppear { titleFocused = true }
     }
 
     private func create() {
@@ -62,7 +62,7 @@ struct QuickNoteSheet: View {
             title: title.trimmingCharacters(in: .whitespaces),
             icon: "doc.text",
             bodyHtml: paragraphs,
-            owner: TaskItem.sampleUsers[0]  // replaced by server data on refetch
+            owner: author
         )
         onCreate(note, text.trimmingCharacters(in: .whitespacesAndNewlines))
         dismiss()
@@ -80,4 +80,5 @@ struct QuickNoteSheet: View {
     Color.clear.sheet(isPresented: .constant(true)) {
         QuickNoteSheet { _, _ in }
     }
+    .preferredColorScheme(.dark)
 }

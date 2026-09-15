@@ -2,9 +2,11 @@
 //  ChatThreadView.swift
 //  trackr-mobile-ios
 //
-//  One chat thread: root post, replies on the shared activity timeline,
-//  reply composer, resolve toggle, and create-ticket-from-thread (which
-//  really creates the ticket and drops the system marker, web parity).
+//  One chat thread as a detail screen: title + tags, then the root post
+//  and replies as activity rows (TimelineRow + MessageCard, like the
+//  ticket detail) with mono day separators; reply composer in the bottom
+//  inset, the session mini bar above it while a session runs. Resolve
+//  and create-ticket-from-thread live in the trailing "…" sheet.
 //
 
 import SwiftUI
@@ -14,6 +16,11 @@ struct ChatThreadView: View {
     let threadId: String
 
     @State private var draft = ""
+    @State private var showingActions = false
+
+    private enum ThreadAction: String, Hashable {
+        case resolve, ticket
+    }
 
     /// Live copy from the model so replies/resolve reflect immediately.
     private var thread: ChatThread {
@@ -26,60 +33,80 @@ struct ChatThreadView: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
+                LazyVStack(alignment: .leading, spacing: 16) {
                     header
-
-                    ForEach(thread.messages.dropFirst()) { message in
-                        row(for: message).id(message.id)
+                    ForEach(Array(thread.messages.enumerated()), id: \.element.id) { index, message in
+                        if index == 0 || !Calendar.current.isDate(
+                            thread.messages[index - 1].date, inSameDayAs: message.date
+                        ) {
+                            TKDaySeparator(text: dayLabel(message.date))
+                                .padding(.vertical, 2)
+                        }
+                        row(for: message, isRoot: index == 0)
+                            .id(message.id)
                     }
                 }
-                .background(alignment: .leading) {
-                    if thread.replyCount > 0 {
-                        Rectangle()
-                            .fill(Color(.separator).opacity(0.5))
-                            .frame(width: 1)
-                            .offset(x: TimelineRow<EmptyView>.nodeSize / 2)
-                            .padding(.vertical, 10)
-                    }
-                }
-                .padding(16)
+                .padding(.horizontal, TK.gutter)
+                .padding(.top, 8)
+                .padding(.bottom, 16)
             }
             .defaultScrollAnchor(thread.replyCount > 2 ? .bottom : .top)
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: thread.messages.count) {
                 if let last = thread.messages.last {
-                    withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                    withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo(last.id, anchor: .bottom) }
                 }
             }
         }
-        .background(Color.webBackground)
-        .navigationTitle(thread.org.name)
-        .navigationBarTitleDisplayMode(.inline)
+        .tkDetailScreen()
         .toolbar {
+            ToolbarItem(placement: .principal) { principal }
             ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button {
-                        setResolved(!thread.resolved)
-                    } label: {
-                        Label(
-                            thread.resolved ? "Reopen" : "Mark as Resolved",
-                            systemImage: thread.resolved ? "arrow.uturn.backward" : "checkmark.circle"
-                        )
-                    }
-                    Button {
-                        createTicket()
-                    } label: {
-                        Label("Create Ticket", systemImage: "ticket")
-                    }
+                Button {
+                    showingActions = true
                 } label: {
                     Image(systemName: "ellipsis")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(TK.text)
+                        .frame(width: 36, height: 36)
+                        .contentShape(.rect)
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Thread actions")
             }
         }
-        .safeAreaInset(edge: .bottom) {
-            MessageComposer(text: $draft, placeholder: "Reply…",
-                            mentionCandidates: model.assignableUsers + thread.messages.map(\.user),
-                            onSendFiles: send)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if model.session.isRunning {
+                TKSessionMiniBar(model: model)
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 8)
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            composer
+        }
+        .sheet(isPresented: $showingActions) {
+            TKPickerSheet(
+                title: "Thread",
+                options: [
+                    TKPickerOption(ThreadAction.resolve,
+                                   label: thread.resolved ? "Reopen thread" : "Mark as resolved") {
+                        TKPickerIcon.symbol(
+                            thread.resolved ? "arrow.uturn.backward" : "checkmark.circle",
+                            color: thread.resolved ? TK.text2 : TK.success
+                        )
+                    },
+                    TKPickerOption(ThreadAction.ticket, label: "Create ticket from thread") {
+                        TKPickerIcon.symbol("ticket")
+                    },
+                ],
+                selected: nil
+            ) { action in
+                switch action {
+                case .resolve: setResolved(!thread.resolved)
+                case .ticket: createTicket()
+                }
+            }
         }
         .onAppear {
             markRead()
@@ -89,56 +116,75 @@ struct ChatThreadView: View {
         }
     }
 
+    // MARK: - Chrome
+
+    private var principal: some View {
+        VStack(spacing: 1) {
+            Text(thread.title)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(TK.text)
+                .lineLimit(1)
+            HStack(spacing: 5) {
+                TKDot(color: thread.org.color, size: 6)
+                Text(thread.org.name)
+                    .font(.system(size: 11))
+                    .foregroundStyle(TK.text3)
+            }
+        }
+        .frame(maxWidth: 220)
+    }
+
+    private var composer: some View {
+        VStack(spacing: 0) {
+            TKHairline(color: TK.border)
+            MessageComposer(
+                text: $draft,
+                placeholder: thread.resolved ? "Reply (reopens the thread)…" : "Reply…",
+                mentionCandidates: model.assignableUsers + thread.messages.map(\.user),
+                onSendFiles: send
+            )
+            .padding(.vertical, 8)
+        }
+        .background(TK.bg)
+    }
+
     // MARK: - Sections
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(thread.title)
-                    .font(.system(size: 20, weight: .bold))
-                Spacer()
-                if thread.resolved {
-                    HStack(spacing: 3) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 12))
-                        Text("Resolved")
-                            .font(.system(size: 12, weight: .medium))
-                    }
-                    .foregroundStyle(Color(hex: 0x7FC8A9))
-                }
-            }
-            if !thread.tags.isEmpty {
-                HStack(spacing: 10) {
+            Text(thread.title)
+                .font(.tkDetailTitle)
+                .tkTitleTracking()
+                .foregroundStyle(TK.text)
+                .fixedSize(horizontal: false, vertical: true)
+            if !thread.tags.isEmpty || thread.resolved {
+                HStack(spacing: 6) {
                     ForEach(thread.tags, id: \.self) { tag in
+                        TKColorTagChip(label: tag.label, color: tag.color)
+                    }
+                    if thread.resolved {
                         HStack(spacing: 4) {
-                            Circle()
-                                .fill(tag.color)
-                                .frame(width: 6, height: 6)
-                            Text(tag.label)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(.secondary)
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 9, weight: .bold))
+                            Text("resolved")
+                                .font(.tkMono(11))
                         }
+                        .foregroundStyle(TK.success)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(TK.tint(TK.success), in: .rect(cornerRadius: 5))
                     }
                 }
             }
-            if let root = thread.root {
-                HStack(spacing: 8) {
-                    AvatarView(user: root.user, size: 24)
-                    Text(root.user.name)
-                        .font(.system(size: 14, weight: .medium))
-                    Text(root.date.relativeShort)
-                        .font(.system(size: 12, design: .monospaced))
-                        .foregroundStyle(.tertiary)
-                }
-                MessageCard(text: root.text, attachments: root.attachments)
-            }
+            Text("\(thread.messages.count) messages")
+                .font(.tkMono(11))
+                .foregroundStyle(TK.text4)
         }
         .padding(.bottom, 4)
-        .background(Color.webBackground)
     }
 
     @ViewBuilder
-    private func row(for message: ChatMessageItem) -> some View {
+    private func row(for message: ChatMessageItem, isRoot: Bool) -> some View {
         if let ticketId = message.systemTicketId {
             TimelineRow(
                 node: .icon("ticket"),
@@ -147,36 +193,34 @@ struct ChatThreadView: View {
                 date: message.date
             ) {
                 if let ticket = model.tickets.first(where: { $0.id == ticketId }) {
-                    NavigationLink(value: ticket) {
-                        HStack(spacing: 8) {
-                            Circle()
-                                .fill(ticket.status.color)
-                                .frame(width: 8, height: 8)
+                    Button {
+                        model.open(ticket)
+                    } label: {
+                        HStack(spacing: 10) {
+                            TKDot(color: ticket.status.color)
+                            Text(ticket.id)
+                                .font(.tkMono(12))
+                                .foregroundStyle(TK.text3)
                             Text(ticket.subject)
                                 .font(.system(size: 14, weight: .medium))
+                                .foregroundStyle(TK.text)
                                 .lineLimit(1)
-                                .foregroundStyle(Color(.label))
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Color(.tertiaryLabel))
+                            Spacer(minLength: 0)
+                            TKDisclosure()
                         }
-                        .padding(10)
-                        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .strokeBorder(Color(.separator).opacity(0.4), lineWidth: 0.5)
-                        )
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .tkCard(radius: 12, padding: nil)
                         .contentShape(.rect)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(TKScaleStyle())
                 }
             }
         } else {
             TimelineRow(
                 node: .avatar(message.user),
                 name: message.user.name,
-                action: "replied",
+                action: isRoot ? "started the thread" : "replied",
                 date: message.date
             ) {
                 MessageCard(
@@ -185,6 +229,13 @@ struct ChatThreadView: View {
                 )
             }
         }
+    }
+
+    private func dayLabel(_ date: Date) -> String {
+        let cal = Calendar.current
+        if cal.isDateInToday(date) { return "Today" }
+        if cal.isDateInYesterday(date) { return "Yesterday" }
+        return date.formatted(.dateTime.day().month(.abbreviated))
     }
 
     // MARK: - Actions
@@ -200,6 +251,7 @@ struct ChatThreadView: View {
 
     private func setResolved(_ resolved: Bool) {
         withThread { $0.resolved = resolved }
+        model.toast(resolved ? "Thread resolved" : "Thread reopened")
     }
 
     private func send(files: [PickedFile]) {
@@ -243,6 +295,7 @@ struct ChatThreadView: View {
                 text: "Tracked as a ticket:", systemTicketId: ticketId
             ))
         }
+        model.toast("\(ticketId) created")
         // v1 has no create-from-thread endpoint (the system marker is a web
         // form action) — create the ticket and post a plain marker message.
         if let orgId = thread.org.serverId {
@@ -266,4 +319,15 @@ struct ChatThreadView: View {
     NavigationStack {
         ChatThreadView(model: AppModel(), threadId: ChatThread.samples[1].id)
     }
+    .preferredColorScheme(.dark)
+}
+
+#Preview("With session") {
+    let model = AppModel()
+    model.startSession(for: TaskItem.samples[0])
+    model.showingPlayer = false
+    return NavigationStack {
+        ChatThreadView(model: model, threadId: ChatThread.samples[0].id)
+    }
+    .preferredColorScheme(.dark)
 }

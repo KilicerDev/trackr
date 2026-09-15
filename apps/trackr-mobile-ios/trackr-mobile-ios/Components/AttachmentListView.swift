@@ -3,9 +3,10 @@
 //  trackr-mobile-ios
 //
 //  The shared render surface for attachment metadata rows (web parity:
-//  AttachmentList.svelte) — thumbnail or type icon, name, size, tap-to-
-//  preview via QuickLook, share and delete in the context menu. Embedded by
-//  the task/ticket detail cards, message bubbles and the attachments sheet.
+//  AttachmentList.svelte) — 32pt thumbnail or icon tile, filename 13,
+//  mono size · age, chevron; tap-to-preview via QuickLook, share and
+//  delete in the context menu. Embedded by the task/ticket detail cards,
+//  message cards and the attachments sheet.
 //
 
 import QuickLook
@@ -13,6 +14,9 @@ import SwiftUI
 
 struct AttachmentListView: View {
     var attachments: [AttachmentItem]
+    /// Horizontal row inset — 0 when embedded flush in a padded card,
+    /// 12 inside a bg card on the attachments sheet.
+    var inset: CGFloat = 0
     /// Delete entry in the context menu; the caller owns the server call
     /// (and optimistic model update). Nil hides the action.
     var onDelete: ((AttachmentItem) -> Void)? = nil
@@ -29,7 +33,7 @@ struct AttachmentListView: View {
             ForEach(attachments) { attachment in
                 row(attachment)
                 if attachment.id != attachments.last?.id {
-                    Divider().padding(.leading, 56)
+                    TKHairline(leading: inset + 44)
                 }
             }
         }
@@ -69,23 +73,29 @@ struct AttachmentListView: View {
                 thumbnail(attachment)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(attachment.filename)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.primary)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(TK.text)
                         .lineLimit(1)
                         .truncationMode(.middle)
                     Text("\(attachment.sizeFormatted) · \(attachment.createdAt.relativeShort)")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+                        .font(.tkMono(11))
+                        .foregroundStyle(TK.text3)
                 }
                 Spacer(minLength: 0)
                 if busyId == attachment.id {
-                    ProgressView().controlSize(.small)
+                    ProgressView()
+                        .controlSize(.small)
+                        .tint(TK.text2)
+                } else {
+                    TKDisclosure()
                 }
             }
+            .padding(.horizontal, inset)
             .padding(.vertical, 8)
+            .frame(minHeight: 48)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(TKPressStyle(radius: inset > 0 ? 0 : 8))
         .contextMenu {
             Button {
                 open(attachment) { shareFile = ShareFile(url: $0) }
@@ -104,20 +114,14 @@ struct AttachmentListView: View {
 
     @ViewBuilder
     private func thumbnail(_ attachment: AttachmentItem) -> some View {
-        Group {
-            if attachment.hasThumbnail {
-                RemoteAttachmentImage(source: .attachment(id: attachment.id, thumb: true))
-            } else {
-                ZStack {
-                    Color(.systemGray6)
-                    Image(systemName: attachment.systemIcon)
-                        .font(.system(size: 17))
-                        .foregroundStyle(.secondary)
-                }
-            }
+        if attachment.hasThumbnail {
+            RemoteAttachmentImage(source: .attachment(id: attachment.id, thumb: true))
+                .frame(width: 32, height: 32)
+                .clipShape(.rect(cornerRadius: 9))
+                .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(TK.border, lineWidth: 1))
+        } else {
+            TKIconTile(systemImage: attachment.systemIcon, size: 32)
         }
-        .frame(width: 44, height: 44)
-        .clipShape(.rect(cornerRadius: 8))
     }
 
     /// Download (or reuse) the local copy, then hand it to the caller —
@@ -163,6 +167,9 @@ struct ShareSheet: UIViewControllerRepresentable {
             sizeBytes: 1_240_000, width: 1290, height: 2796, hasThumbnail: true,
             uploadedById: nil, createdAt: .now.addingTimeInterval(-7200)
         ),
-    ], onDelete: { _ in })
+    ], inset: 12, onDelete: { _ in })
+    .tkCard(padding: nil, fill: TK.bg)
     .padding()
+    .background(TK.card)
+    .preferredColorScheme(.dark)
 }

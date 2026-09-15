@@ -4,7 +4,8 @@
 //
 //  Attachment sources + attached files for one task/ticket. The list reads
 //  live off the shared model row, so uploads land in place; files upload
-//  one at a time through SyncEngine.
+//  one at a time through SyncEngine. Sheet chrome: header, source buttons
+//  (Photos / Files / Camera), UPLOADING + ATTACHED sections in bg cards.
 //
 
 import SwiftUI
@@ -44,91 +45,115 @@ struct AttachmentsSheet: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    Button {
-                        showingPhotos = true
-                    } label: {
-                        AttachmentSourceLabel(title: "Photo Library", systemImage: "photo.on.rectangle")
-                    }
-                    Button {
-                        showingFiles = true
-                    } label: {
-                        AttachmentSourceLabel(title: "Choose Files", systemImage: "folder")
-                    }
-                    if AttachmentCameraView.isAvailable {
-                        Button {
-                            showingCamera = true
-                        } label: {
-                            AttachmentSourceLabel(title: "Take Photo", systemImage: "camera")
-                        }
-                    }
-                }
-                .disabled(!canUpload)
+        VStack(spacing: 0) {
+            TKSheetHeader(title: "Attachments")
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    sources
+                        .padding(.bottom, 8)
 
-                if !pending.isEmpty {
-                    Section("Uploading") {
-                        ForEach(pending) { file in
-                            HStack(spacing: 12) {
-                                ProgressView()
-                                    .controlSize(.small)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(file.filename)
-                                        .font(.system(size: 14, weight: .medium))
-                                        .lineLimit(1)
-                                        .truncationMode(.middle)
-                                    Text(file.sizeFormatted)
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(.secondary)
+                    if !pending.isEmpty {
+                        TKSectionLabel("Uploading")
+                        VStack(spacing: 0) {
+                            ForEach(pending) { file in
+                                pendingRow(file)
+                                if file.id != pending.last?.id {
+                                    TKHairline(leading: 56)
                                 }
                             }
                         }
+                        .tkCard(radius: TK.rCardSm, padding: nil, fill: TK.bg)
+                        .padding(.bottom, 8)
                     }
-                }
 
-                Section("Attached") {
-                    if attachments.isEmpty {
-                        Text("No files attached.")
-                            .font(.system(size: 14))
-                            .foregroundStyle(.secondary)
-                    } else {
-                        AttachmentListView(
-                            attachments: attachments,
-                            onDelete: canDelete ? { attachment in
-                                model?.sync?.deleteAttachment(
-                                    attachment, entityType: entityType, entityId: entityId
-                                )
-                            } : nil
-                        )
+                    HStack(alignment: .firstTextBaseline) {
+                        TKSectionLabel("Attached")
+                        Spacer()
+                        Text("\(attachments.count)")
+                            .font(.tkMono(11))
+                            .foregroundStyle(TK.text4)
                     }
+                    Group {
+                        if attachments.isEmpty {
+                            TKEmptyState(text: "No files attached.", padding: 28)
+                        } else {
+                            AttachmentListView(
+                                attachments: attachments,
+                                inset: 12,
+                                onDelete: canDelete ? { attachment in
+                                    model?.sync?.deleteAttachment(
+                                        attachment, entityType: entityType, entityId: entityId
+                                    )
+                                } : nil
+                            )
+                        }
+                    }
+                    .tkCard(radius: TK.rCardSm, padding: nil, fill: TK.bg)
                 }
-            }
-            .navigationTitle("Attachments")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                        .fontWeight(.semibold)
-                }
-            }
-            .attachmentPickers(
-                photos: $showingPhotos,
-                files: $showingFiles,
-                camera: $showingCamera
-            ) { files in
-                enqueue(files)
-            }
-            .alert("Couldn't attach", isPresented: Binding(
-                get: { errorMessage != nil },
-                set: { if !$0 { errorMessage = nil } }
-            )) {
-                Button("OK") { errorMessage = nil }
-            } message: {
-                Text(errorMessage ?? "")
+                .padding(.horizontal, TK.gutter)
+                .padding(.top, 14)
+                .padding(.bottom, 24)
             }
         }
-        .presentationDetents([.medium, .large])
+        .tkSheet(detents: [.medium, .large])
+        .attachmentPickers(
+            photos: $showingPhotos,
+            files: $showingFiles,
+            camera: $showingCamera
+        ) { files in
+            enqueue(files)
+        }
+        .alert("Couldn't attach", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK") { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
+        }
+    }
+
+    // MARK: - Pieces
+
+    private var sources: some View {
+        HStack(spacing: 8) {
+            TKSecondaryButton(title: "Photos", icon: "photo.on.rectangle", fill: TK.bg, expand: true) {
+                showingPhotos = true
+            }
+            TKSecondaryButton(title: "Files", icon: "folder", fill: TK.bg, expand: true) {
+                showingFiles = true
+            }
+            if AttachmentCameraView.isAvailable {
+                TKSecondaryButton(title: "Camera", icon: "camera", fill: TK.bg, expand: true) {
+                    showingCamera = true
+                }
+            }
+        }
+        .disabled(!canUpload)
+        .opacity(canUpload ? 1 : 0.45)
+    }
+
+    private func pendingRow(_ file: PickedFile) -> some View {
+        HStack(spacing: 12) {
+            ProgressView()
+                .controlSize(.small)
+                .tint(TK.text2)
+                .frame(width: 32, height: 32)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(file.filename)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(TK.text)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Text(file.sizeFormatted)
+                    .font(.tkMono(11))
+                    .foregroundStyle(TK.text3)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(minHeight: 48)
     }
 
     /// Queue size-checked files and drain sequentially — one failed file
@@ -175,4 +200,5 @@ struct AttachmentsSheet: View {
     Color.clear.sheet(isPresented: .constant(true)) {
         AttachmentsSheet(entityType: .task, entityId: "")
     }
+    .preferredColorScheme(.dark)
 }

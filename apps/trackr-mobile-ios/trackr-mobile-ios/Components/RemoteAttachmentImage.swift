@@ -33,14 +33,15 @@ struct RemoteAttachmentImage: View {
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
             } else {
-                Color(.systemGray6)
+                TK.elevated
                 if failed || store == nil {
                     Image(systemName: "photo")
                         .font(.system(size: 18))
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(TK.text4)
                 } else {
                     ProgressView()
                         .controlSize(.small)
+                        .tint(TK.text2)
                 }
             }
         }
