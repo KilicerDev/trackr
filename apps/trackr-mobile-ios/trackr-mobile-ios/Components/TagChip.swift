@@ -31,6 +31,45 @@ struct TagChip: View {
     }
 }
 
+/// Third line of list rows / board cards: up to four tag chips + "+N".
+struct TagRow: View {
+    let tags: [String]
+    var limit = 4
+
+    var body: some View {
+        if !tags.isEmpty {
+            HStack(spacing: 6) {
+                ForEach(tags.prefix(limit), id: \.self) { TagChip(tag: $0) }
+                if tags.count > limit {
+                    Text("+\(tags.count - limit)")
+                        .font(.tkMono(11))
+                        .foregroundStyle(TK.text3)
+                }
+            }
+            .lineLimit(1)
+        }
+    }
+}
+
+/// Accent "planned for" chip (bookmark + mono short date) for rows/cards.
+struct PlannedChip: View {
+    let date: Date
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "bookmark")
+                .font(.system(size: 9, weight: .semibold))
+            Text(date.formatted(.dateTime.day().month(.abbreviated)))
+                .font(.tkMono(11))
+        }
+        .foregroundStyle(TK.accent)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(TK.accentSoft, in: .rect(cornerRadius: 5))
+        .fixedSize()
+    }
+}
+
 #Preview {
     HStack {
         ForEach(["mobile", "swiftui", "email", "backend"], id: \.self) {

@@ -52,6 +52,7 @@ struct TicketRow: View {
                     .font(.tkRow)
                     .foregroundStyle(TK.text)
                     .lineLimit(1)
+                TagRow(tags: ticket.tags)
             }
             Spacer(minLength: 6)
             signal
@@ -123,6 +124,7 @@ struct TicketBoardCard: View {
                 Spacer(minLength: 4)
                 AvatarView(user: ticket.assignees.first, size: 22)
             }
+            TagRow(tags: ticket.tags)
         }
         .tkCard(radius: TK.rCardSm, padding: 12)
         .contentShape(.rect)

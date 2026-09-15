@@ -310,7 +310,8 @@ struct MyWeekView: View {
                     leading: .projectDot,
                     showProject: true,
                     showPlay: true,
-                    timeLabel: timeMinutes(task).minutesFormatted
+                    timeLabel: timeMinutes(task).minutesFormatted,
+                    showPlanned: false
                 ) {
                     model.weekPath.append(task)
                 }
@@ -397,7 +398,7 @@ struct MyWeekView: View {
         Button {
             model.weekPath.append(task)
         } label: {
-            TaskBoardCard(task: task, model: model, showPlay: play, timeLabel: timeLabel)
+            TaskBoardCard(task: task, model: model, showPlay: play, showPlanned: false, timeLabel: timeLabel)
         }
         .buttonStyle(TKScaleStyle())
         .taskContextMenu(for: task, model: model)

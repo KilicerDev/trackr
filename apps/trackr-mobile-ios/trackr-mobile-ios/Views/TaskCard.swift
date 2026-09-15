@@ -38,6 +38,9 @@ struct TaskRow: View {
     var showPlay = false
     /// Mono trailing label after the due state (week: the row's hours).
     var timeLabel: String? = nil
+    /// Accent "planned for" chip in the meta line (off on the week, where
+    /// the day band already says it).
+    var showPlanned = true
     /// Tap on the title/meta area. nil → the row is not a button.
     var onOpen: (() -> Void)? = nil
 
@@ -93,6 +96,7 @@ struct TaskRow: View {
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
             meta
+            TagRow(tags: live.tags)
         }
         .padding(.top, 7)
         .padding(.trailing, 4)
@@ -122,6 +126,9 @@ struct TaskRow: View {
                     .font(.tkMetaSm)
                     .foregroundStyle(TK.text3)
                     .lineLimit(1)
+            }
+            if showPlanned, let planned = live.plannedFor {
+                PlannedChip(date: planned)
             }
             if live.checklistTotal > 0 {
                 HStack(spacing: 3) {
@@ -191,6 +198,7 @@ struct TaskBoardCard: View {
     var model: AppModel? = nil
     var showPlay = false
     var showProject = true
+    var showPlanned = true
     var timeLabel: String? = nil
 
     private var live: TaskItem { model?.tasks.first { $0.id == task.id } ?? task }
@@ -234,6 +242,9 @@ struct TaskBoardCard: View {
                         .foregroundStyle(TK.text3)
                         .lineLimit(1)
                 }
+                if showPlanned, let planned = live.plannedFor {
+                    PlannedChip(date: planned)
+                }
                 if live.checklistTotal > 0 {
                     Text("☑ \(live.checklistDone)/\(live.checklistTotal)")
                         .font(.tkMono(11))
@@ -260,6 +271,7 @@ struct TaskBoardCard: View {
                 }
             }
             .lineLimit(1)
+            TagRow(tags: live.tags)
         }
         .tkCard(radius: TK.rCardSm, padding: 12)
         .opacity(done ? 0.55 : 1)
