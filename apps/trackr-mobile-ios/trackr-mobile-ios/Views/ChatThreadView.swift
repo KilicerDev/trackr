@@ -39,8 +39,7 @@ struct ChatThreadView: View {
                         if index == 0 || !Calendar.current.isDate(
                             thread.messages[index - 1].date, inSameDayAs: message.date
                         ) {
-                            TKDaySeparator(text: dayLabel(message.date))
-                                .padding(.vertical, 2)
+                            ChatDayPill(date: message.date)
                         }
                         row(for: message, isRoot: index == 0)
                             .id(message.id)
@@ -217,25 +216,15 @@ struct ChatThreadView: View {
                 }
             }
         } else {
-            TimelineRow(
-                node: .avatar(message.user),
-                name: message.user.name,
-                action: isRoot ? "started the thread" : "replied",
-                date: message.date
-            ) {
-                MessageCard(
-                    text: message.text, attachments: message.attachments,
-                    pendingFiles: message.pendingFiles
-                )
-            }
+            ChatBubbleRow(
+                user: message.user,
+                text: message.text,
+                date: message.date,
+                attachments: message.attachments,
+                pendingFiles: message.pendingFiles,
+                mine: message.user.isSame(as: me)
+            )
         }
-    }
-
-    private func dayLabel(_ date: Date) -> String {
-        let cal = Calendar.current
-        if cal.isDateInToday(date) { return "Today" }
-        if cal.isDateInYesterday(date) { return "Yesterday" }
-        return date.formatted(.dateTime.day().month(.abbreviated))
     }
 
     // MARK: - Actions

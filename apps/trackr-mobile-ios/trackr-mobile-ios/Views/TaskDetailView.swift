@@ -764,8 +764,11 @@ struct TaskDetailView: View {
     private var activitySection: some View {
         VStack(alignment: .leading, spacing: 14) {
             TKSectionLabel("Activity")
-            VStack(alignment: .leading, spacing: 18) {
-                ForEach(events) { event in
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(Array(events.enumerated()), id: \.element.id) { index, event in
+                    if index == 0 || !Calendar.current.isDate(events[index - 1].date, inSameDayAs: event.date) {
+                        ChatDayPill(date: event.date)
+                    }
                     row(for: event).id(event.id)
                 }
                 if events.isEmpty {
@@ -775,17 +778,6 @@ struct TaskDetailView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            // The rail: a hairline behind the node column — only once
-            // there is a column to sit behind.
-            .background(alignment: .leading) {
-                if events.count > 1 {
-                    Rectangle()
-                        .fill(TK.border)
-                        .frame(width: 1)
-                        .offset(x: TimelineRow<EmptyView>.nodeSize / 2)
-                        .padding(.vertical, 14)
-                }
-            }
             if let created = task.createdAt {
                 HStack(spacing: 4) {
                     Text("Created")
@@ -803,17 +795,14 @@ struct TaskDetailView: View {
     private func row(for event: Event) -> some View {
         switch event {
         case .comment(let comment):
-            TimelineRow(
-                node: .avatar(comment.user),
-                name: comment.user.name,
-                action: "commented",
-                date: comment.date
-            ) {
-                MessageCard(
-                    text: comment.text, attachments: comment.attachments,
-                    pendingFiles: comment.pendingFiles
-                )
-            }
+            ChatBubbleRow(
+                user: comment.user,
+                text: comment.text,
+                date: comment.date,
+                attachments: comment.attachments,
+                pendingFiles: comment.pendingFiles,
+                mine: comment.user.isSame(as: model?.me)
+            )
         case .time(let log):
             TimelineRow(
                 node: .icon("clock"),
