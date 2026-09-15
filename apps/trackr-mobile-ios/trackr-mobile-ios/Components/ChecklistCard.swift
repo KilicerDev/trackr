@@ -2,10 +2,10 @@
 //  ChecklistCard.swift
 //  trackr-mobile-ios
 //
-//  Shared checklist card for the task/ticket detail views. Self-sizing
-//  rows so long item text wraps instead of overflowing — the previous
-//  embedded List needed a fixed per-row height for its swipe actions,
-//  which clipped multi-line items. Tap toggles, long-press deletes.
+//  Shared checklist card for the task/ticket detail views: 48pt rows with
+//  the prototype's TKCheckBox, hairline-separated, "+ Add an item…" input
+//  as the last row. Self-sizing rows so long item text wraps. Tap toggles,
+//  long-press deletes.
 //
 
 import SwiftUI
@@ -19,27 +19,25 @@ struct ChecklistCard: View {
         VStack(spacing: 0) {
             ForEach($items) { $item in
                 Button {
-                    item.done.toggle()
+                    withAnimation(.easeOut(duration: 0.15)) { item.done.toggle() }
                 } label: {
-                    HStack(alignment: .firstTextBaseline, spacing: 10) {
-                        Image(systemName: item.done ? "checkmark.square.fill" : "square")
-                            .foregroundStyle(
-                                item.done ? Color.accentColor : Color(.tertiaryLabel)
-                            )
+                    HStack(alignment: .top, spacing: 12) {
+                        TKCheckBox(done: item.done)
+                            .padding(.top, 1)
                         Text(item.text)
-                            .font(.system(size: 15))
-                            .strikethrough(item.done)
-                            .foregroundStyle(
-                                item.done ? Color(.tertiaryLabel) : Color.primary
-                            )
+                            .font(.tkRow)
+                            .strikethrough(item.done, color: TK.text4)
+                            .foregroundStyle(item.done ? TK.text3 : TK.text)
                             .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 0)
                     }
                     .padding(.horizontal, 14)
-                    .padding(.vertical, 11)
+                    .padding(.vertical, 12)
+                    .frame(minHeight: 48)
                     .contentShape(.rect)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(TKPressStyle())
                 .contextMenu {
                     Button {
                         item.done.toggle()
@@ -55,14 +53,16 @@ struct ChecklistCard: View {
                         Label("Delete", systemImage: "trash")
                     }
                 }
-                Divider()
-                    .padding(.leading, 14)
+                TKHairline()
             }
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 Image(systemName: "plus")
-                    .foregroundStyle(.tertiary)
-                TextField("Add an item…", text: $newItem)
-                    .font(.system(size: 15))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(TK.text4)
+                    .frame(width: 22)
+                TextField("", text: $newItem, prompt: Text("Add an item…").foregroundStyle(TK.text4))
+                    .font(.tkRow)
+                    .foregroundStyle(TK.text)
                     .onSubmit {
                         let text = newItem.trimmingCharacters(in: .whitespaces)
                         guard !text.isEmpty else { return }
@@ -71,9 +71,9 @@ struct ChecklistCard: View {
                     }
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 11)
+            .frame(minHeight: 48)
         }
-        .cardStyle(padded: false)
+        .tkCard(radius: TK.rCardSm, padding: nil)
     }
 }
 
@@ -91,5 +91,6 @@ struct ChecklistCard: View {
         ChecklistCard(items: $items)
             .padding(16)
     }
-    .background(Color.webBackground)
+    .background(TK.bg)
+    .preferredColorScheme(.dark)
 }

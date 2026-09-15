@@ -2,189 +2,213 @@
 //  TaskCard.swift
 //  trackr-mobile-ios
 //
-//  Each task sits on its own elevated card so items separate visually on
-//  the grouped background — the row-in-a-table look didn't survive the
-//  translation from desktop. The content mirrors the web TaskRow: type
-//  badge + title, then key / priority / checklist / planned chip / tags
-//  with the due state trailing.
+//  The prototype's task ROW (tasks list, my week, search): a 36pt done
+//  toggle, the title (two lines), and one meta line — type badge or
+//  project dot, mono key, priority bars, checklist progress, due state.
+//  Rows are flat on the page and separated by hairlines; the list owns
+//  the separators.
+//
+//  The check toggles Done ↔ Todo straight on the shared model (same push
+//  path as the context menu) without opening the detail. Tapping the rest
+//  of the row calls `onOpen`; without it the row is a plain view (wrap it
+//  in a NavigationLink).
 //
 
 import SwiftUI
 
-struct TaskCard: View {
+/// Kept for call sites that still say TaskCard.
+typealias TaskCard = TaskRow
+
+struct TaskRow: View {
+    enum Leading {
+        /// Tasks list: 18pt type badge.
+        case type
+        /// Week / search: 6pt project dot.
+        case projectDot
+    }
+
     let task: TaskItem
-    /// My-week day sections already carry the planned date in their header,
-    /// so the chip is redundant there (web TaskRow parity).
-    var showPlanned = true
-    /// Row inside a group-section container: the section owns background
-    /// and border, the card renders content only.
-    var embedded = false
-    /// Project chip on the third line; pass nil when the list is already
-    /// grouped by project (or the context is a single project).
-    var projectColor: Color? = nil
+    /// nil in previews / detached lists — the check then only reads.
+    var model: AppModel? = nil
+    var leading: Leading = .type
+    /// Project name (11pt, text3) after the key — off when the list is
+    /// already grouped by project.
+    var showProject = false
+    /// Week rows: play button that starts a task-bound session.
+    var showPlay = false
+    /// Mono trailing label after the due state (week: the row's hours).
+    var timeLabel: String? = nil
+    /// Tap on the title/meta area. nil → the row is not a button.
+    var onOpen: (() -> Void)? = nil
+
+    /// The live model copy wins over the passed value so a quick edit
+    /// (context menu, check) shows without the parent re-rendering.
+    private var live: TaskItem {
+        model?.tasks.first { $0.id == task.id } ?? task
+    }
+
+    private var done: Bool { live.status == .done }
+
+    private var projectColor: Color {
+        model?.projects.first { $0.name == live.project }?.color ?? TK.text3
+    }
 
     var body: some View {
-        Group {
-            if embedded {
-                content
+        HStack(alignment: .top, spacing: 0) {
+            Button(action: toggleDone) {
+                TKCheckCircle(done: done)
+                    .frame(width: 36, height: 36)
+                    .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(done ? "Reopen" : "Mark done")
+
+            if let onOpen {
+                Button(action: onOpen) {
+                    content
+                }
+                .buttonStyle(.plain)
             } else {
                 content
-                    .background(
-                        Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 16)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .strokeBorder(Color(.separator).opacity(0.4), lineWidth: 0.5)
-                    )
+            }
+
+            if showPlay {
+                playButton
             }
         }
-        // Make the whole card tappable. Embedded cards have no background, and
-        // a plain-style NavigationLink only hit-tests opaque pixels — so the
-        // gaps between text/avatars would otherwise swallow the tap.
-        .contentShape(.rect)
-    }
-
-    private var hasChipsLine: Bool {
-        projectColor != nil || (showPlanned && task.plannedFor != nil) || !task.tags.isEmpty
-    }
-
-    /// Project as a soft chip tinted with its color (TicketCard org parity).
-    private func projectChip(_ color: Color) -> some View {
-        HStack(spacing: 5) {
-            Circle()
-                .fill(color)
-                .frame(width: 6, height: 6)
-            Text(task.project)
-                .font(.system(size: 12, weight: .medium))
-                .lineLimit(1)
-        }
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
-        .background(color.opacity(0.12), in: .rect(cornerRadius: 6))
+        .padding(.vertical, 12)
+        .padding(.leading, 8)
+        .padding(.trailing, showPlay ? 8 : TK.gutter)
+        .opacity(done ? 0.5 : 1)
+        .animation(.snappy(duration: 0.2), value: done)
     }
 
     private var content: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            // Line 1: identity — title truncates, it never wraps.
-            HStack(spacing: 8) {
-                StatusDot(status: task.status, size: 15)
-                TypeBadge(type: task.type, showLabel: false)
-                Text(task.title)
-                    .font(.system(size: 15, weight: .medium))
+        VStack(alignment: .leading, spacing: 5) {
+            Text(live.title)
+                .font(.tkRow)
+                .foregroundStyle(done ? TK.text2 : TK.text)
+                .strikethrough(done, color: TK.text3)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+            meta
+        }
+        .padding(.top, 7)
+        .padding(.trailing, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(.rect)
+    }
+
+    private var meta: some View {
+        HStack(spacing: 6) {
+            switch leading {
+            case .type:
+                TypeBadge(type: live.type, showLabel: false, size: 18)
+            case .projectDot:
+                Circle()
+                    .fill(projectColor)
+                    .frame(width: 6, height: 6)
+            }
+            Text(live.id)
+                .font(.tkMono(11))
+                .foregroundStyle(TK.text3)
+                .fixedSize()
+            if live.priority != .none {
+                PriorityBars(priority: live.priority)
+            }
+            if showProject {
+                Text(live.project)
+                    .font(.tkMetaSm)
+                    .foregroundStyle(TK.text3)
                     .lineLimit(1)
-                    .truncationMode(.tail)
-                Spacer(minLength: 8)
-                if !task.assignees.isEmpty {
-                    AvatarStack(users: task.assignees, size: 24)
-                }
             }
-
-            // Line 2: compact mono stats — key, priority, checklist,
-            // comments — and the due signal. Nothing here truncates.
-            HStack(spacing: 8) {
-                Text(task.id)
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(.tertiary)
-                    .fixedSize()
-
-                if task.priority != .none {
-                    PriorityBars(priority: task.priority)
+            if live.checklistTotal > 0 {
+                HStack(spacing: 3) {
+                    Image(systemName: "checklist")
+                        .font(.system(size: 9, weight: .semibold))
+                    Text("\(live.checklistDone)/\(live.checklistTotal)")
+                        .font(.tkMono(11))
                 }
-
-                if task.checklistTotal > 0 {
-                    HStack(spacing: 3) {
-                        Image(systemName: "checklist")
-                            .font(.system(size: 10))
-                        Text("\(task.checklistDone)/\(task.checklistTotal)")
-                            .font(.system(size: 12, design: .monospaced))
-                    }
-                    .foregroundStyle(
-                        task.checklistDone == task.checklistTotal
-                            ? Color(hex: 0x7FC8A9)
-                            : Color(.tertiaryLabel)
-                    )
-                    .fixedSize()
-                }
-
-                if !task.comments.isEmpty {
-                    HStack(spacing: 3) {
-                        Image(systemName: "bubble.left")
-                            .font(.system(size: 10))
-                        Text("\(task.comments.count)")
-                            .font(.system(size: 12, design: .monospaced))
-                    }
-                    .foregroundStyle(Color(.tertiaryLabel))
-                    .fixedSize()
-                }
-
-                Spacer(minLength: 8)
-
-                dueLabel
-                    .fixedSize()
+                .foregroundStyle(
+                    live.checklistDone == live.checklistTotal ? TK.success : TK.text3
+                )
+                .fixedSize()
             }
-            .lineLimit(1)
-
-            // Line 3 (only when there is something to show): project,
-            // planned date, tags — the wide bits get their own line.
-            if hasChipsLine {
-                HStack(spacing: 6) {
-                    if let projectColor {
-                        projectChip(projectColor)
-                    }
-                    if showPlanned, let planned = task.plannedFor {
-                        plannedChip(planned)
-                    }
-                    ForEach(task.tags.prefix(3), id: \.self) { tag in
-                        TagChip(tag: tag)
-                    }
-                    if task.tags.count > 3 {
-                        Text("+\(task.tags.count - 3)")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                .lineLimit(1)
+            Spacer(minLength: 8)
+            dueLabel
+                .fixedSize()
+            if let timeLabel {
+                Text(timeLabel)
+                    .font(.tkMono(11))
+                    .foregroundStyle(TK.text3)
+                    .fixedSize()
             }
         }
-        .padding(14)
+        .frame(height: 18)
     }
 
-    /// Web TaskRow parity: accent-tinted planned-date chip after the title
-    /// cluster (calendar + mono short date on accent-soft).
-    private func plannedChip(_ date: Date) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: "calendar")
-                .font(.system(size: 10))
-            Text(date.formatted(.dateTime.day().month(.abbreviated)))
-                .font(.system(size: 12, design: .monospaced))
-        }
-        .foregroundStyle(Color.accentColor)
-        .padding(.horizontal, 7)
-        .padding(.vertical, 3)
-        .background(Color.accentColor.opacity(0.14), in: .rect(cornerRadius: 6))
-    }
-
+    /// Web dueCountdown parity: relative label in the urgency tone within
+    /// a week, the short absolute date (text3, mono) otherwise.
     @ViewBuilder
     private var dueLabel: some View {
-        if let countdown = task.dueCountdown {
+        if let countdown = live.dueCountdown {
             Text(countdown.label)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(countdown.tone.color ?? .secondary)
-        } else if let due = task.due {
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(countdown.tone.color ?? TK.text3)
+        } else if let due = live.due {
             Text(due.formatted(.dateTime.day().month(.abbreviated)))
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(.tertiary)
+                .font(.tkMono(11))
+                .foregroundStyle(TK.text3)
         }
+    }
+
+    private var playButton: some View {
+        let running = model?.session.isRunning ?? false
+        let thisTask = model?.session.taskId == live.id
+        return TKPlayButton(active: !running || thisTask) {
+            guard let model else { return }
+            if thisTask {
+                model.showingPlayer = true
+            } else if !running {
+                model.startSession(for: live)
+            }
+        }
+    }
+
+    /// Done ↔ Todo on the shared model + push (context-menu path).
+    private func toggleDone() {
+        guard let model, let index = model.tasks.firstIndex(where: { $0.id == task.id }) else { return }
+        model.tasks[index].status = model.tasks[index].status == .done ? .todo : .done
+        model.sync?.pushTask(model.tasks[index])
     }
 }
 
-#Preview {
-    ScrollView {
-        LazyVStack(spacing: 10) {
-            ForEach(TaskItem.samples) { TaskCard(task: $0) }
+#Preview("List") {
+    let model = AppModel()
+    return ScrollView {
+        VStack(spacing: 0) {
+            ForEach(model.tasks) { task in
+                TKHairline()
+                TaskRow(task: task, model: model, showProject: true) {}
+            }
         }
-        .padding(16)
     }
-    .background(Color.webBackground)
+    .background(TK.bg)
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Week") {
+    let model = AppModel()
+    return ScrollView {
+        VStack(spacing: 0) {
+            ForEach(model.tasks.prefix(4)) { task in
+                TKHairline()
+                TaskRow(task: task, model: model, leading: .projectDot, showProject: true,
+                        showPlay: true, timeLabel: "1h 30m") {}
+            }
+        }
+    }
+    .background(TK.bg)
+    .preferredColorScheme(.dark)
 }
