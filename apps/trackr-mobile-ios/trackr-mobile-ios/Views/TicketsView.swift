@@ -15,7 +15,6 @@ struct TicketsView: View {
 
     @AppStorage("trackr.ticketsLayout") private var layoutRaw = TKLayout.list.rawValue
     @State private var showingFilters = false
-    @State private var showingViews = false
     @State private var collapsedGroups: Set<String> = []
 
     private var layout: Binding<TKLayout> {
@@ -29,19 +28,10 @@ struct TicketsView: View {
 
     private var isEmpty: Bool { groups.allSatisfy(\.tickets.isEmpty) }
 
-    private var openCount: Int { model.tickets.count { !$0.status.isClosed } }
 
     /// Grouped by org → the org on every row is redundant.
     private var showOrg: Bool { model.ticketFilters.group != .org }
 
-    /// Name of the saved view whose config equals the current filters.
-    private var currentViewName: String {
-        let directories = ViewDirectories(model: model)
-        let match = model.savedTicketViews.first {
-            TicketFilters(webConfig: $0.config, directories: directories) == model.ticketFilters
-        }
-        return match?.name ?? "Custom view"
-    }
 
     /// Active filter dimensions — the badge on the Filter button.
     private var filterCount: Int {
@@ -55,15 +45,13 @@ struct TicketsView: View {
             Group {
                 if layout.wrappedValue == .board && !isEmpty {
                     VStack(spacing: 0) {
-                        TKPageHeader("Tickets", meta: "\(openCount) open")
-                        toolbarRow
+                        pageHeader
                         board
                     }
                 } else {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 0) {
-                            TKPageHeader("Tickets", meta: "\(openCount) open")
-                            toolbarRow
+                            pageHeader
                             if isEmpty {
                                 TKEmptyState(
                                     text: model.tickets.isEmpty
@@ -86,25 +74,18 @@ struct TicketsView: View {
             .sheet(isPresented: $showingFilters) {
                 ViewOptionsSheet(model: model, context: .tickets)
             }
-            .sheet(isPresented: $showingViews) {
-                ViewOptionsSheet(model: model, context: .tickets)
-            }
         }
     }
 
     // MARK: - Toolbar
 
-    private var toolbarRow: some View {
-        HStack(spacing: 8) {
-            TKViewChip(name: currentViewName) { showingViews = true }
-                .frame(maxWidth: 220, alignment: .leading)
-            Spacer(minLength: 4)
-            TKLayoutSegment(layout: layout)
+    /// Header: title + Filter (saved views and List/Board live inside the
+    /// view options sheet).
+    private var pageHeader: some View {
+        TKPageHeader("Tickets") {
             TKFilterButton(count: filterCount) { showingFilters = true }
         }
-        .padding(.horizontal, TK.gutter)
-        .padding(.top, 8)
-        .padding(.bottom, 12)
+        .padding(.bottom, 10)
     }
 
     // MARK: - List

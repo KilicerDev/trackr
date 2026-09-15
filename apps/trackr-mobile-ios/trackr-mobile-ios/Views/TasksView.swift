@@ -14,7 +14,6 @@ struct TasksView: View {
     @Bindable var model: AppModel
 
     @State private var showingFilters = false
-    @State private var showingViews = false
     @State private var collapsedGroups: Set<String> = []
     @AppStorage("trackr.tasksLayout") private var layoutRaw = TKLayout.list.rawValue
 
@@ -24,17 +23,7 @@ struct TasksView: View {
 
     private var groups: [TaskGroup] { model.taskFilters.grouped(model.tasks) }
 
-    private var openCount: Int { model.tasks.count { $0.status != .done } }
 
-    /// Name of the saved view whose config equals the current filters —
-    /// "Custom view" when none matches (web ViewsMenu parity).
-    private var currentViewName: String {
-        let directories = ViewDirectories(model: model)
-        let match = model.savedTaskViews.first {
-            TaskFilters(webConfig: $0.config, directories: directories) == model.taskFilters
-        }
-        return match?.name ?? "Custom view"
-    }
 
     /// Number of multi-select filters in use (the badge on Filter).
     private var activeFilterCount: Int {
@@ -48,21 +37,13 @@ struct TasksView: View {
             Group {
                 if layout.wrappedValue == .board && !groups.allSatisfy(\.tasks.isEmpty) {
                     VStack(spacing: 0) {
-                        TKPageHeader("Tasks", meta: "\(openCount) open")
-                        toolbar
-                            .padding(.horizontal, TK.gutter)
-                            .padding(.top, 10)
-                            .padding(.bottom, 12)
+                        pageHeader
                         board
                     }
                 } else {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 0) {
-                            TKPageHeader("Tasks", meta: "\(openCount) open")
-                            toolbar
-                                .padding(.horizontal, TK.gutter)
-                                .padding(.top, 10)
-                                .padding(.bottom, 12)
+                            pageHeader
                             list
                         }
                         .padding(.bottom, 24)
@@ -83,9 +64,6 @@ struct TasksView: View {
             .onAppear {
                 guard ProcessInfo.processInfo.arguments.contains("--view-options"), model.selectedTab == .tasks else { return }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { showingFilters = true }
-            }
-            .sheet(isPresented: $showingViews) {
-                ViewOptionsSheet(model: model, context: .tasks)
             }
         }
     }
@@ -155,18 +133,13 @@ struct TasksView: View {
         }
     }
 
-    private var toolbar: some View {
-        HStack(spacing: 8) {
-            TKViewChip(name: currentViewName) {
-                showingViews = true
-            }
-            .frame(maxWidth: 240, alignment: .leading)
-            Spacer(minLength: 4)
-            TKLayoutSegment(layout: layout)
-            TKFilterButton(count: activeFilterCount) {
-                showingFilters = true
-            }
+    /// Header: title + Filter (saved views and List/Board live inside the
+    /// view options sheet).
+    private var pageHeader: some View {
+        TKPageHeader("Tasks") {
+            TKFilterButton(count: activeFilterCount) { showingFilters = true }
         }
+        .padding(.bottom, 10)
     }
 }
 

@@ -65,7 +65,6 @@ struct TKTabBar: View {
                 .frame(width: 52, height: 52)
                 .background(TK.accent, in: .rect(cornerRadius: 18))
                 .shadow(color: TK.accent.opacity(0.35), radius: 9, y: 6)
-                .offset(y: -14)
         }
         .buttonStyle(TKScaleStyle())
         .accessibilityLabel("Create")
