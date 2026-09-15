@@ -15,10 +15,14 @@ struct NotificationSettingsView: View {
     var model: AppModel? = nil
 
     @State private var prefs: API.Preferences?
+    /// Event whose email mode picker is open.
+    @State private var emailPicker: EventRow?
+    @State private var pickingDigestHour = false
 
-    private struct EventRow {
+    struct EventRow: Identifiable {
         let key: String
         let label: String
+        var id: String { key }
     }
 
     private let groups: [(title: String, events: [EventRow])] = [
@@ -48,37 +52,104 @@ struct NotificationSettingsView: View {
         ]),
     ]
 
+    private static let emailModes: [(id: String, label: String, icon: String)] = [
+        ("off", "Email off", "envelope"),
+        ("instant", "Email instantly", "envelope.fill"),
+        ("digest", "Email digest", "tray.full.fill"),
+    ]
+
     var body: some View {
-        Form {
-            if prefs == nil {
-                Section {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                        Spacer()
-                    }
-                    .listRowBackground(Color.clear)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                if prefs == nil {
+                    ProgressView()
+                        .tint(TK.text3)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 8)
                 }
-            }
 
-            ForEach(groups, id: \.title) { group in
-                Section(group.title) {
-                    ForEach(group.events, id: \.key) { event in
-                        eventRow(event)
+                HStack(spacing: 14) {
+                    legend("bell", "In app")
+                    legend("envelope.fill", "Instant email")
+                    legend("tray.full.fill", "Digest")
+                }
+                .padding(.leading, 2)
+
+                ForEach(groups, id: \.title) { group in
+                    section(group.title) {
+                        VStack(spacing: 0) {
+                            ForEach(Array(group.events.enumerated()), id: \.element.key) { index, event in
+                                if index > 0 { TKHairline(leading: 14) }
+                                eventRow(event)
+                            }
+                        }
+                        .tkCard(padding: nil)
                     }
                 }
-            }
 
-            quietHoursSection
-            digestSection
+                quietHoursSection
+                digestSection
+            }
+            .padding(.horizontal, TK.gutter)
+            .padding(.top, 12)
+            .padding(.bottom, 32)
         }
         .disabled(prefs == nil)
+        .opacity(prefs == nil ? 0.6 : 1)
         .navigationTitle("Notifications")
-        .navigationBarTitleDisplayMode(.inline)
         .task {
             await model?.sync?.loadPreferences()
-            prefs = model?.sync?.preferences
+            prefs = model?.sync?.preferences ?? (model?.sync == nil ? SettingsView.defaultPreferences : nil)
         }
+        .sheet(item: $emailPicker) { event in
+            TKPickerSheet(
+                title: "Email · \(event.label)",
+                options: Self.emailModes.map { mode in
+                    TKPickerOption(mode.id, label: mode.label) { TKPickerIcon.symbol(mode.icon) }
+                },
+                selected: channel(event.key).email
+            ) { mode in
+                setChannel(event.key, API.NotificationChannelPref(email: mode, inApp: channel(event.key).inApp))
+            }
+        }
+        .sheet(isPresented: $pickingDigestHour) {
+            let digest = prefs?.digest ?? API.DigestConfig(frequency: "daily", hour: 9)
+            TKPickerSheet(
+                title: "Send digest at",
+                options: (0..<24).map { TKPickerOption($0, label: String(format: "%02d:00", $0)) },
+                selected: digest.hour
+            ) { hour in
+                setDigest(API.DigestConfig(frequency: digest.frequency, hour: hour))
+            }
+        }
+    }
+
+    // MARK: - Pieces
+
+    private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            TKSectionLabel(title)
+                .padding(.leading, 2)
+            content()
+        }
+    }
+
+    private func legend(_ icon: String, _ label: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .medium))
+            Text(label)
+                .font(.system(size: 11))
+        }
+        .foregroundStyle(TK.text3)
+    }
+
+    private func footnote(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 12))
+            .foregroundStyle(TK.text3)
+            .lineSpacing(2)
+            .padding(.leading, 2)
     }
 
     // MARK: - Event rows
@@ -99,134 +170,131 @@ struct NotificationSettingsView: View {
 
     private func eventRow(_ event: EventRow) -> some View {
         let current = channel(event.key)
-        return HStack {
-            Toggle(event.label, isOn: Binding(
-                get: { channel(event.key).inApp },
-                set: { on in
-                    setChannel(event.key, API.NotificationChannelPref(email: current.email, inApp: on))
+        let mode = Self.emailModes.first { $0.id == current.email } ?? Self.emailModes[0]
+        return TKRow(label: event.label) {
+            HStack(spacing: 12) {
+                Button {
+                    emailPicker = event
+                } label: {
+                    Image(systemName: mode.icon)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(current.email == "off" ? TK.text4 : TK.accent)
+                        .frame(width: 36, height: 36)
+                        .background(current.email == "off" ? TK.mono(0.06) : TK.accentSoft, in: .rect(cornerRadius: TK.rChip))
+                        .contentShape(.rect)
                 }
-            ))
-            Menu {
-                Picker("Email", selection: Binding(
-                    get: { channel(event.key).email },
-                    set: { mode in
-                        setChannel(
-                            event.key,
-                            API.NotificationChannelPref(email: mode, inApp: current.inApp)
-                        )
+                .buttonStyle(.plain)
+                .accessibilityLabel(mode.label)
+                TKToggle(isOn: Binding(
+                    get: { channel(event.key).inApp },
+                    set: { on in
+                        setChannel(event.key, API.NotificationChannelPref(email: current.email, inApp: on))
                     }
-                )) {
-                    Text("Email off").tag("off")
-                    Text("Email instantly").tag("instant")
-                    Text("Email digest").tag("digest")
-                }
-            } label: {
-                Image(systemName: emailIcon(current.email))
-                    .font(.system(size: 15))
-                    .foregroundStyle(
-                        current.email == "off" ? Color(.tertiaryLabel) : Color.accentColor
-                    )
-                    .frame(width: 30)
+                ))
             }
-        }
-    }
-
-    private func emailIcon(_ mode: String) -> String {
-        switch mode {
-        case "instant": "envelope.fill"
-        case "digest": "tray.full.fill"
-        default: "envelope"
         }
     }
 
     // MARK: - Quiet hours & digest
 
-    private var quietHoursBinding: Binding<API.QuietHours> {
-        Binding(
-            get: {
-                prefs?.quietHours
-                    ?? API.QuietHours(enabled: false, start: "20:00", end: "08:00", weekends: true)
-            },
-            set: { fresh in
-                prefs?.quietHours = fresh
-                model?.sync?.updatePreferences(
-                    .init(quietHours: fresh),
-                    apply: { $0.quietHours = fresh }
-                )
-            }
-        )
+    private var quietHours: API.QuietHours {
+        prefs?.quietHours ?? API.QuietHours(enabled: false, start: "20:00", end: "08:00", weekends: true)
+    }
+
+    private func setQuietHours(_ fresh: API.QuietHours) {
+        prefs?.quietHours = fresh
+        model?.sync?.updatePreferences(.init(quietHours: fresh), apply: { $0.quietHours = fresh })
     }
 
     private var quietHoursSection: some View {
-        Section {
-            Toggle("Quiet hours", isOn: Binding(
-                get: { quietHoursBinding.wrappedValue.enabled },
-                set: { on in
-                    var fresh = quietHoursBinding.wrappedValue
-                    fresh.enabled = on
-                    quietHoursBinding.wrappedValue = fresh
+        section("Quiet hours") {
+            VStack(spacing: 0) {
+                TKRow(label: "Quiet hours", detail: "Hold instant email for the next digest") {
+                    TKToggle(isOn: Binding(
+                        get: { quietHours.enabled },
+                        set: { on in
+                            var fresh = quietHours
+                            fresh.enabled = on
+                            withAnimation(.snappy(duration: 0.2)) { setQuietHours(fresh) }
+                        }
+                    ))
                 }
-            ))
-            if quietHoursBinding.wrappedValue.enabled {
-                timeRow("From", keyPath: \.start)
-                timeRow("Until", keyPath: \.end)
-                Toggle("Include weekends", isOn: Binding(
-                    get: { quietHoursBinding.wrappedValue.weekends },
-                    set: { on in
-                        var fresh = quietHoursBinding.wrappedValue
-                        fresh.weekends = on
-                        quietHoursBinding.wrappedValue = fresh
+                if quietHours.enabled {
+                    TKHairline(leading: 14)
+                    timeRow("From", keyPath: \.start)
+                    TKHairline(leading: 14)
+                    timeRow("Until", keyPath: \.end)
+                    TKHairline(leading: 14)
+                    TKRow(label: "Include weekends") {
+                        TKToggle(isOn: Binding(
+                            get: { quietHours.weekends },
+                            set: { on in
+                                var fresh = quietHours
+                                fresh.weekends = on
+                                setQuietHours(fresh)
+                            }
+                        ))
                     }
-                ))
+                }
             }
-        } footer: {
-            Text("Instant email inside quiet hours is held for your next digest instead of being sent.")
+            .tkCard(padding: nil)
         }
     }
 
     private func timeRow(_ label: String, keyPath: WritableKeyPath<API.QuietHours, String>) -> some View {
-        DatePicker(
-            label,
-            selection: Binding(
-                get: { Self.time(from: quietHoursBinding.wrappedValue[keyPath: keyPath]) },
-                set: { date in
-                    var fresh = quietHoursBinding.wrappedValue
-                    fresh[keyPath: keyPath] = Self.timeString(from: date)
-                    quietHoursBinding.wrappedValue = fresh
-                }
-            ),
-            displayedComponents: .hourAndMinute
-        )
+        TKRow(label: label) {
+            DatePicker(
+                label,
+                selection: Binding(
+                    get: { Self.time(from: quietHours[keyPath: keyPath]) },
+                    set: { date in
+                        var fresh = quietHours
+                        fresh[keyPath: keyPath] = Self.timeString(from: date)
+                        setQuietHours(fresh)
+                    }
+                ),
+                displayedComponents: .hourAndMinute
+            )
+            .labelsHidden()
+            .tint(TK.accent)
+        }
+    }
+
+    private func setDigest(_ fresh: API.DigestConfig) {
+        prefs?.digest = fresh
+        model?.sync?.updatePreferences(.init(digest: fresh), apply: { $0.digest = fresh })
     }
 
     private var digestSection: some View {
         let digest = prefs?.digest ?? API.DigestConfig(frequency: "daily", hour: 9)
-        return Section {
-            Picker("Digest frequency", selection: Binding(
-                get: { digest.frequency },
-                set: { frequency in
-                    let fresh = API.DigestConfig(frequency: frequency, hour: digest.hour)
-                    prefs?.digest = fresh
-                    model?.sync?.updatePreferences(.init(digest: fresh), apply: { $0.digest = fresh })
+        return section("Digest") {
+            VStack(spacing: 0) {
+                TKRow(label: "Frequency") {
+                    TKSegmented(["hourly", "daily"], selection: Binding(
+                        get: { digest.frequency },
+                        set: { setDigest(API.DigestConfig(frequency: $0, hour: digest.hour)) }
+                    )) { $0.capitalized }
                 }
-            )) {
-                Text("Hourly").tag("hourly")
-                Text("Daily").tag("daily")
-            }
-            if digest.frequency == "daily" {
-                Picker("Send at", selection: Binding(
-                    get: { digest.hour },
-                    set: { hour in
-                        let fresh = API.DigestConfig(frequency: digest.frequency, hour: hour)
-                        prefs?.digest = fresh
-                        model?.sync?.updatePreferences(.init(digest: fresh), apply: { $0.digest = fresh })
+                if digest.frequency == "daily" {
+                    TKHairline(leading: 14)
+                    Button {
+                        pickingDigestHour = true
+                    } label: {
+                        TKRow(label: "Send at") {
+                            HStack(spacing: 6) {
+                                Text(String(format: "%02d:00", digest.hour))
+                                    .font(.tkMono(15))
+                                    .foregroundStyle(TK.text2)
+                                TKChevron()
+                            }
+                        }
+                        .contentShape(.rect)
                     }
-                )) {
-                    ForEach(0..<24, id: \.self) { Text(String(format: "%02d:00", $0)).tag($0) }
+                    .buttonStyle(TKPressStyle())
                 }
             }
-        } footer: {
-            Text("Events set to \"Email digest\" are batched into one rollup email.")
+            .tkCard(padding: nil)
+            footnote("Events set to \"Email digest\" are batched into one rollup email.")
         }
     }
 
@@ -246,6 +314,8 @@ struct NotificationSettingsView: View {
 
 #Preview {
     NavigationStack {
-        NotificationSettingsView()
+        NotificationSettingsView(model: AppModel())
+            .tkDetailScreen()
     }
+    .preferredColorScheme(.dark)
 }

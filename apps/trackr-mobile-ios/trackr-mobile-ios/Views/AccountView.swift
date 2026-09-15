@@ -2,7 +2,7 @@
 //  AccountView.swift
 //  trackr-mobile-ios
 //
-//  The user's own account page, pushed from the profile sheet's account
+//  The user's own account page, pushed from the Account root's profile
 //  card. Server reality: only `name` (and an avatar URL) are editable;
 //  email is fixed, passwords go through the forgot-password email flow,
 //  and account deletion is admin-only — so none of those are offered here.
@@ -25,54 +25,74 @@ struct AccountView: View {
     }
 
     var body: some View {
-        Form {
-            Section {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
                 VStack(spacing: 10) {
                     AvatarView(user: me, size: 84)
-                    Text(me.name)
+                    Text(savedName.isEmpty ? me.name : savedName)
                         .font(.system(size: 21, weight: .semibold))
+                        .foregroundStyle(TK.text)
                     if !email.isEmpty {
                         Text(email)
                             .font(.system(size: 13))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(TK.text2)
                     }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
-                .listRowBackground(Color.clear)
-            }
 
-            Section {
-                TextField("Name", text: $name)
-                    .onSubmit(save)
-                if canSave {
-                    Button("Save", action: save)
-                        .fontWeight(.semibold)
+                VStack(alignment: .leading, spacing: 10) {
+                    TKSectionLabel("Name")
+                        .padding(.leading, 2)
+                    HStack(spacing: 10) {
+                        TKTextInput(text: $name, placeholder: "Name", font: .system(size: 16))
+                            .onSubmit(save)
+                        if canSave {
+                            TKAccentButton(title: "Save", action: save)
+                                .transition(.opacity)
+                        }
+                    }
+                    .animation(.snappy(duration: 0.2), value: canSave)
+                    Text("Your name is visible to teammates on tasks, tickets and notes.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(TK.text3)
+                        .padding(.leading, 2)
                 }
-            } header: {
-                Text("Name")
-            } footer: {
-                Text("Your name is visible to teammates on tasks, tickets and notes.")
-            }
 
-            Section("Account") {
-                valueRow("Email", email.isEmpty ? "—" : email)
-                if let host = ServerConfig.savedHost?.host() {
-                    valueRow("Server", host)
+                VStack(alignment: .leading, spacing: 10) {
+                    TKSectionLabel("Account")
+                        .padding(.leading, 2)
+                    VStack(spacing: 0) {
+                        TKRow(label: "Email") { value(email.isEmpty ? "—" : email) }
+                        if let host = ServerConfig.savedHost?.host() {
+                            TKHairline(leading: 14)
+                            TKRow(label: "Server") { value(host, mono: true) }
+                        }
+                    }
+                    .tkCard(padding: nil)
+                    Text("Password changes go through the \"Forgot password\" email flow on the web sign-in page.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(TK.text3)
+                        .padding(.leading, 2)
                 }
             }
-
-            Section {
-            } footer: {
-                Text("Password changes go through the \"Forgot password\" email flow on the web sign-in page.")
-            }
+            .padding(.horizontal, TK.gutter)
+            .padding(.bottom, 32)
         }
+        .scrollDismissesKeyboard(.interactively)
         .navigationTitle("Account")
-        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             name = me.name
             savedName = me.name
         }
+    }
+
+    private func value(_ text: String, mono: Bool = false) -> some View {
+        Text(text)
+            .font(mono ? .tkMono(12) : .system(size: 14))
+            .foregroundStyle(TK.text2)
+            .lineLimit(1)
+            .truncationMode(.middle)
     }
 
     private func save() {
@@ -80,19 +100,12 @@ struct AccountView: View {
         savedName = trimmedName
         model?.sync?.updateProfile(name: trimmedName)
     }
-
-    private func valueRow(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label)
-            Spacer()
-            Text(value)
-                .foregroundStyle(.secondary)
-        }
-    }
 }
 
 #Preview {
     NavigationStack {
-        AccountView()
+        AccountView(model: AppModel())
+            .tkDetailScreen()
     }
+    .preferredColorScheme(.dark)
 }

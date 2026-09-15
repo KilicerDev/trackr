@@ -22,19 +22,18 @@ struct ProjectHistorySheet: View {
     }
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            TKSheetHeader(title: "History")
+                .padding(.bottom, 8)
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     if events.isEmpty, !loaded {
                         ProgressView()
+                            .tint(TK.text3)
                             .frame(maxWidth: .infinity)
                             .padding(.top, 40)
                     } else if events.isEmpty {
-                        Text("No activity yet.")
-                            .font(.system(size: 14))
-                            .foregroundStyle(.tertiary)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.top, 40)
+                        TKEmptyState(text: "No activity yet.", padding: 40)
                     }
                     ForEach(events) { event in
                         if event.isComment {
@@ -60,28 +59,27 @@ struct ProjectHistorySheet: View {
                 .background(alignment: .leading) {
                     if !events.isEmpty {
                         Rectangle()
-                            .fill(Color(.separator).opacity(0.5))
+                            .fill(TK.border)
                             .frame(width: 1)
                             .offset(x: TimelineRow<EmptyView>.nodeSize / 2)
                             .padding(.vertical, 10)
                     }
                 }
-                .padding(16)
+                .padding(.horizontal, TK.gutter)
+                .padding(.vertical, 12)
             }
             .defaultScrollAnchor(events.isEmpty ? .top : .bottom)
+            .scrollDismissesKeyboard(.interactively)
             .task {
                 await model.sync?.loadProjectHistory(projectKey: projectKey)
                 loaded = true
             }
-            .scrollDismissesKeyboard(.interactively)
-            .background(Color.webBackground)
-            .navigationTitle("History")
-            .navigationBarTitleDisplayMode(.inline)
-            .safeAreaInset(edge: .bottom) {
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 MessageComposer(text: $draft, placeholder: "Write a comment…", onSend: send)
+                    .overlay(alignment: .top) { TKHairline(color: TK.border) }
             }
         }
-        .presentationDetents([.medium, .large])
+        .tkSheet(detents: [.medium, .large])
     }
 
     private func send() {
@@ -96,4 +94,5 @@ struct ProjectHistorySheet: View {
     Color.clear.sheet(isPresented: .constant(true)) {
         ProjectHistorySheet(model: AppModel(), projectKey: "TRK")
     }
+    .preferredColorScheme(.dark)
 }

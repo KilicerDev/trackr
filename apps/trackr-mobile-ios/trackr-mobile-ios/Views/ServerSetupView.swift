@@ -24,33 +24,46 @@ struct ServerSetupView: View {
         VStack(spacing: 0) {
             Spacer()
 
-            BrandMark(color: .accentColor)
+            BrandMark(color: TK.accent)
                 .frame(width: 56)
             Text("trackr")
                 .font(.system(size: 34, weight: .bold))
+                .tkTitleTracking()
+                .foregroundStyle(TK.text)
                 .padding(.top, 14)
             Text("Sign in to your team's trackr instance.")
                 .font(.system(size: 15))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(TK.text2)
                 .padding(.top, 4)
 
             VStack(alignment: .leading, spacing: 8) {
-                TextField("trackr.example.com", text: $auth.hostText)
-                    .textContentType(.URL)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .focused($hostFocused)
-                    .submitLabel(.go)
-                    .onSubmit { signIn() }
-                    .padding(.horizontal, 16)
-                    .frame(height: 48)
-                    .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14))
+                HStack(spacing: 10) {
+                    Image(systemName: "globe")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(TK.text3)
+                    TextField("trackr.example.com", text: $auth.hostText)
+                        .font(.system(size: 16))
+                        .foregroundStyle(TK.text)
+                        .textContentType(.URL)
+                        .keyboardType(.URL)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .focused($hostFocused)
+                        .submitLabel(.go)
+                        .onSubmit { signIn() }
+                }
+                .padding(.horizontal, 14)
+                .frame(height: 48)
+                .background(TK.card, in: .rect(cornerRadius: TK.rInput))
+                .overlay(
+                    RoundedRectangle(cornerRadius: TK.rInput)
+                        .strokeBorder(hostFocused ? TK.borderDashed : TK.borderInput, lineWidth: 1)
+                )
 
                 if let errorMessage {
                     Text(errorMessage)
                         .font(.system(size: 13))
-                        .foregroundStyle(Color(hex: 0xEF4F5E))
+                        .foregroundStyle(TK.danger)
                         .padding(.horizontal, 4)
                 }
             }
@@ -61,35 +74,22 @@ struct ServerSetupView: View {
 
             // Sign-in pinned to the bottom, sized like a standard iOS primary
             // action (50pt, compact radius) rather than a full-height slab.
-            Button {
-                signIn()
-            } label: {
-                Group {
-                    if isWorking {
-                        ProgressView().tint(.white)
-                    } else {
-                        Text("Sign In")
-                            .font(.system(size: 16, weight: .semibold))
-                    }
+            ZStack {
+                TKPrimaryButton(title: isWorking ? " " : "Sign in", enabled: canSignIn, action: signIn)
+                if isWorking {
+                    ProgressView().tint(.white)
                 }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 48)
-                .background(Color.accentColor, in: .rect(cornerRadius: 14))
-                .opacity(canSignIn ? 1 : 0.45)
             }
-            .buttonStyle(.plain)
-            .disabled(!canSignIn)
 
             Text("Your credentials are entered in the browser and never stored in the app.")
                 .font(.system(size: 12))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(TK.text4)
                 .multilineTextAlignment(.center)
                 .padding(.top, 14)
                 .padding(.bottom, 12)
         }
         .padding(.horizontal, 24)
-        .background(Color.webBackground)
+        .background(TK.bg.ignoresSafeArea())
     }
 
     private var canSignIn: Bool {
@@ -121,4 +121,5 @@ struct ServerSetupView: View {
 
 #Preview {
     ServerSetupView(auth: AuthSession())
+        .preferredColorScheme(.dark)
 }

@@ -101,49 +101,53 @@ struct WhatsNewView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: 14) {
                 ForEach(releases) { release in
-                    VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 14) {
                         HStack(alignment: .firstTextBaseline) {
                             Text(release.name)
-                                .font(.system(size: 19, weight: .bold))
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(TK.text)
                             Spacer()
                             Text("\(release.version) · \(release.date)")
-                                .font(.system(size: 12, design: .monospaced))
-                                .foregroundStyle(.tertiary)
+                                .font(.tkMono(11))
+                                .foregroundStyle(TK.text3)
                         }
-                        ForEach(release.features) { feature in
-                            HStack(alignment: .top, spacing: 13) {
+                        ForEach(Array(release.features.enumerated()), id: \.element.id) { index, feature in
+                            if index > 0 { TKHairline() }
+                            HStack(alignment: .top, spacing: 12) {
                                 Image(systemName: feature.icon)
-                                    .font(.system(size: 20))
-                                    .foregroundStyle(Color.accentColor)
-                                    .frame(width: 30)
-                                VStack(alignment: .leading, spacing: 2) {
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundStyle(TK.accent)
+                                    .frame(width: 30, height: 30)
+                                    .background(TK.accentSoft, in: .rect(cornerRadius: 9))
+                                VStack(alignment: .leading, spacing: 3) {
                                     Text(feature.title)
-                                        .font(.system(size: 15, weight: .semibold))
+                                        .font(.system(size: 15, weight: .medium))
+                                        .foregroundStyle(TK.text)
                                     Text(feature.detail)
-                                        .font(.system(size: 14))
+                                        .font(.system(size: 13))
                                         .lineSpacing(2)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(TK.text2)
                                 }
                             }
                         }
                     }
-                    .padding(16)
-                    .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20))
+                    .tkCard(padding: 16)
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .padding(.horizontal, TK.gutter)
+            .padding(.top, 12)
+            .padding(.bottom, 32)
         }
-        .background(Color.webBackground)
-        .navigationTitle("What's New")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("What's new")
     }
 }
 
 #Preview {
     NavigationStack {
         WhatsNewView()
+            .tkDetailScreen()
     }
+    .preferredColorScheme(.dark)
 }

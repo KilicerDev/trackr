@@ -14,14 +14,14 @@ struct LaunchView: View {
 
     var body: some View {
         ZStack {
-            Color.webBackground.ignoresSafeArea()
+            TK.bg.ignoresSafeArea()
             VStack(spacing: 18) {
                 BrandMark(animating: true)
                     .frame(width: 56)
                 Text("Trackr")
                     .font(.system(size: 17, weight: .semibold))
                     .tracking(-0.2)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(TK.text)
                     .opacity(revealed ? 1 : 0)
                     .offset(y: revealed ? 0 : 4)
             }
@@ -37,4 +37,5 @@ struct LaunchView: View {
 
 #Preview {
     LaunchView()
+        .preferredColorScheme(.dark)
 }
