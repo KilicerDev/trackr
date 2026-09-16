@@ -1,5 +1,5 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/Hinkolas/skali/v0.1.0-alpha.1/schemas/skali.schema.json
-version: "1"
+skali: v0.1.0-rc.4
 name: trackr
 description: Trackr — agency work tracker (SvelteKit web app, Go job worker, Go scheduler)
 
