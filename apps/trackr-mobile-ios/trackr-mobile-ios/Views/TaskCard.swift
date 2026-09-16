@@ -2,16 +2,17 @@
 //  TaskCard.swift
 //  trackr-mobile-ios
 //
-//  The prototype's task ROW (tasks list, my week, search): a 36pt done
-//  toggle, the title (two lines), and one meta line — type badge or
+//  The prototype's task ROW (tasks list, my week, search): a 36pt status
+//  glyph, the title (two lines), and one meta line — type badge or
 //  project dot, mono key, priority bars, checklist progress, due state.
 //  Rows are flat on the page and separated by hairlines; the list owns
 //  the separators.
 //
-//  The check toggles Done ↔ Todo straight on the shared model (same push
-//  path as the context menu) without opening the detail. Tapping the rest
-//  of the row calls `onOpen`; without it the row is a plain view (wrap it
-//  in a NavigationLink).
+//  The status glyph (`StatusDot`, same icon + color as the detail chips)
+//  opens the status picker and writes straight to the shared model (same
+//  push path as the context menu) without opening the detail. Tapping the
+//  rest of the row calls `onOpen`; without it the row is a plain view
+//  (wrap it in a NavigationLink).
 //
 
 import SwiftUI
@@ -44,6 +45,8 @@ struct TaskRow: View {
     /// Tap on the title/meta area. nil → the row is not a button.
     var onOpen: (() -> Void)? = nil
 
+    @State private var pickingStatus = false
+
     /// The live model copy wins over the passed value so a quick edit
     /// (context menu, check) shows without the parent re-rendering.
     private var live: TaskItem {
@@ -58,13 +61,17 @@ struct TaskRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
-            Button(action: toggleDone) {
-                TKCheckCircle(done: done)
+            Button {
+                pickingStatus = true
+            } label: {
+                StatusDot(status: live.status, size: 18)
                     .frame(width: 36, height: 36)
                     .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(done ? "Reopen" : "Mark done")
+            .disabled(model == nil)
+            .accessibilityLabel("Status: \(live.status.label)")
+            .accessibilityHint("Change status")
 
             if let onOpen {
                 Button(action: onOpen) {
@@ -84,6 +91,15 @@ struct TaskRow: View {
         .padding(.trailing, showPlay ? 8 : TK.gutter)
         .opacity(done ? 0.5 : 1)
         .animation(.snappy(duration: 0.2), value: done)
+        .sheet(isPresented: $pickingStatus) {
+            TKPickerSheet(
+                title: "Status",
+                options: TaskStatus.allCases.map { status in
+                    TKPickerOption(status, label: status.label) { StatusDot(status: status, size: 18) }
+                },
+                selected: live.status
+            ) { setStatus($0) }
+        }
     }
 
     private var content: some View {
@@ -183,16 +199,17 @@ struct TaskRow: View {
         }
     }
 
-    /// Done ↔ Todo on the shared model + push (context-menu path).
-    private func toggleDone() {
+    /// Status on the shared model + push (context-menu path).
+    private func setStatus(_ status: TaskStatus) {
         guard let model, let index = model.tasks.firstIndex(where: { $0.id == task.id }) else { return }
-        model.tasks[index].status = model.tasks[index].status == .done ? .todo : .done
+        guard model.tasks[index].status != status else { return }
+        model.tasks[index].status = status
         model.sync?.pushTask(model.tasks[index])
     }
 }
 
-/// Board card (tasks board, week board): key + type, title, project ·
-/// due · avatar; optional play button for the week.
+/// Board card (tasks board, week board): status + type + key, title,
+/// project · due · avatar; optional play button for the week.
 struct TaskBoardCard: View {
     let task: TaskItem
     var model: AppModel? = nil
@@ -210,6 +227,7 @@ struct TaskBoardCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
+                StatusDot(status: live.status, size: 16)
                 TypeBadge(type: live.type, showLabel: false, size: 18)
                 Text(live.id)
                     .font(.tkMono(11))

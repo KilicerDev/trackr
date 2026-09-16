@@ -60,7 +60,7 @@ segment 9/7 · button 11 · input 14. Gutter 16.
 | `TKSegmented(options, selection, title:)` | List/Board, All/Unread, Theme, Public/Internal |
 | `TKPrimaryButton` (50pt) / `TKAccentButton` (42pt) / `TKSecondaryButton` / `TKQuietButton` / `TKCircleButton` | CTAs |
 | `TKGroupBand(title:color:count:collapsible:collapsed:trailing:onToggle:)` | group header band |
-| `TKCheckCircle(done:)` (20pt) / `TKCheckBox(done:)` (22pt) | task done toggle / checklist |
+| `TKCheckCircle(done:)` (20pt) / `TKCheckBox(done:)` (22pt) | selection circles / checklist |
 | `TKLiveDot` / `TKDot` / `TKBar(fraction:)` / `TKTagChip` / `TKCountBadge` | indicators |
 | `TKRow(label:detail:) { trailing }` + `TKRowValue` / `TKDisclosure` / `TKToggle` | settings rows |
 | `TKSearchField` / `TKTextInput` | inputs |
@@ -126,14 +126,16 @@ Unscheduled section keeps the segmented Past / My tasks / Others.
 
 ### Task row (week, tasks list, search)
 ```
-[36×36 tap: TKCheckCircle 20]  Title 15pt (2 lines, pretty)          [36×36 play ▶ (week only)]
+[36×36 tap: StatusDot 18]      Title 15pt (2 lines, pretty)          [36×36 play ▶ (week only)]
                                ● proj-dot 6 · KEY mono 11 · PriorityBars · project 11 text3 … due 11 (accent when urgent) · 30m mono 11
 ```
 Padding 12 top/bottom, 8 leading, 12–16 trailing; hairline above each row.
 Done rows: opacity 0.5, strikethrough, text2 title. Tasks list row: leading
 `TypeBadge(size: 18)` instead of project dot, `☑ 1/4` mono when checklist,
 due short on the right (`dueColor`: accent when urgent, text3 else). Tap opens
-the detail; the check toggles done (Done ↔ Todo) without navigating.
+the detail; the status glyph opens the status `TKPickerSheet` and writes the
+pick to the model without navigating. Board cards (tasks, week) lead their
+top line with `StatusDot 16` before the `TypeBadge`.
 
 ### Tickets
 Header "Tickets" + mono "N open". Toolbar: `TKViewChip` (saved view name or
