@@ -25,6 +25,14 @@ struct WhatsNewView: View {
     }
 
     private let releases: [Release] = [
+        Release(version: "1.1.2", name: "Status at a Glance", date: "September 2026", features: [
+            Feature(icon: "circle.lefthalf.filled", title: "Status Icon on Every Row",
+                    detail: "Task rows in Tasks, My week and Search show the status glyph — dashed backlog, half-filled in progress, purple in review, green check when done — instead of the plain done circle."),
+            Feature(icon: "slider.horizontal.3", title: "Change Status from the List",
+                    detail: "Tap the status icon on a row to pick any status without opening the task. The change syncs right away."),
+            Feature(icon: "rectangle.split.3x1.fill", title: "Status on Board Cards",
+                    detail: "Cards on the Tasks and My week boards carry the same status icon next to the type badge, so a column tells you more than the color."),
+        ]),
         Release(version: "1.1.1", name: "Tags & Planning", date: "September 2026", features: [
             Feature(icon: "tag.fill", title: "Tags on Every Row",
                     detail: "Task and ticket rows and board cards show their tags on a third line — on Tasks, Tickets and My week."),
