@@ -41,8 +41,10 @@ import { attachFormFiles, deleteAttachmentsFor } from '$lib/server/attachments';
 import { getPreferences } from '$lib/server/preferences';
 import { m } from '$lib/paraglide/messages';
 
-export const load: ServerLoad = async ({ locals }) => {
+export const load: ServerLoad = async ({ locals, depends }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
+	// Task mutations call `invalidate('app:tasks')` to refresh just this list.
+	depends('app:tasks');
 	const access = accessibleProjectIds(locals);
 	const [tasks, preferences] = await Promise.all([
 		loadTasks({

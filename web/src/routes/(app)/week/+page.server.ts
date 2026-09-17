@@ -16,8 +16,10 @@ function startOfWeek(d: Date): Date {
 	return out;
 }
 
-export const load: ServerLoad = async ({ locals, url }) => {
+export const load: ServerLoad = async ({ locals, url, depends }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
+	// Task mutations call `invalidate('app:tasks')` to refresh just this list.
+	depends('app:tasks');
 
 	const access = accessibleProjectIds(locals);
 	const [tasks, preferences] = await Promise.all([

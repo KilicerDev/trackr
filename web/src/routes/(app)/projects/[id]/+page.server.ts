@@ -75,8 +75,10 @@ function userColor(id: string): string {
 	return `hsl(${h % 360} 55% 60%)`;
 }
 
-export const load: ServerLoad = async ({ params, locals }) => {
+export const load: ServerLoad = async ({ params, locals, depends }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
+	// Task mutations call `invalidate('app:tasks')` to refresh just this page.
+	depends('app:tasks');
 
 	const id = params.id;
 	if (!id) throw error(404, m.projects_not_found());
