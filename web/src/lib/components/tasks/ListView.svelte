@@ -9,6 +9,7 @@
 	import Icon from '../Icon.svelte';
 	import IconButton from '../IconButton.svelte';
 	import { readCollapsed, saveCollapsed } from '$lib/stores/view';
+	import { whenVisible } from '$lib/actions/whenVisible';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { sortTasks, DEFAULT_TASK_LIST_SORT, type TaskSort } from '$lib/utils/sort';
@@ -51,6 +52,23 @@
 	// the same initial value.)
 	$effect(() => {
 		collapsed = loadCollapsed();
+	});
+
+	// Render-on-scroll: each group starts with a page of rows and a sentinel
+	// that asks for the next page as it approaches the viewport (or on click).
+	// Keeps the server-rendered HTML and the hydrated DOM bounded on large
+	// workspaces; group headers still show the full count.
+	const PAGE = 40;
+	let shown = $state<Record<string, number>>({});
+	function limitFor(id: string): number {
+		return shown[id] ?? PAGE;
+	}
+	function showMore(id: string) {
+		shown[id] = limitFor(id) + PAGE;
+	}
+	$effect(() => {
+		void group;
+		shown = {};
 	});
 
 	function toggle(id: string) {
@@ -188,9 +206,20 @@
 			{/if}
 			{#if !isCollapsed}
 				<div transition:slide={{ duration: 180, easing: cubicOut }}>
-					{#each g.tasks as t (t.id)}
+					{#each g.tasks.slice(0, limitFor(g.id)) as t (t.id)}
 						<TaskRow task={t} selected={selectedId === t.id} onclick={() => onSelect?.(t)} />
 					{/each}
+					{#if g.tasks.length > limitFor(g.id)}
+						<button
+							type="button"
+							use:whenVisible={() => showMore(g.id)}
+							onclick={() => showMore(g.id)}
+							class="flex h-9 w-full items-center gap-1.5 border-b border-border px-5 text-left text-[13px] text-text-3 transition-colors hover:bg-surface hover:text-text"
+						>
+							<Icon name="chevron" size={13} />
+							{m.tasks_show_more({ n: g.tasks.length - limitFor(g.id) })}
+						</button>
+					{/if}
 					{#if group === 'project'}
 						<button
 							type="button"

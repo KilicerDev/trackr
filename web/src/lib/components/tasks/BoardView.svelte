@@ -12,6 +12,7 @@
 	import Icon from '../Icon.svelte';
 	import IconButton from '../IconButton.svelte';
 	import { readCollapsed, saveCollapsed } from '$lib/stores/view';
+	import { whenVisible } from '$lib/actions/whenVisible';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
 	import { sortTasks, DEFAULT_TASK_BOARD_SORT, type TaskSort } from '$lib/utils/sort';
@@ -154,6 +155,23 @@
 		tasks: TaskSummary[];
 	}
 
+	// Render-on-scroll per sub-group: a page of cards plus a sentinel that asks
+	// for the next page as it nears the column's viewport (or on click). Keeps
+	// the server-rendered HTML bounded; sub-group headers show the full count.
+	const PAGE = 40;
+	let shown = $state<Record<string, number>>({});
+	function limitFor(key: string): number {
+		return shown[key] ?? PAGE;
+	}
+	function showMore(key: string) {
+		shown[key] = limitFor(key) + PAGE;
+	}
+	$effect(() => {
+		void group;
+		void sub;
+		shown = {};
+	});
+
 	function subGroupsForColumn(col: ColumnDef): SubGroupDef[] {
 		const items = col.tasks;
 		if (sub === 'none' || sub === group) {
@@ -285,9 +303,20 @@
 									class="mt-1.5 space-y-2"
 									transition:slide={{ duration: 180, easing: cubicOut }}
 								>
-									{#each g.tasks as t (t.id)}
+									{#each g.tasks.slice(0, limitFor(g.key)) as t (t.id)}
 										<BoardCard task={t} onclick={() => onSelect?.(t)} />
 									{/each}
+									{#if g.tasks.length > limitFor(g.key)}
+										<button
+											type="button"
+											use:whenVisible={() => showMore(g.key)}
+											onclick={() => showMore(g.key)}
+											class="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
+										>
+											<Icon name="chevron" size={13} />
+											{m.tasks_show_more({ n: g.tasks.length - limitFor(g.key) })}
+										</button>
+									{/if}
 								</div>
 							{/if}
 						</div>
