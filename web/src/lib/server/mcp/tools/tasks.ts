@@ -20,6 +20,7 @@ import {
 	resolveTaskByDisplayId,
 	sanitizeTaskChecklist
 } from '$lib/server/tasks'; // W2: applyTaskUpdate, createTaskWithEffects, deleteTaskFully, logTaskTime, resolveProjectByKey, resolveTaskByDisplayId, sanitizeTaskChecklist
+import { addTaskComment } from '$lib/server/task-comments';
 import { loadAssignableUsers } from '$lib/server/tickets';
 import { db } from '$lib/server/db';
 import { project } from '$lib/server/db/app.schema';
@@ -472,6 +473,35 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 			return text(`${head}\n${taskLine(fresh.task, fresh.users)}`, {
 				key: ref.display,
 				changed: result.changed,
+				task: taskDetailDto(fresh.task, fresh.users, ctx.origin)
+			});
+		})
+	);
+
+	server.registerTool(
+		'comment_task',
+		{
+			title: 'Comment on task',
+			description:
+				'Post a Markdown comment on a task by display id (e.g. `WEB-12`). Requires project.tasks.read and project.tasks.comment. The authenticated user is the author; task participants are notified like in the app. Task comments only: this tool cannot post ticket replies, internal ticket notes, or chat messages.',
+			inputSchema: z.object({
+				key: taskKeySchema,
+				body: z.string().trim().min(1).describe('Comment body in Markdown (must not be empty).')
+			}),
+			annotations: WRITE
+		},
+		guarded(async ({ key, body }) => {
+			const ref = await loadVisibleTaskRef(ctx, key);
+			const comment = await addTaskComment(
+				ctx.locals,
+				ref.id,
+				{ body },
+				{ origin: ctx.origin, via: 'mcp' }
+			);
+			const fresh = await loadTaskDetail(ctx, ref.display);
+			return text(`Added comment to **${ref.display}**.`, {
+				key: ref.display,
+				id: comment.id,
 				task: taskDetailDto(fresh.task, fresh.users, ctx.origin)
 			});
 		})

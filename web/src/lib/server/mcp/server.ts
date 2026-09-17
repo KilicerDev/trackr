@@ -45,7 +45,9 @@ Writing tasks and tickets — record what the user said, do not expand it:
 - Updates: pass only the fields the user asked to change. Do not "improve" the rest of the task while you are there.
 - When unsure whether something belongs in the task, ask or leave it out. A short task the user recognises beats a complete one they have to clean up.
 
-Not available here: posting ticket replies or task comments, chat, share links — tell the user to do those in the app.`;
+Task comments: use \`comment_task\` to post a Markdown comment on a task. Ticket replies, internal ticket notes and chat messages cannot be posted through MCP.
+
+Not available here: posting ticket replies or internal ticket notes, chat, share links — tell the user to do those in the app.`;
 
 /**
  * Built-in instructions + the admin's additions (Settings → MCP) + the user's

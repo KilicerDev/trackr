@@ -26,6 +26,7 @@ const MCP_URL = `${BASE_URL}/api/mcp`;
 const EXPECTED_TOOLS = [
 	'attach_file',
 	'checklist_toggle',
+	'comment_task',
 	'create_meeting_note',
 	'create_note',
 	'create_project',
@@ -174,6 +175,14 @@ describe('ticket attribution', () => {
 		expect(persisted.status).toBe(200);
 		expect(persisted.body.ticket.createdBy).toBe(me.id);
 		expect(persisted.body.ticket.customerId).toBe(me.id);
+		// Ticket UUIDs must never be accepted as comment targets.
+		const before = structured<{ ticket: { messages: unknown[] } }>(
+			await ok('get_ticket', { key: result.key })
+		);
+		const comment = await call('comment_task', { key: result.id, body: 'Task-only comment' });
+		expect(comment.isError).toBe(true);
+		const after = structured<typeof before>(await ok('get_ticket', { key: result.key }));
+		expect(after.ticket.messages).toEqual(before.ticket.messages);
 	});
 });
 
@@ -208,6 +217,16 @@ describe('tool contract', () => {
 			expect(t.description, t.name).toBeString();
 			expect(t.annotations, t.name).toBeDefined();
 		}
+	});
+
+	test('comment_task is a non-idempotent write with no conversation target', async () => {
+		const { tools } = await client.listTools();
+		const comment = tools.find((t) => t.name === 'comment_task');
+		expect(comment?.annotations?.readOnlyHint).toBe(false);
+		expect(comment?.annotations?.idempotentHint).toBe(false);
+		expect(Object.keys(comment?.inputSchema.properties ?? {}).sort()).toEqual(['body', 'key']);
+		expect(client.getInstructions()).toContain('Task comments: use `comment_task`');
+		expect(client.getInstructions()).toContain('chat messages cannot be posted through MCP');
 	});
 
 	test('resource templates cover ticket, task, wiki, note and attachment', async () => {
@@ -338,6 +357,52 @@ describe('task lifecycle', () => {
 		expect(res.minutes).toBe(20);
 	});
 
+	test('comment_task persists Markdown as the authenticated user', async () => {
+		const me = structured<{ id: string; name: string }>(await ok('whoami'));
+		const body = `Progress **${run}**\n\n- Ready for review`;
+		type Detail = {
+			task: {
+				id: string;
+				comments: { id: string; body: string; author: { id: string; name: string } }[];
+			};
+		};
+		const result = structured<Detail & { id: string; key: string }>(
+			await ok('comment_task', {
+				key: key.toLowerCase(),
+				body: `  ${body}  `,
+				authorId: 'spoofed-author'
+			})
+		);
+		expect(result.key).toBe(key);
+		expect(result.id).toMatch(/^[0-9a-f-]{36}$/);
+		const comment = result.task.comments.find((c) => c.id === result.id);
+		expect(comment?.body).toBe(body);
+		expect(comment?.author).toEqual({ id: me.id, name: me.name });
+		const detail = structured<Detail>(await ok('get_task', { key }));
+		expect(detail.task.comments).toEqual(result.task.comments);
+		const persisted = await api<{
+			task: { comments: { id: string; body: string; user: string }[] };
+		}>('GET', `/api/v1/tasks/${result.task.id}`);
+		expect(persisted.status).toBe(200);
+		expect(persisted.body.task.comments.find((c) => c.id === result.id)).toMatchObject({
+			body,
+			user: me.id
+		});
+	});
+
+	test('comment_task rejects empty bodies and unknown tasks without adding a comment', async () => {
+		type Detail = { task: { comments: unknown[] } };
+		const before = structured<Detail>(await ok('get_task', { key }));
+		for (const body of ['', ' \n\t ']) {
+			expect((await call('comment_task', { key, body })).isError).toBe(true);
+		}
+		const missing = await call('comment_task', { key: 'NOPE-999999', body: 'test' });
+		expect(missing.isError).toBe(true);
+		expect(textOf(missing)).toContain('404');
+		const after = structured<Detail>(await ok('get_task', { key }));
+		expect(after.task.comments).toEqual(before.task.comments);
+	});
+
 	test('trackr://task/{key} resource mirrors get_task', async () => {
 		const res = await client.readResource({ uri: `trackr://task/${key}` });
 		const text = res.contents.map((c) => ('text' in c ? c.text : '')).join('\n');
@@ -350,6 +415,9 @@ describe('task lifecycle', () => {
 		created.taskKeys.delete(key);
 		const again = await call('delete_task', { key });
 		expect(again.isError).toBe(true);
+		const comment = await call('comment_task', { key, body: 'Deleted task' });
+		expect(comment.isError).toBe(true);
+		expect(textOf(comment)).toContain('404');
 	});
 });
 
@@ -925,6 +993,20 @@ describe('audit trail (channel + content events + connections)', () => {
 		// …and does not show up under another channel.
 		const web = await logRows({ channel: 'web', q: key });
 		expect(web.some((r) => r.type === 'task.create')).toBe(false);
+	});
+
+	test('a task comment through MCP is logged on the mcp channel', async () => {
+		const { key } = structured<{ key: string }>(
+			await ok('create_task', { projectKey, title: `${SMOKE_PREFIX} audit comment ${run}` })
+		);
+		created.taskKeys.add(key);
+		await ok('comment_task', { key, body: `Audit comment ${run}` });
+		const rows = await rowsFor(
+			{ channel: 'mcp', q: key },
+			(r) => r.type === 'task.comment' && r.target.startsWith(key)
+		);
+		expect(rows.length).toBe(1);
+		expect(rows[0].channel).toBe('mcp');
 	});
 
 	test('wiki page create/update/delete are audited under "content"', async () => {

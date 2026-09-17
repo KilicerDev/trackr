@@ -39,23 +39,25 @@ OAuth tokens are issued per authorization (access tokens last an hour, refresh t
 
 ## Tools
 
-Thirty-seven tools, named after what they do. Identifiers follow the app: tickets as `ORGKEY-n`, tasks as `PROJECTKEY-n`, projects and organizations by key, wiki pages and notes by id. All bodies are Markdown, in and out.
+Forty tools, named after what they do. Identifiers follow the app: tickets as `ORGKEY-n`, tasks as `PROJECTKEY-n`, projects and organizations by key, wiki pages and notes by id. All bodies are Markdown, in and out.
 
 | Area     | Tools                                                                                                                                              |
 | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | General  | `whoami`, `list_orgs`, `list_users`, `search`, `get_inbox`, `get_attachment`, `attach_file`, `get_guide`, `show_items`, `show_task`, `show_ticket` |
 | Tickets  | `list_tickets`, `get_ticket`, `create_ticket`, `update_ticket`, `delete_ticket`                                                                    |
-| Tasks    | `list_tasks`, `get_task`, `create_task`, `update_task`, `delete_task`, `log_time`, `checklist_toggle`                                              |
+| Tasks    | `list_tasks`, `get_task`, `create_task`, `update_task`, `comment_task`, `delete_task`, `log_time`, `checklist_toggle`                              |
 | Projects | `list_projects`, `get_project`, `create_project`, `update_project`                                                                                 |
 | Wiki     | `wiki_tree`, `wiki_get_page`, `wiki_create_folder`, `wiki_create_page`, `wiki_update_page`, `wiki_delete_page`                                     |
 | Notes    | `list_notes`, `get_note`, `create_note`, `create_meeting_note`, `update_note`, `delete_note`                                                       |
 
 Lists are compact and capped (`limit`, at most 200) and report a `total`. Checklists on `update_*` replace the whole array; use `checklist_toggle` for a single item.
 
+`comment_task` posts a Markdown `body` on a task identified by `key` (for example `WEB-12`). It requires task read and comment permissions, attributes the comment to the authenticated user, and notifies task participants. It cannot post to ticket conversations.
+
 > [!NOTE]
 > **Not available through MCP**
 >
-> Posting ticket replies or task comments, chat, and share links are deliberately left to the app. The assistant will tell the user to do those there.
+> Posting ticket replies or internal ticket notes, chat, and share links are deliberately left to the app. The assistant will tell the user to do those there.
 
 ## The inline widget
 
