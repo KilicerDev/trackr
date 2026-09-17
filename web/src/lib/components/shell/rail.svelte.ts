@@ -14,8 +14,8 @@
 // both states so an 18px glyph sits at x=32 — dead-centre of the 64px rail,
 // on the same axis as the brand mark above it. The container pads 8px, so
 // only the row's own margin/padding interpolate (deltas cancel: −4 +4 = 0).
-// Folded, each row is a 48×40 tile filling the same 48px column as the
-// instance tile, so the rail reads as one stack.
+// Folded, each row is a 48×40 tile sharing its center axis and height with
+// the 40×40 instance tile, so the rail reads as one stack.
 import { getSidebar } from '$lib/stores/sidebar.svelte';
 
 const ROW =

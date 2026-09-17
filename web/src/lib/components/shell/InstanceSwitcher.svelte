@@ -64,8 +64,7 @@
 	);
 	const instances = $derived(stored.filter((i) => !sameInstance(i.url, page.url.origin)));
 
-	// The tile rolls out in place (it grows and pushes the nav down) rather
-	// than opening a floating menu, so the whole thing reads as one control.
+	// The tile rolls out over the nav, keeping the header and logo in place.
 	function close() {
 		open = false;
 	}
@@ -179,18 +178,16 @@
 </script>
 
 <!--
-	The wrapper reserves the closed tile's height plus its margins (12 + 48 + 10
-	px) and the card is absolutely positioned inside it, so rolling out overlays
-	the nav instead of pushing it down. The button holds that height itself
-	(min-h 46 + border = 48, square in the 48px folded column) so the tile
-	stays put whether the second line — the active organization, portal only —
-	is there or not. The host is not shown in the header; the menu lists it where
-	instances need telling apart.
+	Reserve the closed tile plus its margins (12 + 40 + 10px). The card
+	rolls out over the nav. Its 38px button plus borders stays 40px tall,
+	including the portal's second line. The right inset accounts for the
+	rail's 1px border: 64 - 1 - 12 - 11 = 40px when folded. The logo stays
+	centered at x=32 throughout collapse (12 + 1 + 7 + 12).
 -->
-<div class="relative z-20 h-[70px]">
+<div class="relative z-20 h-[62px]">
 	<div
 		use:clickOutside={close}
-		class="absolute inset-x-2 top-3 overflow-hidden rounded-[10px] border transition-[background-color,border-color,box-shadow] duration-150 {open
+		class="absolute top-3 right-[11px] left-3 overflow-hidden rounded-[10px] border transition-[background-color,border-color,box-shadow] duration-150 {open
 			? 'border-border-strong bg-surface-2 shadow-lg'
 			: 'border-border bg-surface hover:border-border-strong hover:bg-surface-2'}"
 	>
@@ -198,7 +195,7 @@
 			type="button"
 			onclick={() => (open = !open)}
 			aria-expanded={open}
-			class="group flex min-h-[46px] w-full items-center gap-2.5 px-3 py-2 text-left"
+			class="group flex min-h-[38px] w-full items-center gap-2.5 px-[7px] py-0.5 text-left"
 		>
 			<span class="grid h-6 w-6 shrink-0 place-items-center" aria-hidden="true">
 				<BrandLogo size={22} />
@@ -230,16 +227,16 @@
 		{#if open}
 			<div transition:slide={{ duration: 180, easing: cubicOut }}>
 				{#if showOrgs}
-					<div class="mx-3 border-t border-border"></div>
+					<div class="mx-[7px] border-t border-border"></div>
 					<div class="py-1">
-						<div class="px-3 pt-1.5 pb-1 text-[12px] text-text-4 {fade}">
+						<div class="px-[7px] pt-1.5 pb-1 text-[12px] text-text-4 {fade}">
 							{m.shell_switch_organization()}
 						</div>
 						{#each orgs as o (o.id)}
 							<button
 								type="button"
 								onclick={() => chooseOrg(o.id)}
-								class="flex w-full items-center gap-2.5 px-3 py-1.5 text-left transition-colors hover:bg-[var(--row-hover)]"
+								class="flex w-full items-center gap-2.5 px-[7px] py-1 text-left transition-colors hover:bg-[var(--row-hover)]"
 							>
 								<span
 									class="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[12px] font-semibold text-white"
@@ -263,7 +260,7 @@
 						{/each}
 					</div>
 				{/if}
-				<div class="mx-3 border-t border-border"></div>
+				<div class="mx-[7px] border-t border-border"></div>
 				<div class="py-1">
 					{#each instances as inst (inst.url)}
 						<div class="group/row flex items-center transition-colors hover:bg-[var(--row-hover)]">
@@ -271,7 +268,7 @@
 								type="button"
 								onclick={() => switchTo(inst)}
 								title="{m.instances_switch_to({ name: inst.name })} ({instanceHost(inst.url)})"
-								class="flex min-w-0 flex-1 items-center gap-2.5 px-3 py-1.5 text-left"
+								class="flex min-w-0 flex-1 items-center gap-2.5 px-[7px] py-1 text-left"
 							>
 								<span class="grid h-6 w-6 shrink-0 place-items-center">
 									{#if inst.logoUrl}
@@ -308,7 +305,7 @@
 					<button
 						type="button"
 						onclick={openAdd}
-						class="flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-[14px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text"
+						class="flex w-full items-center gap-2.5 px-[7px] py-1 text-left text-[14px] text-text-2 transition-colors hover:bg-[var(--row-hover)] hover:text-text"
 					>
 						<span class="grid h-6 w-6 shrink-0 place-items-center">
 							<Icon name="plus" size={15} class="text-text-3" />
