@@ -123,7 +123,7 @@ export const load: ServerLoad = async ({ locals }) => {
 		}
 	}
 
-	const preferences = await getPreferences(locals.user.id);
+	const preferences = locals.preferences ?? (await getPreferences(locals.user.id));
 	const savedView = (preferences.viewState?.tickets ?? {}) as Record<string, unknown>;
 
 	// Assignee candidates for the Inspector and the create modal: members of

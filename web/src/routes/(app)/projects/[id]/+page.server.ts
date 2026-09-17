@@ -145,7 +145,7 @@ export const load: ServerLoad = async ({ params, locals }) => {
 
 	// Task-list view state (filters/group/sort + saved views) is shared across
 	// project pages under one key, like the /tasks page keeps its own.
-	const preferences = await getPreferences(locals.user.id);
+	const preferences = locals.preferences ?? (await getPreferences(locals.user.id));
 	const savedView = (preferences.viewState?.projectTasks ?? {}) as Record<string, unknown>;
 
 	return {

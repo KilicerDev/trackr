@@ -98,6 +98,15 @@ function createAuth() {
 		baseURL: env.ORIGIN,
 		secret: env.BETTER_AUTH_SECRET,
 		database: drizzleAdapter(db, { provider: 'pg' }),
+		session: {
+			// Keep a signed copy of session + user in a short-lived cookie so most
+			// requests skip the two lookups getSession otherwise does. The trade-off
+			// is that a ban, a revoked session or the end of an impersonation can
+			// take up to maxAge seconds to be noticed by a client that keeps the
+			// cached cookie; memberships and roles are still loaded fresh per
+			// request (hooks.server.ts), so permission changes apply immediately.
+			cookieCache: { enabled: true, maxAge: 60 }
+		},
 		user: {
 			additionalFields: {
 				// Mirrors the `is_root` column (auth.schema.ts) onto session.user so

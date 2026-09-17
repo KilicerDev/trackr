@@ -93,10 +93,22 @@ async function resolveApiKeyAuth(event: Parameters<Handle>[0]['event']): Promise
 	event.locals.user = resolved.user as unknown as NonNullable<App.Locals['user']>;
 	event.locals.authKind = 'api_key';
 	event.locals.apiKeyId = resolved.keyId;
-	const memberships = await loadMemberships(resolved.user.id);
+	await loadActorContext(event, resolved.user.id);
+	return true;
+}
+
+// Everything a request needs about the signed-in user beyond the session
+// itself, fetched in one parallel batch: memberships (roles) and preferences
+// (locale, theme, saved view state). Stashed on `locals` so neither the
+// locale hook nor any load function has to query them again.
+async function loadActorContext(event: Parameters<Handle>[0]['event'], userId: string) {
+	const [memberships, preferences] = await Promise.all([
+		loadMemberships(userId),
+		getPreferences(userId)
+	]);
 	event.locals.memberships = memberships;
 	event.locals.isAdmin = await deriveIsAdmin(memberships);
-	return true;
+	event.locals.preferences = preferences;
 }
 
 const handleBetterAuth: Handle = async ({ event, resolve }) => {
@@ -110,9 +122,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 		event.locals.session = session.session;
 		event.locals.user = session.user;
 		event.locals.authKind = 'session';
-		const memberships = await loadMemberships(session.user.id);
-		event.locals.memberships = memberships;
-		event.locals.isAdmin = await deriveIsAdmin(memberships);
+		await loadActorContext(event, session.user.id);
 	}
 
 	// better-auth's admin plugin (`/api/auth/admin/*`: set-role, impersonate,
@@ -163,11 +173,11 @@ const handleAdminGuard: Handle = async ({ event, resolve }) => {
 
 // For logged-in users the DB (`user_preferences.locale`) is the durable, authoritative
 // store. We reconcile the Paraglide cookie to it *before* Paraglide reads the request,
-// so the first painted HTML is already in the saved language (no flash). The resolved
-// preferences are stashed on `locals` so the layout loader doesn't re-query.
+// so the first painted HTML is already in the saved language (no flash). The
+// preferences were loaded alongside the session (loadActorContext).
 const handleLocale: Handle = async ({ event, resolve }) => {
 	if (event.locals.user) {
-		const preferences = await getPreferences(event.locals.user.id);
+		const preferences = event.locals.preferences ?? (await getPreferences(event.locals.user.id));
 		event.locals.preferences = preferences;
 
 		const desired = isLocale(preferences.locale) ? preferences.locale : 'en';

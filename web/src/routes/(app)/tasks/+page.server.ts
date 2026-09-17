@@ -49,7 +49,7 @@ export const load: ServerLoad = async ({ locals }) => {
 			plannerUserId: locals.user.id,
 			projectIds: access.all ? undefined : [...access.ids]
 		}),
-		getPreferences(locals.user.id)
+		locals.preferences ?? getPreferences(locals.user.id)
 	]);
 	// Returned at the page level (not the layout) so SvelteKit re-runs this
 	// load on every revisit to /tasks — keeping savedView fresh without a

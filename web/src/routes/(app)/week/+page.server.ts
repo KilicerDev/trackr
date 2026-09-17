@@ -25,7 +25,7 @@ export const load: ServerLoad = async ({ locals, url }) => {
 			plannerUserId: locals.user.id,
 			projectIds: access.all ? undefined : [...access.ids]
 		}),
-		getPreferences(locals.user.id)
+		locals.preferences ?? getPreferences(locals.user.id)
 	]);
 
 	const savedView = (preferences.viewState?.week ?? {}) as Record<string, unknown>;
