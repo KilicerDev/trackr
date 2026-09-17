@@ -1,4 +1,5 @@
-import { and, desc, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, ne, notInArray, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { db } from './db';
 import {
 	project,
@@ -17,7 +18,7 @@ import { user, user as userTable } from './db/auth.schema';
 import { error } from '@sveltejs/kit';
 import { logActivity, logActivityFF } from './activity';
 import { syncTicketChecklistFromTask, ticketDisplayId } from './tickets';
-import type { Task, TaskLink } from '$lib/types';
+import type { Task, TaskLink, TaskSummary } from '$lib/types';
 import { deleteAttachmentsFor, listAttachmentsForMany } from './attachments';
 import { can } from './permissions';
 import { notifyTaskAssigned, notifyTaskStatusChanged } from './notify/events/task';
@@ -47,11 +48,6 @@ export const ALLOWED_TASK_STATUS = new Set([
 export const ALLOWED_TASK_PRIORITY = new Set(['none', 'low', 'medium', 'high', 'urgent']);
 export const ALLOWED_TASK_TYPE = new Set(['task', 'bug', 'improvement', 'feature', 'chore']);
 
-/**
- * Load tasks shaped to match the legacy `Task` interface so existing
- * components (ListView, BoardView, Inspector) consume them unchanged.
- * Optionally filtered by project id.
- */
 /** Tasks converted from this ticket — the ticket detail's back-links. */
 export async function listLinkedTasks(
 	ticketId: string
@@ -75,168 +71,317 @@ export async function listLinkedTasks(
 	}));
 }
 
-export async function loadTasks(opts?: {
+// ─── Reading tasks ──────────────────────────────────────────────────────────
+// Two shapes, one query plan:
+//
+//   loadTaskSummaries → TaskSummary[]  the list pages (/tasks, /week, project)
+//   loadTaskDetail    → Task | null     one task with everything the inspector
+//                                       shows; also the API/MCP detail
+//   loadTasks         → Task[]          every task with full detail; only the
+//                                       /api/v1/tasks list still needs this
+//
+// All three select the base rows the same way (selectTaskRows) and then
+// batch-load the side tables for the whole id set at once. The summary needs
+// three grouped queries, issued in parallel; the detail adds the collections
+// in the same batch. Nothing is awaited one row at a time.
+
+export type TaskQueryOpts = {
 	projectId?: string;
 	projectIds?: string[];
+	/** Explicit task uuids; visibility is the caller's concern. */
+	ids?: string[];
+	/** Populates plannedFor / inMyPlan for this user's week. */
 	plannerUserId?: string;
-}): Promise<Task[]> {
-	// If an explicit list is passed and it's empty, short-circuit — the
-	// caller is signalling "this user can see zero projects".
-	if (opts?.projectIds && opts.projectIds.length === 0) return [];
+	/** Only tasks with a planning row for plannerUserId (any date). */
+	inMyPlanOnly?: boolean;
+	/** Only open tasks (not done / in review) with no planning row for plannerUserId. */
+	unplannedOpenOnly?: boolean;
+	/** Archived tasks are excluded from lists; detail lookups still resolve them. */
+	includeArchived?: boolean;
+	limit?: number;
+};
 
-	const conditions = [isNull(task.archivedAt), isNull(task.deletedAt)];
-	if (opts?.projectId) {
+function taskScope(opts: TaskQueryOpts) {
+	const conditions = [isNull(task.deletedAt)];
+	if (!opts.includeArchived) conditions.push(isNull(task.archivedAt));
+	if (opts.projectId) {
 		// Detail page can still see tasks of an archived project so the user
 		// can review history before unarchiving / deleting.
 		conditions.push(eq(task.projectId, opts.projectId));
-	} else {
+	} else if (!opts.ids) {
 		// Global view excludes tasks whose parent project is archived.
 		conditions.push(ne(project.status, 'archived'));
 	}
-	if (opts?.projectIds) {
-		conditions.push(inArray(task.projectId, opts.projectIds));
+	if (opts.projectIds) conditions.push(inArray(task.projectId, opts.projectIds));
+	if (opts.ids) conditions.push(inArray(task.id, opts.ids));
+	if (opts.inMyPlanOnly) conditions.push(isNotNull(taskPlanning.taskId));
+	if (opts.unplannedOpenOnly) {
+		conditions.push(isNull(taskPlanning.taskId), notInArray(task.status, ['done', 'in_review']));
 	}
+	return and(...conditions);
+}
 
-	const baseQuery = db
-		.select({
-			id: task.id,
-			projectId: task.projectId,
-			number: task.number,
-			title: task.title,
-			description: task.description,
-			status: task.status,
-			priority: task.priority,
-			type: task.type,
-			parentId: task.parentId,
-			dueDate: task.dueDate,
-			startDate: task.startDate,
-			endDate: task.endDate,
-			estimateMinutes: task.estimateMinutes,
-			tags: task.tags,
-			checklist: task.checklist,
-			createdBy: task.createdBy,
-			createdAt: task.createdAt,
-			updatedAt: task.updatedAt,
-			sourceTicketId: task.sourceTicketId,
-			channel: task.channel,
-			projectKey: project.key
-		})
+// Columns every shape needs. The viewer's planning row is LEFT JOINed on
+// (task, planner) so plannedFor / inMyPlan come from the same row and the
+// week page can filter on them; without a planner the join matches nothing.
+const summaryColumns = {
+	id: task.id,
+	projectId: task.projectId,
+	number: task.number,
+	title: task.title,
+	status: task.status,
+	priority: task.priority,
+	type: task.type,
+	dueDate: task.dueDate,
+	startDate: task.startDate,
+	endDate: task.endDate,
+	estimateMinutes: task.estimateMinutes,
+	tags: task.tags,
+	checklist: task.checklist,
+	createdBy: task.createdBy,
+	createdAt: task.createdAt,
+	updatedAt: task.updatedAt,
+	projectKey: project.key,
+	plannedFor: taskPlanning.plannedFor,
+	inMyPlan: sql<boolean>`${taskPlanning.taskId} is not null`
+};
+const detailColumns = {
+	...summaryColumns,
+	description: task.description,
+	parentId: task.parentId,
+	sourceTicketId: task.sourceTicketId,
+	channel: task.channel
+};
+type SummaryRow = Awaited<ReturnType<typeof selectSummaryRows>>[number];
+type DetailRow = Awaited<ReturnType<typeof selectDetailRows>>[number];
+
+// Stable order: newest first, and never re-order on edit (status change,
+// comment, etc. bump updatedAt but must not make a row jump in the list).
+// The two select functions are spelled out rather than parameterised on the
+// column map: Drizzle's builder types do not survive a generic column set.
+function selectSummaryRows(opts: TaskQueryOpts) {
+	const q = db
+		.select(summaryColumns)
 		.from(task)
 		.innerJoin(project, eq(project.id, task.projectId))
-		.where(and(...conditions));
+		.leftJoin(taskPlanning, plannerJoin(opts))
+		.where(taskScope(opts))
+		.orderBy(desc(task.createdAt))
+		.$dynamic();
+	return opts.limit ? q.limit(opts.limit) : q;
+}
 
-	// Stable order: newest first, and never re-order on edit (status change,
-	// comment, etc. bump updatedAt but must not make a row jump in the list).
-	const taskRows = await baseQuery.orderBy(desc(task.createdAt));
-	const taskIds = taskRows.map((t) => t.id);
+function selectDetailRows(opts: TaskQueryOpts) {
+	const q = db
+		.select(detailColumns)
+		.from(task)
+		.innerJoin(project, eq(project.id, task.projectId))
+		.leftJoin(taskPlanning, plannerJoin(opts))
+		.where(taskScope(opts))
+		.orderBy(desc(task.createdAt))
+		.$dynamic();
+	return opts.limit ? q.limit(opts.limit) : q;
+}
 
-	const attachmentsByTask = await listAttachmentsForMany('task', taskIds);
+function plannerJoin(opts: TaskQueryOpts) {
+	return and(eq(taskPlanning.taskId, task.id), eq(taskPlanning.userId, opts.plannerUserId ?? ''));
+}
 
-	const assigneeRows = taskIds.length
-		? await db
-				.select({ taskId: taskAssignee.taskId, userId: taskAssignee.userId })
-				.from(taskAssignee)
-				.where(inArray(taskAssignee.taskId, taskIds))
-		: [];
-	const assigneesByTask = new Map<string, string[]>();
-	for (const r of assigneeRows) {
-		const list = assigneesByTask.get(r.taskId) ?? [];
-		list.push(r.userId);
-		assigneesByTask.set(r.taskId, list);
-	}
+function emptyScope(opts: TaskQueryOpts): boolean {
+	// An explicit empty list means "this user can see zero projects / asked
+	// for nothing" — answer without a round trip.
+	return (
+		(!!opts.projectIds && opts.projectIds.length === 0) || (!!opts.ids && opts.ids.length === 0)
+	);
+}
 
-	// Dependencies in both directions for this page. Prerequisites and
-	// dependents often live off-page (the week view and project page load
-	// subsets, and archived tasks are excluded above), so resolve display info
-	// for any referenced task we didn't load. Soft-deleted tasks drop out here
-	// and therefore never block.
-	const depEdges = taskIds.length
-		? await db
-				.select({ taskId: taskDependency.taskId, dependsOnId: taskDependency.dependsOnId })
-				.from(taskDependency)
-				.where(
-					or(inArray(taskDependency.taskId, taskIds), inArray(taskDependency.dependsOnId, taskIds))
-				)
-		: [];
-	const pageIds = new Set(taskIds);
-	const linkById = new Map<string, TaskLink>();
-	for (const t of taskRows) {
-		linkById.set(t.id, {
-			uuid: t.id,
-			id: `${t.projectKey}-${t.number}`,
-			title: t.title,
-			status: t.status as TaskLink['status']
-		});
-	}
-	const offPageIds = [
-		...new Set(depEdges.flatMap((e) => [e.taskId, e.dependsOnId]).filter((id) => !pageIds.has(id)))
-	];
-	if (offPageIds.length) {
-		const rows = await db
+const byRef = (a: TaskLink, b: TaskLink) => a.id.localeCompare(b.id, undefined, { numeric: true });
+
+function dateOnly(v: unknown): string {
+	if (!v) return '';
+	return v instanceof Date ? v.toISOString().slice(0, 10) : String(v);
+}
+
+async function hydrateSummaries(rows: SummaryRow[]): Promise<TaskSummary[]> {
+	if (rows.length === 0) return [];
+	const ids = rows.map((r) => r.id);
+	const prereq = alias(task, 'prereq');
+	const prereqProject = alias(project, 'prereq_project');
+
+	const [assigneeRows, timeRows, depRows] = await Promise.all([
+		db
 			.select({
-				id: task.id,
-				number: task.number,
-				title: task.title,
-				status: task.status,
-				projectKey: project.key
+				taskId: taskAssignee.taskId,
+				// Deterministic primary assignee: earliest added, then by id. The
+				// old per-row query relied on heap order.
+				userIds: sql<
+					string[]
+				>`array_agg(${taskAssignee.userId} order by ${taskAssignee.addedAt}, ${taskAssignee.userId})`
 			})
-			.from(task)
-			.innerJoin(project, eq(project.id, task.projectId))
-			.where(and(inArray(task.id, offPageIds), isNull(task.deletedAt)));
-		for (const r of rows) {
-			linkById.set(r.id, {
-				uuid: r.id,
-				id: `${r.projectKey}-${r.number}`,
-				title: r.title,
-				status: r.status as TaskLink['status']
-			});
-		}
-	}
-	const dependsOnByTask = new Map<string, TaskLink[]>();
-	const dependentsByTask = new Map<string, TaskLink[]>();
-	for (const e of depEdges) {
-		const prerequisite = linkById.get(e.dependsOnId);
-		const dependent = linkById.get(e.taskId);
-		if (prerequisite && pageIds.has(e.taskId)) {
-			const list = dependsOnByTask.get(e.taskId) ?? [];
-			list.push(prerequisite);
-			dependsOnByTask.set(e.taskId, list);
-		}
-		if (dependent && pageIds.has(e.dependsOnId)) {
-			const list = dependentsByTask.get(e.dependsOnId) ?? [];
-			list.push(dependent);
-			dependentsByTask.set(e.dependsOnId, list);
-		}
-	}
-	const byRef = (a: TaskLink, b: TaskLink) =>
-		a.id.localeCompare(b.id, undefined, { numeric: true });
+			.from(taskAssignee)
+			.where(inArray(taskAssignee.taskId, ids))
+			.groupBy(taskAssignee.taskId),
+		db
+			.select({
+				taskId: taskTimeLog.taskId,
+				minutes: sql<number>`coalesce(sum(${taskTimeLog.minutes}), 0)::int`
+			})
+			.from(taskTimeLog)
+			.where(inArray(taskTimeLog.taskId, ids))
+			.groupBy(taskTimeLog.taskId),
+		// Prerequisites with their live status. Joining the prerequisite row
+		// resolves off-page tasks too (the week and project pages load
+		// subsets); soft-deleted prerequisites drop out and never block.
+		db
+			.select({
+				taskId: taskDependency.taskId,
+				uuid: prereq.id,
+				number: prereq.number,
+				title: prereq.title,
+				status: prereq.status,
+				projectKey: prereqProject.key
+			})
+			.from(taskDependency)
+			.innerJoin(prereq, eq(prereq.id, taskDependency.dependsOnId))
+			.innerJoin(prereqProject, eq(prereqProject.id, prereq.projectId))
+			.where(and(inArray(taskDependency.taskId, ids), isNull(prereq.deletedAt)))
+	]);
 
-	// Comments live in `message`, under each task's thread (subjectType='task').
-	// Same output shape as before so the Inspector is unchanged.
-	const commentRows = taskIds.length
-		? await db
-				.select({
-					id: message.id,
-					taskId: thread.subjectId,
-					authorId: message.authorId,
-					body: message.body,
-					createdAt: message.createdAt
-				})
-				.from(message)
-				.innerJoin(thread, eq(thread.id, message.threadId))
-				.where(
-					and(
-						eq(thread.subjectType, 'task'),
-						inArray(thread.subjectId, taskIds),
-						isNull(message.deletedAt)
-					)
+	const assigneesByTask = new Map(assigneeRows.map((r) => [r.taskId, r.userIds]));
+	const minutesByTask = new Map(timeRows.map((r) => [r.taskId, Number(r.minutes)]));
+	const dependsOnByTask = new Map<string, TaskLink[]>();
+	for (const d of depRows) {
+		const list = dependsOnByTask.get(d.taskId) ?? [];
+		list.push({
+			uuid: d.uuid,
+			id: `${d.projectKey}-${d.number}`,
+			title: d.title,
+			status: d.status as TaskLink['status']
+		});
+		dependsOnByTask.set(d.taskId, list);
+	}
+
+	return rows.map<TaskSummary>((t) => {
+		const assigneeIds = assigneesByTask.get(t.id) ?? [];
+		const dependsOn = (dependsOnByTask.get(t.id) ?? []).sort(byRef);
+		const checklist = t.checklist ?? [];
+		return {
+			id: `${t.projectKey}-${t.number}`,
+			uuid: t.id,
+			title: t.title,
+			status: t.status as TaskSummary['status'],
+			priority: t.priority as TaskSummary['priority'],
+			assignee: assigneeIds[0] ?? '',
+			project: t.projectKey as TaskSummary['project'],
+			labels: t.tags,
+			due: fmtDate(t.dueDate) || null,
+			updated: fmtDate(t.updatedAt) || t.updatedAt.toISOString().slice(0, 10),
+			type: t.type as TaskSummary['type'],
+			startDate: fmtDate(t.startDate) || undefined,
+			endDate: fmtDate(t.endDate) || undefined,
+			estimate: t.estimateMinutes ?? undefined,
+			assignees: assigneeIds.length ? assigneeIds : undefined,
+			tags: t.tags,
+			createdBy: t.createdBy ?? undefined,
+			createdAt: fmtDate(t.createdAt),
+			plannedFor: t.inMyPlan ? dateOnly(t.plannedFor) || null : null,
+			inMyPlan: !!t.inMyPlan,
+			dependsOn: dependsOn.length ? dependsOn : undefined,
+			blocked: dependsOn.some((d) => d.status !== 'done'),
+			loggedMinutes: minutesByTask.get(t.id) ?? 0,
+			checklistDone: checklist.filter((i) => i.done).length,
+			checklistTotal: checklist.length
+		};
+	});
+}
+
+async function hydrateDetails(rows: DetailRow[]): Promise<Task[]> {
+	if (rows.length === 0) return [];
+	const ids = rows.map((r) => r.id);
+	const dependent = alias(task, 'dependent');
+	const dependentProject = alias(project, 'dependent_project');
+	const parentIds = [...new Set(rows.map((r) => r.parentId).filter((v): v is string => !!v))];
+	const sourceTicketIds = [
+		...new Set(rows.map((r) => r.sourceTicketId).filter((v): v is string => !!v))
+	];
+
+	const [
+		summaries,
+		attachmentsByTask,
+		commentRows,
+		timeLogRows,
+		dependentRows,
+		parentRows,
+		ticketRows
+	] = await Promise.all([
+		hydrateSummaries(rows),
+		listAttachmentsForMany('task', ids),
+		// Comments live in `message`, under each task's thread (subjectType='task').
+		db
+			.select({
+				id: message.id,
+				taskId: thread.subjectId,
+				authorId: message.authorId,
+				body: message.body,
+				createdAt: message.createdAt
+			})
+			.from(message)
+			.innerJoin(thread, eq(thread.id, message.threadId))
+			.where(
+				and(
+					eq(thread.subjectType, 'task'),
+					inArray(thread.subjectId, ids),
+					isNull(message.deletedAt)
 				)
-		: [];
-	// Attachments on comments, keyed by the comment's (now message) id.
+			),
+		db
+			.select({
+				taskId: taskTimeLog.taskId,
+				userId: taskTimeLog.userId,
+				minutes: taskTimeLog.minutes,
+				note: taskTimeLog.note,
+				loggedAt: taskTimeLog.loggedAt,
+				createdAt: taskTimeLog.createdAt
+			})
+			.from(taskTimeLog)
+			.where(inArray(taskTimeLog.taskId, ids)),
+		// Reverse edges: tasks waiting on one of ours.
+		db
+			.select({
+				dependsOnId: taskDependency.dependsOnId,
+				uuid: dependent.id,
+				number: dependent.number,
+				title: dependent.title,
+				status: dependent.status,
+				projectKey: dependentProject.key
+			})
+			.from(taskDependency)
+			.innerJoin(dependent, eq(dependent.id, taskDependency.taskId))
+			.innerJoin(dependentProject, eq(dependentProject.id, dependent.projectId))
+			.where(and(inArray(taskDependency.dependsOnId, ids), isNull(dependent.deletedAt))),
+		parentIds.length
+			? db
+					.select({ id: task.id, number: task.number, projectKey: project.key })
+					.from(task)
+					.innerJoin(project, eq(project.id, task.projectId))
+					.where(inArray(task.id, parentIds))
+			: Promise.resolve([] as { id: string; number: number; projectKey: string }[]),
+		// Display info for linked source tickets so the Inspector can render a
+		// "Source ticket" chip.
+		sourceTicketIds.length
+			? db
+					.select({ id: ticket.id, number: ticket.number, key: organization.key })
+					.from(ticket)
+					.innerJoin(organization, eq(organization.id, ticket.orgId))
+					.where(inArray(ticket.id, sourceTicketIds))
+			: Promise.resolve([] as { id: string; number: number; key: string }[])
+	]);
+	// Attachments on comments, keyed by the comment's (message) id.
 	const commentAttachments = await listAttachmentsForMany(
 		'message',
 		commentRows.map((c) => c.id)
 	);
+
 	const commentsByTask = new Map<string, NonNullable<Task['comments']>>();
 	for (const c of commentRows) {
 		if (!c.taskId) continue;
@@ -252,125 +397,103 @@ export async function loadTasks(opts?: {
 		});
 		commentsByTask.set(c.taskId, list);
 	}
-
-	const timeLogRows = taskIds.length
-		? await db
-				.select({
-					taskId: taskTimeLog.taskId,
-					userId: taskTimeLog.userId,
-					minutes: taskTimeLog.minutes,
-					note: taskTimeLog.note,
-					loggedAt: taskTimeLog.loggedAt,
-					createdAt: taskTimeLog.createdAt
-				})
-				.from(taskTimeLog)
-				.where(inArray(taskTimeLog.taskId, taskIds))
-		: [];
-	const logsByTask = new Map<
-		string,
-		{ user: string; date: string; minutes: number; note: string; createdAt: string }[]
-	>();
+	const logsByTask = new Map<string, NonNullable<Task['timeLogs']>>();
 	for (const l of timeLogRows) {
 		const list = logsByTask.get(l.taskId) ?? [];
 		list.push({
 			user: l.userId ?? '',
-			date: typeof l.loggedAt === 'string' ? l.loggedAt : String(l.loggedAt),
+			date: dateOnly(l.loggedAt),
 			minutes: l.minutes,
 			note: l.note ?? '',
 			createdAt: l.createdAt.toISOString()
 		});
 		logsByTask.set(l.taskId, list);
 	}
-
-	// Map of taskId → planned date string (or '' when in plan but undated).
-	const planByTask = new Map<string, string>();
-	if (opts?.plannerUserId && taskIds.length) {
-		const planRows = await db
-			.select({ taskId: taskPlanning.taskId, plannedFor: taskPlanning.plannedFor })
-			.from(taskPlanning)
-			.where(
-				and(eq(taskPlanning.userId, opts.plannerUserId), inArray(taskPlanning.taskId, taskIds))
-			);
-		for (const p of planRows) {
-			const d = p.plannedFor
-				? typeof p.plannedFor === 'string'
-					? p.plannedFor
-					: String(p.plannedFor)
-				: '';
-			planByTask.set(p.taskId, d);
-		}
+	const dependentsByTask = new Map<string, TaskLink[]>();
+	for (const d of dependentRows) {
+		const list = dependentsByTask.get(d.dependsOnId) ?? [];
+		list.push({
+			uuid: d.uuid,
+			id: `${d.projectKey}-${d.number}`,
+			title: d.title,
+			status: d.status as TaskLink['status']
+		});
+		dependentsByTask.set(d.dependsOnId, list);
 	}
+	const parentById = new Map(parentRows.map((p) => [p.id, `${p.projectKey}-${p.number}`]));
+	const sourceTicketById = new Map(
+		ticketRows.map((r) => [r.id, { id: r.id, displayId: ticketDisplayId(r.key, r.number) }])
+	);
+	const summaryById = new Map(summaries.map((s) => [s.uuid, s]));
 
-	// Resolve display info for any linked source tickets so the Inspector can
-	// render a "Source ticket" chip. One small query keyed by the distinct set.
-	const sourceTicketIds = [
-		...new Set(taskRows.map((t) => t.sourceTicketId).filter((v): v is string => !!v))
-	];
-	const sourceTicketById = new Map<string, { id: string; displayId: string }>();
-	if (sourceTicketIds.length) {
-		const ticketRows = await db
-			.select({
-				id: ticket.id,
-				number: ticket.number,
-				key: organization.key
-			})
-			.from(ticket)
-			.innerJoin(organization, eq(organization.id, ticket.orgId))
-			.where(inArray(ticket.id, sourceTicketIds));
-		for (const r of ticketRows) {
-			sourceTicketById.set(r.id, {
-				id: r.id,
-				displayId: ticketDisplayId(r.key, r.number)
-			});
-		}
-	}
-
-	const displayById = new Map<string, string>();
-	for (const t of taskRows) displayById.set(t.id, `${t.projectKey}-${t.number}`);
-
-	return taskRows.map<Task>((t) => {
-		const assigneeIds = assigneesByTask.get(t.id) ?? [];
-		const dependsOn = (dependsOnByTask.get(t.id) ?? []).sort(byRef);
+	return rows.map<Task>((t) => {
+		const summary = summaryById.get(t.id)!;
 		const dependents = (dependentsByTask.get(t.id) ?? []).sort(byRef);
-		const checklist = t.checklist ?? [];
-		const timeLogs = logsByTask.get(t.id) ?? [];
 		return {
-			id: `${t.projectKey}-${t.number}`,
-			uuid: t.id,
-			title: t.title,
-			status: t.status as Task['status'],
-			priority: t.priority as Task['priority'],
-			assignee: assigneeIds[0] ?? '',
-			project: t.projectKey as Task['project'],
-			labels: t.tags,
-			due: fmtDate(t.dueDate) || null,
-			updated: fmtDate(t.updatedAt) || t.updatedAt.toISOString().slice(0, 10),
-			type: t.type as Task['type'],
-			parent: t.parentId ? (displayById.get(t.parentId) ?? null) : null,
-			startDate: fmtDate(t.startDate) || undefined,
-			endDate: fmtDate(t.endDate) || undefined,
-			estimate: t.estimateMinutes ?? undefined,
-			assignees: assigneeIds.length ? assigneeIds : undefined,
-			tags: t.tags,
-			createdBy: t.createdBy ?? undefined,
-			createdAt: fmtDate(t.createdAt),
+			...summary,
+			parent: t.parentId ? (parentById.get(t.parentId) ?? null) : null,
 			channel: t.channel,
 			description: t.description ?? undefined,
-			checklist,
-			checklistDone: checklist.filter((i) => i.done).length,
-			checklistTotal: checklist.length,
+			checklist: t.checklist ?? [],
 			comments: commentsByTask.get(t.id) ?? [],
 			files: attachmentsByTask.get(t.id) ?? [],
-			timeLogs,
-			loggedMinutes: timeLogs.reduce((s, l) => s + l.minutes, 0),
-			plannedFor: planByTask.has(t.id) ? planByTask.get(t.id) || null : null,
-			inMyPlan: planByTask.has(t.id),
+			timeLogs: logsByTask.get(t.id) ?? [],
 			sourceTicket: t.sourceTicketId ? (sourceTicketById.get(t.sourceTicketId) ?? null) : null,
-			dependsOn: dependsOn.length ? dependsOn : undefined,
-			dependents: dependents.length ? dependents : undefined,
-			blocked: dependsOn.some((d) => d.status !== 'done')
+			dependents: dependents.length ? dependents : undefined
 		};
 	});
+}
+
+/** The list shape for every task in scope; see TaskQueryOpts for the filters. */
+export async function loadTaskSummaries(opts: TaskQueryOpts = {}): Promise<TaskSummary[]> {
+	if (emptyScope(opts)) return [];
+	return hydrateSummaries(await selectSummaryRows(opts));
+}
+
+/**
+ * One task with everything the inspector shows. Archived tasks resolve
+ * (they can be opened from deep links and dependency chips); deleted ones
+ * and unknown ids give null. Visibility is the caller's concern.
+ */
+export async function loadTaskDetail(
+	taskId: string,
+	opts: { plannerUserId?: string } = {}
+): Promise<Task | null> {
+	const rows = await selectDetailRows({ ids: [taskId], includeArchived: true, ...opts });
+	return (await hydrateDetails(rows))[0] ?? null;
+}
+
+/**
+ * Every task in scope with full detail. Only the /api/v1/tasks list still
+ * needs this shape; the app pages use loadTaskSummaries and fetch one
+ * loadTaskDetail on demand.
+ */
+export async function loadTasks(opts?: {
+	projectId?: string;
+	projectIds?: string[];
+	plannerUserId?: string;
+}): Promise<Task[]> {
+	const scope = opts ?? {};
+	if (emptyScope(scope)) return [];
+	return hydrateDetails(await selectDetailRows(scope));
+}
+
+const DISPLAY_ID = /^[A-Za-z][A-Za-z0-9]*-\d+$/;
+
+/**
+ * Resolve a task reference — a display id such as WEB-12 or a uuid — to its
+ * id and project, for permission checks before loading the detail. Deleted
+ * tasks never resolve.
+ */
+export async function resolveTaskRef(
+	ref: string
+): Promise<{ id: string; projectId: string; createdBy: string | null } | null> {
+	const trimmed = ref.trim();
+	if (!trimmed) return null;
+	const row = DISPLAY_ID.test(trimmed)
+		? await resolveTaskByDisplayId(trimmed)
+		: await loadTaskTarget(trimmed);
+	return row ? { id: row.id, projectId: row.projectId, createdBy: row.createdBy } : null;
 }
 
 export const TASK_CHANNELS = ['web', 'mcp', 'api', 'import', 'template'] as const;
