@@ -596,7 +596,7 @@
 		<div class="mb-6 flex items-start gap-3.5">
 			<!-- Icon centered against the title's first line (h = title line-height),
 			     so it stays with line 1 when a long title wraps. -->
-			<span class="flex h-[46px] shrink-0 items-center">
+			<span class="flex h-[1.15em] shrink-0 items-center text-[40px] max-md:text-[32px]">
 				<span class="notes-doc__icon">
 					<Icon name={note.icon || 'file'} size={22} stroke={1.75} />
 				</span>
@@ -753,6 +753,5 @@
 		color: var(--accent);
 		background: color-mix(in oklab, var(--accent) 12%, var(--bg-elev));
 		border: 1px solid color-mix(in oklab, var(--accent) 22%, var(--border));
-		transform: translateY(6px);
 	}
 </style>
