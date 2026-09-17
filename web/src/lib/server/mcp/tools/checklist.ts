@@ -14,7 +14,6 @@ import {
 	ticketDetailDto,
 	type ChecklistItemLike
 } from '../format';
-import { DETAIL_UI_URI, uiToolMeta } from '../ui';
 import { fail, guarded, text, WRITE_IDEMPOTENT, type McpContext } from './shared';
 import { loadTicketDetail, loadVisibleTicket } from './tickets';
 import { loadTaskDetail } from './tasks';
@@ -58,8 +57,7 @@ export function registerChecklistTools(server: McpServer, ctx: McpContext): void
 					.describe('Item text (exact or unique substring) when no id is known.'),
 				done: z.boolean().default(true).describe('New state (default true = done).')
 			}),
-			annotations: WRITE_IDEMPOTENT,
-			_meta: uiToolMeta(DETAIL_UI_URI)
+			annotations: WRITE_IDEMPOTENT
 		},
 		guarded(async ({ target, key, itemId, itemText, done }) => {
 			if (target === 'ticket') {

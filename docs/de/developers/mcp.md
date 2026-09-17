@@ -41,14 +41,14 @@ OAuth-Tokens werden pro Autorisierung ausgestellt (Access-Tokens gelten eine Stu
 
 Siebenunddreißig Tools, benannt nach dem, was sie tun. Kennungen folgen der App: Tickets als `ORGKEY-n`, Aufgaben als `PROJEKTKEY-n`, Projekte und Organisationen per Key, Wiki-Seiten und Notizen per ID. Alle Inhalte sind Markdown, rein wie raus.
 
-| Bereich   | Tools                                                                                                                  |
-| --------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Allgemein | `whoami`, `list_orgs`, `list_users`, `search`, `get_inbox`, `get_attachment`, `attach_file`, `get_guide`, `show_items` |
-| Tickets   | `list_tickets`, `get_ticket`, `create_ticket`, `update_ticket`, `delete_ticket`                                        |
-| Aufgaben  | `list_tasks`, `get_task`, `create_task`, `update_task`, `delete_task`, `log_time`, `checklist_toggle`                  |
-| Projekte  | `list_projects`, `get_project`, `create_project`, `update_project`                                                     |
-| Wiki      | `wiki_tree`, `wiki_get_page`, `wiki_create_folder`, `wiki_create_page`, `wiki_update_page`, `wiki_delete_page`         |
-| Notizen   | `list_notes`, `get_note`, `create_note`, `create_meeting_note`, `update_note`, `delete_note`                           |
+| Bereich   | Tools                                                                                                                                              |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Allgemein | `whoami`, `list_orgs`, `list_users`, `search`, `get_inbox`, `get_attachment`, `attach_file`, `get_guide`, `show_items`, `show_task`, `show_ticket` |
+| Tickets   | `list_tickets`, `get_ticket`, `create_ticket`, `update_ticket`, `delete_ticket`                                                                    |
+| Aufgaben  | `list_tasks`, `get_task`, `create_task`, `update_task`, `delete_task`, `log_time`, `checklist_toggle`                                              |
+| Projekte  | `list_projects`, `get_project`, `create_project`, `update_project`                                                                                 |
+| Wiki      | `wiki_tree`, `wiki_get_page`, `wiki_create_folder`, `wiki_create_page`, `wiki_update_page`, `wiki_delete_page`                                     |
+| Notizen   | `list_notes`, `get_note`, `create_note`, `create_meeting_note`, `update_note`, `delete_note`                                                       |
 
 Listen sind kompakt und begrenzt (`limit`, höchstens 200) und melden ein `total`. Checklisten bei `update_*` ersetzen das ganze Array; für einen einzelnen Punkt gibt es `checklist_toggle`.
 
@@ -61,7 +61,7 @@ Listen sind kompakt und begrenzt (`limit`, höchstens 200) und melden ein `total
 
 `list_*`, `search` und `get_*` liefern Text, damit der Assistent so viel lesen kann, wie er braucht, während er etwas herausfindet. Hat er eine Antwort, ruft er einmal `show_items` mit den Aufgaben-, Ticket- oder Projekt-Keys auf, die der Nutzer sehen soll (bis zu 100). Hosts, die MCP Apps unterstützen, darunter claude.ai und Claude Desktop, rendern das Ergebnis als Inline-Widget: dieselben gruppierten Zeilen wie die Listenansichten der App, mit Status, Typ, Priorität, Checklisten-Fortschritt, Fälligkeit und Verantwortlichen. Ein Klick auf eine Zeile öffnet das Element in Trackr. Hosts ohne die Erweiterung bekommen stattdessen den reinen Text.
 
-Das Detail-Widget funktioniert genauso für eine einzelne Aufgabe oder ein Ticket nach `get_*`, `create_*`, `update_*`, `checklist_toggle` und `log_time`.
+Für eine einzelne Aufgabe oder ein Ticket ruft der Assistent am Ende einmal `show_task` oder `show_ticket` auf, um statt der Liste die Detailansicht zu zeigen. Diese Tools verwenden dieselben Berechtigungsprüfungen und Detaildaten wie `get_task` und `get_ticket`. Lese- und Aktionstools (`get_*`, `create_*`, `update_*`, `checklist_toggle`, `log_time` usw.) liefern Text und strukturierte Daten, ohne einen Frame zu öffnen. Nur `show_items`, `show_task` und `show_ticket` zeigen ein Widget. Die Bedienelemente einer Aufgabe aktualisieren die bestehende Detailansicht ohne zusätzlichen Frame.
 
 ## Ressourcen und Prompts
 

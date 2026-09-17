@@ -50,6 +50,8 @@ const EXPECTED_TOOLS = [
 	'log_time',
 	'search',
 	'show_items',
+	'show_task',
+	'show_ticket',
 	'update_note',
 	'update_project',
 	'update_task',
@@ -544,18 +546,7 @@ describe('MCP Apps (inline UI)', () => {
 	const DETAIL_URI = 'ui://trackr/detail.html';
 	const UI_MIME = 'text/html;profile=mcp-app';
 	const LIST_TOOLS = ['show_items'];
-	// Finding tools stay text-only so the host folds them away while the model works.
-	const TEXT_ONLY_TOOLS = ['list_tickets', 'list_tasks', 'list_projects', 'search', 'delete_task'];
-	const DETAIL_TOOLS = [
-		'get_task',
-		'create_task',
-		'update_task',
-		'log_time',
-		'checklist_toggle',
-		'get_ticket',
-		'create_ticket',
-		'update_ticket'
-	];
+	const DETAIL_TOOLS = ['show_task', 'show_ticket'];
 
 	test('list and detail tools advertise their widget in _meta', async () => {
 		const { tools } = await client.listTools();
@@ -569,7 +560,19 @@ describe('MCP Apps (inline UI)', () => {
 		};
 		for (const name of LIST_TOOLS) expect(uriOf(name), name).toBe(LIST_URI);
 		for (const name of DETAIL_TOOLS) expect(uriOf(name), name).toBe(DETAIL_URI);
-		for (const name of TEXT_ONLY_TOOLS) expect(uriOf(name), name).toBeUndefined();
+		for (const tool of tools) {
+			if (![...LIST_TOOLS, ...DETAIL_TOOLS].includes(tool.name)) {
+				expect(uriOf(tool.name), tool.name).toBeUndefined();
+			}
+		}
+	});
+
+	test('show tools reject missing items instead of showing unrelated records', async () => {
+		for (const name of DETAIL_TOOLS) {
+			const result = await call(name, { key: 'NOPE-999999' });
+			expect(result.isError, name).toBe(true);
+			expect(textOf(result), name).toContain('404');
+		}
 	});
 
 	test('both widgets are listed as MCP App resources (no host-specific domain)', async () => {
@@ -655,7 +658,7 @@ describe('MCP Apps (inline UI)', () => {
 		expect(md).toContain('NOPE-999');
 	});
 
-	test('task write tools return the full task for the detail widget', async () => {
+	test('task actions return data and show_task explicitly presents the same detail', async () => {
 		const title = `${SMOKE_PREFIX} mcp detail ${run}`;
 		type Detail = {
 			task: {
@@ -709,9 +712,11 @@ describe('MCP Apps (inline UI)', () => {
 		const fetched = structured<Detail>(await ok('get_task', { key: made.task.key }));
 		expect(fetched.task.timeLogs[0].minutes).toBe(25);
 		expect(fetched.task.status).toBe('in_progress');
+		const shown = structured<Detail>(await ok('show_task', { key: made.task.key.toLowerCase() }));
+		expect(shown.task).toEqual(fetched.task);
 	});
 
-	test('get_ticket returns the full ticket for the detail widget', async () => {
+	test('show_ticket presents the same permission-scoped detail as get_ticket', async () => {
 		const list = structured<{ tickets: { key: string }[] }>(
 			await ok('list_tickets', { segment: 'all', limit: 1 })
 		);
@@ -732,6 +737,8 @@ describe('MCP Apps (inline UI)', () => {
 		expect(d.ticket.url).toContain('/tickets/');
 		expect(Array.isArray(d.ticket.messages)).toBe(true);
 		expect(Array.isArray(d.ticket.checklist)).toBe(true);
+		const shown = structured<typeof d>(await ok('show_ticket', { key: key.toLowerCase() }));
+		expect(shown.ticket).toEqual(d.ticket);
 	});
 });
 

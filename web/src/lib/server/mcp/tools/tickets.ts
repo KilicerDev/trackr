@@ -30,7 +30,6 @@ import {
 import { listLinkedTasks } from '$lib/server/tasks';
 import { listAttachments, listAttachmentsForMany } from '$lib/server/attachments';
 import { attachFromUrl } from '$lib/server/attachments-fetch'; // W2
-import { DETAIL_UI_URI, uiToolMeta } from '../ui';
 import { describeCandidates, normalizeDisplayId, resolveUserRefs } from '../ids';
 import {
 	type TicketMessageWithFiles,
@@ -315,10 +314,9 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 		{
 			title: 'Get ticket',
 			description:
-				'Full view of one ticket by display id (e.g. `TRACK-108`): fields, description (markdown), checklist with item ids, attachments with ids and download URLs, the message timeline (internal notes only if you are staff), and linked tasks. Attachment ids can be passed to `get_attachment`.',
+				'Full view of one ticket by display id (e.g. `TRACK-108`): fields, description (markdown), checklist with item ids, attachments with ids and download URLs, the message timeline (internal notes only if you are staff), and linked tasks. Attachment ids can be passed to `get_attachment`. Returns information only; use `show_ticket` once at the end to present the ticket visually.',
 			inputSchema: z.object({ key: ticketKeySchema }),
-			annotations: READ_ONLY,
-			_meta: uiToolMeta(DETAIL_UI_URI)
+			annotations: READ_ONLY
 		},
 		guarded(async ({ key }) => {
 			const d = await loadTicketDetail(ctx, key);
@@ -358,8 +356,7 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 				checklist: checklistSchema.optional(),
 				attachmentUrls: attachmentUrlsSchema
 			}),
-			annotations: WRITE,
-			_meta: uiToolMeta(DETAIL_UI_URI)
+			annotations: WRITE
 		},
 		guarded(async (args) => {
 			const { locals, origin } = ctx;
@@ -434,8 +431,7 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 				assignees: z.array(z.string()).optional().describe('Full assignee list; [] unassigns.'),
 				checklist: checklistSchema.optional()
 			}),
-			annotations: WRITE_IDEMPOTENT,
-			_meta: uiToolMeta(DETAIL_UI_URI)
+			annotations: WRITE_IDEMPOTENT
 		},
 		guarded(async (args) => {
 			const ticket = await loadVisibleTicket(ctx, args.key);

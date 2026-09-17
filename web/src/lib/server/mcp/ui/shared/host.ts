@@ -18,7 +18,7 @@ export function connectApp(opts: {
 	onResult: (result: ToolResultLike) => void;
 	onError: (message: string) => void;
 }): App {
-	app = new App({ name: opts.name, version: '1.0.0' });
+	app = new App({ name: opts.name, version: '1.0.0' }, {}, { autoResize: false });
 	app.ontoolresult = (result) => {
 		if (result.isError) {
 			opts.onError(textOf(result) || 'The tool call failed.');
@@ -27,10 +27,13 @@ export function connectApp(opts: {
 		opts.onResult(result as ToolResultLike);
 	};
 	app.onhostcontextchanged = (ctx) => applyTheme(ctx.theme);
-	new ResizeObserver(reportSize).observe(document.documentElement);
+	new ResizeObserver(reportSize).observe(document.body);
 	app
 		.connect()
-		.then(() => applyTheme(app?.getHostContext()?.theme))
+		.then(() => {
+			applyTheme(app?.getHostContext()?.theme);
+			reportSize();
+		})
 		.catch((err: Error) => opts.onError(`Could not connect to the host: ${err.message}`));
 	return app;
 }
@@ -83,7 +86,7 @@ export async function openLink(url: string): Promise<void> {
 
 export function reportSize() {
 	if (!app) return;
-	const height = Math.ceil(document.documentElement.getBoundingClientRect().height);
+	const height = Math.ceil(document.body.getBoundingClientRect().height);
 	void app.sendSizeChanged({ height }).catch(() => {});
 }
 

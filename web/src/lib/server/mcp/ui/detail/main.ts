@@ -1,17 +1,8 @@
-// Detail widget — the MCP App behind get_task / create_task / update_task /
-// log_time / checklist_toggle and get_ticket / create_ticket / update_ticket
-// (ui://trackr/detail.html). Renders the full record the tool returned
-// (`structuredContent.task` or `.ticket`, see taskDetailDto / ticketDetailDto
-// in $lib/server/mcp/format.ts).
-//
-// Tasks are interactive: checklist toggles call `checklist_toggle`, the status
-// select calls `update_task`. Tickets are a read-only view laid out like the
-// app's ticket page (header line, title, properties rail, opening message,
-// details, activity timeline) — the only actions are the links, which open
-// in trackr through the host.
+// Detail widget — explicitly shown by show_task / show_ticket. Reads and
+// actions return data only; task controls update this existing view through
+// the host without rendering another frame. Ticket details remain read-only.
 
 import {
-	badge,
 	callTool,
 	connectApp,
 	dateOnly,
@@ -186,8 +177,7 @@ function open(url: string) {
 // ─── Render ─────────────────────────────────────────────────────────────────
 
 function statusSelect(current: string, map: Record<string, StatusMeta>): HTMLElement {
-	const meta = statusMeta(map, current);
-	const select = el('select', { class: 'control', 'aria-label': 'Status', '--dot': meta.dot });
+	const select = el('select', { id: 'task-status', class: 'control', 'aria-label': 'Status' });
 	for (const [id, m] of Object.entries(map)) {
 		const opt = el('option', { value: id }, m.label);
 		if (id === current) opt.selected = true;
@@ -200,21 +190,11 @@ function statusSelect(current: string, map: Record<string, StatusMeta>): HTMLEle
 	}
 	select.disabled = busy;
 	select.onchange = () => changeStatus(select.value);
-	return el('span', { class: 'status-select' }, badge(meta), ' ', select);
-}
-
-function metaCell(label: string, value: Node | string | null | undefined): HTMLElement | null {
-	if (value === null || value === undefined || value === '') return null;
-	return el('div', {}, el('span', { class: 'k' }, label), el('span', { class: 'v' }, value));
+	return el('span', { class: 'status-select' }, taskStatusDot(current), select);
 }
 
 function people(list: Person[]): string {
 	return list.map((p) => p.name).join(', ');
-}
-
-function tagList(tags: string[]): Node | null {
-	if (!tags.length) return null;
-	return el('span', { class: 'tags' }, ...tags.map((t) => el('span', { class: 'tag' }, t)));
 }
 
 function files(list: Attachment[]): HTMLElement {
@@ -284,28 +264,35 @@ function renderTask(t: Task): HTMLElement[] {
 	return [
 		el(
 			'div',
-			{ class: 'head' },
+			{ class: 'tk-head' },
 			el('span', { class: 'mono key' }, t.key),
-			el('h1', {}, t.title),
-			el('div', { class: 'actions' }, statusSelect(t.status, TASK_STATUS), openButton(t.url))
+			el('span', { class: 'org' }, icon('folder', 14), t.projectKey),
+			el('div', { class: 'actions' }, openButton(t.url))
 		),
+		el('h1', { class: 'tk-title' }, t.title),
 		el(
 			'div',
-			{ class: 'meta' },
-			metaCell('Project', t.projectKey),
-			metaCell(
-				'Priority',
-				el('span', {}, priorityBars(t.priority), ' ', PRIORITY[t.priority]?.label ?? t.priority)
+			{ class: 'rail' },
+			statusSelect(t.status, TASK_STATUS),
+			pill(priorityBars(t.priority), PRIORITY[t.priority]?.label ?? t.priority),
+			pill(
+				type ? el('span', { style: `color:${type.color}` }, icon(type.icon, 14)) : null,
+				type?.label ?? t.type
 			),
-			metaCell('Type', type ? el('span', { style: `color:${type.color}` }, type.label) : t.type),
-			metaCell('Assignees', people(t.assignees) || '—'),
-			metaCell('Due', t.due ? dateOnly(t.due) : null),
-			metaCell('Estimate', t.estimateMinutes != null ? minutesToHuman(t.estimateMinutes) : null),
-			metaCell('Tags', tagList(t.tags)),
-			metaCell('Planned', t.inMyPlan ? (t.plannedFor ?? 'this week') : null),
-			metaCell('Created', `${t.createdBy?.name ?? '—'} · ${relative(t.createdAt)}`),
-			metaCell('Updated', relative(t.updatedAt)),
-			metaCell('Source ticket', t.sourceTicket?.displayId ?? null)
+			t.assignees.length
+				? el(
+						'span',
+						{ class: 'pill assignees' },
+						avatarStack(t.assignees, 20),
+						el('span', {}, people(t.assignees))
+					)
+				: pill(icon('user', 14), 'Unassigned', 'pill dashed'),
+			t.due ? pill(icon('calendar', 14), dateOnly(t.due)) : null,
+			t.estimateMinutes != null
+				? pill(null, `Estimate ${minutesToHuman(t.estimateMinutes)}`)
+				: null,
+			t.inMyPlan ? pill(null, `Planned ${t.plannedFor ?? 'this week'}`) : null,
+			...t.tags.map((tag) => el('span', { class: 'pill tag' }, tag))
 		),
 		section('Description', markdown(t.description)),
 		section('Checklist', ...checklist(t.checklist)),
@@ -351,6 +338,26 @@ function renderTask(t: Task): HTMLElement[] {
 						)
 					)
 				: el('div', { class: 'muted' }, 'No time logged.')
+		),
+		el(
+			'div',
+			{ class: 'tk-foot' },
+			el(
+				'span',
+				{},
+				'Created by ',
+				el('span', { class: 'v' }, t.createdBy?.name ?? '—'),
+				` · ${relative(t.createdAt)}`
+			),
+			el('span', {}, 'Updated ', el('span', { class: 'v' }, relative(t.updatedAt))),
+			t.sourceTicket
+				? el(
+						'span',
+						{},
+						'Source ticket ',
+						el('span', { class: 'mono v' }, t.sourceTicket.displayId)
+					)
+				: null
 		)
 	].filter((n): n is HTMLElement => n !== null);
 }
@@ -666,7 +673,7 @@ function openButton(url: string): HTMLElement {
 function render() {
 	if (!item) return;
 	const nodes = item.kind === 'task' ? renderTask(item) : renderTicket(item);
-	if (toast) nodes.push(el('div', { class: 'toast' }, toast));
+	if (toast) nodes.push(el('div', { class: 'toast', role: 'status' }, toast));
 	root.replaceChildren(...nodes);
 	queueMicrotask(reportSize);
 }

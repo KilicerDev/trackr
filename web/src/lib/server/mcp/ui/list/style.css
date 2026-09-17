@@ -7,7 +7,7 @@
 }
 .groups {
 	border: 1px solid var(--border);
-	border-radius: 10px;
+	border-radius: 0;
 	background: var(--bg-elev);
 	overflow: hidden;
 }

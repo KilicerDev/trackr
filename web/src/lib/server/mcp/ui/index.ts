@@ -27,7 +27,7 @@ export const UI_RESOURCE_MIME_TYPE = 'text/html;profile=mcp-app';
 // and Claude Desktop only mounts the frame when the path has the extension.
 /** Grouped list of the tasks / tickets / projects passed to show_items. */
 export const LIST_UI_URI = 'ui://trackr/list.html';
-/** One task or ticket in full (get_*, create_*, update_*, checklist_toggle, log_time). */
+/** One task or ticket in full, explicitly requested via show_task / show_ticket. */
 export const DETAIL_UI_URI = 'ui://trackr/detail.html';
 
 /**

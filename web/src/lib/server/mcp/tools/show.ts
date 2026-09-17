@@ -1,4 +1,4 @@
-// `show_items` — the only list tool that carries the list widget.
+// Explicit presentation tools — the only tools that advertise inline widgets.
 //
 // The `list_*` and `search` tools are plain text: hosts fold them into a
 // one-line "used tool" entry, so the model can page through as much as it
@@ -19,16 +19,19 @@ import {
 	listMd,
 	projectLine,
 	projectSummary,
+	taskDetailDto,
 	taskLine,
 	taskSummary,
 	taskUrl,
+	ticketDetailDto,
 	ticketLine,
 	ticketSummary,
 	ticketUrl
 } from '../format';
-import { LIST_UI_URI, uiToolMeta } from '../ui';
+import { DETAIL_UI_URI, LIST_UI_URI, uiToolMeta } from '../ui';
 import { guarded, READ_ONLY, text, userDirectory, type McpContext } from './shared';
-import { projectMetaByKey } from './tasks';
+import { loadTaskDetail, projectMetaByKey } from './tasks';
+import { loadTicketDetail } from './tickets';
 
 const MAX_KEYS = 100;
 
@@ -64,11 +67,47 @@ async function visibleTickets(ctx: McpContext, keys: readonly string[]): Promise
 
 export function registerShowTools(server: McpServer, ctx: McpContext): void {
 	server.registerTool(
+		'show_task',
+		{
+			title: 'Show task',
+			description:
+				'Show one task as an inline detail view, with its properties, description, checklist, attachments, comments and time logs. Use once at the end when the user asks about one specific task. Use get_task for information gathering and show_items for a list; do not show both a detail and a list for the same answer.',
+			inputSchema: z.object({
+				key: z.string().describe('Task display id (e.g. WEB-12), case-insensitive.')
+			}),
+			annotations: READ_ONLY,
+			_meta: uiToolMeta(DETAIL_UI_URI)
+		},
+		guarded(async ({ key }) => {
+			const d = await loadTaskDetail(ctx, key);
+			return text(d.markdown, { task: taskDetailDto(d.task, d.users, ctx.origin) });
+		})
+	);
+
+	server.registerTool(
+		'show_ticket',
+		{
+			title: 'Show ticket',
+			description:
+				'Show one ticket as an inline detail view, with its properties, description, checklist, attachments, linked tasks and activity. Use once at the end when the user asks about one specific ticket. Use get_ticket for information gathering and show_items for a list; do not show both a detail and a list for the same answer.',
+			inputSchema: z.object({
+				key: z.string().describe('Ticket display id (e.g. TRACK-108), case-insensitive.')
+			}),
+			annotations: READ_ONLY,
+			_meta: uiToolMeta(DETAIL_UI_URI)
+		},
+		guarded(async ({ key }) => {
+			const d = await loadTicketDetail(ctx, key);
+			return text(d.markdown, { ticket: ticketDetailDto({ ...d, origin: ctx.origin }) });
+		})
+	);
+
+	server.registerTool(
 		'show_items',
 		{
 			title: 'Show items',
 			description:
-				'Show the user a visual list of specific tasks, tickets and/or projects — this is the only list tool the host renders as an inline widget (grouped like the app: tasks under their project, tickets under their organization). Pass task ids (`WEB-12`), ticket ids (`TRACK-108`) and/or project keys (`WEB`) in the order you want them shown, at most 100. Call it once, at the end, with exactly the items your answer is about; the `list_*` and `search` tools are for finding things and stay text-only. Keys you cannot see or that do not exist are reported in `notFound` and otherwise ignored. Rows are the compact summaries; call `get_task` / `get_ticket` for details.',
+				'Show the user a visual list of specific tasks, tickets and/or projects — this is the only list tool the host renders as an inline widget (grouped like the app: tasks under their project, tickets under their organization). Pass task ids (`WEB-12`), ticket ids (`TRACK-108`) and/or project keys (`WEB`) in the order you want them shown, at most 100. Call it once, at the end, with exactly the items your answer is about; the `list_*` and `search` tools are for finding things and stay text-only. Keys you cannot see or that do not exist are reported in `notFound` and otherwise ignored. Rows are compact summaries; use `show_task` or `show_ticket` instead when presenting one explicit task or ticket in detail.',
 			inputSchema: z.object({
 				keys: z
 					.array(z.string().min(1))

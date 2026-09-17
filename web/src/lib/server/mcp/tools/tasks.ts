@@ -25,7 +25,6 @@ import { db } from '$lib/server/db';
 import { project } from '$lib/server/db/app.schema';
 import { inArray } from 'drizzle-orm';
 import { attachFromUrl } from '$lib/server/attachments-fetch'; // W2
-import { DETAIL_UI_URI, uiToolMeta } from '../ui';
 import { normalizeTag } from '$lib/utils/label-meta';
 import type { Task } from '$lib/types';
 import { describeCandidates, normalizeDisplayId, normalizeKey, resolveUserRefs } from '../ids';
@@ -291,10 +290,9 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 		{
 			title: 'Get task',
 			description:
-				'Full view of one task by display id (e.g. `WEB-12`): fields, description (markdown), checklist with item ids, attachments with ids and download URLs, comments, time logs, the source ticket if it was converted from one, and dependencies (`dependsOn` prerequisites with `blocked` = any not done; `dependents` waiting on it).',
+				'Full view of one task by display id (e.g. `WEB-12`): fields, description (markdown), checklist with item ids, attachments with ids and download URLs, comments, time logs, the source ticket if it was converted from one, and dependencies (`dependsOn` prerequisites with `blocked` = any not done; `dependents` waiting on it). Returns information only; use `show_task` once at the end to present the task visually.',
 			inputSchema: z.object({ key: taskKeySchema }),
-			annotations: READ_ONLY,
-			_meta: uiToolMeta(DETAIL_UI_URI)
+			annotations: READ_ONLY
 		},
 		guarded(async ({ key }) => {
 			const d = await loadTaskDetail(ctx, key);
@@ -345,8 +343,7 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 					.describe('Prerequisite task keys in the same project (e.g. ["WEB-12"]).'),
 				attachmentUrls: attachmentUrlsSchema
 			}),
-			annotations: WRITE,
-			_meta: uiToolMeta(DETAIL_UI_URI)
+			annotations: WRITE
 		},
 		guarded(async (args) => {
 			const { locals, origin } = ctx;
@@ -440,8 +437,7 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 					.optional()
 					.describe('Plan into your week (YYYY-MM-DD) or null to unplan.')
 			}),
-			annotations: WRITE_IDEMPOTENT,
-			_meta: uiToolMeta(DETAIL_UI_URI)
+			annotations: WRITE_IDEMPOTENT
 		},
 		guarded(async (args) => {
 			const ref = await loadVisibleTaskRef(ctx, args.key);
@@ -509,8 +505,7 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 				date: isoDateSchema.optional().describe('Work date YYYY-MM-DD (default: today, UTC).'),
 				note: z.string().max(1000).optional().describe('What was done (plain text).')
 			}),
-			annotations: WRITE,
-			_meta: uiToolMeta(DETAIL_UI_URI)
+			annotations: WRITE
 		},
 		guarded(async ({ taskKey, minutes, date, note }) => {
 			const ref = await loadVisibleTaskRef(ctx, taskKey);

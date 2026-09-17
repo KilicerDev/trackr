@@ -35,7 +35,7 @@ Identifiers:
 
 Content: all bodies are markdown, both in and out (ticket/task descriptions, wiki pages, notes). Checklists on update are whole-array replaces — use \`checklist_toggle\` for a single item. Lists are compact and capped (\`limit\`, max 200) and report \`total\`; use the \`get_*\` tool for details.
 
-Showing results: \`list_*\`, \`search\` and \`get_*\` are for finding and reading — use them as often as you need, they are text only. When you have your answer and the user should see the items, call \`show_items\` once with exactly those task/ticket ids or project keys; it is the one list tool that renders as an inline widget. Do not call it while you are still searching, and do not use it to dump everything you looked at.
+Showing results: \`list_*\`, \`search\`, \`get_*\` and all write/action tools return information without an inline frame. Use them freely while gathering information or making requested changes. Only the explicit display tools render UI. At the end, call exactly one display tool when the user should see the result: \`show_task\` for one explicit task, \`show_ticket\` for one explicit ticket, or \`show_items\` for a list of task/ticket ids or project keys. Do not call display tools while still researching, do not render both a detail and a list for the same item, and do not dump everything you looked at.
 
 Writing tasks and tickets — record what the user said, do not expand it:
 - Title: the user's own words, trimmed to one line. Do not reword what they meant.

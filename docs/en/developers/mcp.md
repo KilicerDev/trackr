@@ -41,14 +41,14 @@ OAuth tokens are issued per authorization (access tokens last an hour, refresh t
 
 Thirty-seven tools, named after what they do. Identifiers follow the app: tickets as `ORGKEY-n`, tasks as `PROJECTKEY-n`, projects and organizations by key, wiki pages and notes by id. All bodies are Markdown, in and out.
 
-| Area     | Tools                                                                                                                  |
-| -------- | ---------------------------------------------------------------------------------------------------------------------- |
-| General  | `whoami`, `list_orgs`, `list_users`, `search`, `get_inbox`, `get_attachment`, `attach_file`, `get_guide`, `show_items` |
-| Tickets  | `list_tickets`, `get_ticket`, `create_ticket`, `update_ticket`, `delete_ticket`                                        |
-| Tasks    | `list_tasks`, `get_task`, `create_task`, `update_task`, `delete_task`, `log_time`, `checklist_toggle`                  |
-| Projects | `list_projects`, `get_project`, `create_project`, `update_project`                                                     |
-| Wiki     | `wiki_tree`, `wiki_get_page`, `wiki_create_folder`, `wiki_create_page`, `wiki_update_page`, `wiki_delete_page`         |
-| Notes    | `list_notes`, `get_note`, `create_note`, `create_meeting_note`, `update_note`, `delete_note`                           |
+| Area     | Tools                                                                                                                                              |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| General  | `whoami`, `list_orgs`, `list_users`, `search`, `get_inbox`, `get_attachment`, `attach_file`, `get_guide`, `show_items`, `show_task`, `show_ticket` |
+| Tickets  | `list_tickets`, `get_ticket`, `create_ticket`, `update_ticket`, `delete_ticket`                                                                    |
+| Tasks    | `list_tasks`, `get_task`, `create_task`, `update_task`, `delete_task`, `log_time`, `checklist_toggle`                                              |
+| Projects | `list_projects`, `get_project`, `create_project`, `update_project`                                                                                 |
+| Wiki     | `wiki_tree`, `wiki_get_page`, `wiki_create_folder`, `wiki_create_page`, `wiki_update_page`, `wiki_delete_page`                                     |
+| Notes    | `list_notes`, `get_note`, `create_note`, `create_meeting_note`, `update_note`, `delete_note`                                                       |
 
 Lists are compact and capped (`limit`, at most 200) and report a `total`. Checklists on `update_*` replace the whole array; use `checklist_toggle` for a single item.
 
@@ -61,7 +61,7 @@ Lists are compact and capped (`limit`, at most 200) and report a `total`. Checkl
 
 `list_*`, `search` and `get_*` return text, so the assistant can read as much as it needs while it works something out. When it has an answer, it calls `show_items` once with the task, ticket or project keys the user should see (up to 100). Hosts that support MCP Apps, claude.ai and Claude Desktop among them, render that result as an inline widget: the same grouped rows as the app's list views, with status, type, priority, checklist progress, due date and assignees. Clicking a row opens the item in Trackr. Hosts without the extension get the plain text instead.
 
-The detail widget works the same way for a single task or ticket after `get_*`, `create_*`, `update_*`, `checklist_toggle` and `log_time`.
+For one explicit task or ticket, the assistant calls `show_task` or `show_ticket` once at the end to render its detail view instead of the list. These tools use the same permission checks and detail data as `get_task` and `get_ticket`. Reads and actions (`get_*`, `create_*`, `update_*`, `checklist_toggle`, `log_time`, etc.) return text and structured data without opening a frame. Only `show_items`, `show_task` and `show_ticket` advertise a widget. Task controls update the existing detail view without creating another frame.
 
 ## Resources and prompts
 
