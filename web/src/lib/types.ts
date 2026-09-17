@@ -40,10 +40,16 @@ export interface ChecklistItem {
 	done: boolean;
 }
 
-export interface Task {
+/**
+ * The list shape of a task: everything the rows, cards, filters and sort
+ * helpers read, plus small aggregates standing in for the collections the
+ * detail carries. This is what the task, week and project pages ship for
+ * every visible task; `Task` adds the fields only the inspector needs.
+ */
+export interface TaskSummary {
 	id: string;
 	/** Real database UUID (distinct from `id`, which is the display ref). */
-	uuid?: string;
+	uuid: string;
 	title: string;
 	status: StatusId;
 	priority: PriorityId;
@@ -53,7 +59,6 @@ export interface Task {
 	due: string | null;
 	updated: string;
 	type?: TypeId;
-	parent?: string | null;
 	startDate?: string;
 	endDate?: string;
 	estimate?: number;
@@ -61,6 +66,20 @@ export interface Task {
 	tags?: string[];
 	createdBy?: string;
 	createdAt?: string;
+	plannedFor?: string | null;
+	inMyPlan?: boolean;
+	/** Prerequisites: tasks that should be done before this one starts. */
+	dependsOn?: TaskLink[];
+	/** Derived: at least one prerequisite is not done. Never stored. */
+	blocked?: boolean;
+	/** Sum of all time-log entries, in minutes. */
+	loggedMinutes: number;
+	checklistDone: number;
+	checklistTotal: number;
+}
+
+export interface Task extends TaskSummary {
+	parent?: string | null;
 	/** Surface that created the task: web | mcp | api | import | template. */
 	channel?: string;
 	description?: string;
@@ -83,16 +102,10 @@ export interface Task {
 		note: string;
 		createdAt?: string;
 	}[];
-	plannedFor?: string | null;
-	inMyPlan?: boolean;
 	/** Set when the task was spun up from a support ticket. */
 	sourceTicket?: { id: string; displayId: string } | null;
-	/** Prerequisites: tasks that should be done before this one starts. */
-	dependsOn?: TaskLink[];
 	/** Reverse edge: tasks waiting on this one. */
 	dependents?: TaskLink[];
-	/** Derived: at least one prerequisite is not done. Never stored. */
-	blocked?: boolean;
 }
 
 /** Compact reference to another task, for dependency lists and pickers. */

@@ -12,7 +12,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { task } from '$lib/server/db/app.schema';
 import { can } from '$lib/server/permissions';
-import { applyTaskUpdate, deleteTaskFully, loadTasks } from '$lib/server/tasks';
+import { applyTaskUpdate, deleteTaskFully, loadTaskDetail } from '$lib/server/tasks';
 import { loadAssignableUsers, loadTicketDisplayUsers } from '$lib/server/tickets';
 import { m } from '$lib/paraglide/messages';
 import { apiError, json, readJson, requireUser } from '$lib/server/api/guard';
@@ -34,8 +34,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 
 	// plannerUserId populates plannedFor/inMyPlan for the caller's own week —
 	// without it the detail payload nulls out what the list already delivered.
-	const tasks = await loadTasks({ projectId: row.projectId, plannerUserId: user.id });
-	const detail = tasks.find((t) => t.uuid === params.id);
+	const detail = await loadTaskDetail(params.id, { plannerUserId: user.id });
 	if (!detail) apiError(404, m.tasks_err_task_not_found());
 
 	// Same grant as PATCH below so the app only offers edit controls when the

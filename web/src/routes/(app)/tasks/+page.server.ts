@@ -19,7 +19,7 @@ import {
 	ALLOWED_TASK_TYPE,
 	createTask,
 	loadTaskDependencyIds,
-	loadTasks,
+	loadTaskSummaries,
 	resolveTaskByDisplayId,
 	TaskDependencyError,
 	taskRefsFor,
@@ -41,15 +41,18 @@ import { attachFormFiles, deleteAttachmentsFor } from '$lib/server/attachments';
 import { getPreferences } from '$lib/server/preferences';
 import { m } from '$lib/paraglide/messages';
 
-export const load: ServerLoad = async ({ locals }) => {
+export const load: ServerLoad = async ({ locals, depends }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
+	// Task mutations call `invalidate('app:tasks')` to refresh just this list.
+	depends('app:tasks');
 	const access = accessibleProjectIds(locals);
+	// List rows only; the inspector fetches the full task when one is opened.
 	const [tasks, preferences] = await Promise.all([
-		loadTasks({
+		loadTaskSummaries({
 			plannerUserId: locals.user.id,
 			projectIds: access.all ? undefined : [...access.ids]
 		}),
-		getPreferences(locals.user.id)
+		locals.preferences ?? getPreferences(locals.user.id)
 	]);
 	// Returned at the page level (not the layout) so SvelteKit re-runs this
 	// load on every revisit to /tasks — keeping savedView fresh without a

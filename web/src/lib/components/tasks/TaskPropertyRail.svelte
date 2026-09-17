@@ -79,13 +79,11 @@
 	// Which popover (if any) is open. Local to this rail instance.
 	let pop = $state<string | null>(null);
 
-	// Every tag in use across tasks: the app-wide list from the layout load
-	// (complete, works from any page) unioned with tags on currently loaded
-	// tasks (fresher — covers tags added since the layout data last loaded).
+	// Tags on the currently loaded tasks, offered as quick picks right away;
+	// the popover fetches the complete app-wide vocabulary itself (kind="task").
 	const tagSuggestions = $derived.by(() => {
-		const d = page.data as { taskTags?: string[]; tasks?: { labels?: string[] }[] };
-		const fromTasks = (d.tasks ?? []).flatMap((t) => t.labels ?? []);
-		return [...new Set([...(d.taskTags ?? []), ...fromTasks])];
+		const d = page.data as { tasks?: { labels?: string[] }[] };
+		return [...new Set((d.tasks ?? []).flatMap((t) => t.labels ?? []))];
 	});
 
 	const prioMeta = $derived(TRACKR_PRIORITIES.find((p) => p.id === priority)!);
@@ -256,6 +254,7 @@
 			<TagsPopover
 				value={tags}
 				suggestions={tagSuggestions}
+				kind="task"
 				onchange={(v) => (tags = v)}
 				onclose={() => (pop = null)}
 			/>

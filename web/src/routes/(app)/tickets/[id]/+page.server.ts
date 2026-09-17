@@ -30,8 +30,10 @@ function userColor(id: string): string {
 	return `hsl(${h % 360} 55% 60%)`;
 }
 
-export const load: ServerLoad = async ({ params, locals }) => {
+export const load: ServerLoad = async ({ params, locals, depends }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
+	// Ticket mutations call `invalidate('app:tickets')` to refresh just this page.
+	depends('app:tickets');
 	const id = params.id;
 	if (!id) throw error(404, m.tickets_not_found_404());
 

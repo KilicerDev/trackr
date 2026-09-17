@@ -50,8 +50,10 @@ function sameIdSet(a: string[], b: string[]): boolean {
 	return a.every((x) => bs.has(x));
 }
 
-export const load: ServerLoad = async ({ locals }) => {
+export const load: ServerLoad = async ({ locals, depends }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
+	// Ticket mutations call `invalidate('app:tickets')` to refresh just this list.
+	depends('app:tickets');
 
 	const trackrTeam = isTrackrTeam(locals);
 	const myOrgIds = (locals.memberships?.orgs ?? []).map((o) => o.orgId);
@@ -123,7 +125,7 @@ export const load: ServerLoad = async ({ locals }) => {
 		}
 	}
 
-	const preferences = await getPreferences(locals.user.id);
+	const preferences = locals.preferences ?? (await getPreferences(locals.user.id));
 	const savedView = (preferences.viewState?.tickets ?? {}) as Record<string, unknown>;
 
 	// Assignee candidates for the Inspector and the create modal: members of

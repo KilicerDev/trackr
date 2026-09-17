@@ -69,7 +69,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const portal = isPortalUser(locals);
 	let activeOrgId: string;
 	if (portal) {
-		const prefs = await getPreferences(locals.user.id);
+		const prefs = locals.preferences ?? (await getPreferences(locals.user.id));
 		const stored = (prefs.viewState?.portal as { activeOrgId?: string } | undefined)?.activeOrgId;
 		activeOrgId = stored && orgs.some((o) => o.id === stored) ? stored : orgs[0].id;
 	} else {

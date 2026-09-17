@@ -10,10 +10,10 @@
 import * as z from 'zod/v4';
 import type { McpServer } from '@modelcontextprotocol/server';
 import { can, canViewTicket } from '$lib/server/permissions';
-import { loadTasks, resolveTaskByDisplayId } from '$lib/server/tasks';
+import { loadTaskSummaries, resolveTaskByDisplayId } from '$lib/server/tasks';
 import { getTicket, resolveTicketByDisplayId, type TicketRow } from '$lib/server/tickets';
 import { listProjectsFor } from '$lib/server/projects';
-import type { Task } from '$lib/types';
+import type { TaskSummary } from '$lib/types';
 import { normalizeDisplayId, normalizeKey, parseDisplayId } from '../ids';
 import {
 	listMd,
@@ -36,22 +36,18 @@ import { loadTicketDetail } from './tickets';
 const MAX_KEYS = 100;
 
 /** Tasks the caller may read, by display id, in the order asked; unknown keys skipped. */
-async function visibleTasks(ctx: McpContext, keys: readonly string[]): Promise<Task[]> {
-	const byProject = new Map<string, Promise<Task[]>>();
-	const out: Task[] = [];
+async function visibleTasks(ctx: McpContext, keys: readonly string[]): Promise<TaskSummary[]> {
+	const ids: string[] = [];
 	for (const key of keys) {
 		const ref = await resolveTaskByDisplayId(key);
 		if (!ref) continue;
 		if (!(await can(ctx.locals, 'project.tasks.read', { projectId: ref.projectId }))) continue;
-		let rows = byProject.get(ref.projectId);
-		if (!rows) {
-			rows = loadTasks({ projectId: ref.projectId, plannerUserId: ctx.locals.user.id });
-			byProject.set(ref.projectId, rows);
-		}
-		const task = (await rows).find((t) => t.uuid === ref.id);
-		if (task) out.push(task);
+		ids.push(ref.id);
 	}
-	return out;
+	// One batched load for every visible key, re-ordered to the order asked.
+	const rows = await loadTaskSummaries({ ids, plannerUserId: ctx.locals.user.id });
+	const byId = new Map(rows.map((t) => [t.uuid, t]));
+	return ids.map((id) => byId.get(id)).filter((t): t is TaskSummary => !!t);
 }
 
 /** Tickets the caller may see, by display id, in the order asked; unknown keys skipped. */

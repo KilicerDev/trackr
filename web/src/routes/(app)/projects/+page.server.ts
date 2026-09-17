@@ -67,7 +67,7 @@ export const load: ServerLoad = async ({ locals }) => {
 	// Trackr internal team sees every project; everyone else only sees rows
 	// they're a project_member of.
 	const access = accessibleProjectIds(locals);
-	const preferences = await getPreferences(locals.user.id);
+	const preferences = locals.preferences ?? (await getPreferences(locals.user.id));
 	const savedView = (preferences.viewState?.projects ?? {}) as Record<string, unknown>;
 	if (!access.all && access.ids.size === 0) {
 		return { projectsList: [], orgs: [], templates: [], savedView };

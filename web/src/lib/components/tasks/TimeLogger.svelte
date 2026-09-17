@@ -3,6 +3,7 @@
 	import Button from '../Button.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { formatEstimate } from '$lib/utils/format';
+	import { loggedMinutes } from '$lib/utils/task';
 	import { m } from '$lib/paraglide/messages';
 
 	function todayIso(): string {
@@ -25,7 +26,11 @@
 	let date = $state(todayIso());
 	let note = $state('');
 
-	let totalLogged = $derived((task.timeLogs ?? []).reduce((s, t) => s + t.minutes, 0));
+	// Entries win over the aggregate while the inspector has them: the draft
+	// is patched locally after a log is added, before the summary refreshes.
+	let totalLogged = $derived(
+		task.timeLogs?.length ? task.timeLogs.reduce((s, t) => s + t.minutes, 0) : loggedMinutes(task)
+	);
 	let summary = $derived.by(() => {
 		if (totalLogged === 0 && !task.estimate) return m.tasks_none_logged();
 		if (totalLogged === 0) return `0 / ${formatEstimate(task.estimate)}`;
