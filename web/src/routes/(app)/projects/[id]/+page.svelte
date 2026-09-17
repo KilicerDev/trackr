@@ -65,33 +65,23 @@
 	);
 
 	// Time spent: per task, logged minutes win; else the estimate; else assume 1h.
-	// Per-member split counts LOGGED time only — estimates have no owner.
+	// Per-member split counts LOGGED time only — estimates have no owner; the
+	// server sums it per member so list rows don't need the log entries.
 	const time = $derived.by(() => {
 		let logged = 0;
 		let estimated = 0;
 		let assumed = 0;
-		const byUser = new Map<string, number>();
 		for (const t of tasks) {
-			const logs = t.timeLogs ?? [];
-			if (logs.length > 0) {
-				for (const l of logs) {
-					logged += l.minutes;
-					byUser.set(l.user, (byUser.get(l.user) ?? 0) + l.minutes);
-				}
-			} else if (t.estimate) {
-				estimated += t.estimate;
-			} else {
-				assumed += 1;
-			}
+			if (t.loggedMinutes > 0) logged += t.loggedMinutes;
+			else if (t.estimate) estimated += t.estimate;
+			else assumed += 1;
 		}
 		return {
 			totalMinutes: logged + estimated + assumed * 60,
 			loggedMinutes: logged,
 			estimatedMinutes: estimated,
 			assumedCount: assumed,
-			perMember: [...byUser.entries()]
-				.map(([userId, minutes]) => ({ userId, minutes }))
-				.sort((a, b) => b.minutes - a.minutes)
+			perMember: [...data.timeByUser].sort((a, b) => b.minutes - a.minutes)
 		};
 	});
 	// Composition-honesty subline — only the non-zero parts.

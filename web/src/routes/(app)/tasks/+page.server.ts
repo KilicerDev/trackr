@@ -19,7 +19,7 @@ import {
 	ALLOWED_TASK_TYPE,
 	createTask,
 	loadTaskDependencyIds,
-	loadTasks,
+	loadTaskSummaries,
 	resolveTaskByDisplayId,
 	TaskDependencyError,
 	taskRefsFor,
@@ -46,8 +46,9 @@ export const load: ServerLoad = async ({ locals, depends }) => {
 	// Task mutations call `invalidate('app:tasks')` to refresh just this list.
 	depends('app:tasks');
 	const access = accessibleProjectIds(locals);
+	// List rows only; the inspector fetches the full task when one is opened.
 	const [tasks, preferences] = await Promise.all([
-		loadTasks({
+		loadTaskSummaries({
 			plannerUserId: locals.user.id,
 			projectIds: access.all ? undefined : [...access.ids]
 		}),

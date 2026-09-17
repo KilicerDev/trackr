@@ -1,5 +1,5 @@
 import { error, fail, redirect, type Actions, type ServerLoad } from '@sveltejs/kit';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { emitWebhookEvent, projectSnapshot } from '$lib/server/webhooks';
 import {
@@ -7,10 +7,12 @@ import {
 	projectActivity,
 	projectFavorite,
 	projectMember,
-	organization
+	organization,
+	task,
+	taskTimeLog
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
-import { loadTasks } from '$lib/server/tasks';
+import { loadTaskSummaries } from '$lib/server/tasks';
 import { loadProjectActivity } from '$lib/server/activity/feed';
 import { logActivityFF } from '$lib/server/activity';
 import { recordAudit } from '$lib/server/audit';
@@ -129,21 +131,38 @@ export const load: ServerLoad = async ({ params, locals, depends }) => {
 		if (o) org = o;
 	}
 
-	// Tasks for this project — same shape as /tasks page.
-	const tasks = await loadTasks({ projectId: id, plannerUserId: locals.user.id });
+	// Task list rows (the inspector fetches a full task on open) plus the
+	// logged-time split per member for the time card, which used to be summed
+	// client-side from every task's time-log entries.
+	const internal = isTrackrTeam(locals);
+	const [tasks, timeByUser, activity] = await Promise.all([
+		loadTaskSummaries({ projectId: id, plannerUserId: locals.user.id }),
+		db
+			.select({
+				userId: taskTimeLog.userId,
+				minutes: sql<number>`sum(${taskTimeLog.minutes})::int`
+			})
+			.from(taskTimeLog)
+			.innerJoin(task, eq(task.id, taskTimeLog.taskId))
+			.where(and(eq(task.projectId, id), isNull(task.deletedAt), isNull(task.archivedAt)))
+			.groupBy(taskTimeLog.userId),
+		// Initial page of the activity feed for the history sidebar. The sidebar
+		// fetches further pages on demand via the `?/activity` endpoint.
+		loadProjectActivity(id, { limit: 50 })
+	]);
 
 	// Connected meetings (notes with kind='meeting', linked directly or via a
 	// task) + templates for the New-meeting dialog. Notes are internal-team only
 	// — non-team viewers get empty arrays and the section stays hidden.
-	const internal = isTrackrTeam(locals);
-	const taskUuids = tasks.map((t) => t.uuid).filter((x): x is string => !!x);
 	const [meetings, meetingTemplates] = internal
-		? await Promise.all([listProjectMeetings(id, taskUuids), listTemplates()])
+		? await Promise.all([
+				listProjectMeetings(
+					id,
+					tasks.map((t) => t.uuid)
+				),
+				listTemplates()
+			])
 		: [[], []];
-
-	// Initial page of the activity feed for the history sidebar. The sidebar
-	// fetches further pages on demand via the `?/activity` endpoint.
-	const activity = await loadProjectActivity(id, { limit: 50 });
 
 	// Task-list view state (filters/group/sort + saved views) is shared across
 	// project pages under one key, like the /tasks page keeps its own.
@@ -169,6 +188,7 @@ export const load: ServerLoad = async ({ params, locals, depends }) => {
 		members,
 		org,
 		tasks,
+		timeByUser: timeByUser.map((r) => ({ userId: r.userId ?? '', minutes: Number(r.minutes) })),
 		activity,
 		meetings,
 		meetingTemplates: meetingTemplates.map((t) => ({ id: t.id, name: t.name, icon: t.icon }))
