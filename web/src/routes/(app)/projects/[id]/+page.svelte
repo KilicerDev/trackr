@@ -235,7 +235,6 @@
 	// Optimistic copy of the header tag list while a save is in flight.
 	let tagsDraft = $state<string[] | null>(null);
 	const heroTags = $derived(tagsDraft ?? p.tags ?? []);
-	const projectTagSuggestions = $derived((data as { projectTags?: string[] }).projectTags ?? []);
 
 	async function saveTags(next: string[]) {
 		tagsDraft = next;
@@ -493,7 +492,7 @@
 						{#if tagsOpen}
 							<TagsPopover
 								value={heroTags}
-								suggestions={projectTagSuggestions}
+								kind="project"
 								onchange={saveTags}
 								onclose={() => (tagsOpen = false)}
 							/>

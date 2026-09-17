@@ -6,6 +6,7 @@
 	import Icon from '../Icon.svelte';
 	import { labelMeta, normalizeTag } from '$lib/utils/label-meta';
 	import { m } from '$lib/paraglide/messages';
+	import { fetchTagSuggestions, type TagKind } from '$lib/api/tags';
 
 	interface Props {
 		value: string[];
@@ -14,16 +15,31 @@
 		// Tags already in use elsewhere (e.g. on other tasks), offered as
 		// quick picks alongside the predefined labels.
 		suggestions?: string[];
+		// When set, the app-wide vocabulary for this kind is fetched on open
+		// and merged into the quick picks (see $lib/api/tags).
+		kind?: TagKind;
 	}
-	let { value, onchange, onclose, suggestions = [] }: Props = $props();
+	let { value, onchange, onclose, suggestions = [], kind }: Props = $props();
 
 	let entry = $state('');
+	let remote = $state<string[]>([]);
+
+	$effect(() => {
+		if (!kind) return;
+		let live = true;
+		void fetchTagSuggestions(kind).then((tags) => {
+			if (live) remote = tags;
+		});
+		return () => {
+			live = false;
+		};
+	});
 
 	// Tags already selected + tags seen elsewhere (org-defined). Deduped.
 	const allOptions = $derived.by(() => {
 		const seen = new Set<string>();
 		const out: string[] = [];
-		for (const id of [...value, ...suggestions]) {
+		for (const id of [...value, ...suggestions, ...remote]) {
 			if (!seen.has(id)) {
 				seen.add(id);
 				out.push(id);
