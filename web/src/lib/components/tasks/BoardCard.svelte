@@ -14,8 +14,10 @@
 	interface Props {
 		task: Task;
 		onclick?: () => void;
+		showPlanned?: boolean;
+		timeLabel?: string;
 	}
-	let { task, onclick }: Props = $props();
+	let { task, onclick, showPlanned = true, timeLabel }: Props = $props();
 
 	let assignees = $derived((task.assignees ?? [task.assignee]).map((id) => resolveUser(id)));
 
@@ -57,7 +59,7 @@
 			<TypeBadge type={task.type} />
 		{/if}
 		<span class="font-mono text-[12px] text-text-3">{task.id}</span>
-		{#if task.plannedFor || task.inMyPlan}
+		{#if showPlanned && (task.plannedFor || task.inMyPlan)}
 			<span
 				class="ml-auto inline-flex items-center gap-1.5 rounded-md bg-accent-soft px-2 py-0.5 text-[12px] text-accent"
 				title={task.plannedFor
@@ -97,7 +99,9 @@
 				</span>
 			{/if}
 		{/if}
-		{#if task.estimate}
+		{#if timeLabel}
+			<span class="font-mono">{timeLabel}</span>
+		{:else if task.estimate}
 			<span class="font-mono">{formatEstimate(task.estimate)}</span>
 		{/if}
 		{#if task.checklist && task.checklist.length > 0}
