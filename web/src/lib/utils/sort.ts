@@ -6,7 +6,7 @@
 // value for the key (no due date, no created timestamp) always sort last,
 // regardless of direction — an undated task is backlog, not "due first".
 
-import type { Task } from '$lib/types';
+import type { TaskSummary } from '$lib/types';
 import type { TicketRow } from '$lib/server/tickets';
 
 export type SortDir = 'asc' | 'desc';
@@ -97,7 +97,7 @@ function orderBy<T>(items: readonly T[], keys: { key: (t: T) => Key; dir: SortDi
 	});
 }
 
-const taskKey: Record<TaskSortBy, (t: Task) => Key> = {
+const taskKey: Record<TaskSortBy, (t: TaskSummary) => Key> = {
 	due: (t) => time(t.due),
 	priority: (t) => PRIO_RANK[t.priority] ?? 0,
 	updated: (t) => time(t.updated),
@@ -105,7 +105,7 @@ const taskKey: Record<TaskSortBy, (t: Task) => Key> = {
 	title: (t) => t.title.toLowerCase()
 };
 
-export function sortTasks(tasks: readonly Task[], sort: TaskSort): Task[] {
+export function sortTasks(tasks: readonly TaskSummary[], sort: TaskSort): TaskSummary[] {
 	const keys = [{ key: taskKey[sort.by], dir: sort.dir }];
 	// Ties fall back to priority, then to the server's newest-first order.
 	if (sort.by !== 'priority') keys.push({ key: taskKey.priority, dir: 'desc' });

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Task, ProjectId } from '$lib/types';
+	import type { TaskSummary, ProjectId } from '$lib/types';
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/config/taxonomy';
 	import { statusLabel, priorityLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
@@ -16,11 +16,11 @@
 	type GroupBy = 'status' | 'priority' | 'assignee' | 'project' | 'none';
 
 	interface Props {
-		tasks: Task[];
+		tasks: TaskSummary[];
 		group?: GroupBy;
 		// Row order inside each group (see $lib/utils/sort).
 		sort?: TaskSort;
-		onSelect?: (t: Task) => void;
+		onSelect?: (t: TaskSummary) => void;
 		selectedId?: string;
 		onAddInProject?: (pid: ProjectId) => void;
 		// View-state key (e.g. 'tasks') to remember collapsed groups under.

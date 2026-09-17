@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Task } from '$lib/types';
+	import type { TaskSummary } from '$lib/types';
 	import StatusDot from '../StatusDot.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
 	import Avatar from '../Avatar.svelte';
@@ -12,7 +12,7 @@
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
-		task: Task;
+		task: TaskSummary;
 		onclick?: () => void;
 		showPlanned?: boolean;
 		timeLabel?: string;
@@ -104,17 +104,15 @@
 		{:else if task.estimate}
 			<span class="font-mono">{formatEstimate(task.estimate)}</span>
 		{/if}
-		{#if task.checklist && task.checklist.length > 0}
+		{#if task.checklistTotal > 0}
 			<span
-				class="inline-flex items-center gap-1 {task.checklist.every((i) => i.done)
+				class="inline-flex items-center gap-1 {task.checklistDone === task.checklistTotal
 					? 'text-[#7fc8a9]'
 					: ''}"
 				title={m.tasks_checklist()}
 			>
 				<Icon name="check-square" size={12} />
-				<span class="font-mono"
-					>{task.checklist.filter((i) => i.done).length}/{task.checklist.length}</span
-				>
+				<span class="font-mono">{task.checklistDone}/{task.checklistTotal}</span>
 			</span>
 		{/if}
 		<span class="ml-auto">

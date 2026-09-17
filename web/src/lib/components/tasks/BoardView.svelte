@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Task, ProjectId, StatusId, PriorityId } from '$lib/types';
+	import type { TaskSummary, ProjectId, StatusId, PriorityId } from '$lib/types';
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/config/taxonomy';
 	import { statusLabel, priorityLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
@@ -20,12 +20,12 @@
 	export type BoardSub = 'none' | 'status' | 'priority' | 'assignee';
 
 	interface Props {
-		tasks: Task[];
+		tasks: TaskSummary[];
 		group?: BoardGroup;
 		sub?: BoardSub;
 		// Card order inside each column / subgroup (see $lib/utils/sort).
 		sort?: TaskSort;
-		onSelect?: (t: Task) => void;
+		onSelect?: (t: TaskSummary) => void;
 		onAddInProject?: (pid: ProjectId, statusId?: StatusId) => void;
 		// View-state key (e.g. 'tasks') to remember collapsed columns under.
 		// Omitted → collapse state is session-only, as before.
@@ -53,7 +53,7 @@
 		statusId?: StatusId;
 		priorityId?: PriorityId;
 		userId?: string;
-		tasks: Task[];
+		tasks: TaskSummary[];
 	}
 
 	let columns = $derived.by<ColumnDef[]>(() => {
@@ -151,7 +151,7 @@
 		statusId?: StatusId;
 		priorityId?: PriorityId;
 		userId?: string;
-		tasks: Task[];
+		tasks: TaskSummary[];
 	}
 
 	function subGroupsForColumn(col: ColumnDef): SubGroupDef[] {

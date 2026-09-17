@@ -332,6 +332,8 @@ export async function loadTasks(opts?: {
 		const assigneeIds = assigneesByTask.get(t.id) ?? [];
 		const dependsOn = (dependsOnByTask.get(t.id) ?? []).sort(byRef);
 		const dependents = (dependentsByTask.get(t.id) ?? []).sort(byRef);
+		const checklist = t.checklist ?? [];
+		const timeLogs = logsByTask.get(t.id) ?? [];
 		return {
 			id: `${t.projectKey}-${t.number}`,
 			uuid: t.id,
@@ -354,10 +356,13 @@ export async function loadTasks(opts?: {
 			createdAt: fmtDate(t.createdAt),
 			channel: t.channel,
 			description: t.description ?? undefined,
-			checklist: t.checklist ?? [],
+			checklist,
+			checklistDone: checklist.filter((i) => i.done).length,
+			checklistTotal: checklist.length,
 			comments: commentsByTask.get(t.id) ?? [],
 			files: attachmentsByTask.get(t.id) ?? [],
-			timeLogs: logsByTask.get(t.id) ?? [],
+			timeLogs,
+			loggedMinutes: timeLogs.reduce((s, l) => s + l.minutes, 0),
 			plannedFor: planByTask.has(t.id) ? planByTask.get(t.id) || null : null,
 			inMyPlan: planByTask.has(t.id),
 			sourceTicket: t.sourceTicketId ? (sourceTicketById.get(t.sourceTicketId) ?? null) : null,
