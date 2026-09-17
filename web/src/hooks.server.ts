@@ -200,7 +200,33 @@ const handleLocale: Handle = async ({ event, resolve }) => {
 				.map((c) => c.trim())
 				.filter((c) => c && !c.startsWith(`${cookieName}=`));
 			headers.set('cookie', [...others, `${cookieName}=${desired}`].join('; '));
-			event.request = new Request(event.request, { headers });
+			// Rebuild from the parts rather than `new Request(request, { headers })`:
+			// under Bun, cloning a request whose body is the Node stream that
+			// adapter-node wraps never delivers the body, so every POST from a
+			// client without the locale cookie (API keys, the mobile app, the
+			// smoke tests) hung until the client gave up. The body is buffered
+			// because downstream code clones the request again (the MCP
+			// transport does), which fails on a re-wrapped stream; only clients
+			// without the cookie take this path, and SvelteKit reads form and
+			// JSON bodies into memory anyway.
+			const { request } = event;
+			let body: ArrayBuffer | null = null;
+			if (request.method !== 'GET' && request.method !== 'HEAD') {
+				try {
+					body = await request.arrayBuffer();
+				} catch (e) {
+					// adapter-node rejects bodies over BODY_SIZE_LIMIT with a 413
+					// while they are read; answer the same way instead of a 500.
+					const status = (e as { status?: number }).status;
+					error(status && status >= 400 && status < 600 ? status : 400, (e as Error).message);
+				}
+			}
+			event.request = new Request(request.url, {
+				method: request.method,
+				headers,
+				body,
+				signal: request.signal
+			});
 		}
 	}
 
