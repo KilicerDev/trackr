@@ -113,7 +113,8 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 	}
 
 	// Mirrors the web create action: agents may set assignees and leave the
-	// ticket unassigned; everyone else becomes the customer, never assigned.
+	// ticket unassigned. The authenticated caller is always the customer;
+	// this endpoint does not accept a customer override.
 	const isAgent = await can(locals, 'org.tickets.edit.any', { orgId });
 	const assigneeIds =
 		isAgent && Array.isArray(body.assigneeIds)
@@ -126,7 +127,7 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		priority: priority as TicketPriority,
 		category: category as TicketCategory,
 		channel: 'api',
-		customerId: isAgent ? null : user.id,
+		customerId: user.id,
 		assigneeIds,
 		tags: [],
 		createdBy: user.id
@@ -149,7 +150,7 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 			displayId: created.displayId,
 			orgId,
 			subject,
-			customerId: isAgent ? null : user.id,
+			customerId: user.id,
 			creatorId: user.id,
 			assigneeIds: created.assignedIds,
 			status: 'open',

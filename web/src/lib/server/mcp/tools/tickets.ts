@@ -331,7 +331,7 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 		{
 			title: 'Create ticket',
 			description:
-				'Create a support ticket in an organization (`orgKey`, see `list_orgs`). `description` is markdown. Agents (org.tickets.edit.any) may set `assignees`; for everyone else the ticket is filed with you as the customer and assignees are ignored. Optional `checklist`, `tags`, and `attachmentUrls` (fetched server-side). Keep it to what the user said: a subject, and a description/checklist/tags only when they supplied that content. Returns the new ticket key. Notifies and audits exactly like the app.',
+				'Create a support ticket in an organization (`orgKey`, see `list_orgs`), filed with you as the customer. `description` is markdown. Agents (org.tickets.edit.any) may set `assignees`; for everyone else assignees are ignored. Optional `checklist`, `tags`, and `attachmentUrls` (fetched server-side). Keep it to what the user said: a subject, and a description/checklist/tags only when they supplied that content. Returns the new ticket key. Notifies and audits exactly like the app.',
 			inputSchema: z.object({
 				orgKey: z.string().describe('Organization key the ticket belongs to (e.g. `TRACK`).'),
 				subject: z
@@ -385,7 +385,7 @@ export function registerTicketTools(server: McpServer, ctx: McpContext): void {
 					priority: args.priority as TicketPriority,
 					category: args.category as TicketCategory,
 					channel: 'api',
-					customerId: isAgent ? null : uid,
+					customerId: uid,
 					assigneeIds,
 					tags,
 					createdBy: uid,

@@ -35,7 +35,15 @@ type TaskDetail = {
 	canComment: boolean;
 };
 type TicketDetail = {
-	ticket: { id: string; displayId: string; subject: string; status: string; priority: string };
+	ticket: {
+		id: string;
+		displayId: string;
+		subject: string;
+		status: string;
+		priority: string;
+		customerId: string | null;
+		createdBy: string | null;
+	};
 	messages: unknown[];
 	canEdit: boolean;
 };
@@ -251,7 +259,10 @@ describe('tickets lifecycle', () => {
 			orgId,
 			subject,
 			description: 'created by tests/smoke/api.test.ts',
-			priority: 'low'
+			priority: 'low',
+			// Attribution must come from authentication, never posted identity fields.
+			createdBy: 'spoofed-creator',
+			customerId: 'spoofed-customer'
 		});
 		expect(res.status).toBe(201);
 		expect(res.body.id).toBeString();
@@ -271,6 +282,8 @@ describe('tickets lifecycle', () => {
 		expect(res.body.ticket.subject).toBe(subject);
 		expect(res.body.ticket.status).toBe('open');
 		expect(res.body.ticket.priority).toBe('low');
+		expect(res.body.ticket.createdBy).toBe(me.user.id);
+		expect(res.body.ticket.customerId).toBe(me.user.id);
 		expect(Array.isArray(res.body.messages)).toBe(true);
 		expect(res.body.canEdit).toBe(true);
 	});

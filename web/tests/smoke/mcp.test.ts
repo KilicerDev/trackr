@@ -7,6 +7,7 @@
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import {
+	api,
 	API_KEY,
 	BASE_URL,
 	DEMO,
@@ -88,7 +89,11 @@ const run = stamp();
 let client: Client;
 let projectKey: string;
 // Cleaned up in afterAll even when a test failed half-way.
-const created = { taskKeys: new Set<string>(), noteIds: new Set<string>() };
+const created = {
+	taskKeys: new Set<string>(),
+	ticketKeys: new Set<string>(),
+	noteIds: new Set<string>()
+};
 
 async function call(name: string, args: Record<string, unknown> = {}): Promise<ToolResult> {
 	return client.callTool({ name, arguments: args });
@@ -125,8 +130,49 @@ beforeAll(async () => {
 afterAll(async () => {
 	if (!client) return;
 	for (const key of created.taskKeys) await call('delete_task', { key }).catch(() => {});
+	for (const key of created.ticketKeys) await call('delete_ticket', { key }).catch(() => {});
 	for (const id of created.noteIds) await call('delete_note', { id }).catch(() => {});
 	await client.close().catch(() => {});
+});
+
+describe('ticket attribution', () => {
+	test('an agent-created ticket retains the authenticated creator and customer', async () => {
+		const me = structured<{ id: string; name: string; staff: boolean }>(await ok('whoami'));
+		expect(me.staff).toBe(true);
+		const { orgs } = structured<{ orgs: { key: string; internal: boolean }[] }>(
+			await ok('list_orgs')
+		);
+		const org = orgs.find((o) => o.internal) ?? orgs[0];
+		expect(org).toBeDefined();
+		type Detail = {
+			ticket: {
+				customer: { id: string; name: string } | null;
+				createdBy: { id: string; name: string } | null;
+			};
+		};
+		const result = structured<Detail & { id: string; key: string }>(
+			await ok('create_ticket', {
+				orgKey: org.key,
+				subject: `${SMOKE_PREFIX} mcp reporter ${run}`,
+				createdBy: 'spoofed-creator',
+				customerId: 'spoofed-customer'
+			})
+		);
+		created.ticketKeys.add(result.key);
+		const expected = { id: me.id, name: me.name };
+		expect(result.ticket.createdBy).toEqual(expected);
+		expect(result.ticket.customer).toEqual(expected);
+		const detail = structured<Detail>(await ok('get_ticket', { key: result.key }));
+		expect(detail.ticket.createdBy).toEqual(expected);
+		expect(detail.ticket.customer).toEqual(expected);
+		// Read through the independent REST surface to check the persisted fields.
+		const persisted = await api<{
+			ticket: { createdBy: string | null; customerId: string | null };
+		}>('GET', `/api/v1/tickets/${result.id}`);
+		expect(persisted.status).toBe(200);
+		expect(persisted.body.ticket.createdBy).toBe(me.id);
+		expect(persisted.body.ticket.customerId).toBe(me.id);
+	});
 });
 
 describe('transport + auth', () => {

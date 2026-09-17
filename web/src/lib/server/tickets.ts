@@ -839,7 +839,7 @@ export async function loadTicketMentionUsers(ticket: {
 }
 
 // Display-only directory (id → name/initials/color, NO email) for the users
-// referenced by a page of tickets — their assignees and customers. Resolves
+// referenced by a page of tickets — their assignees, customers and creators. Resolves
 // assignee names on the tickets LIST for viewers who aren't agents: their
 // app-wide `users` directory is scoped to their own org and omits
 // internally-assigned platform agents, and the Inspector (unlike the detail
@@ -1105,8 +1105,8 @@ export type CreateTicketWithEffectsInput = {
 	/** Honoured only for agents (edit.any); everyone else becomes the customer. */
 	assigneeIds?: string[];
 	/**
-	 * Agents may file on behalf of a customer (user id); default none (the v1
-	 * behaviour). Non-agents are always the customer themselves.
+	 * Agents may file on behalf of a customer (user id); defaults to the actor,
+	 * like the web form. Non-agents are always the customer themselves.
 	 */
 	customerId?: string | null;
 	tags?: string[];
@@ -1151,7 +1151,7 @@ export async function createTicketWithEffects(
 		isAgent && Array.isArray(input.assigneeIds)
 			? [...new Set(input.assigneeIds.filter((v): v is string => typeof v === 'string' && !!v))]
 			: [];
-	const customerId = isAgent ? input.customerId?.trim() || null : user.id;
+	const customerId = isAgent ? input.customerId?.trim() || user.id : user.id;
 	const tags = Array.isArray(input.tags)
 		? [...new Set(input.tags.map((t) => String(t).trim()).filter(Boolean))]
 		: [];

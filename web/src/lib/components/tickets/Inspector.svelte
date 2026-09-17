@@ -56,7 +56,7 @@
 	}: Props = $props();
 
 	const open = $derived(ticket != null);
-	const customer = $derived(ticket?.customerId ? resolveUser(ticket.customerId) : undefined);
+	const reporter = $derived(resolveUser(ticket?.customerId ?? ticket?.createdBy));
 	const assigneeUsers = $derived((ticket?.assignees ?? []).map((id) => resolveUser(id)));
 
 	// TagsPopover prepends the predefined labels itself; feed it every tag already
@@ -555,8 +555,8 @@
 				<div>
 					<div class="text-text-4">{m.tickets_meta_reporter()}</div>
 					<div class="mt-0.5 flex items-center gap-1.5 text-text-2">
-						{#if customer}<Avatar user={customer} size={17} />{/if}
-						<span class="truncate">{customer?.name ?? '—'}</span>
+						{#if reporter}<Avatar user={reporter} size={17} />{/if}
+						<span class="truncate">{reporter?.name ?? '—'}</span>
 					</div>
 				</div>
 				<div>

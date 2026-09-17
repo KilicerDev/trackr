@@ -105,7 +105,8 @@
 	const priorityMeta = $derived(TICKET_PRIORITIES.find((p) => p.id === t.priority));
 	const categoryMeta = $derived(TICKET_CATEGORIES.find((c) => c.id === t.category));
 	const assigneeUsers = $derived((t.assignees ?? []).map((id) => who(id)));
-	const customer = $derived(who(t.customerId));
+	// Older API/MCP tickets can have a creator but no customer.
+	const reporter = $derived(who(t.customerId ?? t.createdBy));
 
 	// Opening a ticket clears any unread bell items pointing at it. Done here
 	// (client-side, re-firing when the ticket id changes) rather than in the
@@ -243,7 +244,7 @@
 
 	const events = $derived.by<TimelineEvent[]>(() => {
 		const out: TimelineEvent[] = [
-			{ id: '__created', kind: 'created', at: t.createdAt, userId: t.customerId }
+			{ id: '__created', kind: 'created', at: t.createdAt, userId: t.createdBy ?? t.customerId }
 		];
 		for (const msg of data.messages) {
 			if (msg.kind === 'system') {
@@ -703,7 +704,7 @@
 					class="mt-8 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-4 text-[12px] text-text-4"
 				>
 					<span>
-						{m.tickets_meta_reporter()} <span class="text-text-2">{customer?.name ?? '—'}</span>
+						{m.tickets_meta_reporter()} <span class="text-text-2">{reporter?.name ?? '—'}</span>
 					</span>
 					<span>
 						{m.tickets_meta_channel()}

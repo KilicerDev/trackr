@@ -140,7 +140,7 @@ export const load: ServerLoad = async ({ locals }) => {
 			).map((o) => o.id)
 		: editableOrgIds;
 	const pickerUsers = isAgent ? await loadAssignableUsers(assignOrgIds) : [];
-	// Resolution directory for the assignee/customer names actually referenced by
+	// Resolution directory for the assignee/customer/creator names referenced by
 	// this page of tickets. Non-agent clients get no `assignableUsers` picker set
 	// and their app-wide `users` directory omits internally-assigned platform
 	// agents, so without this the Inspector/cards render a real assignee as
@@ -148,7 +148,7 @@ export const load: ServerLoad = async ({ locals }) => {
 	// picker candidates win; display-only rows only fill resolution gaps —
 	// including cross-org / former-member assignees an agent's picker set misses.
 	const displayUsers = await loadTicketDisplayUsers(
-		tickets.flatMap((t) => [...t.assignees, t.customerId])
+		tickets.flatMap((t) => [...t.assignees, t.customerId, t.createdBy])
 	);
 	const pickerIds = new Set(pickerUsers.map((u) => u.id));
 	const assignableUsers = [...pickerUsers, ...displayUsers.filter((u) => !pickerIds.has(u.id))];
