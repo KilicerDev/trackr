@@ -93,10 +93,22 @@ async function resolveApiKeyAuth(event: Parameters<Handle>[0]['event']): Promise
 	event.locals.user = resolved.user as unknown as NonNullable<App.Locals['user']>;
 	event.locals.authKind = 'api_key';
 	event.locals.apiKeyId = resolved.keyId;
-	const memberships = await loadMemberships(resolved.user.id);
+	await loadActorContext(event, resolved.user.id);
+	return true;
+}
+
+// Everything a request needs about the signed-in user beyond the session
+// itself, fetched in one parallel batch: memberships (roles) and preferences
+// (locale, theme, saved view state). Stashed on `locals` so neither the
+// locale hook nor any load function has to query them again.
+async function loadActorContext(event: Parameters<Handle>[0]['event'], userId: string) {
+	const [memberships, preferences] = await Promise.all([
+		loadMemberships(userId),
+		getPreferences(userId)
+	]);
 	event.locals.memberships = memberships;
 	event.locals.isAdmin = await deriveIsAdmin(memberships);
-	return true;
+	event.locals.preferences = preferences;
 }
 
 const handleBetterAuth: Handle = async ({ event, resolve }) => {
@@ -110,9 +122,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 		event.locals.session = session.session;
 		event.locals.user = session.user;
 		event.locals.authKind = 'session';
-		const memberships = await loadMemberships(session.user.id);
-		event.locals.memberships = memberships;
-		event.locals.isAdmin = await deriveIsAdmin(memberships);
+		await loadActorContext(event, session.user.id);
 	}
 
 	// better-auth's admin plugin (`/api/auth/admin/*`: set-role, impersonate,
@@ -163,11 +173,11 @@ const handleAdminGuard: Handle = async ({ event, resolve }) => {
 
 // For logged-in users the DB (`user_preferences.locale`) is the durable, authoritative
 // store. We reconcile the Paraglide cookie to it *before* Paraglide reads the request,
-// so the first painted HTML is already in the saved language (no flash). The resolved
-// preferences are stashed on `locals` so the layout loader doesn't re-query.
+// so the first painted HTML is already in the saved language (no flash). The
+// preferences were loaded alongside the session (loadActorContext).
 const handleLocale: Handle = async ({ event, resolve }) => {
 	if (event.locals.user) {
-		const preferences = await getPreferences(event.locals.user.id);
+		const preferences = event.locals.preferences ?? (await getPreferences(event.locals.user.id));
 		event.locals.preferences = preferences;
 
 		const desired = isLocale(preferences.locale) ? preferences.locale : 'en';
@@ -190,7 +200,33 @@ const handleLocale: Handle = async ({ event, resolve }) => {
 				.map((c) => c.trim())
 				.filter((c) => c && !c.startsWith(`${cookieName}=`));
 			headers.set('cookie', [...others, `${cookieName}=${desired}`].join('; '));
-			event.request = new Request(event.request, { headers });
+			// Rebuild from the parts rather than `new Request(request, { headers })`:
+			// under Bun, cloning a request whose body is the Node stream that
+			// adapter-node wraps never delivers the body, so every POST from a
+			// client without the locale cookie (API keys, the mobile app, the
+			// smoke tests) hung until the client gave up. The body is buffered
+			// because downstream code clones the request again (the MCP
+			// transport does), which fails on a re-wrapped stream; only clients
+			// without the cookie take this path, and SvelteKit reads form and
+			// JSON bodies into memory anyway.
+			const { request } = event;
+			let body: ArrayBuffer | null = null;
+			if (request.method !== 'GET' && request.method !== 'HEAD') {
+				try {
+					body = await request.arrayBuffer();
+				} catch (e) {
+					// adapter-node rejects bodies over BODY_SIZE_LIMIT with a 413
+					// while they are read; answer the same way instead of a 500.
+					const status = (e as { status?: number }).status;
+					error(status && status >= 400 && status < 600 ? status : 400, (e as Error).message);
+				}
+			}
+			event.request = new Request(request.url, {
+				method: request.method,
+				headers,
+				body,
+				signal: request.signal
+			});
 		}
 	}
 

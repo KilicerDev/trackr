@@ -167,10 +167,13 @@
 		flushViewSaves();
 	}
 	let manualSelectedId = $state<string | null>(null);
-	let selected = $derived.by(() => {
-		const id = manualSelectedId ?? page.url.searchParams.get('task');
-		return id ? (data.tasks.find((t) => t.id === id) ?? null) : null;
-	});
+	// The open task: a manual pick or the `?task=` deep link. The inspector
+	// fetches the full task itself; the matching list row (when the task is
+	// on this page) seeds its header so it renders before the fetch lands.
+	let selectedId = $derived(manualSelectedId ?? page.url.searchParams.get('task'));
+	let selected = $derived(
+		selectedId ? (data.tasks.find((t) => t.id === selectedId) ?? null) : null
+	);
 
 	// Closing must clear BOTH the manual selection and the `?task=` deep-link
 	// param — otherwise a task opened from an external link (e.g. a meeting note)
@@ -279,7 +282,7 @@
 		persistKey="tasks"
 		initialCollapsed={saved.listCollapsed}
 		onSelect={(t) => (manualSelectedId = t.id)}
-		selectedId={selected?.id}
+		selectedId={selectedId ?? undefined}
 		onAddInProject={(pid) => openCreate({ project: pid })}
 	/>
 {:else}
@@ -296,7 +299,8 @@
 {/if}
 
 <Inspector
-	task={selected}
+	taskId={selectedId}
+	summary={selected}
 	onclose={closeInspector}
 	users={data.users}
 	onopen={(id) => (manualSelectedId = id)}

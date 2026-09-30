@@ -3,7 +3,9 @@
 // (/api/v1/me/views). Saved views are client-authored blobs; we validate the
 // envelope (count, id, name) so a buggy or malicious client can't bloat the
 // row — the config payload itself stays opaque here.
-import { getPreferences, upsertPreferences } from './preferences';
+import { sql } from 'drizzle-orm';
+import { db } from '$lib/server/db';
+import { userPreferences } from '$lib/server/db/app.schema';
 
 export const VIEW_STATE_KEYS = new Set([
 	'tasks',
@@ -49,10 +51,24 @@ export function validateViewPatch(key: unknown, patch: unknown): ViewPatchError 
 	return null;
 }
 
-/** Shallow-merge a validated patch into the user's view_state for `key`. */
+/**
+ * Shallow-merge a validated patch into the user's view_state for `key`.
+ *
+ * One round trip: the merge happens in SQL (`||` on jsonb is a shallow
+ * merge, applied once at the top level to keep the other keys and once
+ * inside `key` to keep the fields the patch doesn't mention). This runs on
+ * every debounced toolbar change, so it must not read-modify-write.
+ */
 export async function applyViewPatch(userId: string, key: string, patch: object): Promise<void> {
-	const existing = await getPreferences(userId);
-	const prevForKey = (existing.viewState[key] ?? {}) as Record<string, unknown>;
-	const merged = { ...existing.viewState, [key]: { ...prevForKey, ...patch } };
-	await upsertPreferences(userId, { viewState: merged });
+	const patchJson = JSON.stringify(patch);
+	await db
+		.insert(userPreferences)
+		.values({ userId, viewState: { [key]: patch } })
+		.onConflictDoUpdate({
+			target: userPreferences.userId,
+			set: {
+				viewState: sql`${userPreferences.viewState} || jsonb_build_object(${key}::text, coalesce(${userPreferences.viewState} -> ${key}::text, '{}'::jsonb) || ${patchJson}::jsonb)`,
+				updatedAt: sql`now()`
+			}
+		});
 }

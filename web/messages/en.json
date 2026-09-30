@@ -1355,6 +1355,7 @@
 	"tasks_n_selected": "{n} selected",
 	"tasks_network_error_saving": "Network error while saving.",
 	"tasks_new_task": "New task",
+	"tasks_show_more": "Show {n} more",
 	"tasks_next_month": "Next month",
 	"tasks_open_project": "Open {name}",
 	"tasks_no_files_attached": "No files attached.",

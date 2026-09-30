@@ -13,7 +13,6 @@
 	import { PROJECT_STATUS } from '$lib/config/taxonomy';
 	import { projectStatusLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
-	import { page } from '$app/state';
 	import LabelChip from '../LabelChip.svelte';
 	import TagsPopover from '../popovers/TagsPopover.svelte';
 	import type { Project } from '$lib/types';
@@ -65,9 +64,6 @@
 
 	let formEl = $state<HTMLFormElement>();
 	let pop = $state<'status' | 'tags' | null>(null);
-
-	// Tags already used on other projects — quick picks in the tag popover.
-	const tagSuggestions = $derived((page.data as { projectTags?: string[] }).projectTags ?? []);
 
 	const statusMeta = $derived(PROJECT_STATUS[status] ?? PROJECT_STATUS.active);
 	const icon = $derived((name.trim()[0] ?? 'P').toUpperCase());
@@ -270,7 +266,7 @@
 					{#if pop === 'tags'}
 						<TagsPopover
 							value={tags}
-							suggestions={tagSuggestions}
+							kind="project"
 							onchange={(v) => (tags = v)}
 							onclose={() => (pop = null)}
 						/>

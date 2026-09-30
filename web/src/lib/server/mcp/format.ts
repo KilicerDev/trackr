@@ -6,7 +6,7 @@
 // by the caller before they reach here). Never dump raw HTML.
 
 import type { TicketMessageRow, TicketRow } from '$lib/server/tickets';
-import type { Task } from '$lib/types';
+import type { Task, TaskSummary } from '$lib/types';
 import { formatBytes, type AttachmentDTO } from '$lib/config/attachments';
 
 /** id → display name; built from `loadTicketDisplayUsers` rows. */
@@ -232,7 +232,7 @@ export function ticketDetailMd(input: {
 
 // ─── Tasks ──────────────────────────────────────────────────────────────────
 
-export function taskLine(t: Task, dir: UserDirectory): string {
+export function taskLine(t: TaskSummary, dir: UserDirectory): string {
 	const bits = [
 		`**${t.id}** ${truncate(t.title, 90)}`,
 		t.status,
@@ -259,7 +259,7 @@ export type TaskRowSummary = {
 	checklist: string;
 };
 
-export function taskSummary(t: Task, dir: UserDirectory): TaskRowSummary {
+export function taskSummary(t: TaskSummary, dir: UserDirectory): TaskRowSummary {
 	return {
 		key: t.id,
 		title: t.title,
@@ -271,7 +271,7 @@ export function taskSummary(t: Task, dir: UserDirectory): TaskRowSummary {
 		due: t.due,
 		tags: t.tags ?? t.labels ?? [],
 		updated: t.updated,
-		checklist: checklistSummary(t.checklist ?? [])
+		checklist: `${t.checklistDone}/${t.checklistTotal}`
 	};
 }
 

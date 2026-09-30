@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { and, asc, count, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, inArray, isNull, ne, or } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { user as userTable } from '$lib/server/db/auth.schema';
 import {
@@ -51,6 +51,11 @@ function userColor(id: string): string {
 	return `hsl(${h % 360} 55% 60%)`;
 }
 
+// This load re-runs on every client-side navigation (it depends on `url` for
+// the redirects below), so it is the fixed cost under every page. Everything
+// it reads depends only on `locals`, never on an earlier query, and is issued
+// as one parallel batch: a request pays one database round trip here, not one
+// per query.
 export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 	if (!locals.user) {
 		const next = url.pathname + url.search;
@@ -68,17 +73,9 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 		redirect(303, '/tickets/new');
 	}
 
+	const userId = locals.user.id;
 	const impersonatedBy = (locals.session as { impersonatedBy?: string | null } | undefined)
 		?.impersonatedBy;
-	let impersonator: { id: string; name: string | null; email: string } | null = null;
-	if (impersonatedBy) {
-		const [admin] = await db
-			.select({ id: userTable.id, name: userTable.name, email: userTable.email })
-			.from(userTable)
-			.where(eq(userTable.id, impersonatedBy))
-			.limit(1);
-		impersonator = admin ?? null;
-	}
 
 	// Lookup data exposed app-wide so components can resolve users + projects
 	// from $page.data without prop-drilling or mock imports.
@@ -91,50 +88,103 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 	// Project visibility — Trackr internal team members see everything;
 	// everyone else sees only projects they're explicitly a member of.
 	const access = accessibleProjectIds(locals);
-	let visibleUserIds: Set<string> | null = null;
-	if (!trackrTeamFlag) {
-		const myOrgIds = (locals.memberships?.orgs ?? []).map((m) => m.orgId);
-		const myProjectIds = (locals.memberships?.projects ?? []).map((m) => m.projectId);
-		const [orgMates, projectMates] = await Promise.all([
-			myOrgIds.length
-				? db
-						.select({ userId: organizationMember.userId })
-						.from(organizationMember)
-						.where(inArray(organizationMember.orgId, myOrgIds))
-				: Promise.resolve([] as { userId: string }[]),
-			myProjectIds.length
-				? db
-						.select({ userId: projectMember.userId })
-						.from(projectMember)
-						.where(inArray(projectMember.projectId, myProjectIds))
-				: Promise.resolve([] as { userId: string }[])
-		]);
-		visibleUserIds = new Set<string>([locals.user.id]);
-		for (const r of orgMates) visibleUserIds.add(r.userId);
-		for (const r of projectMates) visibleUserIds.add(r.userId);
-	}
+	const myOrgIds = (locals.memberships?.orgs ?? []).map((m) => m.orgId);
+	const myProjectIds = (locals.memberships?.projects ?? []).map((m) => m.projectId);
 
-	const userQuery = db
+	const projectAccessFilter = access.all
+		? undefined
+		: access.ids.size > 0
+			? inArray(projectTable.id, [...access.ids])
+			: // Empty access set — short-circuit by matching no rows.
+				eq(projectTable.id, '__none__');
+
+	const userColumns = {
+		id: userTable.id,
+		name: userTable.name,
+		email: userTable.email,
+		banned: userTable.banned
+	};
+	// Staff get the whole directory; everyone else only themselves plus the
+	// people they share an org or project with. The sharing is resolved with
+	// subqueries so this stays one statement instead of three.
+	const usersQuery = trackrTeamFlag
+		? db.select(userColumns).from(userTable)
+		: db
+				.select(userColumns)
+				.from(userTable)
+				.where(
+					or(
+						eq(userTable.id, userId),
+						...(myOrgIds.length
+							? [
+									inArray(
+										userTable.id,
+										db
+											.select({ id: organizationMember.userId })
+											.from(organizationMember)
+											.where(inArray(organizationMember.orgId, myOrgIds))
+									)
+								]
+							: []),
+						...(myProjectIds.length
+							? [
+									inArray(
+										userTable.id,
+										db
+											.select({ id: projectMember.userId })
+											.from(projectMember)
+											.where(inArray(projectMember.projectId, myProjectIds))
+									)
+								]
+							: [])
+					)
+				);
+
+	const projectColumns = {
+		id: projectTable.id,
+		key: projectTable.key,
+		name: projectTable.name,
+		color: projectTable.color,
+		icon: projectTable.icon
+	};
+
+	const orgsBase = db
 		.select({
-			id: userTable.id,
-			name: userTable.name,
-			email: userTable.email,
-			banned: userTable.banned
+			id: organization.id,
+			name: organization.name,
+			slug: organization.slug,
+			color: organization.color
 		})
-		.from(userTable)
+		.from(organization)
 		.$dynamic();
-	const userRows = trackrTeamFlag
-		? await userQuery
-		: visibleUserIds && visibleUserIds.size > 0
-			? await userQuery.where(inArray(userTable.id, [...visibleUserIds]))
-			: [];
 
-	// Mention scoping: tag each user with whether they're internal staff and
-	// which (viewer-accessible) projects they're an explicit member of, so the
-	// task/project mention dropdowns offer only people who can actually see the
-	// resource — mirroring projectMentionRecipients on the notify path. Org-only
-	// client users (no project access) stay mentionable in tickets only.
-	const [internalMemberRows, projectMemberRows] = await Promise.all([
+	const [
+		impersonatorRows,
+		userRows,
+		internalMemberRows,
+		projectMemberRows,
+		projects,
+		archivedProjects,
+		activeTasks,
+		favoriteRows,
+		orgs,
+		recentNotifications,
+		unreadAgg
+	] = await Promise.all([
+		impersonatedBy
+			? db
+					.select({ id: userTable.id, name: userTable.name, email: userTable.email })
+					.from(userTable)
+					.where(eq(userTable.id, impersonatedBy))
+					.limit(1)
+			: Promise.resolve([]),
+		usersQuery,
+		// Mention scoping: tag each user with whether they're internal staff and
+		// which (viewer-accessible) projects they're an explicit member of, so
+		// the task/project mention dropdowns offer only people who can actually
+		// see the resource — mirroring projectMentionRecipients on the notify
+		// path. Org-only client users (no project access) stay mentionable in
+		// tickets only.
 		db
 			.select({ userId: organizationMember.userId })
 			.from(organizationMember)
@@ -149,8 +199,89 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 						.select({ projectId: projectMember.projectId, userId: projectMember.userId })
 						.from(projectMember)
 						.where(inArray(projectMember.projectId, [...access.ids]))
-				: Promise.resolve([] as { projectId: string; userId: string }[])
+				: Promise.resolve([] as { projectId: string; userId: string }[]),
+		// Sorted by name so consumers (sidebar, board columns grouped by project,
+		// filter dropdowns) render in a stable order. Without an ORDER BY,
+		// Postgres returns heap-scan order, which shifts whenever a project row
+		// is updated — e.g. creating a task bumps `nextTaskNumber`, which moves
+		// that project to a different position on the next read.
+		db
+			.select({ ...projectColumns, status: projectTable.status })
+			.from(projectTable)
+			.where(
+				projectAccessFilter
+					? and(ne(projectTable.status, 'archived'), projectAccessFilter)
+					: ne(projectTable.status, 'archived')
+			)
+			.orderBy(asc(projectTable.name)),
+		// Archived projects exposed separately so historical tasks still resolve
+		// their icon/color without polluting the "active" list.
+		db
+			.select(projectColumns)
+			.from(projectTable)
+			.where(
+				projectAccessFilter
+					? and(eq(projectTable.status, 'archived'), projectAccessFilter)
+					: eq(projectTable.status, 'archived')
+			)
+			.orderBy(asc(projectTable.name)),
+		// Count tasks whose parent project is active AND the user can see it.
+		db
+			.select({ total: count() })
+			.from(taskTable)
+			.innerJoin(projectTable, eq(projectTable.id, taskTable.projectId))
+			.where(
+				projectAccessFilter
+					? and(
+							isNull(taskTable.archivedAt),
+							ne(projectTable.status, 'archived'),
+							projectAccessFilter
+						)
+					: and(isNull(taskTable.archivedAt), ne(projectTable.status, 'archived'))
+			),
+		// The current user's starred projects — drives the sidebar's Projects list.
+		db
+			.select({ projectId: projectFavoriteTable.projectId })
+			.from(projectFavoriteTable)
+			.where(eq(projectFavoriteTable.userId, userId)),
+		// Active orgs — surfaced app-wide so the global command palette can open
+		// the create-project modal without re-fetching from each page.
+		//
+		// Security: non-internal-staff users must only see orgs they belong to.
+		// Leaking the full org list lets a client see every other client we work
+		// with by name. Admin pages that need the full list query it directly.
+		trackrTeamFlag
+			? orgsBase.where(isNull(organization.archivedAt)).orderBy(organization.name)
+			: myOrgIds.length === 0
+				? Promise.resolve([])
+				: orgsBase
+						.where(and(isNull(organization.archivedAt), inArray(organization.id, myOrgIds)))
+						.orderBy(organization.name),
+		// Bell dropdown data. We surface only the 15 most recent rows; older
+		// items are reachable from the /me/notifications inbox page.
+		db
+			.select({
+				id: notificationTable.id,
+				kind: notificationTable.kind,
+				title: notificationTable.title,
+				body: notificationTable.body,
+				url: notificationTable.url,
+				actorId: notificationTable.actorId,
+				readAt: notificationTable.readAt,
+				createdAt: notificationTable.createdAt
+			})
+			.from(notificationTable)
+			.where(eq(notificationTable.recipientId, userId))
+			.orderBy(desc(notificationTable.createdAt))
+			.limit(15),
+		db
+			.select({ total: count() })
+			.from(notificationTable)
+			.where(and(eq(notificationTable.recipientId, userId), isNull(notificationTable.readAt)))
 	]);
+
+	const impersonator = impersonatorRows[0] ?? null;
+
 	const internalUserIds = new Set(internalMemberRows.map((r) => r.userId));
 	const projectIdsByUser = new Map<string, string[]>();
 	for (const r of projectMemberRows) {
@@ -174,134 +305,8 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 			projectIds: projectIdsByUser.get(u.id) ?? []
 		}));
 
-	const projectAccessFilter = access.all
-		? undefined
-		: access.ids.size > 0
-			? inArray(projectTable.id, [...access.ids])
-			: // Empty access set — short-circuit by matching no rows.
-				eq(projectTable.id, '__none__');
-
-	// Sorted by name so consumers (sidebar, board columns grouped by project,
-	// filter dropdowns) render in a stable order. Without an ORDER BY,
-	// Postgres returns heap-scan order, which shifts whenever a project row
-	// is updated — e.g. creating a task bumps `nextTaskNumber`, which moves
-	// that project to a different position on the next read.
-	const projects = await db
-		.select({
-			id: projectTable.id,
-			key: projectTable.key,
-			name: projectTable.name,
-			color: projectTable.color,
-			icon: projectTable.icon,
-			status: projectTable.status
-		})
-		.from(projectTable)
-		.where(
-			projectAccessFilter
-				? and(ne(projectTable.status, 'archived'), projectAccessFilter)
-				: ne(projectTable.status, 'archived')
-		)
-		.orderBy(asc(projectTable.name));
-
-	// Archived projects exposed separately so historical tasks still resolve
-	// their icon/color without polluting the "active" list.
-	const archivedProjects = await db
-		.select({
-			id: projectTable.id,
-			key: projectTable.key,
-			name: projectTable.name,
-			color: projectTable.color,
-			icon: projectTable.icon
-		})
-		.from(projectTable)
-		.where(
-			projectAccessFilter
-				? and(eq(projectTable.status, 'archived'), projectAccessFilter)
-				: eq(projectTable.status, 'archived')
-		)
-		.orderBy(asc(projectTable.name));
-
-	// Count tasks whose parent project is active AND the user can see it.
-	const [activeTasks] = await db
-		.select({ total: count() })
-		.from(taskTable)
-		.innerJoin(projectTable, eq(projectTable.id, taskTable.projectId))
-		.where(
-			projectAccessFilter
-				? and(
-						isNull(taskTable.archivedAt),
-						ne(projectTable.status, 'archived'),
-						projectAccessFilter
-					)
-				: and(isNull(taskTable.archivedAt), ne(projectTable.status, 'archived'))
-		);
-	const taskCount = Number(activeTasks?.total ?? 0);
-
-	// Every tag in use on visible live tasks — app-wide suggestions for the
-	// task tag pickers. Sourced here (not from a page's task list) so the
-	// pickers offer existing tags regardless of which page the modal opens
-	// from and of any list filters.
-	const tagRows = await db
-		.select({ tags: taskTable.tags })
-		.from(taskTable)
-		.innerJoin(projectTable, eq(projectTable.id, taskTable.projectId))
-		.where(
-			and(
-				isNull(taskTable.deletedAt),
-				isNull(taskTable.archivedAt),
-				ne(projectTable.status, 'archived'),
-				sql`cardinality(${taskTable.tags}) > 0`,
-				...(projectAccessFilter ? [projectAccessFilter] : [])
-			)
-		);
-	const taskTags = [...new Set(tagRows.flatMap((r) => r.tags))].sort((a, b) =>
-		a.localeCompare(b, undefined, { sensitivity: 'base' })
-	);
-
-	// Same for project tags — suggestions for the create/edit project modals.
-	const projectTagRows = await db
-		.select({ tags: projectTable.tags })
-		.from(projectTable)
-		.where(
-			and(
-				sql`cardinality(${projectTable.tags}) > 0`,
-				...(projectAccessFilter ? [projectAccessFilter] : [])
-			)
-		);
-	const projectTags = [...new Set(projectTagRows.flatMap((r) => r.tags))].sort((a, b) =>
-		a.localeCompare(b, undefined, { sensitivity: 'base' })
-	);
-
-	// The current user's starred projects — drives the sidebar's Projects list.
-	const favoriteRows = await db
-		.select({ projectId: projectFavoriteTable.projectId })
-		.from(projectFavoriteTable)
-		.where(eq(projectFavoriteTable.userId, locals.user.id));
+	const taskCount = Number(activeTasks[0]?.total ?? 0);
 	const favoriteProjectIds = favoriteRows.map((r) => r.projectId);
-
-	// Active orgs — surfaced app-wide so the global command palette can open
-	// the create-project modal without re-fetching from each page.
-	//
-	// Security: non-internal-staff users must only see orgs they belong to.
-	// Leaking the full org list lets a client see every other client we work
-	// with by name. Admin pages that need the full list query it directly.
-	const myOrgIds = (locals.memberships?.orgs ?? []).map((m) => m.orgId);
-	const orgsBase = db
-		.select({
-			id: organization.id,
-			name: organization.name,
-			slug: organization.slug,
-			color: organization.color
-		})
-		.from(organization)
-		.$dynamic();
-	const orgs = trackrTeamFlag
-		? await orgsBase.where(isNull(organization.archivedAt)).orderBy(organization.name)
-		: myOrgIds.length === 0
-			? []
-			: await orgsBase
-					.where(and(isNull(organization.archivedAt), inArray(organization.id, myOrgIds)))
-					.orderBy(organization.name);
 
 	const memberRoles = {
 		orgs: Object.fromEntries((locals.memberships?.orgs ?? []).map((m) => [m.orgId, m.role])),
@@ -310,7 +315,7 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 		)
 	};
 
-	const preferences = locals.preferences ?? (await getPreferences(locals.user.id));
+	const preferences = locals.preferences ?? (await getPreferences(userId));
 
 	// ── Portal context ─────────────────────────────────────────────────────────
 	// For external ticket-only users: resolve the active org (persisted in
@@ -332,9 +337,9 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 		const seeAll = await can(locals, 'org.tickets.read.any', { orgId: activeOrgId });
 		const scope = seeAll
 			? { orgIds: [activeOrgId] }
-			: { orgIds: [activeOrgId], ownerUserId: locals.user.id };
+			: { orgIds: [activeOrgId], ownerUserId: userId };
 		const [pinned, recents] = await Promise.all([
-			loadTickets({ ...scope, pinnedByUserId: locals.user.id }),
+			loadTickets({ ...scope, pinnedByUserId: userId }),
 			loadTickets({ ...scope, limit: 20 })
 		]);
 		pinnedTickets = pinned;
@@ -342,31 +347,6 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 		recentTickets = recents.filter((t) => !pinnedSet.has(t.id)).slice(0, 15);
 	}
 
-	// Bell dropdown data. We surface only the 15 most recent rows; older
-	// items are reachable from the /me/notifications inbox page.
-	const [recentNotifications, unreadAgg] = await Promise.all([
-		db
-			.select({
-				id: notificationTable.id,
-				kind: notificationTable.kind,
-				title: notificationTable.title,
-				body: notificationTable.body,
-				url: notificationTable.url,
-				actorId: notificationTable.actorId,
-				readAt: notificationTable.readAt,
-				createdAt: notificationTable.createdAt
-			})
-			.from(notificationTable)
-			.where(eq(notificationTable.recipientId, locals.user.id))
-			.orderBy(desc(notificationTable.createdAt))
-			.limit(15),
-		db
-			.select({ total: count() })
-			.from(notificationTable)
-			.where(
-				and(eq(notificationTable.recipientId, locals.user.id), isNull(notificationTable.readAt))
-			)
-	]);
 	const notifications = {
 		items: recentNotifications.map((n) => ({
 			id: n.id,
@@ -389,9 +369,7 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
 		archivedProjects,
 		favoriteProjectIds,
 		taskCount,
-		taskTags,
-		projectTags,
-		currentUserId: locals.user.id,
+		currentUserId: userId,
 		orgs,
 		isAdmin: !!locals.isAdmin,
 		isSuperadmin: isSuperadmin((locals.user as { role?: string | null }).role),

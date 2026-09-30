@@ -149,7 +149,7 @@
 			if (!res.ok) throw new Error(m.tickets_update_failed());
 			// Multi-select pickers (assignees) stay open across toggles.
 			if (!opts.keepOpen) pop = null;
-			await invalidateAll();
+			await invalidate('app:tickets');
 		} catch (err) {
 			showToast('err', err instanceof Error ? err.message : m.tickets_update_failed());
 		} finally {
@@ -172,10 +172,10 @@
 		try {
 			const res = await fetch('/tickets?/checklist', { method: 'POST', body: fd });
 			if (!res.ok) throw new Error(m.tickets_update_failed());
-			await invalidateAll();
+			await invalidate('app:tickets');
 		} catch (err) {
 			showToast('err', err instanceof Error ? err.message : m.tickets_update_failed());
-			await invalidateAll(); // revert to server truth
+			await invalidate('app:tickets'); // revert to server truth
 		}
 	}
 
@@ -214,7 +214,7 @@
 			body = '';
 			internal = false;
 			commentFiles = [];
-			await invalidateAll();
+			await invalidate('app:tickets');
 		} catch (err) {
 			showToast('err', err instanceof Error ? err.message : m.tickets_send_failed());
 		} finally {

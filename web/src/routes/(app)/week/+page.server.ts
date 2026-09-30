@@ -1,7 +1,10 @@
 import { redirect, type ServerLoad } from '@sveltejs/kit';
-import { loadTasks } from '$lib/server/tasks';
+import { loadTaskSummaries } from '$lib/server/tasks';
 import { accessibleProjectIds } from '$lib/server/permissions';
 import { getPreferences } from '$lib/server/preferences';
+
+// Rows shown in the unscheduled "others" tab (the page slices to the same).
+const UNSCHEDULED_LIMIT = 16;
 
 function isoDate(d: Date): string {
 	return d.toISOString().slice(0, 10);
@@ -16,17 +19,26 @@ function startOfWeek(d: Date): Date {
 	return out;
 }
 
-export const load: ServerLoad = async ({ locals, url }) => {
+export const load: ServerLoad = async ({ locals, url, depends }) => {
 	if (!locals.user) throw redirect(303, '/sign-in');
+	// Task mutations call `invalidate('app:tasks')` to refresh just this list.
+	depends('app:tasks');
 
 	const access = accessibleProjectIds(locals);
-	const [tasks, preferences] = await Promise.all([
-		loadTasks({
-			plannerUserId: locals.user.id,
-			projectIds: access.all ? undefined : [...access.ids]
-		}),
-		getPreferences(locals.user.id)
+	const scope = {
+		plannerUserId: locals.user.id,
+		projectIds: access.all ? undefined : [...access.ids]
+	};
+	// The week needs two sets, not the whole corpus: everything in my plan
+	// (dated for any week, or undated), which feeds the day columns and the
+	// "past" and "mine" tabs; and the newest open tasks nobody planned into my
+	// week yet, for the "others" tab, capped the way the page caps that tab.
+	const [inPlan, unplanned, preferences] = await Promise.all([
+		loadTaskSummaries({ ...scope, inMyPlanOnly: true }),
+		loadTaskSummaries({ ...scope, unplannedOpenOnly: true, limit: UNSCHEDULED_LIMIT }),
+		locals.preferences ?? getPreferences(locals.user.id)
 	]);
+	const tasks = [...inPlan, ...unplanned];
 
 	const savedView = (preferences.viewState?.week ?? {}) as Record<string, unknown>;
 	const savedWeekStart =

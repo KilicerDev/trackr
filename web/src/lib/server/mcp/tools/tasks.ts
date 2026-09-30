@@ -14,7 +14,8 @@ import {
 	applyTaskUpdate,
 	createTaskWithEffects,
 	deleteTaskFully,
-	loadTasks,
+	loadTaskDetail as loadTaskDetailRow,
+	loadTaskSummaries,
 	logTaskTime,
 	resolveProjectByKey,
 	resolveTaskByDisplayId,
@@ -27,7 +28,7 @@ import { project } from '$lib/server/db/app.schema';
 import { inArray } from 'drizzle-orm';
 import { attachFromUrl } from '$lib/server/attachments-fetch'; // W2
 import { normalizeTag } from '$lib/utils/label-meta';
-import type { Task } from '$lib/types';
+import type { Task, TaskSummary } from '$lib/types';
 import { describeCandidates, normalizeDisplayId, normalizeKey, resolveUserRefs } from '../ids';
 import {
 	type UserDirectory,
@@ -112,8 +113,7 @@ export type TaskDetail = { task: Task; users: UserDirectory; markdown: string };
 /** Full task view (detail tool + resource): fields, checklist, files, comments, time. */
 export async function loadTaskDetail(ctx: McpContext, key: string): Promise<TaskDetail> {
 	const ref = await loadVisibleTaskRef(ctx, key);
-	const tasks = await loadTasks({ projectId: ref.projectId, plannerUserId: ctx.locals.user.id });
-	const task = tasks.find((t) => t.uuid === ref.id);
+	const task = await loadTaskDetailRow(ref.id, { plannerUserId: ctx.locals.user.id });
 	if (!task) fail(404, `Task ${ref.display} not found.`);
 	const users = await userDirectory([
 		task.createdBy,
@@ -230,13 +230,13 @@ export function registerTaskTools(server: McpServer, ctx: McpContext): void {
 		},
 		guarded(async ({ scope, projectKey, status, priority, type, assignee, limit }) => {
 			const uid = ctx.locals.user.id;
-			let rows: Task[];
+			let rows: TaskSummary[];
 			if (projectKey) {
 				const project = await loadAccessibleProject(ctx, projectKey);
-				rows = await loadTasks({ projectId: project.id, plannerUserId: uid });
+				rows = await loadTaskSummaries({ projectId: project.id, plannerUserId: uid });
 			} else {
 				const access = accessibleProjectIds(ctx.locals);
-				rows = await loadTasks(
+				rows = await loadTaskSummaries(
 					access.all ? { plannerUserId: uid } : { projectIds: [...access.ids], plannerUserId: uid }
 				);
 			}

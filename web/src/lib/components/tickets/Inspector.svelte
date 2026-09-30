@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { invalidate, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { autosize } from '$lib/actions/autosize';
 	import { showToast } from '$lib/stores/toast.svelte';
@@ -76,7 +76,7 @@
 
 	// Reset transient UI when the selected ticket changes. Close the open popover
 	// only on an actual ticket switch — NOT on same-ticket data reloads (an
-	// assignee toggle calls invalidateAll, and closing then would prevent adding
+	// assignee toggle refreshes the page data, and closing then would prevent adding
 	// several assignees in a row).
 	let lastTicketId: string | undefined;
 	$effect(() => {
@@ -116,10 +116,10 @@
 		try {
 			const res = await fetch('/tickets?/checklist', { method: 'POST', body: fd });
 			if (!res.ok) throw new Error(m.tickets_update_failed());
-			await invalidateAll();
+			await invalidate('app:tickets');
 		} catch (err) {
 			showToast('err', err instanceof Error ? err.message : m.tickets_update_failed());
-			await invalidateAll();
+			await invalidate('app:tickets');
 		}
 	}
 
@@ -145,7 +145,7 @@
 			if (!res.ok) throw new Error(m.tickets_update_failed());
 			// Multi-select pickers (assignees) stay open across toggles.
 			if (!opts.keepOpen) pop = null;
-			await invalidateAll();
+			await invalidate('app:tickets');
 		} catch (err) {
 			showToast('err', err instanceof Error ? err.message : m.tickets_update_failed());
 		} finally {

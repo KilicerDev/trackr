@@ -1,14 +1,20 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import type { Snippet } from 'svelte';
-	import type { Task } from '$lib/types';
+	import type { TaskSummary } from '$lib/types';
 	import BoardCard from '$lib/components/tasks/BoardCard.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
 	import { taskTimeMinutes } from '$lib/utils/task';
 	import { m } from '$lib/paraglide/messages';
 
-	type Day = { iso: string; label: string; dayOfMonth: number; tasks: Task[]; minutes: number };
+	type Day = {
+		iso: string;
+		label: string;
+		dayOfMonth: number;
+		tasks: TaskSummary[];
+		minutes: number;
+	};
 	let {
 		days,
 		todayIso,
@@ -21,9 +27,9 @@
 		days: Day[];
 		todayIso: string;
 		showDone: boolean;
-		unscheduled: Task[];
+		unscheduled: TaskSummary[];
 		unscheduledTabs: Snippet;
-		onselect: (task: Task) => void;
+		onselect: (task: TaskSummary) => void;
 		onadd: (iso: string) => void;
 	} = $props();
 
@@ -55,7 +61,7 @@
 	});
 </script>
 
-{#snippet card(task: Task, planned: boolean)}
+{#snippet card(task: TaskSummary, planned: boolean)}
 	{@const project = resolveProject(task.project)}
 	<div>
 		<div class="mb-1.5 flex min-w-0 items-center gap-1.5 px-1 text-[12px] text-text-3">
