@@ -1,5 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/Hinkolas/skali/v0.1.0-rc.4/schemas/skali.schema.json
-skali: v0.1.0-rc.4
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Hinkolas/skali/main/schemas/skali.schema.json
 name: trackr
 description: Trackr — agency work tracker (SvelteKit web app, Go job worker, Go scheduler)
 
@@ -294,13 +293,3 @@ buckets:
     visibility: private
     quotas:
       storage: 50GB
-
-# Inactive declaration: scheduling and retention are not enforced yet; create
-# backups manually with `skali backup create`.
-backups:
-  daily:
-    schedule: "0 3 * * *"
-    retention: 14d
-    include:
-      databases: all
-      buckets: all
