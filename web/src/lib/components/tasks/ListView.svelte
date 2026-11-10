@@ -7,7 +7,7 @@
 	import { page } from '$app/state';
 	import TaskRow from './TaskRow.svelte';
 	import Icon from '../Icon.svelte';
-	import IconButton from '../IconButton.svelte';
+	import { ICON_ACTION } from './panel/styles';
 	import { readCollapsed, saveCollapsed } from '$lib/stores/view';
 	import { whenVisible } from '$lib/actions/whenVisible';
 	import { slide } from 'svelte/transition';
@@ -160,8 +160,10 @@
 		<div>
 			{#if g.label}
 				{@const href = group === 'project' ? projectHref(g.id) : undefined}
+				<!-- Group band: sticky, medium weight, muted count; the project +
+				     shows on hover. -->
 				<div
-					class="sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-y border-border bg-surface pr-3 pl-5"
+					class="group/band sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-b border-border bg-bg-elev pr-3 pl-5"
 				>
 					<button
 						type="button"
@@ -177,13 +179,13 @@
 					{#if href}
 						<a
 							{href}
-							class="truncate text-[14px] font-semibold text-text hover:underline"
+							class="truncate text-[14px] font-medium text-text hover:underline"
 							title={m.tasks_open_project({ name: g.label })}
 						>
 							{g.label}
 						</a>
 					{:else}
-						<span class="truncate text-[14px] font-semibold text-text">{g.label}</span>
+						<span class="truncate text-[14px] font-medium text-text">{g.label}</span>
 					{/if}
 					<button
 						type="button"
@@ -191,16 +193,18 @@
 						aria-label={g.label}
 						class="flex h-full min-w-0 flex-1 items-center gap-2.5 text-left"
 					>
-						<span class="font-mono text-[12px] text-text-3">{g.tasks.length}</span>
+						<span class="font-mono text-[12px] text-text-4">{g.tasks.length}</span>
 					</button>
 					{#if group === 'project'}
-						<IconButton
-							size={26}
-							ariaLabel={m.tasks_add_task()}
+						<button
+							type="button"
+							aria-label={m.tasks_add_task()}
+							title={m.tasks_add_task()}
 							onclick={() => onAddInProject?.(g.id as ProjectId)}
+							class="{ICON_ACTION} opacity-0 group-hover/band:opacity-100 focus-visible:opacity-100"
 						>
 							<Icon name="plus" size={14} />
-						</IconButton>
+						</button>
 					{/if}
 				</div>
 			{/if}

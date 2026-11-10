@@ -3,15 +3,14 @@
 	import { isClosedStatus } from '$lib/utils/task';
 	import StatusDot from '../StatusDot.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
-	import LabelChip from '../LabelChip.svelte';
-	import TypeBadge from '../TypeBadge.svelte';
 	import AvatarStack from '../AvatarStack.svelte';
 	import Icon from '../Icon.svelte';
-	import { TRACKR_PRIORITIES } from '$lib/config/taxonomy';
+	import { TRACKR_PRIORITIES, TRACKR_TYPES } from '$lib/config/taxonomy';
+	import { labelMeta } from '$lib/utils/label-meta';
 	import { formatDateShort, formatEstimate, dueCountdown } from '$lib/utils/format';
 	import { loggedMinutes } from '$lib/utils/task';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
-	import { priorityLabel, statusLabel } from '$lib/utils/labels';
+	import { priorityLabel, statusLabel, typeLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
@@ -44,6 +43,12 @@
 	}: Props = $props();
 
 	let prio = $derived(TRACKR_PRIORITIES.find((p) => p.id === task.priority)!);
+	let type = $derived(TRACKR_TYPES.find((t) => t.id === (task.type ?? 'task')) ?? TRACKR_TYPES[0]);
+	// Tags stay quiet (dot + text) and at most two show; the rest is "+N".
+	const MAX_TAGS = 2;
+	let shownTags = $derived(task.labels.slice(0, MAX_TAGS).map((l) => labelMeta(l)));
+	let moreTags = $derived(Math.max(0, task.labels.length - MAX_TAGS));
+	let working = $derived(task.status === 'in_progress' || task.status === 'in_review');
 	// Every assignee, not just the primary one — matches the ticket row and
 	// the board card. Legacy rows without an `assignees` array fall back to
 	// the single `assignee`.
@@ -75,7 +80,7 @@
 <button
 	type="button"
 	{onclick}
-	class="grid w-full grid-cols-[30px_minmax(0,1fr)_auto_60px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors md:grid-cols-[30px_88px_minmax(0,1fr)_110px_88px_88px_60px]
+	class="grid w-full grid-cols-[30px_minmax(0,1fr)_auto_60px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors md:grid-cols-[30px_92px_minmax(0,1fr)_24px_92px_64px_60px]
 	{selected ? 'bg-[var(--row-active)]' : 'hover:bg-[var(--row-hover)]'}"
 	style:height="var(--row-h)"
 >
@@ -92,22 +97,28 @@
 	{:else}
 		<StatusDot status={task.status} />
 	{/if}
-	<span class="hidden truncate font-mono text-[13px] text-text-3 md:block">{task.id}</span>
+	<span class="hidden truncate font-mono text-[12px] text-text-4 md:block">{task.id}</span>
 	<span class="flex min-w-0 items-center gap-2">
-		<span class="shrink-0"><TypeBadge type={task.type ?? 'task'} showLabel={false} /></span>
+		<!-- Type as a plain icon, coloured only for bugs. -->
+		<span
+			class="shrink-0 text-text-4"
+			style:color={type.id === 'bug' ? type.color : undefined}
+			title={typeLabel(task.type ?? 'task')}
+		>
+			<Icon name={type.icon} size={13} stroke={2} />
+		</span>
 		<span class="truncate text-[14px] text-text">{task.title}</span>
 		{#if showPlanned && (task.plannedFor || task.inMyPlan)}
 			<span
-				class="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-accent-soft px-2 py-0.5 text-[12px] text-accent"
+				class="inline-flex shrink-0 items-center gap-1 text-[12px] text-accent"
 				title={task.plannedFor
 					? m.tasks_planned_for({ date: formatDateShort(task.plannedFor) })
 					: m.tasks_in_your_week_no_date()}
 			>
+				<Icon name="bookmark" size={12} />
 				{#if task.plannedFor}
-					<Icon name="calendar" size={13} />
 					<span class="font-mono">{formatDateShort(task.plannedFor)}</span>
 				{:else}
-					<Icon name="bookmark" size={13} />
 					<span>{m.tasks_this_week()}</span>
 				{/if}
 			</span>
@@ -123,12 +134,22 @@
 				<span>{dayNote.label}</span>
 			</span>
 		{/if}
-		<span class="hidden md:contents">
-			{#each task.labels as l (l)}
-				<LabelChip id={l} />
-			{/each}
-		</span>
-		{#if task.checklistTotal > 0}
+		{#if shownTags.length}
+			<span class="hidden shrink-0 items-center gap-2.5 text-[12px] text-text-3 md:inline-flex">
+				{#each shownTags as t (t.label)}
+					<span class="inline-flex items-center gap-1">
+						<span class="h-1.5 w-1.5 rounded-full" style:background={t.color}></span>
+						{t.label}
+					</span>
+				{/each}
+				{#if moreTags > 0}
+					<span class="font-mono text-text-4" title={task.labels.slice(MAX_TAGS).join(', ')}
+						>+{moreTags}</span
+					>
+				{/if}
+			</span>
+		{/if}
+		{#if working && task.checklistTotal > 0}
 			<span
 				class="inline-flex items-center gap-1 text-[12px] {task.checklistDone ===
 				task.checklistTotal
@@ -141,21 +162,17 @@
 			</span>
 		{/if}
 	</span>
-	<span class="hidden items-center gap-2 text-[14px] text-text-3 md:flex">
-		{#if task.priority !== 'none'}
-			<PriorityBars priority={task.priority} />
-			<span>{priorityLabel(prio.id)}</span>
-		{:else}
-			<span class="text-text-4">—</span>
-		{/if}
+	<!-- Priority as bars only (label in the tooltip); empty for none. -->
+	<span class="hidden items-center md:flex" title={priorityLabel(prio.id)}>
+		{#if task.priority !== 'none'}<PriorityBars priority={task.priority} />{/if}
 	</span>
+	<!-- Due: the countdown when near or past, otherwise a muted date; empty
+	     when there is none. -->
 	<span class="text-[13px]">
-		{#if !task.due}
-			<span class="font-mono text-text-3">—</span>
-		{:else if due && due.label}
+		{#if task.due && due && due.label}
 			<span class={DUE_TONE[due.tone]} title={formatDateShort(task.due)}>{due.label}</span>
-		{:else}
-			<span class="font-mono text-text-3">{formatDateShort(task.due)}</span>
+		{:else if task.due}
+			<span class="font-mono text-[12px] text-text-4">{formatDateShort(task.due)}</span>
 		{/if}
 	</span>
 	{#if showTime}
@@ -170,15 +187,15 @@
 			{timeMinutes ? formatEstimate(timeMinutes) : '—'}
 		</span>
 	{:else}
-		<span class="hidden font-mono text-[13px] text-text-3 md:block">
+		<span class="hidden font-mono text-[12px] text-text-4 md:block" title={m.tasks_updated()}>
 			{formatDateShort(task.updated)}
 		</span>
 	{/if}
 	<span class="flex justify-end">
 		{#if assigneeCount > 0}
-			<AvatarStack users={assignees} size={24} max={avatarMax} overlap={6} />
+			<AvatarStack users={assignees} size={22} max={avatarMax} overlap={6} />
 		{:else}
-			<span class="h-6 w-6 rounded-full border border-dashed border-border-strong"></span>
+			<span class="h-[22px] w-[22px] rounded-full border border-dashed border-border-strong"></span>
 		{/if}
 	</span>
 </button>
