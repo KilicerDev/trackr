@@ -3,6 +3,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import Icon from '../Icon.svelte';
+	import MobileMenuButton from '../shell/MobileMenuButton.svelte';
 	import Popover from '../Popover.svelte';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
@@ -310,6 +311,7 @@
 >
 	<!-- Search + create (the page header already names the wiki). -->
 	<div class="flex items-stretch gap-1.5 px-3 pt-3 pb-2">
+		<MobileMenuButton class="self-center" />
 		<div
 			class="wiki-search flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2.5 py-[6px] text-[14px]"
 		>

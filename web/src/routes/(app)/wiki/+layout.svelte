@@ -1,9 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import WikiTree from '$lib/components/wiki/WikiTree.svelte';
 	import CreateWikiModal from '$lib/components/wiki/CreateWikiModal.svelte';
-	import { m } from '$lib/paraglide/messages';
 
 	let { children } = $props();
 
@@ -20,11 +18,10 @@
 	}
 </script>
 
-<Topbar crumbs={[{ label: m.wiki_breadcrumb_root(), href: isIndex ? undefined : '/wiki' }]} />
-
 <!--
 	Below md there is no room for both panes: the index route shows only the
-	tree, a page only the document (the crumb leads back to the tree).
+	tree, a page only the document (its header crumb leads back to the tree). No
+	page header here: the document header carries the path.
 -->
 <div class="flex min-h-0 flex-1 overflow-hidden">
 	<div class="contents {isIndex ? '' : 'max-md:hidden'}">

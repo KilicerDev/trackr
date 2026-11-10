@@ -1,4 +1,5 @@
 <script lang="ts">
+	import MobileMenuButton from '$lib/components/shell/MobileMenuButton.svelte';
 	import { pageTitle } from '$lib/brand';
 	import { invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
@@ -59,6 +60,17 @@
 <svelte:head><title>{pageTitle(m.notes_templates_title())}</title></svelte:head>
 
 <div class="mx-auto max-w-[704px] px-8 py-10">
+	<!-- Mobile: menu and the way back to the notes list. -->
+	<div class="mb-4 flex items-center gap-2 md:hidden">
+		<MobileMenuButton />
+		<a
+			href="/notes"
+			class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2 text-[13px] text-text-2"
+		>
+			<Icon name="arrow-left" size={14} />
+			{m.shell_nav_notes()}
+		</a>
+	</div>
 	<h1 class="mb-1 text-[20px] font-semibold text-text">{m.notes_templates_title()}</h1>
 	<p class="mb-6 text-[14px] text-text-3">{m.notes_templates_hint()}</p>
 

@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { setContext } from 'svelte';
-	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import NotesSidebar from '$lib/components/notes/NotesSidebar.svelte';
 	import NewMeetingDialog from '$lib/components/notes/NewMeetingDialog.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -35,13 +34,13 @@
 		}
 		return [...base, ...chain];
 	});
+	// No page header: the note's own header shows this path.
+	setContext('notes:crumbs', () => crumbs);
 </script>
-
-<Topbar {crumbs} />
 
 <!--
 	Below md there is no room for both panes: the index route shows only the
-	list, every other route only the document (the crumb leads back to the list).
+	list, every other route only the document (its header leads back to the list).
 -->
 <div class="flex min-h-0 flex-1 overflow-hidden">
 	<div class="contents {isIndex ? '' : 'max-md:hidden'}">

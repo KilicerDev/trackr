@@ -12,6 +12,7 @@
 	import { cubicOut } from 'svelte/easing';
 	import { SvelteSet } from 'svelte/reactivity';
 	import Icon from '$lib/components/Icon.svelte';
+	import MobileMenuButton from '$lib/components/shell/MobileMenuButton.svelte';
 	import Popover from '$lib/components/Popover.svelte';
 	import { confirm } from '$lib/components/confirm.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
@@ -546,6 +547,7 @@
 >
 	<!-- Search + create (the page header already names the notebook). -->
 	<div class="flex items-stretch gap-1.5 px-3 pt-3 pb-1">
+		<MobileMenuButton class="self-center" />
 		<div
 			class="search flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2.5 py-[6px] text-[14px]"
 		>

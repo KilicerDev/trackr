@@ -8,6 +8,7 @@
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
 	import DocOutline from '$lib/components/wiki/DocOutline.svelte';
+	import MobileMenuButton from '$lib/components/shell/MobileMenuButton.svelte';
 	import SyncStatus from '$lib/components/SyncStatus.svelte';
 	import { autosize } from '$lib/actions/autosize';
 	import IconButton from '$lib/components/IconButton.svelte';
@@ -259,6 +260,7 @@
 	<header
 		class="sticky top-0 z-20 flex h-[57px] items-center gap-3 border-b border-border/70 bg-bg/80 px-8 backdrop-blur-md"
 	>
+		<MobileMenuButton />
 		<nav class="flex min-w-0 items-center gap-1.5 text-[14px]">
 			<a href="/wiki" class="text-text-3 transition-colors hover:text-text"
 				>{m.wiki_breadcrumb_root()}</a

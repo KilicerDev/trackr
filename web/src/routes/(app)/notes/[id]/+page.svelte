@@ -8,6 +8,8 @@
 	import type { ActionResult } from '@sveltejs/kit';
 	import Icon from '$lib/components/Icon.svelte';
 	import DocOutline from '$lib/components/wiki/DocOutline.svelte';
+	import MobileMenuButton from '$lib/components/shell/MobileMenuButton.svelte';
+	import { getContext } from 'svelte';
 	import SyncStatus from '$lib/components/SyncStatus.svelte';
 	import { autosize } from '$lib/actions/autosize';
 	import IconButton from '$lib/components/IconButton.svelte';
@@ -82,6 +84,9 @@
 		currentUserId?: string;
 	};
 	const layout = $derived(page.data as LayoutData);
+	const crumbs =
+		getContext<(() => { label: string; href?: string }[]) | undefined>('notes:crumbs') ??
+		(() => []);
 
 	let editorWrap = $state<HTMLDivElement>();
 	let convertOpen = $state(false);
@@ -348,6 +353,33 @@
 	<header
 		class="sticky top-0 z-20 flex h-[57px] items-center gap-3 border-b border-border/70 bg-bg/80 px-8 backdrop-blur-md"
 	>
+		<MobileMenuButton />
+		<!-- Mobile: the list is hidden while a note is open; this leads back. -->
+		<a
+			href="/notes"
+			aria-label={m.shell_nav_notes()}
+			title={m.shell_nav_notes()}
+			class="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-border bg-surface text-text-2 transition-colors hover:text-text md:hidden"
+		>
+			<Icon name="arrow-left" size={15} />
+		</a>
+		{#if note.kind !== 'meeting'}
+			<!-- Where the note sits: Notes / parent / … / this note. -->
+			<nav class="flex min-w-0 items-center gap-1.5 text-[14px] max-md:hidden">
+				{#each crumbs() as c, i (`${i}:${c.label}`)}
+					{#if i > 0}<span class="text-text-4 select-none">/</span>{/if}
+					{#if c.href}
+						<a
+							href={c.href}
+							class="max-w-[176px] shrink-0 truncate text-text-3 transition-colors hover:text-text"
+							>{c.label}</a
+						>
+					{:else}
+						<span class="max-w-[264px] truncate font-medium text-text-2">{c.label}</span>
+					{/if}
+				{/each}
+			</nav>
+		{/if}
 		{#if note.kind === 'meeting'}
 			{#if project}
 				<a
