@@ -83,6 +83,7 @@ struct TKSectionLabel: View {
 struct TKPageHeader<Trailing: View>: View {
     let title: String
     @ViewBuilder var trailing: Trailing
+    @Environment(\.tkRailInset) private var railInset
 
     init(_ title: String, @ViewBuilder trailing: () -> Trailing) {
         self.title = title
@@ -99,6 +100,7 @@ struct TKPageHeader<Trailing: View>: View {
             trailing
         }
         .padding(.horizontal, TK.gutter)
+        .padding(.trailing, railInset)
         .padding(.top, 8)
         .padding(.bottom, 4)
     }

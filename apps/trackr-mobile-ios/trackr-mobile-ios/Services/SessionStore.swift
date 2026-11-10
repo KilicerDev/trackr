@@ -5,13 +5,19 @@
 //  Persists the running work session so it survives the process: iOS may
 //  kill the app in the background while the Live Activity keeps counting,
 //  and the next launch must pick the session back up — not start over.
+//  One slot per workspace: switching servers parks the timer and picks it
+//  back up on return.
 //
 
 import Foundation
 import SwiftUI
 
-enum SessionStore {
-    private static let key = "trackr.workSession"
+struct SessionStore {
+    private let key: String
+
+    init(host: URL) {
+        key = AccountStore.scoped(AccountStore.workSessionKey, host: host)
+    }
 
     /// Storable shape — `Color`/`UserRef` aren't Codable, so the project is
     /// kept as name + hex and notes as text + date (the author is always
@@ -33,7 +39,7 @@ enum SessionStore {
         }
     }
 
-    static func save(_ session: WorkSession) {
+    func save(_ session: WorkSession) {
         guard let project = session.project, let startedAt = session.startedAt else {
             UserDefaults.standard.removeObject(forKey: key)
             return
@@ -53,7 +59,7 @@ enum SessionStore {
         }
     }
 
-    static func restore(author: UserRef) -> WorkSession? {
+    func restore(author: UserRef) -> WorkSession? {
         guard let data = UserDefaults.standard.data(forKey: key),
               let snapshot = try? JSONDecoder().decode(Snapshot.self, from: data)
         else { return nil }

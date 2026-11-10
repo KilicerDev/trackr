@@ -12,6 +12,9 @@ import SwiftUI
 
 struct TKTopBar: View {
     @Bindable var model: AppModel
+    /// With a system vertical bar (iPhone Duo) the custom tab bar — and its
+    /// raised "+" — is gone, so Create lives up here next to the bell.
+    @Environment(DeviceChrome.self) private var chrome: DeviceChrome?
 
     static let height: CGFloat = 56
 
@@ -39,6 +42,24 @@ struct TKTopBar: View {
             .buttonStyle(TKScaleStyle())
 
             Spacer(minLength: 8)
+
+            if chrome?.hasRail == true {
+                Button {
+                    model.presentCreate()
+                } label: {
+                    // Same chrome as the bell: 40 pt card tile with hairline,
+                    // only the glyph carries the accent.
+                    Image(systemName: "plus")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(TK.accent)
+                        .frame(width: 40, height: 40)
+                        .background(TK.card, in: .rect(cornerRadius: TK.rToolbar))
+                        .overlay(RoundedRectangle(cornerRadius: TK.rToolbar).strokeBorder(TK.border, lineWidth: 1))
+                        .contentShape(.rect)
+                }
+                .buttonStyle(TKScaleStyle())
+                .accessibilityLabel("Create")
+            }
 
             Button {
                 model.go(.inbox)

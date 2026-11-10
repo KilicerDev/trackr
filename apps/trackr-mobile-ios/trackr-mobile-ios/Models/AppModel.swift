@@ -35,9 +35,11 @@ enum AppTab: Hashable, CaseIterable {
 
     var systemImage: String {
         switch self {
-        case .week: "calendar"
-        case .tickets: "ticket"
-        case .tasks: "checkmark.square"
+        // Chosen to read well both outlined (custom bar) and filled (the
+        // system tab bar on iPhone Duo renders the selected one solid).
+        case .week: "calendar.day.timeline.left"
+        case .tickets: "lifepreserver"
+        case .tasks: "checklist"
         case .search: "magnifyingglass"
         case .inbox: "bell"
         case .projects: "folder"
@@ -158,6 +160,10 @@ final class AppModel {
     // Shell overlays (top-bar popovers, create sheet, toast).
     var showingWorkspaces = false
     var showingAccountMenu = false
+    /// Sign-in sheet from the switcher; prefilled when re-signing in to a
+    /// workspace whose token expired.
+    var showingAddWorkspace = false
+    var addWorkspacePrefill = ""
     var showingCreate = false
     var createKind: CreateKind = .task
     /// The list/detail that was on screen when "+" was tapped — the create
@@ -201,11 +207,12 @@ final class AppModel {
     /// Mirrored to disk on every change so a killed process can resume it
     /// (SessionStore) — the Live Activity keeps counting meanwhile.
     var session = WorkSession() {
-        didSet { if persistsSession { SessionStore.save(session) } }
+        didSet { sessionStore?.save(session) }
     }
-    /// Sample-data runs (previews, `--sample-data`) never write the session
-    /// to disk — a sample task would otherwise resurface after sign-in.
-    private let persistsSession: Bool
+    /// Set by RootView for the active workspace. nil in sample-data runs
+    /// (previews, `--sample-data`) so a sample task never resurfaces after
+    /// sign-in.
+    var sessionStore: SessionStore?
     var showingPlayer = false
 
     // Per-page view state, shared across tab switches and synced with the
@@ -244,11 +251,13 @@ final class AppModel {
     weak var sync: SyncEngine?
     /// Wired by RootView — the profile sheet's Sign Out calls it.
     var onSignOut: (() -> Void)?
+    /// Wired by RootView — SyncEngine calls it after caching fresh branding
+    /// so the switcher's account list picks it up.
+    var onAccountsChanged: (() -> Void)?
 
     /// Previews and design work run on the bundled sample data; the real app
     /// starts empty and is filled by SyncEngine (cache first, then network).
     init(sampleData: Bool = true) {
-        persistsSession = !sampleData
         if sampleData {
             tasks = TaskItem.samples
             projects = ProjectItem.samples
@@ -398,7 +407,7 @@ final class AppModel {
 
     /// App launch: pick up a session the previous process left running.
     func restoreSession() {
-        guard !session.isRunning, let saved = SessionStore.restore(author: me) else { return }
+        guard !session.isRunning, let saved = sessionStore?.restore(author: me) else { return }
         session = saved
     }
 

@@ -50,7 +50,10 @@ final class PushRegistrar: NSObject, UIApplicationDelegate, UNUserNotificationCe
         }
     }
 
-    /// Sign-out: remove this device's token server-side and locally.
+    /// Sign-out of the active workspace: remove this device's token
+    /// server-side and locally. A workspace switch does not call this — the
+    /// device stays registered with every signed-in server, and a tapped
+    /// push routes to its workspace by host (RootView).
     func disable() {
         let client = self.client
         self.client = nil
@@ -58,6 +61,15 @@ final class PushRegistrar: NSObject, UIApplicationDelegate, UNUserNotificationCe
         UserDefaults.standard.removeObject(forKey: Self.tokenKey)
         Task {
             await client?.unregisterPushToken(token)
+        }
+    }
+
+    /// Sign-out of a workspace that isn't active: revoke the device token
+    /// there, keep it for the active one.
+    func unregister(from client: APIClient) {
+        guard let token = UserDefaults.standard.string(forKey: Self.tokenKey) else { return }
+        Task {
+            await client.unregisterPushToken(token)
         }
     }
 

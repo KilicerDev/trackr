@@ -34,10 +34,15 @@ final class SyncEngine {
     /// the snapshot cache was empty — the boot screen stays up meanwhile.
     /// Capped so a stalled network never traps the user on it.
     private(set) var isColdStarting = false
+    /// True once start() has painted whatever the snapshot cache held —
+    /// the moment a workspace switch can drop its skeleton (unless the
+    /// cache was empty, in which case `isColdStarting` keeps it up).
+    private(set) var isBootstrapped = false
     private var eventTask: Task<Void, Never>?
+    let host: URL
     private var favoriteKeys: Set<String> {
-        get { Set(UserDefaults.standard.stringArray(forKey: "trackr.favoriteProjects") ?? []) }
-        set { UserDefaults.standard.set(Array(newValue), forKey: "trackr.favoriteProjects") }
+        get { Set(UserDefaults.standard.stringArray(forKey: AccountStore.scoped(AccountStore.favoritesKey, host: host)) ?? []) }
+        set { UserDefaults.standard.set(Array(newValue), forKey: AccountStore.scoped(AccountStore.favoritesKey, host: host)) }
     }
     /// Latest per-org chat directories, needed to map new messages.
     private var chatContext: [String: API.ChatFeedResponse] = [:]
@@ -45,6 +50,7 @@ final class SyncEngine {
     init(client: APIClient, model: AppModel, host: URL) {
         self.client = client
         self.model = model
+        self.host = host
         self.store = SnapshotStore(host: host)
         model.sync = self
     }
@@ -56,23 +62,29 @@ final class SyncEngine {
     func start() async {
         let hadCache = bootstrapFromCache()
         isColdStarting = !hadCache
-        model.workspaceName = UserDefaults.standard.string(forKey: "trackr.workspaceName")
-        model.workspaceLogoURL = UserDefaults.standard.string(forKey: "trackr.workspaceLogo").flatMap { URL(string: $0) }
-        model.brandingLoaded = UserDefaults.standard.object(forKey: "trackr.workspaceLogo") != nil
-            || model.workspaceName != nil
+        isBootstrapped = true
+        // Branding is cached on the account so the switcher can show every
+        // workspace's logo without a request.
+        let account = AccountStore.account(for: host)
+        model.workspaceName = account?.name
+        model.workspaceLogoURL = account?.logoURL
+        model.brandingLoaded = account?.brandingKnown == true || model.workspaceName != nil
         Task { [weak self] in
             guard let self else { return }
             defer { model.brandingLoaded = true }
             guard let instance = try? await client.instance() else { return }
-            if let name = instance.branding?.name, !name.isEmpty {
-                model.workspaceName = name
-                UserDefaults.standard.set(name, forKey: "trackr.workspaceName")
-            }
+            let name = instance.branding?.name.flatMap { $0.isEmpty ? nil : $0 }
+            if let name { model.workspaceName = name }
             // Server contract: name is never empty ("Trackr" when unset),
             // logoUrl is null without an uploaded logo → the trackr bars.
             let logo = instance.branding?.logoUrl.flatMap { URL(string: $0) }
             model.workspaceLogoURL = logo
-            UserDefaults.standard.set(logo?.absoluteString, forKey: "trackr.workspaceLogo")
+            AccountStore.update(host) {
+                if let name { $0.name = name }
+                $0.logoURL = logo
+                $0.brandingKnown = true
+            }
+            model.onAccountsChanged?()
         }
         let cap = Task {  [weak self] in
             try? await Task.sleep(for: .seconds(6))
@@ -731,7 +743,9 @@ final class SyncEngine {
     private var restoringFilters = false
     private var viewPushTasks: [ViewKey: Task<Void, Never>] = [:]
 
-    private func localViewKey(_ key: ViewKey) -> String { "trackr.view.\(key.rawValue)" }
+    private func localViewKey(_ key: ViewKey) -> String {
+        AccountStore.scoped("\(AccountStore.viewKeyPrefix)\(key.rawValue)", host: host)
+    }
 
     private func loadLocalView(_ key: ViewKey) -> JSONValue? {
         guard let data = UserDefaults.standard.data(forKey: localViewKey(key)) else { return nil }

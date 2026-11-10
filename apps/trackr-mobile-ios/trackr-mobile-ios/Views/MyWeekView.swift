@@ -12,6 +12,7 @@
 import SwiftUI
 
 struct MyWeekView: View {
+    @Environment(\.tkRailInset) private var railInset
     @Bindable var model: AppModel
 
     @State private var weekStart = MyWeekView.monday(of: .now)
@@ -175,6 +176,7 @@ struct MyWeekView: View {
                         header
                         weekToolbar
                             .padding(.horizontal, TK.gutter)
+                            .padding(.trailing, railInset)
                             .padding(.top, 10)
                             .padding(.bottom, 12)
                         weekBoard
@@ -185,6 +187,7 @@ struct MyWeekView: View {
                             header
                             weekToolbar
                                 .padding(.horizontal, TK.gutter)
+                                .padding(.trailing, railInset)
                                 .padding(.top, 10)
                                 .padding(.bottom, 12)
 

@@ -130,6 +130,15 @@ struct TasksView: View {
                 .buttonStyle(TKScaleStyle())
                 .taskContextMenu(for: task, model: model)
             }
+        } footer: { group in
+            // Same ghost row as the week board; grouped by project it seeds
+            // the create sheet with that project, otherwise it just opens.
+            TKBoardAddButton {
+                model.presentCreate(
+                    kind: .task,
+                    projectName: model.taskFilters.group == .project ? group.label : nil
+                )
+            }
         }
     }
 

@@ -4,20 +4,15 @@
 //
 //  The user-typed server host. trackr is self-hostable, so there is no
 //  default — the app asks for a domain on first launch and validates it
-//  against GET /api/v1/instance before offering login.
+//  against GET /api/v1/instance before offering login. Signed-in servers
+//  are kept by AccountStore; this is the active one plus normalization.
 //
 
 import Foundation
 
 enum ServerConfig {
-    private static let hostKey = "trackr.serverURL"
-
-    /// Persisted after a *successful* sign-in only, and kept on sign-out so
-    /// the field is prefilled next time.
-    static var savedHost: URL? {
-        get { UserDefaults.standard.url(forKey: hostKey) }
-        set { UserDefaults.standard.set(newValue, forKey: hostKey) }
-    }
+    /// The active workspace's host — nil when signed out everywhere.
+    static var savedHost: URL? { AccountStore.activeHost }
 
     /// Mirror of the web repo's server-url.ts normalization: bare hosts get
     /// https://, trailing slashes are stripped, a base path is kept, and the

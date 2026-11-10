@@ -74,9 +74,14 @@ struct TKTabBar: View {
 // MARK: - Root chrome
 
 /// Bottom chrome of a root surface: session mini bar (when running) above
-/// the tab bar.
+/// the tab bar. On devices with a system vertical bar (DeviceChrome) the
+/// shell runs a system TabView whose tabs live in that bar, so only the
+/// mini bar remains down here.
 struct TKBottomChrome: View {
     @Bindable var model: AppModel
+    /// Optional so previews without a RootView still render.
+    @Environment(DeviceChrome.self) private var chrome: DeviceChrome?
+    private var hasRail: Bool { chrome?.hasRail ?? false }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -86,10 +91,44 @@ struct TKBottomChrome: View {
                     .padding(.bottom, 8)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-            TKTabBar(model: model)
+            if !hasRail {
+                TKTabBar(model: model)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
         .animation(.easeOut(duration: 0.25), value: model.session.isRunning)
+        .animation(.easeInOut(duration: 0.3), value: hasRail)
     }
+}
+
+/// iPhone Duo (folded): root content runs under the system's vertical bar
+/// strip instead of stopping at its safe-area edge — the strip is mostly
+/// empty between the status cluster and the floating tab pill, and a
+/// ~90 pt dead column read as a cut-off page. The top bar keeps the inset
+/// so its buttons never collide with the sensor cutout.
+private struct TKRailFullBleed: ViewModifier {
+    @Environment(DeviceChrome.self) private var chrome: DeviceChrome?
+
+    func body(content: Content) -> some View {
+        if let edge = chrome?.railEdge {
+            GeometryReader { geo in
+                content
+                    // Page headers keep this as trailing padding: the top
+                    // of the strip holds the clock/sensor cluster.
+                    .environment(\.tkRailInset, edge == .trailing ? geo.safeAreaInsets.trailing : geo.safeAreaInsets.leading)
+                    .ignoresSafeArea(.container, edges: edge == .trailing ? .trailing : .leading)
+            }
+        } else {
+            content
+        }
+    }
+}
+
+extension EnvironmentValues {
+    /// Width of the system's vertical bar strip the root content runs
+    /// under (0 elsewhere). Headers add it as trailing padding so their
+    /// controls never sit under the status cluster.
+    @Entry var tkRailInset: CGFloat = 0
 }
 
 extension View {
@@ -99,6 +138,7 @@ extension View {
     /// them (prototype: details are full screen).
     func tkRootScreen(_ model: AppModel) -> some View {
         self
+            .modifier(TKRailFullBleed())
             .background(TK.bg)
             .toolbar(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .top, spacing: 0) { TKTopBar(model: model) }

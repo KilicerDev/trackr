@@ -26,9 +26,11 @@ final class SessionActivityController {
         ActivityAuthorizationInfo().areActivitiesEnabled
     }
 
-    /// App launch: reconnect to the activity the previous process started
-    /// for the (restored) running session; anything else still showing is
-    /// an orphan and comes down instead of lingering for hours.
+    /// App launch / workspace switch: reconnect to the activity the previous
+    /// process started for the (restored) running session — or start one if
+    /// the session is running without it (a switch away ended it); anything
+    /// else still showing is an orphan and comes down instead of lingering
+    /// for hours.
     func reconcile(with session: WorkSession) {
         let existing = Activity<WorkSessionAttributes>.activities
         let match = session.isRunning
@@ -41,7 +43,11 @@ final class SessionActivityController {
             Task { await stale.end(nil, dismissalPolicy: .immediate) }
         }
         activity = match
-        if let match { observePushToken(of: match) }
+        if let match {
+            observePushToken(of: match)
+        } else if session.isRunning {
+            start(session)
+        }
     }
 
     func start(_ session: WorkSession) {

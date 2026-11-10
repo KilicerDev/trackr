@@ -122,42 +122,63 @@ struct TKBoard<Column: Identifiable, Header: View, Cards: View, Footer: View>: V
     @State private var position: Column.ID?
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: 12) {
-                ForEach(columns) { column in
-                    VStack(spacing: 8) {
-                        header(column)
-                        ScrollView(.vertical, showsIndicators: false) {
-                            VStack(spacing: 8) {
-                                cards(column)
-                                footer(column)
+        // Column width comes from the board's own (safe-area-respecting)
+        // frame, not `containerRelativeFrame`: a horizontal ScrollView
+        // extends under the safe area and only applies it as insets, so on
+        // devices with a side strip (iPhone Duo) the container was wider
+        // than the visible area on first layout and the first column came
+        // out full width until a swipe re-laid it out.
+        GeometryReader { geo in
+            let width = Self.fittedColumnWidth(available: geo.size.width, minimum: columnWidth)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(columns) { column in
+                        VStack(spacing: 8) {
+                            header(column)
+                            ScrollView(.vertical, showsIndicators: false) {
+                                VStack(spacing: 8) {
+                                    cards(column)
+                                    footer(column)
+                                }
+                                .padding(.bottom, 24)
                             }
-                            .padding(.bottom, 24)
+                            .scrollBounceBehavior(.basedOnSize)
                         }
-                        .scrollBounceBehavior(.basedOnSize)
+                        // Nearly full width with the next column peeking in, so
+                        // a swipe reads as paging; `columnWidth` is the floor.
+                        .frame(width: width)
+                        .id(column.id)
                     }
-                    // Nearly full width with the next column peeking in, so a
-                    // swipe reads as paging; `columnWidth` is the floor.
-                    .containerRelativeFrame(.horizontal) { length, _ in
-                        max(columnWidth, length - 2 * TK.gutter - 40)
-                    }
-                    .id(column.id)
                 }
+                .scrollTargetLayout()
+                .padding(.top, 4)
+                .frame(maxHeight: .infinity, alignment: .top)
             }
-            .scrollTargetLayout()
-            .padding(.top, 4)
-            .frame(maxHeight: .infinity, alignment: .top)
+            .contentMargins(.horizontal, TK.gutter, for: .scrollContent)
+            // Paging feel: every swipe settles with a column at the leading edge.
+            .scrollTargetBehavior(.viewAligned)
+            .scrollPosition(id: $position, anchor: .leading)
         }
-        .contentMargins(.horizontal, TK.gutter, for: .scrollContent)
-        // Paging feel: every swipe settles with a column at the leading edge.
-        .scrollTargetBehavior(.viewAligned)
-        .scrollPosition(id: $position, anchor: .leading)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
             // Anchor deterministically: the layout settles after the shell
             // insets appear, which otherwise leaves a random offset.
             if position == nil { position = initialColumn ?? columns.first?.id }
         }
+    }
+}
+
+extension TKBoard {
+    /// Phone width: one column nearly full width with the next peeking in,
+    /// so a swipe reads as paging. Wider (iPhone Duo unfolded, iPad): as
+    /// many `minimum`-wide columns as fit, stretched to fill the row
+    /// exactly — a single 600 pt column of 3-line cards wastes the width.
+    static func fittedColumnWidth(available: CGFloat, minimum: CGFloat) -> CGFloat {
+        let spacing: CGFloat = 12
+        let usable = available - 2 * TK.gutter
+        let count = max(1, Int((usable + spacing) / (minimum + spacing)))
+        if count == 1 { return max(minimum, usable - 40) }
+        return (usable - spacing * CGFloat(count - 1)) / CGFloat(count)
     }
 }
 
