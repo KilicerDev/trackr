@@ -368,8 +368,9 @@
 
 			<!-- Foot: attach on the left (files can also be dropped anywhere on
 			     the dialog); Cancel and Create built from the same box so they're
-			     exactly the same height. ⌘↵ still submits. -->
-			<div class="flex items-center gap-2 rounded-b-2xl px-6 pt-2 pb-4">
+			     exactly the same height. ⌘↵ still submits. The right inset (12px)
+			     matches the property column's, so Create lines up with it. -->
+			<div class="flex items-center gap-2 rounded-b-2xl pt-3 pr-3 pb-3 pl-6">
 				<button type="button" onclick={() => fileInput?.click()} class="{QUIET_ADD} -ml-2">
 					<Icon name="paperclip" size={14} />
 					{m.tasks_attach_files()}
