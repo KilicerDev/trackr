@@ -9,7 +9,8 @@
 	import PriorityBars from '../PriorityBars.svelte';
 	import Avatar from '../Avatar.svelte';
 	import Icon from '../Icon.svelte';
-	import IconButton from '../IconButton.svelte';
+	import { ICON_ACTION } from '../tasks/panel/styles';
+	import { whenVisible } from '$lib/actions/whenVisible';
 	import { readCollapsed, saveCollapsed } from '$lib/stores/view';
 	import { slide } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
@@ -133,18 +134,48 @@
 			? readCollapsed(persistKey, 'boardCollapsed', group, initialCollapsed)
 			: new Set<string>();
 	let collapsed = $state(loadCollapsed());
+	// Groups that start collapsed (finished tickets: Resolved, Closed)
+	// remember being opened in their own set, so the default can't be lost.
+	const loadExpanded = () =>
+		persistKey ? readCollapsed(persistKey, 'boardExpanded', group) : new Set<string>();
+	let expanded = $state(loadExpanded());
 	// Re-hydrate when the grouping changes — each grouping mode has its own
 	// key namespace and its own remembered set. (The mount run just re-reads
 	// the same initial value.)
 	$effect(() => {
 		collapsed = loadCollapsed();
+		expanded = loadExpanded();
 	});
-	function toggle(key: string) {
-		const n = new Set(collapsed);
-		n.has(key) ? n.delete(key) : n.add(key);
-		collapsed = n;
-		if (persistKey) saveCollapsed(persistKey, 'boardCollapsed', group, n);
+	const collapsedByDefault = (g: SubGroupDef) =>
+		g.statusId === 'resolved' || g.statusId === 'closed';
+	function isCollapsed(g: SubGroupDef): boolean {
+		return collapsedByDefault(g) ? !expanded.has(g.key) : collapsed.has(g.key);
 	}
+	function toggle(g: SubGroupDef) {
+		const field = collapsedByDefault(g) ? 'boardExpanded' : 'boardCollapsed';
+		const current = field === 'boardExpanded' ? expanded : collapsed;
+		const n = new Set(
+			current.has(g.key) ? [...current].filter((k) => k !== g.key) : [...current, g.key]
+		);
+		if (field === 'boardExpanded') expanded = n;
+		else collapsed = n;
+		if (persistKey) saveCollapsed(persistKey, field, group, n);
+	}
+
+	// Each group opens with its first FIRST cards so a column stays
+	// scannable; "Show N more" opens it, then further pages load on scroll.
+	const FIRST = 5;
+	const PAGE = 40;
+	let shown = $state<Record<string, number>>({});
+	const limitFor = (key: string) => shown[key] ?? FIRST;
+	function showMore(key: string) {
+		shown[key] = limitFor(key) + PAGE;
+	}
+	$effect(() => {
+		void group;
+		void sub;
+		shown = {};
+	});
 
 	interface SubGroupDef {
 		key: string;
@@ -231,10 +262,12 @@
 	<div class="flex h-full">
 		{#each columns as col (col.key)}
 			{@const groups = subGroupsForColumn(col)}
+			<!-- Same column anatomy as the tasks board: a quiet header with a
+			     hairline under it, + on hover, softer dividers. -->
 			<div
-				class="flex w-[85vw] max-w-[363px] shrink-0 flex-col border-r border-border last:border-r-0"
+				class="group/col flex w-[85vw] max-w-[363px] shrink-0 flex-col border-r border-border/50 last:border-r-0"
 			>
-				<div class="flex items-center gap-2 border-b border-border px-4 py-3">
+				<div class="flex h-12 shrink-0 items-center gap-2 border-b border-border/70 px-4">
 					{#if col.userId}
 						{@const u = resolveUser(col.userId)}
 						<Avatar user={u} size={17} />
@@ -243,33 +276,33 @@
 					{:else if col.dot !== 'transparent'}
 						<span class="h-2.5 w-2.5 rounded-full" style:background={col.dot}></span>
 					{/if}
-					<span class="truncate text-[14px] font-semibold text-text">{col.label}</span>
-					<span class="font-mono text-[12px] text-text-3">{col.tickets.length}</span>
+					<span class="truncate text-[14px] font-medium text-text">{col.label}</span>
+					<span class="font-mono text-[12px] text-text-4">{col.tickets.length}</span>
 					{#if canCreate && group === 'org'}
-						<span class="ml-auto">
-							<IconButton
-								size={26}
-								ariaLabel={m.tickets_new_title()}
-								onclick={() => onAddInOrg?.(col.orgId ?? null)}
-							>
-								<Icon name="plus" size={14} />
-							</IconButton>
-						</span>
+						<button
+							type="button"
+							aria-label={m.tickets_new_title()}
+							title={m.tickets_new_title()}
+							onclick={() => onAddInOrg?.(col.orgId ?? null)}
+							class="{ICON_ACTION} ml-auto opacity-0 group-hover/col:opacity-100 focus-visible:opacity-100"
+						>
+							<Icon name="plus" size={14} />
+						</button>
 					{/if}
 				</div>
-				<div class="flex-1 space-y-3 overflow-y-auto px-3.5 py-3">
+				<div class="flex-1 space-y-4 overflow-y-auto px-3.5 pt-1 pb-3">
 					{#each groups as g (g.key)}
-						{@const isCollapsed = collapsed.has(g.key)}
-						<div>
+						{@const groupCollapsed = isCollapsed(g)}
+						<div class={g.label ? '' : 'pt-2'}>
 							{#if g.label}
+								<!-- Group header: label and count, a hairline to the column
+								     edge; sticky while its group scrolls. -->
 								<button
 									type="button"
-									onclick={() => toggle(g.key)}
-									class="flex w-full items-center gap-2 px-1 py-1 text-left text-[12px] font-medium tracking-[0.08em] text-text-3 uppercase hover:text-text"
+									onclick={() => toggle(g)}
+									aria-expanded={!groupCollapsed}
+									class="group/g sticky top-0 z-[2] -mx-3.5 flex w-[calc(100%+1.75rem)] items-center gap-2 bg-bg px-[18px] pt-2.5 pb-1.5 text-left text-[13px] leading-5 font-medium text-text-2 transition-colors hover:text-text"
 								>
-									<span class="text-text-4 transition-transform {isCollapsed ? '-rotate-90' : ''}">
-										<Icon name="chevron" size={11} />
-									</span>
 									{#if g.priorityId}
 										<PriorityBars priority={g.priorityId} />
 									{:else if g.userId}
@@ -279,17 +312,52 @@
 										<span class="h-2 w-2 rounded-full" style:background={g.dot}></span>
 									{/if}
 									<span>{g.label}</span>
-									<span class="ml-auto font-mono text-text-4">{g.tickets.length}</span>
+									<span class="font-mono text-[12px] font-normal text-text-4"
+										>{g.tickets.length}</span
+									>
+									<span class="h-px min-w-4 flex-1 bg-border/70" aria-hidden="true"></span>
+									<span
+										class="text-text-4 transition-transform group-hover/g:text-text-2 {groupCollapsed
+											? '-rotate-90'
+											: ''}"
+									>
+										<Icon name="chevron" size={12} />
+									</span>
 								</button>
 							{/if}
-							{#if !isCollapsed}
-								<div
-									class="mt-1.5 space-y-2"
-									transition:slide={{ duration: 180, easing: cubicOut }}
-								>
-									{#each g.tickets as t (t.id)}
-										<BoardCard ticket={t} onclick={() => onSelect?.(t)} />
+							{#if !groupCollapsed}
+								<div class="mt-1 space-y-2" transition:slide={{ duration: 180, easing: cubicOut }}>
+									{#each g.tickets.slice(0, limitFor(g.key)) as t (t.id)}
+										<BoardCard
+											ticket={t}
+											showStatus={group !== 'status' && sub !== 'status'}
+											showOrg={group !== 'org'}
+											onclick={() => onSelect?.(t)}
+										/>
 									{/each}
+									{#if g.tickets.length > limitFor(g.key)}
+										{#if limitFor(g.key) <= FIRST}
+											<!-- First expansion is a deliberate click. -->
+											<button
+												type="button"
+												onclick={() => showMore(g.key)}
+												class="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[13px] text-text-3 transition-colors hover:bg-surface hover:text-text"
+											>
+												<Icon name="chevron" size={13} />
+												{m.tasks_show_more({ n: g.tickets.length - limitFor(g.key) })}
+											</button>
+										{:else}
+											<button
+												type="button"
+												use:whenVisible={() => showMore(g.key)}
+												onclick={() => showMore(g.key)}
+												class="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[13px] text-text-3 transition-colors hover:bg-surface hover:text-text"
+											>
+												<Icon name="chevron" size={13} />
+												{m.tasks_show_more({ n: g.tickets.length - limitFor(g.key) })}
+											</button>
+										{/if}
+									{/if}
 								</div>
 							{/if}
 						</div>
