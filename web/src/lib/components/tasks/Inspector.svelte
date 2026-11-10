@@ -472,11 +472,15 @@
 		checklistOpen = false;
 	});
 
-	// Prerequisites, dependents, source ticket and parent in one "Linked" list.
+	// Prerequisites (open ones first) and the tasks waiting on this one get
+	// their own section; the source ticket and parent stay under "Linked".
+	const depItems = $derived(
+		linkedItems({ dependsOn, dependents, sourceTicket: null, parent: null })
+	);
 	const linked = $derived(
 		linkedItems({
-			dependsOn,
-			dependents,
+			dependsOn: [],
+			dependents: [],
 			sourceTicket: draft?.sourceTicket ?? null,
 			parent: draft?.parent ?? null
 		})
@@ -1009,9 +1013,9 @@
 						</section>
 					{/if}
 
-					{#if draft.uuid && linked.length > 0}
+					{#if draft.uuid && depItems.length > 0}
 						<section>
-							<SectionHeader label={m.tasks_panel_linked()} count={linked.length}>
+							<SectionHeader label={m.tasks_prerequisites()} count={dependsOn.length || undefined}>
 								{#snippet action()}
 									{#if canEdit}
 										<button
@@ -1030,74 +1034,19 @@
 								{/snippet}
 							</SectionHeader>
 							<div class="space-y-px">
+								{#each depItems as item (item.key)}
+									{@render linkRow(item)}
+								{/each}
+							</div>
+						</section>
+					{/if}
+
+					{#if draft.uuid && linked.length > 0}
+						<section>
+							<SectionHeader label={m.tasks_panel_linked()} count={linked.length} />
+							<div class="space-y-px">
 								{#each linked as item (item.key)}
-									<div
-										class="group/link {ROW} {item.status && isClosedStatus(item.status)
-											? 'opacity-60'
-											: ''}"
-									>
-										<a
-											href={item.href}
-											onclick={(e) => {
-												if (item.kind !== 'ticket') openTask(e, item.ref);
-											}}
-											class="flex min-w-0 flex-1 items-center gap-2.5"
-										>
-											<!-- One 20px line for every part of the row: the leading
-											     icon gets a fixed 20px slot, and each text uses
-											     leading-5, so mono id and label share a baseline. -->
-											<span class="grid h-5 w-5 shrink-0 place-items-center">
-												{#if item.status}
-													<StatusDot status={item.status} size={14} />
-												{:else}
-													<Icon
-														name={item.kind === 'ticket' ? 'ticket' : 'chevron-r'}
-														size={16}
-														class="text-text-3"
-													/>
-												{/if}
-											</span>
-											<span
-												class="shrink-0 font-mono text-[12px] leading-5 {item.kind === 'ticket' ||
-												item.kind === 'parent'
-													? 'text-text-2 group-hover/link:text-text'
-													: 'text-text-3'}">{item.ref}</span
-											>
-											{#if item.kind === 'prerequisite' || item.kind === 'dependent'}
-												<span
-													class="min-w-0 flex-1 truncate text-[14px] leading-5 text-text-2 group-hover/link:text-text"
-													>{item.title}</span
-												>
-											{:else}
-												<span class="min-w-0 flex-1 truncate text-[13px] leading-5 text-text-3"
-													>{LINK_KIND_LABEL[item.kind]()}</span
-												>
-											{/if}
-										</a>
-										{#if item.blocking}
-											<span class="shrink-0 text-[12px] leading-5 text-[var(--color-status-paused)]"
-												>{m.tasks_panel_blocked()}</span
-											>
-										{:else if item.kind === 'dependent'}
-											<span class="shrink-0 text-[12px] leading-5 text-text-4"
-												>{m.tasks_panel_kind_dependent()}</span
-											>
-										{/if}
-										{#if item.removable && canEdit}
-											{@const dep = dependsOn.find((d) => d.uuid === item.uuid)}
-											{#if dep}
-												<button
-													type="button"
-													aria-label={m.tasks_remove_prerequisite()}
-													title={m.tasks_remove_prerequisite()}
-													onclick={() => toggleDependency(dep)}
-													class="{ICON_ACTION} opacity-0 group-hover/link:opacity-100 focus-visible:opacity-100"
-												>
-													<Icon name="x" size={13} />
-												</button>
-											{/if}
-										{/if}
-									</div>
+									{@render linkRow(item)}
 								{/each}
 							</div>
 						</section>
@@ -1109,8 +1058,8 @@
 						{@const noChecklist = canEdit && checklistItems.length === 0 && !checklistOpen}
 						{@const noFiles = !draft.files?.length}
 						{@const noMeetings = isTeam && !!taskProjectId && meetingNotes.length === 0}
-						{@const noLinks = canEdit && linked.length === 0}
-						{#if noChecklist || noFiles || noMeetings || noLinks}
+						{@const noDeps = canEdit && depItems.length === 0}
+						{#if noChecklist || noFiles || noMeetings || noDeps}
 							<div class="-mx-2 flex flex-wrap items-center gap-0.5">
 								{#if noChecklist}
 									<button type="button" onclick={() => (checklistOpen = true)} class={QUIET_ADD}>
@@ -1135,7 +1084,7 @@
 										{m.tasks_panel_add_note()}
 									</button>
 								{/if}
-								{#if noLinks}
+								{#if noDeps}
 									<div class="relative">
 										<button
 											type="button"
@@ -1143,7 +1092,7 @@
 											class="{QUIET_ADD} {openPop === 'deps' ? OPEN : ''}"
 										>
 											<Icon name="plus" size={13} />
-											{m.tasks_panel_add_link()}
+											{m.tasks_panel_kind_prerequisite()}
 										</button>
 										{#if openPop === 'deps'}
 											{@render depsPopover()}
@@ -1222,6 +1171,74 @@
 					>{/if}
 			</div>
 		</div>
+
+		{#snippet linkRow(item: (typeof linked)[number])}
+			<div
+				class="group/link {ROW} {item.status && isClosedStatus(item.status) ? 'opacity-60' : ''}"
+			>
+				<a
+					href={item.href}
+					onclick={(e) => {
+						if (item.kind !== 'ticket') openTask(e, item.ref);
+					}}
+					class="flex min-w-0 flex-1 items-center gap-2.5"
+				>
+					<!-- One 20px line for every part of the row: the leading
+					     icon gets a fixed 20px slot, and each text uses
+					     leading-5, so mono id and label share a baseline. -->
+					<span class="grid h-5 w-5 shrink-0 place-items-center">
+						{#if item.status}
+							<StatusDot status={item.status} size={14} />
+						{:else}
+							<Icon
+								name={item.kind === 'ticket' ? 'ticket' : 'chevron-r'}
+								size={16}
+								class="text-text-3"
+							/>
+						{/if}
+					</span>
+					<span
+						class="shrink-0 font-mono text-[12px] leading-5 {item.kind === 'ticket' ||
+						item.kind === 'parent'
+							? 'text-text-2 group-hover/link:text-text'
+							: 'text-text-3'}">{item.ref}</span
+					>
+					{#if item.kind === 'prerequisite' || item.kind === 'dependent'}
+						<span
+							class="min-w-0 flex-1 truncate text-[14px] leading-5 text-text-2 group-hover/link:text-text"
+							>{item.title}</span
+						>
+					{:else}
+						<span class="min-w-0 flex-1 truncate text-[13px] leading-5 text-text-3"
+							>{LINK_KIND_LABEL[item.kind]()}</span
+						>
+					{/if}
+				</a>
+				{#if item.blocking}
+					<span class="shrink-0 text-[12px] leading-5 text-[var(--color-status-paused)]"
+						>{m.tasks_panel_blocked()}</span
+					>
+				{:else if item.kind === 'dependent'}
+					<span class="shrink-0 text-[12px] leading-5 text-text-4"
+						>{m.tasks_panel_kind_dependent()}</span
+					>
+				{/if}
+				{#if item.removable && canEdit}
+					{@const dep = dependsOn.find((d) => d.uuid === item.uuid)}
+					{#if dep}
+						<button
+							type="button"
+							aria-label={m.tasks_remove_prerequisite()}
+							title={m.tasks_remove_prerequisite()}
+							onclick={() => toggleDependency(dep)}
+							class="{ICON_ACTION} opacity-0 group-hover/link:opacity-100 focus-visible:opacity-100"
+						>
+							<Icon name="x" size={13} />
+						</button>
+					{/if}
+				{/if}
+			</div>
+		{/snippet}
 
 		{#snippet depsPopover()}
 			{#if draft?.uuid}
