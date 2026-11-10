@@ -608,6 +608,18 @@ export const actions: Actions = {
 				authorIsAgent
 			});
 
+			// Audit as soon as the reply exists: a later failure (attachments,
+			// notification fan-out) must never leave a stored reply unlogged.
+			void recordAudit({
+				type: 'ticket.message',
+				actorId: me.id,
+				targetType: 'ticket',
+				targetId: id,
+				targetLabel: `${t.displayId} · ${t.subject}`,
+				orgId: t.orgId,
+				meta: { internal, body: body.slice(0, 280) }
+			});
+
 			// Attach any files staged on the composer to the new message.
 			const { attachments } = await attachFormFiles({
 				files: form.getAll('attachments'),
@@ -618,10 +630,11 @@ export const actions: Actions = {
 				uploadedBy: me.id
 			});
 
-			{
-				// Fan-out (incl. @-mentions, which are intersected with the scoped
-				// audience so an internal note's mention can never reach the customer)
-				// lives in the event helper.
+			// Fan-out (incl. @-mentions, which are intersected with the scoped
+			// audience so an internal note's mention can never reach the customer)
+			// lives in the event helper. The reply is already saved, so a failed
+			// fan-out is logged rather than reported as a failed send.
+			try {
 				await notifyTicketMessage({
 					ticket: {
 						id,
@@ -641,16 +654,8 @@ export const actions: Actions = {
 					origin: url.origin,
 					attachments
 				});
-
-				void recordAudit({
-					type: 'ticket.message',
-					actorId: me.id,
-					targetType: 'ticket',
-					targetId: id,
-					targetLabel: `${t.displayId} · ${t.subject}`,
-					orgId: t.orgId,
-					meta: { internal, body: body.slice(0, 280) }
-				});
+			} catch (err) {
+				console.error('ticket message notify failed', { ticketId: id, messageId }, err);
 			}
 
 			return { ok: true };

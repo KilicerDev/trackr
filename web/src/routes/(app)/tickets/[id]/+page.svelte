@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { brandName, pageTitle } from '$lib/brand';
 	import { goto, invalidate, invalidateAll } from '$app/navigation';
+	import { deserialize } from '$app/forms';
+	import type { ActionResult } from '@sveltejs/kit';
 	import { page } from '$app/state';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
@@ -209,8 +211,19 @@
 		fd.set('internal', internal ? '1' : '0');
 		for (const file of commentFiles) fd.append('attachments', file);
 		try {
-			const res = await fetch('/tickets?/message', { method: 'POST', body: fd });
-			if (!res.ok) throw new Error(m.tickets_send_failed());
+			// The action header returns the action result as JSON instead of
+			// rendering the whole /tickets page around it.
+			const res = await fetch('/tickets?/message', {
+				method: 'POST',
+				body: fd,
+				headers: { 'x-sveltekit-action': 'true' }
+			});
+			const result = deserialize(await res.text()) as ActionResult;
+			if (result.type === 'failure') {
+				const msg = (result.data as { message?: string } | undefined)?.message;
+				throw new Error(msg ?? m.tickets_send_failed());
+			}
+			if (result.type === 'error') throw new Error(m.tickets_send_failed());
 			body = '';
 			internal = false;
 			commentFiles = [];

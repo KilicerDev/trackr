@@ -36,6 +36,17 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 		isInternalNote: internal,
 		authorIsAgent
 	});
+	// Audit as soon as the reply exists: a later failure (attachments,
+	// notification fan-out) must never leave a stored reply unlogged.
+	void recordAudit({
+		type: 'ticket.message',
+		actorId: user.id,
+		targetType: 'ticket',
+		targetId: t.id,
+		targetLabel: `${t.displayId} · ${t.subject}`,
+		orgId: t.orgId,
+		meta: { internal, body: text.slice(0, 280), via: 'api.v1' }
+	});
 	const { attachments } = await attachFormFiles({
 		files,
 		entityType: 'message',
@@ -47,34 +58,30 @@ export const POST: RequestHandler = async ({ locals, params, request, url }) => 
 
 	// Fan-out (incl. @-mentions, intersected with the scoped audience so an
 	// internal note's mention can never reach the customer) lives in the helper.
-	await notifyTicketMessage({
-		ticket: {
-			id: t.id,
-			displayId: t.displayId,
-			orgId: t.orgId,
-			subject: t.subject,
-			customerId: t.customerId,
-			creatorId: t.createdBy,
-			assigneeIds: t.assignees,
-			status: t.status,
-			priority: t.priority
-		},
-		body: text,
-		internal,
-		actor: { id: user.id, name: user.name },
-		messageId,
-		origin: url.origin,
-		attachments
-	});
-	void recordAudit({
-		type: 'ticket.message',
-		actorId: user.id,
-		targetType: 'ticket',
-		targetId: t.id,
-		targetLabel: `${t.displayId} · ${t.subject}`,
-		orgId: t.orgId,
-		meta: { internal, body: text.slice(0, 280), via: 'api.v1' }
-	});
+	// The reply is already saved, so a failed fan-out is logged, not a 500.
+	try {
+		await notifyTicketMessage({
+			ticket: {
+				id: t.id,
+				displayId: t.displayId,
+				orgId: t.orgId,
+				subject: t.subject,
+				customerId: t.customerId,
+				creatorId: t.createdBy,
+				assigneeIds: t.assignees,
+				status: t.status,
+				priority: t.priority
+			},
+			body: text,
+			internal,
+			actor: { id: user.id, name: user.name },
+			messageId,
+			origin: url.origin,
+			attachments
+		});
+	} catch (err) {
+		console.error('ticket message notify failed', { ticketId: t.id, messageId }, err);
+	}
 
 	return json({ id: messageId }, { status: 201 });
 };
