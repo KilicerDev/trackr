@@ -37,7 +37,6 @@
 	import EstimatePopover from '../popovers/EstimatePopover.svelte';
 	import TagsPopover from '../popovers/TagsPopover.svelte';
 	import DependencyPopover from '../popovers/DependencyPopover.svelte';
-	import TaskMenuPopover from '../popovers/TaskMenuPopover.svelte';
 	import NewMeetingDialog from '../notes/NewMeetingDialog.svelte';
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/config/taxonomy';
 	import { dueCountdown, formatDateLong, formatEstimate } from '$lib/utils/format';
@@ -345,7 +344,6 @@
 		| 'plan'
 		| 'tags'
 		| 'deps'
-		| 'menu'
 		| null;
 	let openPop = $state<PopId>(null);
 
@@ -568,21 +566,12 @@
 				</span>
 			{/if}
 			<div class="ml-auto flex items-center gap-1">
-				<IconButton size={31} ariaLabel={m.tasks_copy_link()}
-					><Icon name="link" size={15} /></IconButton
-				>
-				<div class="relative">
-					<IconButton size={31} ariaLabel={m.tasks_more()} onclick={() => toggle('menu')}>
-						<Icon name="settings" size={15} />
+				{#if canDelete}
+					<!-- deleteTask asks for confirmation first. -->
+					<IconButton size={31} ariaLabel={m.tasks_delete_task()} onclick={() => void deleteTask()}>
+						<Icon name="trash" size={15} />
 					</IconButton>
-					{#if openPop === 'menu'}
-						<TaskMenuPopover
-							{canDelete}
-							ondelete={() => void deleteTask()}
-							onclose={() => (openPop = null)}
-						/>
-					{/if}
-				</div>
+				{/if}
 				<IconButton size={31} ariaLabel={m.common_close()} onclick={onclose}
 					><Icon name="x" size={15} /></IconButton
 				>
