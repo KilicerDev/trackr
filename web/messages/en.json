@@ -1448,6 +1448,7 @@
 	"ticket_status_waiting_on_customer": "Waiting on customer",
 	"tickets_activity": "Activity",
 	"tickets_all": "All tickets",
+	"tickets_more_actions": "More actions",
 	"tickets_copy_link": "Copy link",
 	"tickets_conversation": "Conversation",
 	"tickets_conversation_empty": "No replies yet.",

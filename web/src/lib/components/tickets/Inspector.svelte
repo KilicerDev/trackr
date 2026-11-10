@@ -29,7 +29,8 @@
 	} from '$lib/utils/labels';
 	import { labelMeta } from '$lib/utils/label-meta';
 	import type { TicketRow } from '$lib/server/tickets';
-	import type { StatusId } from '$lib/types';
+	import type { StatusId, TypeId } from '$lib/types';
+	import CreateTaskModal from '../tasks/CreateTaskModal.svelte';
 	import type { AttachmentDTO } from '$lib/config/attachments';
 	import type { TicketMessageRow } from '$lib/server/tickets';
 	import MentionText from '../MentionText.svelte';
@@ -76,7 +77,7 @@
 		return [...new Set(tickets.flatMap((t) => t.tags ?? []))];
 	});
 
-	let pop = $state<'status' | 'priority' | 'category' | 'assignee' | 'tags' | null>(null);
+	let pop = $state<'status' | 'priority' | 'category' | 'assignee' | 'tags' | 'menu' | null>(null);
 	let pending = $state(false);
 	let subjectDraft = $state('');
 	// Optimistic checklist copy; reseeded whenever the selected ticket changes.
@@ -199,8 +200,24 @@
 		void patch('subject', next);
 	}
 
-	// The copy button answers with a green check for a moment instead of a
-	// toast; failures still toast.
+	// Create a task from this ticket (team only), the same flow as the ticket
+	// page: the ticket's own createTask action, prefilled, linked back.
+	const canCreateTask = $derived(!!(page.data as { isTrackrTeam?: boolean }).isTrackrTeam);
+	let creatingTask = $state(false);
+	function taskTypeForCategory(category: string): TypeId {
+		if (category === 'feature_request') return 'feature';
+		if (category === 'technical_issue') return 'bug';
+		return 'task';
+	}
+	const taskPrefill = $derived({
+		title: ticket?.subject ?? '',
+		description: ticket?.description ?? '',
+		priority: ticket?.priority,
+		type: taskTypeForCategory(ticket?.category ?? '')
+	});
+
+	// "Copy link" in the ⋯ menu answers with a green check for a moment, then
+	// the menu closes; failures still toast.
 	let copied = $state(false);
 	let copiedTimer: ReturnType<typeof setTimeout> | undefined;
 	async function copyLink() {
@@ -210,8 +227,12 @@
 			await navigator.clipboard.writeText(url);
 			copied = true;
 			clearTimeout(copiedTimer);
-			copiedTimer = setTimeout(() => (copied = false), 1600);
+			copiedTimer = setTimeout(() => {
+				copied = false;
+				if (pop === 'menu') pop = null;
+			}, 900);
 		} catch {
+			pop = null;
 			showToast('err', m.tickets_link_copy_failed());
 		}
 	}
@@ -276,32 +297,79 @@
 				</span>
 			{/if}
 			<div class="ml-auto flex items-center gap-1">
-				<IconButton
-					size={31}
-					ariaLabel={copied ? m.tickets_link_copied() : m.tickets_copy_link()}
-					onclick={copyLink}
-				>
-					<!-- Both icons share one grid cell so they cross-fade in place. -->
-					<span class="grid place-items-center [&>*]:[grid-area:1/1]">
-						{#if copied}
-							<span
-								class="text-[#7fc8a9]"
-								in:scale={{ start: 0.4, duration: 220, easing: backOut }}
-							>
-								<Icon name="check" size={16} stroke={2.4} />
-							</span>
-						{:else}
-							<span in:fade={{ duration: 150 }}>
-								<Icon name="copy" size={15} />
-							</span>
-						{/if}
-					</span>
-				</IconButton>
-				{#if canDelete}
-					<IconButton size={31} ariaLabel={m.tickets_delete()} onclick={deleteTicket}>
-						<Icon name="trash" size={15} />
+				<!-- ⋯ menu: create a task from the ticket, copy its link, delete. -->
+				<div class="relative">
+					<IconButton
+						size={31}
+						ariaLabel={m.tickets_more_actions()}
+						onclick={() => (pop = pop === 'menu' ? null : 'menu')}
+					>
+						<Icon name="more" size={16} />
 					</IconButton>
-				{/if}
+					{#if pop === 'menu'}
+						<div
+							role="menu"
+							use:clickOutside={() => (pop = null)}
+							in:fly={POPOVER_IN}
+							class="absolute top-full right-0 z-50 mt-1.5 min-w-[210px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+						>
+							{#if canCreateTask}
+								<button
+									type="button"
+									role="menuitem"
+									onclick={() => {
+										pop = null;
+										creatingTask = true;
+									}}
+									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
+								>
+									<Icon name="check-square" size={15} class="text-text-3" />
+									{m.tickets_create_task()}
+								</button>
+							{/if}
+							<button
+								type="button"
+								role="menuitem"
+								onclick={copyLink}
+								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
+							>
+								<!-- Both icons share one cell so they swap in place. -->
+								<span class="grid place-items-center [&>*]:[grid-area:1/1]">
+									{#if copied}
+										<span
+											class="text-[#7fc8a9]"
+											in:scale={{ start: 0.4, duration: 220, easing: backOut }}
+										>
+											<Icon name="check" size={15} stroke={2.4} />
+										</span>
+									{:else}
+										<span class="text-text-3" in:fade={{ duration: 150 }}>
+											<Icon name="copy" size={15} />
+										</span>
+									{/if}
+								</span>
+								<span class={copied ? 'text-[#7fc8a9]' : ''}
+									>{copied ? m.tickets_link_copied() : m.tickets_copy_link()}</span
+								>
+							</button>
+							{#if canDelete}
+								<div class="my-1 h-px bg-border"></div>
+								<button
+									type="button"
+									role="menuitem"
+									onclick={() => {
+										pop = null;
+										void deleteTicket();
+									}}
+									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-[#ef4f5e] hover:bg-[#ef4f5e]/10"
+								>
+									<Icon name="trash" size={15} />
+									{m.tickets_delete()}
+								</button>
+							{/if}
+						</div>
+					{/if}
+				</div>
 				<IconButton size={31} ariaLabel={m.common_close()} onclick={onclose}>
 					<Icon name="x" size={15} />
 				</IconButton>
@@ -673,3 +741,14 @@
 		</div>
 	{/if}
 </Drawer>
+
+{#if ticket && canCreateTask}
+	<CreateTaskModal
+		open={creatingTask}
+		action="/tickets/{ticket.id}?/createTask"
+		sourceTicketId={ticket.id}
+		prefill={taskPrefill}
+		onclose={() => (creatingTask = false)}
+		oncreated={(displayId) => showToast('ok', m.tickets_create_task_toast({ ref: displayId }))}
+	/>
+{/if}
