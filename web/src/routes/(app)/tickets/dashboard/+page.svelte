@@ -3,7 +3,6 @@
 	import MobileMenuButton from '$lib/components/shell/MobileMenuButton.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
-	import SectionHeader from '$lib/components/tasks/panel/SectionHeader.svelte';
 	import { ROW } from '$lib/components/tasks/panel/styles';
 	import type { TicketRow } from '$lib/server/tickets';
 	import { TICKET_CATEGORIES, TICKET_STATUSES } from '$lib/config/taxonomy';
@@ -117,6 +116,10 @@
 	});
 	const maxWeek = $derived(Math.max(1, ...weeks.map((w) => w.n)));
 
+	const PANEL = 'overflow-hidden rounded-xl border border-border';
+	const PANEL_HEAD = 'flex h-11 items-center gap-2 border-b border-border/70 px-4';
+	const PANEL_BODY = 'px-4 py-2';
+
 	const statusDot = (id: string) => TICKET_STATUSES.find((s) => s.id === id)?.dot ?? '#7c7c84';
 </script>
 
@@ -166,7 +169,7 @@
 		{:else}
 			<!-- The numbers: one strip with hairline dividers. -->
 			<div
-				class="mb-10 grid grid-cols-2 gap-y-4 rounded-xl border border-border py-3.5 sm:grid-cols-3 lg:grid-cols-5"
+				class="mb-5 grid grid-cols-2 gap-y-4 rounded-xl border border-border py-3.5 sm:grid-cols-3 lg:grid-cols-5"
 			>
 				{#each stats as s (s.label)}
 					{@const cell = 'block px-4 lg:border-l lg:border-border lg:first:border-l-0'}
@@ -198,58 +201,64 @@
 				{/each}
 			</div>
 
-			<div class="grid gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_300px]">
-				<!-- Left: what needs you, then what moved lately. -->
-				<div class="min-w-0 space-y-10">
-					<section>
-						<SectionHeader label={m.tickets_dash_needs_reply()} count={waitingOnYou.length} />
-						{#if waitingOnYou.length}
-							<div class="space-y-px">
+			<!-- Below the numbers: each section in its own framed panel (header
+			     row with a hairline), so they read as separate blocks. -->
+			<div class="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+				<div class="min-w-0 space-y-5">
+					<section class={PANEL}>
+						<header class={PANEL_HEAD}>
+							<h2 class="text-[13px] font-medium text-text">{m.tickets_dash_needs_reply()}</h2>
+							{#if waitingOnYou.length}
+								<span class="font-mono text-[12px] text-accent">{waitingOnYou.length}</span>
+							{/if}
+						</header>
+						<div class={PANEL_BODY}>
+							{#if waitingOnYou.length}
 								{#each waitingOnYou as t (t.id)}
 									{@render ticketRow(t)}
 								{/each}
-							</div>
-						{:else}
-							<p class="flex items-center gap-2 text-[14px] text-text-3">
-								<Icon name="check" size={14} class="text-[#7fc8a9]" />
-								{m.tickets_dash_needs_reply_empty()}
-							</p>
-						{/if}
+							{:else}
+								<p class="flex items-center gap-2 px-2 py-2 text-[14px] text-text-3">
+									<Icon name="check" size={14} class="text-[#7fc8a9]" />
+									{m.tickets_dash_needs_reply_empty()}
+								</p>
+							{/if}
+						</div>
 					</section>
 
-					<section>
-						<SectionHeader label={m.tickets_dash_recent()}>
-							{#snippet action()}
-								<a
-									href="/tickets"
-									class="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[12px] text-text-3 transition-colors hover:bg-surface hover:text-text"
-								>
-									{m.tickets_dash_view_all()}
-									<Icon name="chevron-r" size={12} />
-								</a>
-							{/snippet}
-						</SectionHeader>
-						{#if recent.length}
-							<div class="space-y-px">
+					<section class={PANEL}>
+						<header class={PANEL_HEAD}>
+							<h2 class="text-[13px] font-medium text-text">{m.tickets_dash_recent()}</h2>
+							<a
+								href="/tickets"
+								class="-mr-1.5 ml-auto inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[12px] text-text-3 transition-colors hover:bg-surface hover:text-text"
+							>
+								{m.tickets_dash_view_all()}
+								<Icon name="chevron-r" size={12} />
+							</a>
+						</header>
+						<div class={PANEL_BODY}>
+							{#if recent.length}
 								{#each recent as t (t.id)}
 									{@render ticketRow(t)}
 								{/each}
-							</div>
-						{:else}
-							<p class="text-[14px] text-text-3">{m.tickets_dash_nothing_open()}</p>
-						{/if}
+							{:else}
+								<p class="px-2 py-2 text-[14px] text-text-3">{m.tickets_dash_nothing_open()}</p>
+							{/if}
+						</div>
 					</section>
 				</div>
 
-				<!-- Right: how it breaks down. -->
-				<div class="space-y-10">
+				<div class="space-y-5">
 					{#if byStatus.length}
-						<section>
-							<SectionHeader label={m.tickets_dash_by_status()} />
-							<div class="space-y-2.5">
+						<section class={PANEL}>
+							<header class={PANEL_HEAD}>
+								<h2 class="text-[13px] font-medium text-text">{m.tickets_dash_by_status()}</h2>
+							</header>
+							<div class="space-y-3 px-4 py-3.5">
 								{#each byStatus as s (s.id)}
 									<a href="/tickets?status={s.id}" class="group block">
-										<div class="mb-1 flex items-center gap-2 text-[13px] leading-5">
+										<div class="mb-1.5 flex items-center gap-2 text-[13px] leading-5">
 											<span class="h-2 w-2 rounded-full" style:background={s.dot}></span>
 											<span class="text-text-2 group-hover:text-text"
 												>{ticketStatusLabel(s.id)}</span
@@ -270,12 +279,14 @@
 					{/if}
 
 					{#if byCategory.length}
-						<section>
-							<SectionHeader label={m.tickets_dash_by_category()} />
-							<div class="space-y-2.5">
+						<section class={PANEL}>
+							<header class={PANEL_HEAD}>
+								<h2 class="text-[13px] font-medium text-text">{m.tickets_dash_by_category()}</h2>
+							</header>
+							<div class="space-y-3 px-4 py-3.5">
 								{#each byCategory as c (c.id)}
 									<div>
-										<div class="mb-1 flex items-center gap-2 text-[13px] leading-5">
+										<div class="mb-1.5 flex items-center gap-2 text-[13px] leading-5">
 											<span class="h-2 w-2 rounded-full" style:background={c.color}></span>
 											<span class="text-text-2">{ticketCategoryLabel(c.id)}</span>
 											<span class="ml-auto font-mono text-[12px] text-text-3">{c.n}</span>
@@ -293,24 +304,31 @@
 						</section>
 					{/if}
 
-					<section>
-						<SectionHeader label={m.tickets_dash_per_week()} />
-						<div class="flex h-24 items-end gap-1.5">
-							{#each weeks as w (w.from)}
-								<div
-									class="group relative flex h-full flex-1 flex-col justify-end"
-									title="{formatDateShort(new Date(w.from))} · {w.n}"
-								>
+					<section class={PANEL}>
+						<header class={PANEL_HEAD}>
+							<h2 class="text-[13px] font-medium text-text">{m.tickets_dash_per_week()}</h2>
+						</header>
+						<div class="px-4 pt-4 pb-3">
+							<!-- Neutral bars; this week in accent. -->
+							<div class="flex h-20 items-end gap-1.5">
+								{#each weeks as w, i (w.from)}
 									<div
-										class="min-h-[2px] rounded-t-[3px] bg-accent/70 transition-colors group-hover:bg-accent"
-										style:height="{(w.n / maxWeek) * 100}%"
-									></div>
-								</div>
-							{/each}
-						</div>
-						<div class="mt-1.5 flex justify-between text-[11px] text-text-4">
-							<span>{formatDateShort(new Date(weeks[0].from))}</span>
-							<span>{m.tickets_dash_this_week()}</span>
+										class="group flex h-full flex-1 flex-col justify-end"
+										title="{formatDateShort(new Date(w.from))} · {w.n}"
+									>
+										<div
+											class="min-h-[2px] rounded-t-[3px] transition-colors {i === weeks.length - 1
+												? 'bg-accent/80 group-hover:bg-accent'
+												: 'bg-text-4/60 group-hover:bg-text-3'}"
+											style:height="{(w.n / maxWeek) * 100}%"
+										></div>
+									</div>
+								{/each}
+							</div>
+							<div class="mt-2 flex justify-between text-[11px] text-text-4">
+								<span>{formatDateShort(new Date(weeks[0].from))}</span>
+								<span>{m.tickets_dash_this_week()}</span>
+							</div>
 						</div>
 					</section>
 				</div>
