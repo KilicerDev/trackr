@@ -75,7 +75,6 @@
 		linkedTasks: { id: string; displayId: string; title: string; status: string }[];
 		sourceChat: { threadId: string; orgId: string; title: string | null } | null;
 	};
-	type AttachmentUploaderHandle = { upload: (files: File[]) => Promise<void> };
 	let { data }: { data: PageData } = $props();
 
 	// Names of everyone on this ticket, resolved server-side. Prefer this over the
@@ -141,7 +140,6 @@
 		pop = pop === key ? null : key;
 	}
 	let tagsPop = $state<'mobile' | 'desktop' | null>(null);
-	let ticketAttachmentUploader = $state<AttachmentUploaderHandle>();
 	let pending = $state(false);
 
 	async function patch(
@@ -467,15 +465,15 @@
 			]}
 />
 
-<div class="flex min-h-0 flex-1">
-	<!-- Left: the conversation, with the composer docked under it. Drop files
-	     anywhere here to stage them on the reply. -->
-	<AttachmentDropzone
-		onfiles={addCommentFiles}
-		disabled={sending}
-		label={m.tickets_dropzone_reply()}
-		class="flex min-w-0 flex-1 flex-col"
-	>
+<!-- Drop files anywhere on the ticket to stage them on the reply. -->
+<AttachmentDropzone
+	onfiles={addCommentFiles}
+	disabled={sending}
+	label={m.tickets_dropzone_reply()}
+	class="flex min-h-0 flex-1"
+>
+	<!-- Left: the conversation, with the composer docked under it. -->
+	<div class="flex min-w-0 flex-1 flex-col">
 		<div class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
 			<div class="mx-auto w-full max-w-[760px] px-6 pt-6 pb-10">
 				{#if fromPanel}
@@ -782,21 +780,15 @@
 				/>
 			</div>
 		</div>
-	</AttachmentDropzone>
+	</div>
 
-	<!-- Right: properties and sections, its own scroll; drop files here to
-	     attach them to the ticket. -->
-	<AttachmentDropzone
-		onfiles={(files) => void ticketAttachmentUploader?.upload(files)}
-		class="hidden w-[340px] shrink-0 lg:block"
-	>
-		<aside class="h-full overflow-y-auto border-l border-border/70">
-			<div class="px-5 py-6">
-				{@render detailsRail('desktop')}
-			</div>
-		</aside>
-	</AttachmentDropzone>
-</div>
+	<!-- Right: properties and sections, its own scroll. -->
+	<aside class="hidden w-[340px] shrink-0 overflow-y-auto border-l border-border/70 lg:block">
+		<div class="px-5 py-6">
+			{@render detailsRail('desktop')}
+		</div>
+	</aside>
+</AttachmentDropzone>
 
 {#if data.canCreateTask}
 	<CreateTaskModal
@@ -1017,24 +1009,13 @@
 			<section>
 				<SectionHeader label={m.tickets_attachments()} count={data.attachments.length}>
 					{#snippet action()}
-						{#if placement === 'desktop'}
-							<AttachmentUploader
-								bind:this={ticketAttachmentUploader}
-								entityType="ticket"
-								entityId={t.id}
-								dropzone={false}
-								variant="icon"
-								label={m.tickets_attach_files()}
-							/>
-						{:else}
-							<AttachmentUploader
-								entityType="ticket"
-								entityId={t.id}
-								dropzone={false}
-								variant="icon"
-								label={m.tickets_attach_files()}
-							/>
-						{/if}
+						<AttachmentUploader
+							entityType="ticket"
+							entityId={t.id}
+							dropzone={false}
+							variant="icon"
+							label={m.tickets_attach_files()}
+						/>
 					{/snippet}
 				</SectionHeader>
 				<AttachmentList attachments={data.attachments} canDelete={isAgent} />
@@ -1095,24 +1076,13 @@
 					</button>
 				{/if}
 				{#if !data.attachments.length}
-					{#if placement === 'desktop'}
-						<AttachmentUploader
-							bind:this={ticketAttachmentUploader}
-							entityType="ticket"
-							entityId={t.id}
-							dropzone={false}
-							variant="quiet"
-							label={m.tasks_panel_add_file()}
-						/>
-					{:else}
-						<AttachmentUploader
-							entityType="ticket"
-							entityId={t.id}
-							dropzone={false}
-							variant="quiet"
-							label={m.tasks_panel_add_file()}
-						/>
-					{/if}
+					<AttachmentUploader
+						entityType="ticket"
+						entityId={t.id}
+						dropzone={false}
+						variant="quiet"
+						label={m.tasks_panel_add_file()}
+					/>
 				{/if}
 			</div>
 		{/if}
