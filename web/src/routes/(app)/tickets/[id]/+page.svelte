@@ -199,7 +199,6 @@
 	let internal = $state(false);
 	let sending = $state(false);
 	let commentFiles = $state<File[]>([]);
-	let commentFileInput = $state<HTMLInputElement>();
 
 	function addCommentFiles(incoming: File[]) {
 		const { accepted, errors } = selectStageable(incoming, commentFiles.length);
@@ -207,16 +206,10 @@
 		if (accepted.length) commentFiles = [...commentFiles, ...accepted];
 	}
 
-	function onCommentPick(e: Event) {
-		const target = e.currentTarget as HTMLInputElement;
-		if (target.files?.length) addCommentFiles(Array.from(target.files));
-		target.value = '';
-	}
-
-	async function send(): Promise<boolean> {
+	async function send() {
 		const text = body.trim();
 		// Allow a files-only reply (attachment with no text).
-		if ((!text && commentFiles.length === 0) || sending) return false;
+		if ((!text && commentFiles.length === 0) || sending) return;
 		sending = true;
 		const fd = new FormData();
 		fd.set('id', t.id);
@@ -241,21 +234,11 @@
 			internal = false;
 			commentFiles = [];
 			await invalidate('app:tickets');
-			return true;
 		} catch (err) {
 			showToast('err', err instanceof Error ? err.message : m.tickets_send_failed());
-			return false;
 		} finally {
 			sending = false;
 		}
-	}
-
-	// Reply and move the ticket in one step (agents): send, then set status.
-	let sendMenuOpen = $state(false);
-	const SEND_AND_SET = ['waiting_on_customer', 'resolved'] as const;
-	async function sendAndSet(status: string) {
-		sendMenuOpen = false;
-		if (await send()) await patch('status', status);
 	}
 
 	// ─── Activity events (timeline) ─────────────────────────────────────────
@@ -485,8 +468,14 @@
 />
 
 <div class="flex min-h-0 flex-1">
-	<!-- Left: the conversation, with the composer docked under it. -->
-	<div class="flex min-w-0 flex-1 flex-col">
+	<!-- Left: the conversation, with the composer docked under it. Drop files
+	     anywhere here to stage them on the reply. -->
+	<AttachmentDropzone
+		onfiles={addCommentFiles}
+		disabled={sending}
+		label={m.tickets_dropzone_reply()}
+		class="flex min-w-0 flex-1 flex-col"
+	>
 		<div class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
 			<div class="mx-auto w-full max-w-[760px] px-6 pt-6 pb-10">
 				{#if fromPanel}
@@ -769,100 +758,31 @@
 						</button>
 					</div>
 				{/if}
-				<AttachmentDropzone
-					onfiles={addCommentFiles}
-					disabled={sending}
-					label={m.tickets_dropzone_reply()}
-				>
-					{#if commentFiles.length}
-						<div class="mb-2">
-							<StagedFileList
-								files={commentFiles}
-								disabled={sending}
-								onremove={(i) => (commentFiles = commentFiles.filter((_, idx) => idx !== i))}
-							/>
-						</div>
-					{/if}
-					<Composer
-						bind:value={body}
-						placeholder={internal
-							? m.tickets_composer_internal_placeholder()
-							: m.tickets_composer_reply_placeholder()}
-						accent={internal ? 'warning' : 'default'}
-						mentionUsers={internal
-							? data.mentionUsers?.filter((u) => u.internal)
-							: data.mentionUsers}
-						refTypes={['ticket']}
-						refOrgId={data.ticket.orgId}
-						{sending}
-						onsend={() => void send()}
-						hasAttachments={commentFiles.length > 0}
-					>
-						{#snippet rightActions()}
-							<button
-								type="button"
-								aria-label={m.tickets_attach_files()}
-								title={m.tickets_attach_files()}
-								onclick={() => commentFileInput?.click()}
-								class="grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface-2 hover:text-text"
-							>
-								<Icon name="paperclip" size={15} />
-							</button>
-							{#if isAgent && !internal}
-								<!-- Send & set status: reply and move the ticket in one step. -->
-								<div class="relative">
-									<button
-										type="button"
-										aria-label={m.tickets_send_and_set()}
-										title={m.tickets_send_and_set()}
-										aria-expanded={sendMenuOpen}
-										disabled={sending || (!body.trim() && commentFiles.length === 0)}
-										onclick={() => (sendMenuOpen = !sendMenuOpen)}
-										class="grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface-2 hover:text-text disabled:opacity-40 {sendMenuOpen
-											? 'bg-surface-2 text-text'
-											: ''}"
-									>
-										<Icon name="chevron" size={14} class="rotate-180" />
-									</button>
-									{#if sendMenuOpen}
-										<div
-											role="menu"
-											use:clickOutside={() => (sendMenuOpen = false)}
-											in:fly={POPOVER_IN}
-											class="absolute right-0 bottom-full z-50 mb-1.5 min-w-[240px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-										>
-											<div class="px-2 pt-1 pb-1.5 text-[12px] text-text-4">
-												{m.tickets_send_and_set()}
-											</div>
-											{#each SEND_AND_SET as st (st)}
-												{@const meta = TICKET_STATUSES.find((s) => s.id === st)}
-												<button
-													type="button"
-													role="menuitem"
-													onclick={() => void sendAndSet(st)}
-													class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
-												>
-													<span class="h-2 w-2 rounded-full" style:background={meta?.dot}></span>
-													{ticketStatusLabel(st)}
-												</button>
-											{/each}
-										</div>
-									{/if}
-								</div>
-							{/if}
-						{/snippet}
-					</Composer>
-					<input
-						bind:this={commentFileInput}
-						type="file"
-						multiple
-						hidden
-						onchange={onCommentPick}
-					/>
-				</AttachmentDropzone>
+				{#if commentFiles.length}
+					<div class="mb-2">
+						<StagedFileList
+							files={commentFiles}
+							disabled={sending}
+							onremove={(i) => (commentFiles = commentFiles.filter((_, idx) => idx !== i))}
+						/>
+					</div>
+				{/if}
+				<Composer
+					bind:value={body}
+					placeholder={internal
+						? m.tickets_composer_internal_placeholder()
+						: m.tickets_composer_reply_placeholder()}
+					accent={internal ? 'warning' : 'default'}
+					mentionUsers={internal ? data.mentionUsers?.filter((u) => u.internal) : data.mentionUsers}
+					refTypes={['ticket']}
+					refOrgId={data.ticket.orgId}
+					{sending}
+					onsend={() => void send()}
+					hasAttachments={commentFiles.length > 0}
+				/>
 			</div>
 		</div>
-	</div>
+	</AttachmentDropzone>
 
 	<!-- Right: properties and sections, its own scroll; drop files here to
 	     attach them to the ticket. -->

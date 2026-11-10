@@ -1564,7 +1564,6 @@
 	"tickets_team_tag": "Team",
 	"tickets_reply_tab": "Reply",
 	"tickets_internal_note_tab": "Internal note",
-	"tickets_send_and_set": "Send & set status",
 	"tickets_opened_this": "opened this ticket",
 	"tickets_org_not_found": "Organization not found.",
 	"tickets_org_required": "Organization is required.",
