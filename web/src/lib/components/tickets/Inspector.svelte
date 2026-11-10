@@ -260,9 +260,9 @@
 				{ticket.displayId}
 			</span>
 			<span
-				class="min-w-0 truncate rounded bg-surface px-1.5 py-0.5 font-mono text-[12px] text-text-3"
+				class="inline-flex h-[20px] min-w-0 items-center rounded-md bg-surface px-1.5 font-mono text-[12px] leading-none text-text-3"
 			>
-				{ticket.orgName}
+				<span class="truncate">{ticket.orgName}</span>
 			</span>
 			{#if pending}
 				<span class="inline-flex items-center gap-1.5 text-[12px] text-text-3">

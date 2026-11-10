@@ -553,9 +553,9 @@
 		<div class="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3">
 			<TypeBadge type={draft.type ?? 'task'} idText={draft.id} showLabel={false} />
 			<span
-				class="min-w-0 truncate rounded bg-surface px-1.5 py-0.5 font-mono text-[12px] text-text-3"
+				class="inline-flex h-[20px] min-w-0 items-center rounded-md bg-surface px-1.5 font-mono text-[12px] leading-none text-text-3"
 			>
-				{project.name}
+				<span class="truncate">{project.name}</span>
 			</span>
 			{#if savingField}
 				<span class="inline-flex items-center gap-1.5 text-[12px] text-text-3">
