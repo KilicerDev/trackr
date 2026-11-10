@@ -72,51 +72,58 @@
 	}
 </script>
 
-{#snippet sendButton(size: string)}
+{#snippet sendButton(size: string, icon: string = 'send')}
+	<!-- `size` carries the height, width and corner radius. -->
 	<button
 		type="button"
 		aria-label={m.composer_send()}
 		onclick={onsend}
 		disabled={!canSend}
-		class="grid {size} shrink-0 place-items-center rounded-lg bg-accent text-white shadow-btn transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
+		class="grid {size} shrink-0 place-items-center bg-accent text-white shadow-btn transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
 	>
 		{#if sending}
 			<span class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"
 			></span>
 		{:else}
-			<Icon name="send" size={14} />
+			<Icon name={icon} size={16} />
 		{/if}
 	</button>
 {/snippet}
 
 {#if variant === 'inline'}
 	<div class="flex items-end gap-2">
+		<!-- Input and send button are both 40px tall; one line of text sits
+		     centred (a 20px line plus the paragraph's 0.15em margins, 7px
+		     padding and a 1px border on each side). The editor's own root
+		     doesn't stretch, so it's wrapped in a flex-1 box. -->
 		<div
-			class="flex min-w-0 flex-1 items-end rounded-xl border bg-surface transition-colors {accent ===
+			class="flex min-h-10 min-w-0 flex-1 items-center rounded-xl border bg-surface transition-colors {accent ===
 			'warning'
 				? 'border-[#e9c46a]/40 focus-within:border-[#e9c46a]/70'
 				: 'border-border focus-within:border-border-strong'}"
 		>
-			<RichTextInput
-				bind:value
-				onkeydown={onKey}
-				{projectId}
-				users={mentionUsers}
-				{tags}
-				{onTagAdd}
-				{refTypes}
-				{refOrgId}
-				{placeholder}
-				rows={1}
-				maxRows={8}
-				disabled={disabled || sending}
-				class="min-w-0 flex-1 border-0 bg-transparent px-3.5 py-2.5 text-[14px] leading-relaxed disabled:opacity-60"
-			/>
+			<div class="min-w-0 flex-1">
+				<RichTextInput
+					bind:value
+					onkeydown={onKey}
+					{projectId}
+					users={mentionUsers}
+					{tags}
+					{onTagAdd}
+					{refTypes}
+					{refOrgId}
+					{placeholder}
+					rows={1}
+					maxRows={8}
+					disabled={disabled || sending}
+					class="w-full border-0 bg-transparent px-3.5 py-[7px] text-[14px] leading-5 disabled:opacity-60"
+				/>
+			</div>
 			{#if rightActions}
 				<div class="flex shrink-0 items-center gap-1 py-1 pr-1">{@render rightActions()}</div>
 			{/if}
 		</div>
-		{@render sendButton('h-[42px] w-[42px]')}
+		{@render sendButton('h-10 w-10 rounded-xl', 'arrow-right')}
 	</div>
 {:else}
 	<div
@@ -141,7 +148,7 @@
 		<div class="flex items-center gap-1 px-2 pb-2">
 			<div class="ml-auto flex items-center gap-1">
 				{#if rightActions}{@render rightActions()}{/if}
-				{@render sendButton('h-8 w-8')}
+				{@render sendButton('h-8 w-8 rounded-lg')}
 			</div>
 		</div>
 	</div>

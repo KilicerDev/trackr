@@ -29,9 +29,6 @@
 	import { labelMeta } from '$lib/utils/label-meta';
 	import AttachmentList from '../attachments/AttachmentList.svelte';
 	import AttachmentUploader from '../attachments/AttachmentUploader.svelte';
-	import AttachmentDropzone from '../attachments/AttachmentDropzone.svelte';
-	import StagedFileList from '../attachments/StagedFileList.svelte';
-	import { selectStageable } from '$lib/config/attachments';
 	import StatusPopover from '../popovers/StatusPopover.svelte';
 	import PriorityPopover from '../popovers/PriorityPopover.svelte';
 	import TypePopover from '../popovers/TypePopover.svelte';
@@ -261,31 +258,13 @@
 
 	let commentBody = $state('');
 	let commentSending = $state(false);
-	let commentFiles = $state<File[]>([]);
-	let commentFileInput = $state<HTMLInputElement>();
-
-	function addCommentFiles(incoming: File[]) {
-		const { accepted, errors } = selectStageable(incoming, commentFiles.length);
-		for (const err of errors) showToast('err', err);
-		if (accepted.length) commentFiles = [...commentFiles, ...accepted];
-	}
-
-	function onCommentPick(e: Event) {
-		const target = e.currentTarget as HTMLInputElement;
-		if (target.files?.length) addCommentFiles(Array.from(target.files));
-		target.value = '';
-	}
-
 	async function sendComment() {
 		const text = commentBody.trim();
-		if ((!text && commentFiles.length === 0) || !draft || commentSending) return;
+		if (!text || !draft || commentSending) return;
 		commentSending = true;
-		const ok = await postAction('commentAdd', 'comment', { body: text }, commentFiles);
+		const ok = await postAction('commentAdd', 'comment', { body: text });
 		commentSending = false;
-		if (ok) {
-			commentBody = '';
-			commentFiles = [];
-		}
+		if (ok) commentBody = '';
 	}
 
 	async function logTime(entry: { h: number; m: number; date: string; note: string }) {
@@ -329,7 +308,6 @@
 		draft = id && seed ? { ...seed, assignees: seed.assignees ?? [seed.assignee] } : null;
 		// Reset the compose box when the task changes.
 		commentBody = '';
-		commentFiles = [];
 		if (!id) return;
 		void load(id);
 		// Best-effort mark-read so the bell dot clears when the user opens
@@ -1261,44 +1239,19 @@
 			{/if}
 		{/snippet}
 
-		<div class="px-4 pt-2 pb-4">
-			<AttachmentDropzone
-				onfiles={addCommentFiles}
-				disabled={commentSending}
-				label={m.tasks_drop_files_to_comment()}
-			>
-				{#if commentFiles.length}
-					<div class="mb-2">
-						<StagedFileList
-							files={commentFiles}
-							disabled={commentSending}
-							onremove={(i) => (commentFiles = commentFiles.filter((_, idx) => idx !== i))}
-						/>
-					</div>
-				{/if}
-				<Composer
-					bind:value={commentBody}
-					variant="inline"
-					placeholder={m.tasks_write_a_comment()}
-					sending={commentSending}
-					onsend={sendComment}
-					projectId={taskProjectId}
-					refTypes={['task', 'ticket', 'project']}
-				>
-					{#snippet rightActions()}
-						<button
-							type="button"
-							aria-label={m.tasks_attach_files()}
-							title={m.tasks_attach_files()}
-							onclick={() => commentFileInput?.click()}
-							class="grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface-2 hover:text-text"
-						>
-							<Icon name="paperclip" size={15} />
-						</button>
-					{/snippet}
-				</Composer>
-				<input bind:this={commentFileInput} type="file" multiple hidden onchange={onCommentPick} />
-			</AttachmentDropzone>
+		<!-- Comment bar. Files go through the drop overlay over the whole panel
+		     (they attach to the task), so there's no paperclip here. Same 20px
+		     side padding as the content above so the edges line up. -->
+		<div class="px-5 pt-2 pb-4">
+			<Composer
+				bind:value={commentBody}
+				variant="inline"
+				placeholder={m.tasks_write_a_comment()}
+				sending={commentSending}
+				onsend={sendComment}
+				projectId={taskProjectId}
+				refTypes={['task', 'ticket', 'project']}
+			/>
 		</div>
 
 		{#if isTeam && taskProjectId}
