@@ -492,8 +492,10 @@
 			onadd={addBoardTask}
 		/>
 	{:else}
-		<div class="min-h-0 flex-1 overflow-y-auto">
-			<div class="min-w-0">
+		<div class="min-h-0 flex-1 overflow-auto">
+			<!-- Same as the task lists: fixed column widths, sideways scroll on
+			     a narrow window. -->
+			<div class="min-w-0 md:min-w-[960px]">
 				{#each WEEK_DAYS as day, i (day)}
 					{@const entries = entriesByDay[i] ?? []}
 					{@const mins = dayMinutes(i)}
@@ -604,7 +606,7 @@
 				{/each}
 			</div>
 
-			<section class="pb-6">
+			<section class="pb-6 md:min-w-[960px]">
 				<div
 					class="sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-b border-border bg-bg-elev pr-3 pl-4 sm:pl-5"
 				>

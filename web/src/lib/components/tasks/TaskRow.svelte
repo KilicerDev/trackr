@@ -86,8 +86,8 @@
 	type="button"
 	{onclick}
 	class="grid w-full grid-cols-[30px_minmax(0,1fr)_auto_60px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors {showProject
-		? 'md:grid-cols-[30px_92px_minmax(0,1fr)_150px_24px_92px_64px_60px]'
-		: 'md:grid-cols-[30px_92px_minmax(0,1fr)_24px_92px_64px_60px]'}
+		? 'md:grid-cols-[30px_92px_minmax(320px,1fr)_150px_24px_92px_64px_60px]'
+		: 'md:grid-cols-[30px_92px_minmax(320px,1fr)_24px_92px_64px_60px]'}
 	{selected ? 'bg-[var(--row-active)]' : 'hover:bg-[var(--row-hover)]'}"
 	style:height="var(--row-h)"
 >

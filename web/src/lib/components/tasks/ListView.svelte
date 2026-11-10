@@ -159,92 +159,96 @@
 </script>
 
 <div class="flex min-h-0 flex-1 flex-col overflow-auto">
-	{#each groups as g (g.id)}
-		{@const isCollapsed = collapsed.has(g.id)}
-		<div>
-			{#if g.label}
-				{@const href = group === 'project' ? projectHref(g.id) : undefined}
-				<!-- Group band: sticky, medium weight, muted count; the project +
+	<!-- Columns keep their widths (the title at least 320px); on a narrow
+	     window the list scrolls sideways instead of squeezing the title. -->
+	<div class={showProject && group !== 'project' ? 'md:min-w-[960px]' : 'md:min-w-[800px]'}>
+		{#each groups as g (g.id)}
+			{@const isCollapsed = collapsed.has(g.id)}
+			<div>
+				{#if g.label}
+					{@const href = group === 'project' ? projectHref(g.id) : undefined}
+					<!-- Group band: sticky, medium weight, muted count; the project +
 				     shows on hover. -->
-				<div
-					class="group/band sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-b border-border bg-bg-elev pr-3 pl-5"
-				>
-					<button
-						type="button"
-						onclick={() => toggle(g.id)}
-						aria-label={g.label}
-						class="group flex h-full shrink-0 items-center gap-2.5"
+					<div
+						class="group/band sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-b border-border bg-bg-elev pr-3 pl-5"
 					>
-						<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
-							<Icon name="chevron" size={13} />
-						</span>
-						<span class="h-2 w-2 rounded-full" style:background={g.dot}></span>
-					</button>
-					{#if href}
-						<a
-							{href}
-							class="truncate text-[14px] font-medium text-text hover:underline"
-							title={m.tasks_open_project({ name: g.label })}
-						>
-							{g.label}
-						</a>
-					{:else}
-						<span class="truncate text-[14px] font-medium text-text">{g.label}</span>
-					{/if}
-					<button
-						type="button"
-						onclick={() => toggle(g.id)}
-						aria-label={g.label}
-						class="flex h-full min-w-0 flex-1 items-center gap-2.5 text-left"
-					>
-						<span class="font-mono text-[12px] text-text-4">{g.tasks.length}</span>
-					</button>
-					{#if group === 'project'}
 						<button
 							type="button"
-							aria-label={m.tasks_add_task()}
-							title={m.tasks_add_task()}
-							onclick={() => onAddInProject?.(g.id as ProjectId)}
-							class="{ICON_ACTION} opacity-0 group-hover/band:opacity-100 focus-visible:opacity-100"
+							onclick={() => toggle(g.id)}
+							aria-label={g.label}
+							class="group flex h-full shrink-0 items-center gap-2.5"
 						>
-							<Icon name="plus" size={14} />
+							<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
+								<Icon name="chevron" size={13} />
+							</span>
+							<span class="h-2 w-2 rounded-full" style:background={g.dot}></span>
 						</button>
-					{/if}
-				</div>
-			{/if}
-			{#if !isCollapsed}
-				<div transition:slide={{ duration: 180, easing: cubicOut }}>
-					{#each g.tasks.slice(0, limitFor(g.id)) as t (t.id)}
-						<TaskRow
-							task={t}
-							selected={selectedId === t.id}
-							showProject={showProject && group !== 'project'}
-							onclick={() => onSelect?.(t)}
-						/>
-					{/each}
-					{#if g.tasks.length > limitFor(g.id)}
+						{#if href}
+							<a
+								{href}
+								class="truncate text-[14px] font-medium text-text hover:underline"
+								title={m.tasks_open_project({ name: g.label })}
+							>
+								{g.label}
+							</a>
+						{:else}
+							<span class="truncate text-[14px] font-medium text-text">{g.label}</span>
+						{/if}
 						<button
 							type="button"
-							use:whenVisible={() => showMore(g.id)}
-							onclick={() => showMore(g.id)}
-							class="flex h-9 w-full items-center gap-1.5 border-b border-border px-5 text-left text-[13px] text-text-3 transition-colors hover:bg-surface hover:text-text"
+							onclick={() => toggle(g.id)}
+							aria-label={g.label}
+							class="flex h-full min-w-0 flex-1 items-center gap-2.5 text-left"
 						>
-							<Icon name="chevron" size={13} />
-							{m.tasks_show_more({ n: g.tasks.length - limitFor(g.id) })}
+							<span class="font-mono text-[12px] text-text-4">{g.tasks.length}</span>
 						</button>
-					{/if}
-					{#if group === 'project'}
-						<button
-							type="button"
-							onclick={() => onAddInProject?.(g.id as ProjectId)}
-							class="flex h-9 w-full items-center gap-1.5 border-b border-border px-5 text-left text-[13px] text-text-3 transition-colors hover:bg-surface hover:text-text"
-						>
-							<Icon name="plus" size={13} />
-							{m.tasks_new_task()}
-						</button>
-					{/if}
-				</div>
-			{/if}
-		</div>
-	{/each}
+						{#if group === 'project'}
+							<button
+								type="button"
+								aria-label={m.tasks_add_task()}
+								title={m.tasks_add_task()}
+								onclick={() => onAddInProject?.(g.id as ProjectId)}
+								class="{ICON_ACTION} opacity-0 group-hover/band:opacity-100 focus-visible:opacity-100"
+							>
+								<Icon name="plus" size={14} />
+							</button>
+						{/if}
+					</div>
+				{/if}
+				{#if !isCollapsed}
+					<div transition:slide={{ duration: 180, easing: cubicOut }}>
+						{#each g.tasks.slice(0, limitFor(g.id)) as t (t.id)}
+							<TaskRow
+								task={t}
+								selected={selectedId === t.id}
+								showProject={showProject && group !== 'project'}
+								onclick={() => onSelect?.(t)}
+							/>
+						{/each}
+						{#if g.tasks.length > limitFor(g.id)}
+							<button
+								type="button"
+								use:whenVisible={() => showMore(g.id)}
+								onclick={() => showMore(g.id)}
+								class="flex h-9 w-full items-center gap-1.5 border-b border-border px-5 text-left text-[13px] text-text-3 transition-colors hover:bg-surface hover:text-text"
+							>
+								<Icon name="chevron" size={13} />
+								{m.tasks_show_more({ n: g.tasks.length - limitFor(g.id) })}
+							</button>
+						{/if}
+						{#if group === 'project'}
+							<button
+								type="button"
+								onclick={() => onAddInProject?.(g.id as ProjectId)}
+								class="flex h-9 w-full items-center gap-1.5 border-b border-border px-5 text-left text-[13px] text-text-3 transition-colors hover:bg-surface hover:text-text"
+							>
+								<Icon name="plus" size={13} />
+								{m.tasks_new_task()}
+							</button>
+						{/if}
+					</div>
+				{/if}
+			</div>
+		{/each}
+	</div>
 </div>

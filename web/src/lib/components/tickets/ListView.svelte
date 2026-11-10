@@ -134,121 +134,127 @@
 </script>
 
 <div class="flex min-h-0 flex-1 flex-col overflow-auto">
-	{#each groups as g (g.id)}
-		{@const isCollapsed = collapsed.has(g.id)}
-		<div>
-			{#if g.label}
-				<!-- Group band, same as the tasks list: sticky, medium weight, muted
+	<!-- Columns keep their widths (the subject at least 320px); on a narrow
+	     window the list scrolls sideways instead of squeezing the subject. -->
+	<div class={group !== 'org' ? 'md:min-w-[900px]' : 'md:min-w-[730px]'}>
+		{#each groups as g (g.id)}
+			{@const isCollapsed = collapsed.has(g.id)}
+			<div>
+				{#if g.label}
+					<!-- Group band, same as the tasks list: sticky, medium weight, muted
 				     count, one rule underneath. -->
-				<button
-					type="button"
-					onclick={() => toggle(g.id)}
-					aria-expanded={!isCollapsed}
-					class="group sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-b border-border bg-bg-elev px-5 text-left"
-				>
-					<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
-						<Icon name="chevron" size={13} />
-					</span>
-					<span class="h-2 w-2 rounded-full" style:background={g.dot}></span>
-					<span class="text-[14px] font-medium text-text">{g.label}</span>
-					<span class="font-mono text-[12px] text-text-4">{g.tickets.length}</span>
-				</button>
-			{/if}
-			{#if !isCollapsed}
-				<div transition:slide={{ duration: 180, easing: cubicOut }}>
-					{#each g.tickets as t (t.id)}
-						{@const assignees = t.assignees.map((id) => resolveUser(id))}
-						{@const sla = slaSignal(t)}
-						{@const cdone = t.checklist.filter((i) => i.done).length}
-						<!-- Row on the tasks-list grid: status, id, subject (with the
+					<button
+						type="button"
+						onclick={() => toggle(g.id)}
+						aria-expanded={!isCollapsed}
+						class="group sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-b border-border bg-bg-elev px-5 text-left"
+					>
+						<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
+							<Icon name="chevron" size={13} />
+						</span>
+						<span class="h-2 w-2 rounded-full" style:background={g.dot}></span>
+						<span class="text-[14px] font-medium text-text">{g.label}</span>
+						<span class="font-mono text-[12px] text-text-4">{g.tickets.length}</span>
+					</button>
+				{/if}
+				{#if !isCollapsed}
+					<div transition:slide={{ duration: 180, easing: cubicOut }}>
+						{#each g.tickets as t (t.id)}
+							{@const assignees = t.assignees.map((id) => resolveUser(id))}
+							{@const sla = slaSignal(t)}
+							{@const cdone = t.checklist.filter((i) => i.done).length}
+							<!-- Row on the tasks-list grid: status, id, subject (with the
 						     org and counts as quiet text), priority bars, activity,
 						     avatars. -->
-						<button
-							type="button"
-							onclick={() => onSelect?.(t)}
-							class="grid w-full grid-cols-[30px_minmax(0,1fr)_auto_60px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors {group !==
-							'org'
-								? 'md:grid-cols-[30px_92px_minmax(0,1fr)_160px_24px_92px_60px]'
-								: 'md:grid-cols-[30px_92px_minmax(0,1fr)_24px_92px_60px]'} {selectedId === t.id
-								? 'bg-[var(--row-active)]'
-								: 'hover:bg-[var(--row-hover)]'}"
-							style:height="var(--row-h)"
-						>
-							<span
-								class="h-2.5 w-2.5 rounded-full"
-								style:background={statusDot(t.status)}
-								title={ticketStatusLabel(t.status)}
-							></span>
-							<span class="hidden truncate font-mono text-[12px] leading-none text-text-4 md:block"
-								>{t.displayId}</span
+							<button
+								type="button"
+								onclick={() => onSelect?.(t)}
+								class="grid w-full grid-cols-[30px_minmax(0,1fr)_auto_60px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors {group !==
+								'org'
+									? 'md:grid-cols-[30px_92px_minmax(320px,1fr)_160px_24px_92px_60px]'
+									: 'md:grid-cols-[30px_92px_minmax(320px,1fr)_24px_92px_60px]'} {selectedId ===
+								t.id
+									? 'bg-[var(--row-active)]'
+									: 'hover:bg-[var(--row-hover)]'}"
+								style:height="var(--row-h)"
 							>
-							<span class="flex min-w-0 items-center gap-2.5">
-								<span class="truncate text-[14px] text-text">{t.subject}</span>
-								{#if sla && sla.tone === 'wait'}
-									<!-- Unanswered: right behind the subject, so it reads as
-									     part of the ticket, not as a column value. -->
-									<span
-										class="inline-flex shrink-0 items-center gap-1 rounded-md bg-accent-soft px-1.5 py-1 text-[12px] leading-none text-accent"
-										title={sla.label}
-									>
-										<span class="h-1.5 w-1.5 rounded-full" style:background={sla.dot}></span>
-										{sla.label}
-									</span>
-								{/if}
-								{#if t.messageCount > 0}
-									<span
-										class="hidden shrink-0 items-center gap-1 text-[12px] text-text-4 md:inline-flex"
-									>
-										<Icon name="msg" size={12} />
-										{t.messageCount}
-									</span>
-								{/if}
-								{#if t.checklist.length && cdone < t.checklist.length}
-									<span
-										class="hidden shrink-0 items-center gap-1 text-[12px] text-text-4 md:inline-flex"
-										title="{cdone}/{t.checklist.length}"
-									>
-										<Icon name="check-square" size={12} />
-										<span class="font-mono">{cdone}/{t.checklist.length}</span>
-									</span>
-								{/if}
-							</span>
-							{#if group !== 'org'}
-								<!-- Organization in its own column, aligned row under row. -->
 								<span
-									class="hidden min-w-0 items-center gap-1.5 text-[12px] leading-none text-text-3 md:flex"
-									title={t.orgName}
+									class="h-2.5 w-2.5 rounded-full"
+									style:background={statusDot(t.status)}
+									title={ticketStatusLabel(t.status)}
+								></span>
+								<span
+									class="hidden truncate font-mono text-[12px] leading-none text-text-4 md:block"
+									>{t.displayId}</span
 								>
-									<span class="h-1.5 w-1.5 shrink-0 rounded-full" style:background={t.orgColor}
-									></span>
-									<span class="truncate">{t.orgName}</span>
+								<span class="flex min-w-0 items-center gap-2.5">
+									<span class="truncate text-[14px] text-text">{t.subject}</span>
+									{#if sla && sla.tone === 'wait'}
+										<!-- Unanswered: right behind the subject, so it reads as
+									     part of the ticket, not as a column value. -->
+										<span
+											class="inline-flex shrink-0 items-center gap-1 rounded-md bg-accent-soft px-1.5 py-1 text-[12px] leading-none text-accent"
+											title={sla.label}
+										>
+											<span class="h-1.5 w-1.5 rounded-full" style:background={sla.dot}></span>
+											{sla.label}
+										</span>
+									{/if}
+									{#if t.messageCount > 0}
+										<span
+											class="hidden shrink-0 items-center gap-1 text-[12px] text-text-4 md:inline-flex"
+										>
+											<Icon name="msg" size={12} />
+											{t.messageCount}
+										</span>
+									{/if}
+									{#if t.checklist.length && cdone < t.checklist.length}
+										<span
+											class="hidden shrink-0 items-center gap-1 text-[12px] text-text-4 md:inline-flex"
+											title="{cdone}/{t.checklist.length}"
+										>
+											<Icon name="check-square" size={12} />
+											<span class="font-mono">{cdone}/{t.checklist.length}</span>
+										</span>
+									{/if}
 								</span>
-							{/if}
-							<span class="hidden items-center md:flex" title={priorityLabel(t.priority)}>
-								<PriorityBars priority={t.priority} />
-							</span>
-							<!-- Activity: when the ticket last moved. -->
-							<span
-								class="truncate text-right text-[12px] leading-none text-text-4"
-								title={sla?.label}
-							>
-								{relTime(t.lastMessageAt ?? t.updatedAt)}
-							</span>
-							<span class="flex justify-end">
-								{#if assignees.length}
-									<AvatarStack users={assignees} size={22} max={3} overlap={6} />
-								{:else}
+								{#if group !== 'org'}
+									<!-- Organization in its own column, aligned row under row. -->
 									<span
-										class="h-[22px] w-[22px] rounded-full border border-dashed border-border-strong"
-									></span>
+										class="hidden min-w-0 items-center gap-1.5 text-[12px] leading-none text-text-3 md:flex"
+										title={t.orgName}
+									>
+										<span class="h-1.5 w-1.5 shrink-0 rounded-full" style:background={t.orgColor}
+										></span>
+										<span class="truncate">{t.orgName}</span>
+									</span>
 								{/if}
-							</span>
-						</button>
-					{/each}
-				</div>
-			{/if}
-		</div>
-	{/each}
+								<span class="hidden items-center md:flex" title={priorityLabel(t.priority)}>
+									<PriorityBars priority={t.priority} />
+								</span>
+								<!-- Activity: when the ticket last moved. -->
+								<span
+									class="truncate text-right text-[12px] leading-none text-text-4"
+									title={sla?.label}
+								>
+									{relTime(t.lastMessageAt ?? t.updatedAt)}
+								</span>
+								<span class="flex justify-end">
+									{#if assignees.length}
+										<AvatarStack users={assignees} size={22} max={3} overlap={6} />
+									{:else}
+										<span
+											class="h-[22px] w-[22px] rounded-full border border-dashed border-border-strong"
+										></span>
+									{/if}
+								</span>
+							</button>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		{/each}
+	</div>
 	{#if tickets.length === 0}
 		<div class="grid flex-1 place-items-center text-[14px] text-text-3">
 			{mm.tickets_none_match()}
