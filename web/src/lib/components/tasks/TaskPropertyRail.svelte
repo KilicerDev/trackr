@@ -108,7 +108,7 @@
 	// picker's control gets the accent ring / tint.
 	function chip(filled: boolean, key: string): string {
 		if (list) {
-			return `grid w-full grid-cols-[84px_minmax(0,1fr)] items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] leading-5 transition-colors hover:bg-surface ${
+			return `grid w-full grid-cols-[100px_minmax(0,1fr)] items-center gap-3 rounded-lg px-2.5 py-2 text-left text-[13px] leading-5 transition-colors hover:bg-surface ${
 				filled ? 'text-text' : 'text-text-3'
 			} ${pop === key ? 'bg-surface' : ''}`;
 		}

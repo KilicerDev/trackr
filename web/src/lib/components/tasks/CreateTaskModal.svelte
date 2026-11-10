@@ -222,24 +222,22 @@
 			label={m.tasks_drop_files_to_attach()}
 		>
 			<!-- Head -->
-			<!-- Head: just the title and close; the project is the first chip
-			     in the property rail, like every other property. -->
-			<div class="flex items-center gap-2 border-b border-border px-5 py-3">
-				<h2 class="text-[14px] font-medium text-text-2">{m.tasks_new_task()}</h2>
-				<button
-					type="button"
-					onclick={onclose}
-					class="ml-auto grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
-					aria-label={m.common_close()}
-				>
-					<Icon name="x" size={15} />
-				</button>
-			</div>
+			<!-- No head bar or divider lines: the title field leads, and close
+			     floats top-right. The dialog keeps its accessible name. -->
+			<h2 class="sr-only">{m.tasks_new_task()}</h2>
+			<button
+				type="button"
+				onclick={onclose}
+				class="absolute top-3 right-3 z-10 grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
+				aria-label={m.common_close()}
+			>
+				<Icon name="x" size={15} />
+			</button>
 
 			<!-- Body: writing on the wider left, the properties stacked in a
 			     column on the right (below on narrow screens). -->
-			<div class="grid md:grid-cols-[minmax(0,1fr)_264px]">
-				<div class="min-w-0 px-5 pt-4 pb-4">
+			<div class="grid md:grid-cols-[minmax(0,1fr)_320px]">
+				<div class="min-w-0 px-6 pt-6 pb-4">
 					<input
 						type="text"
 						name="title"
@@ -345,7 +343,9 @@
 						<input bind:this={fileInput} type="file" multiple hidden onchange={onPick} />
 					</div>
 				</div>
-				<div class="border-t border-border px-3 py-3 md:border-t-0 md:border-l">
+				<!-- Properties: a softly tinted column instead of a divider line,
+				     with room for the labels and values. -->
+				<div class="mx-3 mb-1 rounded-xl bg-surface/40 px-2 py-3 md:mx-0 md:mt-12 md:mr-3 md:mb-0">
 					<TaskPropertyRail
 						layout="list"
 						showPlanned
@@ -369,7 +369,7 @@
 			<!-- Foot: attach on the left (files can also be dropped anywhere on
 			     the dialog); Cancel and Create built from the same box so they're
 			     exactly the same height. ⌘↵ still submits. -->
-			<div class="flex items-center gap-2 rounded-b-2xl border-t border-border px-5 py-3">
+			<div class="flex items-center gap-2 rounded-b-2xl px-6 pt-2 pb-4">
 				<button type="button" onclick={() => fileInput?.click()} class="{QUIET_ADD} -ml-2">
 					<Icon name="paperclip" size={14} />
 					{m.tasks_attach_files()}
