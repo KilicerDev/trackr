@@ -16,7 +16,8 @@
 	import TagsPopover from '../popovers/TagsPopover.svelte';
 	import AssigneePopover from '../popovers/AssigneePopover.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
-	import { fly } from 'svelte/transition';
+	import { fade, fly, scale } from 'svelte/transition';
+	import { backOut } from 'svelte/easing';
 	import { POPOVER_IN } from '$lib/config/motion';
 	import { resolveUser } from '$lib/stores/lookup.svelte';
 	import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from '$lib/config/taxonomy';
@@ -198,12 +199,18 @@
 		void patch('subject', next);
 	}
 
+	// The copy button answers with a green check for a moment instead of a
+	// toast; failures still toast.
+	let copied = $state(false);
+	let copiedTimer: ReturnType<typeof setTimeout> | undefined;
 	async function copyLink() {
 		if (!ticket) return;
 		try {
 			const url = `${window.location.origin}/tickets?ticket=${ticket.id}`;
 			await navigator.clipboard.writeText(url);
-			showToast('ok', m.tickets_link_copied());
+			copied = true;
+			clearTimeout(copiedTimer);
+			copiedTimer = setTimeout(() => (copied = false), 1600);
 		} catch {
 			showToast('err', m.tickets_link_copy_failed());
 		}
@@ -273,8 +280,26 @@
 				</span>
 			{/if}
 			<div class="ml-auto flex items-center gap-1">
-				<IconButton size={31} ariaLabel={m.tickets_copy_link()} onclick={copyLink}>
-					<Icon name="link" size={15} />
+				<IconButton
+					size={31}
+					ariaLabel={copied ? m.tickets_link_copied() : m.tickets_copy_link()}
+					onclick={copyLink}
+				>
+					<!-- Both icons share one grid cell so they cross-fade in place. -->
+					<span class="grid place-items-center [&>*]:[grid-area:1/1]">
+						{#if copied}
+							<span
+								class="text-[#7fc8a9]"
+								in:scale={{ start: 0.4, duration: 220, easing: backOut }}
+							>
+								<Icon name="check" size={16} stroke={2.4} />
+							</span>
+						{:else}
+							<span in:fade={{ duration: 150 }}>
+								<Icon name="copy" size={15} />
+							</span>
+						{/if}
+					</span>
 				</IconButton>
 				{#if canDelete}
 					<IconButton size={31} ariaLabel={m.tickets_delete()} onclick={deleteTicket}>
