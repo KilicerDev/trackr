@@ -17,6 +17,7 @@ import {
 	ALLOWED_TASK_PRIORITY,
 	ALLOWED_TASK_STATUS,
 	ALLOWED_TASK_TYPE,
+	autoLogEstimateOnDone,
 	createTask,
 	loadTaskDependencyIds,
 	loadTaskSummaries,
@@ -481,6 +482,12 @@ export const actions: Actions = {
 					origin: url.origin
 				}).catch((err) => console.error('task assign notify failed', err));
 			}
+		}
+
+		// Completing a task logs its estimate for whoever completed it, unless
+		// someone already logged time. Awaited so the refetch shows the entry.
+		if (patch.status === 'done' && priorStatus !== 'done') {
+			await autoLogEstimateOnDone(target.id, { id: me.id, name: me.name }, { origin: url.origin });
 		}
 
 		// Notify watchers on status change. "Watchers" = current assignees +

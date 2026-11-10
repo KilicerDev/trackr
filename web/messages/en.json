@@ -1322,6 +1322,7 @@
 	"tasks_err_project_required": "Project is required.",
 	"tasks_err_task_not_found": "Task not found.",
 	"tasks_err_time_positive": "Time must be greater than zero.",
+	"tasks_time_auto_note": "Estimate logged on completion",
 	"tasks_err_title_empty": "Title cannot be empty.",
 	"tasks_err_title_required": "Title is required.",
 	"tasks_est": "Est",

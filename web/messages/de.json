@@ -1195,6 +1195,7 @@
 	"tasks_err_project_required": "Projekt ist erforderlich.",
 	"tasks_err_task_not_found": "Aufgabe nicht gefunden.",
 	"tasks_err_time_positive": "Die Zeit muss größer als null sein.",
+	"tasks_time_auto_note": "Schätzung beim Erledigen erfasst",
 	"tasks_err_title_empty": "Titel darf nicht leer sein.",
 	"tasks_err_title_required": "Titel ist erforderlich.",
 	"tasks_est": "Gesch.",

@@ -250,6 +250,59 @@ describe('tasks lifecycle', () => {
 	});
 });
 
+describe('completing a task', () => {
+	const today = new Date().toISOString().slice(0, 10);
+
+	async function newTask(label: string, estimate?: number): Promise<string> {
+		const res = await api<{ id: string }>('POST', '/api/v1/tasks', {
+			title: `${SMOKE_PREFIX} ${label} ${run}`,
+			projectKey,
+			...(estimate ? { estimate } : {})
+		});
+		expect(res.status).toBe(201);
+		created.tasks.add(res.body.id);
+		return res.body.id;
+	}
+
+	async function logs(id: string) {
+		const res = await api<TaskDetail>('GET', `/api/v1/tasks/${id}`);
+		return res.body.task.timeLogs ?? [];
+	}
+
+	test('done logs the estimate when nobody logged time', async () => {
+		const id = await newTask('auto-log', 45);
+		expect((await api('PATCH', `/api/v1/tasks/${id}`, { status: 'done' })).status).toBe(200);
+		const after = await logs(id);
+		expect(after.map((l) => l.minutes)).toEqual([45]);
+		// Re-opening and completing again never logs a second time.
+		await api('PATCH', `/api/v1/tasks/${id}`, { status: 'in_progress' });
+		await api('PATCH', `/api/v1/tasks/${id}`, { status: 'done' });
+		expect((await logs(id)).length).toBe(1);
+	});
+
+	test('done logs nothing when time was already logged', async () => {
+		const id = await newTask('already-logged', 45);
+		await api('POST', `/api/v1/tasks/${id}/time`, { minutes: 20, date: today });
+		await api('PATCH', `/api/v1/tasks/${id}`, { status: 'done' });
+		expect((await logs(id)).map((l) => l.minutes)).toEqual([20]);
+	});
+
+	test('done logs nothing without an estimate', async () => {
+		const id = await newTask('no-estimate');
+		await api('PATCH', `/api/v1/tasks/${id}`, { status: 'done' });
+		expect((await logs(id)).length).toBe(0);
+	});
+
+	test('cancelled is a valid status and logs nothing', async () => {
+		const id = await newTask('cancelled', 30);
+		const res = await api('PATCH', `/api/v1/tasks/${id}`, { status: 'cancelled' });
+		expect(res.status).toBe(200);
+		const after = await api<TaskDetail>('GET', `/api/v1/tasks/${id}`);
+		expect(after.body.task.status).toBe('cancelled');
+		expect((await logs(id)).length).toBe(0);
+	});
+});
+
 describe('tickets lifecycle', () => {
 	const subject = `${SMOKE_PREFIX} api ticket ${run}`;
 	let ticketId: string;

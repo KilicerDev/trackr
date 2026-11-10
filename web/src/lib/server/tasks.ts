@@ -1342,6 +1342,10 @@ export async function applyTaskUpdate(
 			)
 			.catch((err) => console.error('logActivity failed', err));
 	}
+	if (statusChanged && patch.status === 'done') {
+		// Before the response so the caller's refetch already sees the entry.
+		await autoLogEstimateOnDone(target.id, actor, opts);
+	}
 	if (statusChanged) {
 		void notifyTaskStatusChanged({
 			task: taskCtx,
@@ -1488,28 +1492,92 @@ export async function logTaskTime(
 	});
 	await db.update(task).set({ updatedAt: new Date() }).where(eq(task.id, target.id));
 
+	timeLoggedEffects(target, me, { minutes: total, note, date }, opts);
+	return { id };
+}
+
+type TaskTarget = NonNullable<Awaited<ReturnType<typeof loadTaskTarget>>>;
+
+// Side effects of a new time log row: `time.logged` activity and the
+// `task.time_logged` webhook. Shared by manual logging and the estimate that is
+// logged automatically when a task is completed (whose status update already
+// bumped the task's updatedAt).
+function timeLoggedEffects(
+	target: TaskTarget,
+	actor: { id: string; name: string },
+	entry: { minutes: number; note: string | null; date: string; auto?: boolean },
+	opts: Pick<WriteEffectOpts, 'origin'>
+) {
 	const displayId = `${target.projectKey}-${target.number}`;
 	logActivityFF({
 		projectId: target.projectId,
 		taskId: target.id,
-		actorId: me.id,
+		actorId: actor.id,
 		type: 'time.logged',
-		meta: { taskRef: displayId, taskTitle: target.title, minutes: total, note, loggedAt: date }
+		meta: {
+			taskRef: displayId,
+			taskTitle: target.title,
+			minutes: entry.minutes,
+			note: entry.note,
+			loggedAt: entry.date,
+			...(entry.auto ? { auto: true } : {})
+		}
 	});
-
 	emitWebhookEvent({
 		type: 'task.time_logged',
 		orgId: target.projectOrgId,
 		projectId: target.projectId,
-		actor: { id: me.id, name: me.name },
-		assigneeIds: [me.id],
+		actor: { id: actor.id, name: actor.name },
+		assigneeIds: [actor.id],
 		origin: opts.origin,
 		data: {
 			task: taskSnapshot({ ...target, displayId }, opts.origin),
-			timeLog: { minutes: total, note, loggedAt: date, userId: me.id }
+			timeLog: {
+				minutes: entry.minutes,
+				note: entry.note,
+				loggedAt: entry.date,
+				userId: actor.id
+			}
 		}
 	});
-	return { id };
+}
+
+/**
+ * When a task is completed, log its estimate as time for whoever completed it
+ * — but only if nobody has logged any time on it yet. One guarded statement
+ * (insert … where not exists) so two saves racing to "done" can't both log.
+ * Re-reads the task, so it uses the estimate as saved by the same update.
+ * Never throws: the status change is already saved, a failed auto-log is
+ * only reported to the server log.
+ */
+export async function autoLogEstimateOnDone(
+	taskId: string,
+	actor: { id: string; name: string },
+	opts: Pick<WriteEffectOpts, 'origin'>
+): Promise<{ minutes: number } | null> {
+	try {
+		const id = crypto.randomUUID();
+		const date = new Date().toISOString().slice(0, 10);
+		const note = m.tasks_time_auto_note();
+		const rows = await db.execute<{ minutes: number }>(sql`
+			INSERT INTO task_time_log (id, task_id, user_id, minutes, note, logged_at)
+			SELECT ${id}, t.id, ${actor.id}, t.estimate_minutes, ${note}, ${date}::date
+			FROM task t
+			WHERE t.id = ${taskId}
+				AND t.deleted_at IS NULL
+				AND t.status = 'done'
+				AND t.estimate_minutes > 0
+				AND NOT EXISTS (SELECT 1 FROM task_time_log l WHERE l.task_id = t.id)
+			RETURNING minutes`);
+		const minutes = rows[0]?.minutes;
+		if (!minutes) return null;
+		const target = await loadTaskTarget(taskId);
+		if (target) timeLoggedEffects(target, actor, { minutes, note, date, auto: true }, opts);
+		return { minutes };
+	} catch (err) {
+		console.error('auto-log estimate on done failed', { taskId }, err);
+		return null;
+	}
 }
 
 export type CreateTaskWithEffectsInput = {
