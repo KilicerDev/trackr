@@ -1,4 +1,6 @@
 <script lang="ts">
+	// `sm` is a fixed 28px (h-7), the height of the toolbar controls it sits
+	// next to (view toggle, Filter, search); `md` sizes from its padding.
 	import type { Snippet } from 'svelte';
 	interface Props {
 		variant?: 'default' | 'primary' | 'ghost';
@@ -25,7 +27,7 @@
 	{disabled}
 	{onclick}
 	class="inline-flex items-center gap-1.5 rounded-lg text-[14px] font-medium whitespace-nowrap transition-[background,border-color,transform] duration-150 active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50
-	{size === 'sm' ? 'px-2 py-1' : 'px-[12px] py-[8px]'}
+	{size === 'sm' ? 'h-7 px-2.5 leading-none' : 'px-[12px] py-[8px]'}
 	{variant === 'primary'
 		? 'border border-transparent bg-accent text-white shadow-btn hover:bg-accent-strong'
 		: variant === 'ghost'
