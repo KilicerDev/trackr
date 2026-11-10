@@ -10,6 +10,7 @@
 	import SmartComposer from '$lib/components/week/SmartComposer.svelte';
 	import type { ComposerDraft } from '$lib/components/week/SmartComposer.svelte';
 	import { taskTimeMinutes } from '$lib/utils/task';
+	import { dayProjectGroups as groupByProject } from '$lib/utils/week';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -187,22 +188,9 @@
 		return plannedByDay[i].reduce((s, t) => s + (taskTimeMinutes(t) ?? DEFAULT_ESTIMATE), 0);
 	}
 
-	// Per-project sub-sections within a day, alphabetical — so a mixed day
-	// reads as "which project gets how much of it" at a glance.
-	type DayGroup = { key: string; name: string; color: string; tasks: Task[] };
-	function dayProjectGroups(tasks: Task[]): DayGroup[] {
-		const keys = Array.from(new Set(tasks.map((t) => t.project)));
-		return keys
-			.map((key) => {
-				const p = resolveProject(key);
-				return {
-					key,
-					name: p?.name ?? key,
-					color: p?.color ?? '#7c7c84',
-					tasks: tasks.filter((t) => t.project === key)
-				};
-			})
-			.sort((a, b) => a.name.localeCompare(b.name));
+	// Per-project sub-sections within a day (shared with the board).
+	function dayProjectGroups(tasks: Task[]) {
+		return groupByProject(tasks, resolveProject);
 	}
 
 	function groupMinutes(tasks: Task[]): number {
@@ -458,6 +446,7 @@
 			{showDone}
 			{unscheduled}
 			{unscheduledTabs}
+			{projectHref}
 			onselect={(task) => (selectedId = task.id)}
 			onadd={addBoardTask}
 		/>

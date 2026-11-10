@@ -6,6 +6,7 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
 	import { taskTimeMinutes } from '$lib/utils/task';
+	import { dayProjectGroups } from '$lib/utils/week';
 	import { m } from '$lib/paraglide/messages';
 
 	type Day = {
@@ -21,6 +22,7 @@
 		showDone,
 		unscheduled,
 		unscheduledTabs,
+		projectHref,
 		onselect,
 		onadd
 	}: {
@@ -29,6 +31,8 @@
 		showDone: boolean;
 		unscheduled: TaskSummary[];
 		unscheduledTabs: Snippet;
+		/** Project detail link for a group header (tasks carry project keys). */
+		projectHref?: (key: string) => string | undefined;
 		onselect: (task: TaskSummary) => void;
 		onadd: (iso: string) => void;
 	} = $props();
@@ -62,21 +66,39 @@
 </script>
 
 {#snippet card(task: TaskSummary, planned: boolean)}
-	{@const project = resolveProject(task.project)}
+	<!-- Day columns group cards under one project header; the unscheduled
+	     column is a flat mixed list, so its cards keep their own label. -->
 	<div>
-		<div class="mb-1.5 flex min-w-0 items-center gap-1.5 px-1 text-[12px] text-text-3">
-			<span
-				class="h-2 w-2 shrink-0 rounded-full"
-				style:background={project?.color ?? 'var(--text-3)'}
-			></span>
-			<span class="truncate">{project?.name ?? task.project}</span>
-		</div>
+		{#if !planned}
+			{@const project = resolveProject(task.project)}
+			<div class="mb-1.5 flex min-w-0 items-center gap-1.5 px-1 text-[12px] text-text-3">
+				<span
+					class="h-2 w-2 shrink-0 rounded-full"
+					style:background={project?.color ?? 'var(--text-3)'}
+				></span>
+				<span class="truncate">{project?.name ?? task.project}</span>
+			</div>
+		{/if}
 		<BoardCard
 			{task}
 			showPlanned={!planned}
 			timeLabel={formatMinutes(taskTimeMinutes(task) ?? 60)}
 			onclick={() => onselect(task)}
 		/>
+	</div>
+{/snippet}
+
+{#snippet groupHeader(key: string, name: string, color: string, count: number, minutes: number)}
+	{@const href = projectHref?.(key)}
+	<div class="flex min-w-0 items-center gap-1.5 px-1 text-[12px] text-text-3">
+		<span class="h-2 w-2 shrink-0 rounded-full" style:background={color}></span>
+		{#if href}
+			<a {href} class="truncate font-medium text-text-2 hover:text-text hover:underline">{name}</a>
+		{:else}
+			<span class="truncate font-medium text-text-2">{name}</span>
+		{/if}
+		<span class="font-mono text-[11px] text-text-4">{count}</span>
+		<span class="ml-auto font-mono text-[11px] text-text-4">{formatMinutes(minutes)}</span>
 	</div>
 {/snippet}
 
@@ -137,8 +159,19 @@
 					{#if hidden > 0}
 						<p class="px-1 text-[12px] text-text-3">{m.week_done_hidden({ n: hidden })}</p>
 					{/if}
-					{#each visible as task (task.id)}
-						{@render card(task, true)}
+					{#each dayProjectGroups(visible, resolveProject) as g (g.key)}
+						<div class="space-y-2">
+							{@render groupHeader(
+								g.key,
+								g.name,
+								g.color,
+								g.tasks.length,
+								g.tasks.reduce((sum, t) => sum + (taskTimeMinutes(t) ?? 60), 0)
+							)}
+							{#each g.tasks as task (task.id)}
+								{@render card(task, true)}
+							{/each}
+						</div>
 					{/each}
 					<button
 						type="button"
