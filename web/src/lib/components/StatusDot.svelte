@@ -2,12 +2,16 @@
 	import type { StatusId } from '$lib/types';
 	import { TRACKR_STATUSES } from '$lib/config/taxonomy';
 	import { statusLabel } from '$lib/utils/labels';
+	import { CircleX } from '@lucide/svelte';
 	interface Props {
 		status: StatusId;
 		size?: number;
 	}
 	let { status, size = 15 }: Props = $props();
 	let meta = $derived(TRACKR_STATUSES.find((s) => s.id === status)!);
+	// circle-x scaled so the ring's outer edge is `size` and its stroke 1.5px.
+	let xBox = $derived(1.2 * (size - 1.5));
+	let xStroke = $derived(30 / (size - 1.5));
 </script>
 
 <span
@@ -47,12 +51,15 @@
 	{:else if status === 'done'}
 		<span class="absolute inset-0 rounded-full" style:background={meta.dot}></span>
 	{:else if status === 'cancelled'}
-		<!-- Ring with a diagonal strike: ended without being done. -->
-		<span class="absolute inset-0 rounded-full border-[1.5px]" style:border-color={meta.dot}></span>
+		<!-- Lucide's circle-x, sized so its ring matches the other statuses:
+		     outer edge = `size`, stroke 1.5px (its circle is r=10 in a 24 box). -->
 		<span
-			class="absolute top-1/2 left-1/2 h-[1.5px] -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-full"
-			style:width="{size * 0.62}px"
-			style:background={meta.dot}
-		></span>
+			class="absolute grid place-items-center"
+			style:color={meta.dot}
+			style:left="{(size - xBox) / 2}px"
+			style:top="{(size - xBox) / 2}px"
+		>
+			<CircleX size={xBox} strokeWidth={xStroke} aria-hidden="true" />
+		</span>
 	{/if}
 </span>
