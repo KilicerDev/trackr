@@ -661,7 +661,7 @@
 				<!-- Closed: the bar rail. Decorative — the panel carries the controls. -->
 				<div
 					aria-hidden="true"
-					class="flex flex-col items-start gap-[7px] px-3.5 py-3 transition-opacity duration-150 {tocOpen
+					class="flex max-h-[calc(100vh-89px)] flex-col items-start gap-[7px] overflow-hidden px-3.5 py-3 transition-opacity duration-150 {tocOpen
 						? 'opacity-0'
 						: 'opacity-100'}"
 				>
@@ -693,7 +693,7 @@
 									onclick={() => scrollToHeading(item.index)}
 									title={item.text}
 									style:padding-left="{(item.level - 1) * 12 + 10}px"
-									class="relative block w-full truncate rounded-md py-1.5 pr-2 text-left text-[13px] leading-snug transition-colors {active
+									class="relative line-clamp-2 w-full rounded-md py-1.5 pr-2 text-left text-[13px] leading-snug [overflow-wrap:anywhere] transition-colors {active
 										? 'font-medium text-text'
 										: 'text-text-3 hover:bg-surface-2/70 hover:text-text'}"
 								>

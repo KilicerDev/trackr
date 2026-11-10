@@ -491,7 +491,7 @@
 
 		<!-- Right rail -->
 		<aside class="hidden lg:block">
-			<div class="sticky top-[76px] space-y-7">
+			<div class="sticky top-[76px] max-h-[calc(100vh-96px)] space-y-7 overflow-y-auto pb-4">
 				{#if outline.items.length > 0}
 					<nav>
 						<div class="wiki-rail__label mb-3">{m.wiki_on_this_page()}</div>
@@ -580,6 +580,9 @@
 		position: relative;
 		display: block;
 		width: 100%;
+		min-width: 0;
+		/* Long or unbroken heading text wraps inside the rail, never past it. */
+		overflow-wrap: anywhere;
 		text-align: left;
 		font-size: 12.5px;
 		line-height: 1.35;
