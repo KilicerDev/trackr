@@ -1,5 +1,5 @@
-// Shared shell UI state (sidebar collapse). The toggle lives in the main Topbar
-// while the rail is rendered by AppShell, so the state is shared — but via
+// Shared shell UI state (sidebar collapse). The toggle lives in the rail foot
+// (SidebarFooter) and AppShell sizes the grid from it, so the state is shared — but via
 // Svelte context (per render tree), NOT a module singleton, so concurrent SSR
 // requests can't leak each other's state.
 //

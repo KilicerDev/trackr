@@ -25,6 +25,8 @@ export class Rail {
 	hovered = $state(false);
 	focused = $state(false);
 	menuOpen = $state(false);
+	/** The account menu at the rail's foot is open (keeps the rail peeking). */
+	accountOpen = $state(false);
 	#timer: ReturnType<typeof setTimeout> | undefined;
 	#sidebar = getSidebar();
 	readonly expandedWidth: number;
@@ -45,7 +47,7 @@ export class Rail {
 		return !!this.#sidebar?.collapsed;
 	}
 	get peek(): boolean {
-		return this.collapsed && (this.hovered || this.focused || this.menuOpen);
+		return this.collapsed && (this.hovered || this.focused || this.menuOpen || this.accountOpen);
 	}
 	get rail(): boolean {
 		return this.collapsed && !this.peek;

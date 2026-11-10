@@ -3,11 +3,8 @@
 	import IconButton from '../IconButton.svelte';
 	import Avatar from '../Avatar.svelte';
 	import Popover from '../Popover.svelte';
-	import Kbd from '../Kbd.svelte';
-	import FeedbackModal from '../FeedbackModal.svelte';
 	import { page } from '$app/state';
 	import { goto, invalidate } from '$app/navigation';
-	import { setActiveOrg, type PortalOrg } from '$lib/api/portal';
 	import { getSidebar } from '$lib/stores/sidebar.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { Snippet } from 'svelte';
@@ -36,22 +33,6 @@
 		createdAt: string;
 	};
 	type NotifData = { items: NotifItem[]; unreadCount: number };
-
-	const me = $derived.by(() => {
-		const u = page.data?.user as { id: string; name: string | null; email: string } | undefined;
-		if (!u) return undefined;
-		const name = u.name ?? u.email;
-		const initials = name
-			.split(/\s+/)
-			.map((p) => p[0])
-			.filter(Boolean)
-			.slice(0, 2)
-			.join('')
-			.toUpperCase();
-		let h = 0;
-		for (const c of u.id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-		return { name, email: u.email, initials, color: `hsl(${h % 360} 55% 60%)` };
-	});
 
 	const notifications = $derived(
 		(page.data?.notifications as NotifData | undefined) ?? { items: [], unreadCount: 0 }
@@ -82,18 +63,10 @@
 		return 'bell';
 	}
 
-	let acctOpen = $state(false);
 	let bellOpen = $state(false);
-	let feedbackOpen = $state(false);
-	let orgListOpen = $state(false);
 
 	// Portal users (external ticket-only) belonging to multiple orgs get an
 	// organization switcher in place of the (inert) "Switch workspace" item.
-	const portalOrgs = $derived(
-		page.data?.isPortalUser ? ((page.data?.orgs as PortalOrg[] | undefined) ?? []) : []
-	);
-	const activeOrgId = $derived((page.data?.activeOrgId as string | null | undefined) ?? null);
-	const showOrgSwitcher = $derived(portalOrgs.length > 1);
 
 	function timeAgo(iso: string): string {
 		const diff = Date.now() - new Date(iso).getTime();
@@ -159,18 +132,6 @@
 		>
 			<Icon name="menu" size={18} />
 		</button>
-		{#if sidebarUi.collapsible}
-			<!-- Desktop: collapse the rail to icons. -->
-			<button
-				type="button"
-				onclick={() => sidebarUi.toggle()}
-				title={sidebarUi.collapsed ? m.shell_expand_sidebar() : m.shell_collapse_sidebar()}
-				aria-label={sidebarUi.collapsed ? m.shell_expand_sidebar() : m.shell_collapse_sidebar()}
-				class="-ml-1 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text max-md:hidden"
-			>
-				<Icon name="sidebar" size={17} />
-			</button>
-		{/if}
 	{/if}
 	<div class="flex min-w-0 items-center gap-2 overflow-hidden text-[14px] whitespace-nowrap">
 		<!--
@@ -294,133 +255,5 @@
 				</div>
 			</Popover>
 		</div>
-		<div class="mx-1 h-5 w-px bg-border"></div>
-		<div class="relative">
-			<button
-				type="button"
-				onclick={() => (acctOpen = !acctOpen)}
-				class="grid h-8 w-8 place-items-center rounded-full transition-shadow hover:shadow-[0_0_0_2px_var(--border-strong)]"
-				aria-label={m.shell_account()}
-			>
-				<Avatar user={me} size={31} />
-			</button>
-			<Popover open={acctOpen} onclose={() => (acctOpen = false)} align="right" minWidth={240}>
-				{#if me}
-					<div class="flex items-center gap-2.5 px-2 pt-2 pb-3">
-						<Avatar user={me} size={35} />
-						<div class="flex min-w-0 flex-col">
-							<span class="truncate text-[14px] font-medium">{me.name}</span>
-							<span class="truncate text-[12px] text-text-3">{me.email}</span>
-						</div>
-					</div>
-					<div class="-mx-0.5 mb-1 h-px bg-border"></div>
-				{/if}
-				<a
-					href="/me/profile"
-					onclick={() => (acctOpen = false)}
-					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
-				>
-					<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
-						><Icon name="user" size={15} /></span
-					>
-					<span>{m.shell_account_profile()}</span>
-				</a>
-				<a
-					href="/me/settings"
-					onclick={() => (acctOpen = false)}
-					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
-				>
-					<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
-						><Icon name="settings" size={15} /></span
-					>
-					<span>{m.shell_account_settings()}</span>
-				</a>
-				<a
-					href="/me/notifications"
-					onclick={() => (acctOpen = false)}
-					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
-				>
-					<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
-						><Icon name="bell" size={15} /></span
-					>
-					<span>{m.shell_notifications()}</span>
-				</a>
-				<div class="-mx-0.5 my-1 h-px bg-border"></div>
-				{#if showOrgSwitcher}
-					<button
-						type="button"
-						onclick={() => (orgListOpen = !orgListOpen)}
-						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
-					>
-						<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
-							><Icon name="org" size={15} /></span
-						>
-						<span>{m.shell_switch_organization()}</span>
-						<span class="ml-auto text-text-3"
-							><Icon name={orgListOpen ? 'chevron' : 'chevron-r'} size={13} /></span
-						>
-					</button>
-					{#if orgListOpen}
-						<div class="pl-1.5">
-							{#each portalOrgs as o (o.id)}
-								<button
-									type="button"
-									onclick={() => {
-										acctOpen = false;
-										if (o.id !== activeOrgId) void setActiveOrg(o.id);
-									}}
-									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
-								>
-									<span class="h-2 w-2 shrink-0 rounded-full" style:background={o.color}></span>
-									<span class="truncate">{o.name}</span>
-									<span
-										class="ml-auto text-accent {o.id === activeOrgId ? 'opacity-100' : 'opacity-0'}"
-									>
-										<Icon name="check" size={14} />
-									</span>
-								</button>
-							{/each}
-						</div>
-					{/if}
-				{:else if !page.data?.isPortalUser}
-					<button
-						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
-					>
-						<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
-							><Icon name="home" size={15} /></span
-						>
-						<span>{m.shell_switch_workspace()}</span>
-						<span class="ml-auto"><Kbd>⌘O</Kbd></span>
-					</button>
-				{/if}
-				<button
-					type="button"
-					onclick={() => {
-						acctOpen = false;
-						feedbackOpen = true;
-					}}
-					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
-				>
-					<span class="grid h-4 w-4 shrink-0 place-items-center text-text-3"
-						><Icon name="send" size={15} /></span
-					>
-					<span>{m.shell_send_feedback()}</span>
-				</button>
-				<div class="-mx-0.5 my-1 h-px bg-border"></div>
-				<form method="post" action="/logout" class="contents">
-					<button
-						type="submit"
-						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-prio-urgent hover:bg-[#ef4f5e]/10"
-					>
-						<span class="grid h-4 w-4 shrink-0 place-items-center"
-							><Icon name="logout" size={15} /></span
-						>
-						<span>{m.shell_sign_out()}</span>
-					</button>
-				</form>
-			</Popover>
-		</div>
 	</div>
 </header>
-
-<FeedbackModal open={feedbackOpen} onclose={() => (feedbackOpen = false)} />

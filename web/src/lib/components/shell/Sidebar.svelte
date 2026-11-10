@@ -3,6 +3,7 @@
 	import Icon from '../Icon.svelte';
 	import InstanceSwitcher from './InstanceSwitcher.svelte';
 	import RailHeading from './RailHeading.svelte';
+	import SidebarFooter from './SidebarFooter.svelte';
 	import { Rail } from './rail.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { CapabilityManifest } from '$lib/permissions';
@@ -151,4 +152,6 @@
 			</div>
 		{/if}
 	</nav>
+
+	<SidebarFooter {rail} />
 </aside>

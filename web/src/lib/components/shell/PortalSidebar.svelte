@@ -3,6 +3,7 @@
 	import Icon from '../Icon.svelte';
 	import InstanceSwitcher from './InstanceSwitcher.svelte';
 	import RailHeading from './RailHeading.svelte';
+	import SidebarFooter from './SidebarFooter.svelte';
 	import { Rail } from './rail.svelte';
 	import { setActiveOrg, type PortalOrg } from '$lib/api/portal';
 	import type { TicketRow, TicketStatus } from '$lib/server/tickets';
@@ -202,6 +203,8 @@
 			{/if}
 		</div>
 	</div>
+
+	<SidebarFooter {rail} />
 </aside>
 
 {#snippet link(href: string, icon: string, label: string, active: boolean)}
