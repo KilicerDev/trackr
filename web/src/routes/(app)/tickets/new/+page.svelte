@@ -1,12 +1,12 @@
 <script lang="ts">
+	const FOOT_BUTTON =
+		'inline-flex h-9 items-center justify-center rounded-lg border px-4 text-[14px] leading-none font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import type { ActionResult } from '@sveltejs/kit';
 	import MobileMenuButton from '$lib/components/shell/MobileMenuButton.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import RichTextInput from '$lib/components/RichTextInput.svelte';
-	import Button from '$lib/components/Button.svelte';
-	import Kbd from '$lib/components/Kbd.svelte';
 	import PriorityBars from '$lib/components/PriorityBars.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
 	import { fly } from 'svelte/transition';
@@ -35,7 +35,6 @@
 	let fileInput = $state<HTMLInputElement>();
 	let stagedFiles = $state<File[]>([]);
 
-	const priorityMeta = $derived(TICKET_PRIORITIES.find((p) => p.id === priority)!);
 	const categoryMeta = $derived(TICKET_CATEGORIES.find((c) => c.id === category)!);
 
 	function addFiles(incoming: File[]) {
@@ -69,7 +68,7 @@
 				<span>{data.org.name}</span>
 			</span>
 		</div>
-		<h1 class="mb-5 text-[26px] font-semibold tracking-[-0.012em]">
+		<h1 class="mb-5 text-[24px] font-semibold tracking-[-0.012em]">
 			{m.tickets_new_open_heading()}
 		</h1>
 
@@ -100,7 +99,9 @@
 			}}
 		>
 			<AttachmentDropzone onfiles={addFiles} disabled={submitting} label={m.tickets_dropzone_new()}>
-				<div class="rounded-2xl border border-border bg-bg-elev p-5">
+				<div
+					class="rounded-xl border border-border bg-bg-elev px-5 pt-5 pb-3 transition-colors focus-within:border-border-strong"
+				>
 					<input
 						type="text"
 						name="subject"
@@ -114,23 +115,39 @@
 						placeholder={m.tickets_description_placeholder()}
 						flavor="document"
 						mentions={false}
-						rows={6}
-						maxRows={12}
-						class="mb-4 w-full border-0 bg-transparent text-[15px] leading-relaxed text-text-2"
+						rows={8}
+						maxRows={16}
+						class="mb-4 w-full border-0 bg-transparent text-[14px] leading-relaxed text-text-2"
 					/>
 					<input type="hidden" name="description" value={description} />
 
-					<div class="flex flex-wrap gap-2">
+					<!-- Staged files sit inside the box, as chips, like the composer. -->
+					{#if stagedFiles.length}
+						<div class="mb-3">
+							<StagedFileList
+								variant="chips"
+								files={stagedFiles}
+								disabled={submitting}
+								onremove={(i) => (stagedFiles = stagedFiles.filter((_, idx) => idx !== i))}
+							/>
+						</div>
+					{/if}
+
+					<!-- Quiet controls: priority and category, files at the end. -->
+					<div class="-mx-2.5 flex flex-wrap items-center gap-0.5">
 						<!-- Priority -->
 						<div class="relative">
 							<button
 								type="button"
 								onclick={() => (pop = pop === 'priority' ? null : 'priority')}
-								class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
+								class="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px] leading-none text-text-2 transition-colors hover:bg-surface hover:text-text {pop ===
+								'priority'
+									? 'bg-surface text-text'
+									: ''}"
 							>
 								<PriorityBars {priority} />
 								<span>{priorityLabel(priority)}</span>
-								<Icon name="chevron" size={12} class="text-text-3" />
+								<Icon name="chevron" size={12} class="text-text-4" />
 							</button>
 							{#if pop === 'priority'}
 								<div
@@ -167,11 +184,14 @@
 							<button
 								type="button"
 								onclick={() => (pop = pop === 'category' ? null : 'category')}
-								class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
+								class="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px] leading-none text-text-2 transition-colors hover:bg-surface hover:text-text {pop ===
+								'category'
+									? 'bg-surface text-text'
+									: ''}"
 							>
 								<span class="h-2 w-2 rounded-full" style:background={categoryMeta.color}></span>
 								<span>{ticketCategoryLabel(category)}</span>
-								<Icon name="chevron" size={12} class="text-text-3" />
+								<Icon name="chevron" size={12} class="text-text-4" />
 							</button>
 							{#if pop === 'category'}
 								<div
@@ -206,23 +226,13 @@
 						<button
 							type="button"
 							onclick={() => fileInput?.click()}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[14px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
+							class="ml-auto inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[13px] leading-none text-text-3 transition-colors hover:bg-surface hover:text-text"
 						>
 							<Icon name="paperclip" size={14} />
 							<span>{m.tickets_attach_files()}</span>
 						</button>
 						<input bind:this={fileInput} type="file" multiple hidden onchange={onPick} />
 					</div>
-
-					{#if stagedFiles.length}
-						<div class="mt-3">
-							<StagedFileList
-								files={stagedFiles}
-								disabled={submitting}
-								onremove={(i) => (stagedFiles = stagedFiles.filter((_, idx) => idx !== i))}
-							/>
-						</div>
-					{/if}
 
 					<input type="hidden" name="orgId" value={data.org.id} />
 					<input type="hidden" name="priority" value={priority} />
@@ -231,18 +241,23 @@
 				</div>
 			</AttachmentDropzone>
 
-			<div class="mt-4 flex items-center gap-2">
-				<span class="text-[12px] text-text-3"><Kbd>⌘↵</Kbd> {m.tickets_kbd_to_submit()}</span>
-				<div class="ml-auto flex items-center gap-2">
-					<Button variant="default" onclick={() => history.back()}>{m.common_cancel()}</Button>
-					<button
-						type="submit"
-						disabled={submitting || !subject.trim()}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[14px] py-[9px] text-[14px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
-					>
-						{submitting ? m.common_creating() : m.tickets_create()}
-					</button>
-				</div>
+			<!-- Cancel and Create share one box, so they're the same height. ⌘↵
+			     still submits. -->
+			<div class="mt-4 flex items-center justify-end gap-2">
+				<button
+					type="button"
+					onclick={() => history.back()}
+					class="{FOOT_BUTTON} border-border bg-surface text-text hover:bg-surface-2"
+				>
+					{m.common_cancel()}
+				</button>
+				<button
+					type="submit"
+					disabled={submitting || !subject.trim()}
+					class="{FOOT_BUTTON} border-transparent bg-accent text-white hover:bg-accent-strong"
+				>
+					{submitting ? m.common_creating() : m.tickets_create()}
+				</button>
 			</div>
 		</form>
 	</div>

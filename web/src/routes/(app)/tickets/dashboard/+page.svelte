@@ -61,7 +61,7 @@
 	<div class="mx-auto max-w-5xl">
 		<header class="mb-5">
 			<MobileMenuButton class="mb-2" />
-			<h1 class="text-[22px] font-semibold text-text">{m.tickets_dash_title()}</h1>
+			<h1 class="text-[24px] font-semibold tracking-[-0.012em] text-text">{m.tickets_dash_title()}</h1>
 			<p class="mt-0.5 text-[14px] text-text-3">{m.tickets_dash_subtitle()}</p>
 		</header>
 
@@ -74,18 +74,18 @@
 				{#each cards as c (c.label)}
 					<a
 						href={c.href}
-						class="group flex flex-col gap-3 rounded-xl border border-border bg-surface p-4 transition-colors hover:border-border-strong hover:bg-surface-2"
+						class="group flex flex-col gap-3 rounded-xl bg-bg-elev p-4 transition-colors hover:bg-surface"
 					>
 						<div class="flex items-center gap-2">
 							<span class="h-2 w-2 shrink-0 rounded-full" style:background={c.dot}></span>
-							<span class="text-[13px] font-medium text-text-2">{c.label}</span>
+							<span class="text-[13px] text-text-2">{c.label}</span>
 							<Icon
 								name="chevron-r"
 								size={14}
 								class="ml-auto text-text-4 opacity-0 transition-opacity group-hover:opacity-100"
 							/>
 						</div>
-						<div class="text-[31px] leading-none font-semibold text-text tabular-nums">
+						<div class="text-[28px] leading-none font-semibold text-text tabular-nums">
 							{c.value}
 						</div>
 						<div class="text-[12px] text-text-4">{c.hint}</div>
