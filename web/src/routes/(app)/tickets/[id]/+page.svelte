@@ -469,6 +469,17 @@
 			]}
 />
 
+<!-- Still unanswered: a full-width banner over the whole ticket. -->
+{#if sla && sla.tone === 'wait'}
+	<div
+		class="flex shrink-0 items-center gap-2.5 border-b border-accent/25 bg-accent-soft px-6 py-2.5 text-[13px] leading-5 text-accent"
+		role="status"
+	>
+		<span class="h-2 w-2 shrink-0 rounded-full" style:background={sla.dot}></span>
+		<span class="min-w-0 truncate">{sla.label}</span>
+	</div>
+{/if}
+
 <!-- Drop files anywhere on the ticket to stage them on the reply. -->
 <AttachmentDropzone
 	onfiles={addCommentFiles}
@@ -692,14 +703,6 @@
 				<span class="h-2 w-2 shrink-0 rounded-full" style:background={statusMeta?.dot ?? '#7c7c84'}
 				></span>
 				<span>{ticketStatusLabel(t.status)}</span>
-				{#if sla && sla.tone === 'wait'}
-					<span
-						class="ml-1 inline-flex items-center gap-1 rounded-md bg-accent-soft px-1.5 py-1 text-[12px] leading-none text-accent"
-					>
-						<span class="h-1.5 w-1.5 rounded-full" style:background={sla.dot}></span>
-						{sla.label}
-					</span>
-				{/if}
 			</button>
 			{#if pop === k('status')}
 				<div
