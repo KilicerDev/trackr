@@ -1243,7 +1243,6 @@
 	"shell_sign_in": "Sign in",
 	"shell_sign_out": "Sign out",
 	"shell_switch_organization": "Switch organization",
-	"shell_switch_workspace": "Switch workspace",
 	"status_backlog": "Backlog",
 	"status_cancelled": "Cancelled",
 	"status_done": "Done",
