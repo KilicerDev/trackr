@@ -1458,6 +1458,8 @@
 	"week_title": "Meine Woche",
 	"week_tokens_label": "Tokens:",
 	"week_unscheduled": "Ungeplant",
+	"week_entry_carried": "Übertragen vom {date}",
+	"week_entry_worked": "{time} gearbeitet",
 	"week_filtered_hidden": "{n} durch Filter ausgeblendet",
 	"week_unscheduled_hint": "Öffnen Sie eine Aufgabe und wählen Sie ein Datum, um sie zu planen.",
 	"wiki_aria_copy_link": "Link kopieren",

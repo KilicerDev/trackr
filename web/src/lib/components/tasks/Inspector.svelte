@@ -66,8 +66,10 @@
 		// selection pass this so the drawer switches in place; without it the
 		// chip falls back to the /tasks deep link.
 		onopen?: (displayId: string) => void;
+		/** Default date for the time logger (My Week: the day the task was opened from). */
+		logDate?: string;
 	}
-	let { taskId, summary = null, onclose, users: providedUsers, onopen }: Props = $props();
+	let { taskId, summary = null, onclose, users: providedUsers, onopen, logDate }: Props = $props();
 
 	// The loaded detail for `taskId`; null until the fetch lands or when the
 	// task cannot be read. `loadSeq` drops responses for a task that is no
@@ -1134,7 +1136,7 @@
 						{m.tasks_activity()}
 					</div>
 					<div class="mb-4">
-						<TimeLogger task={draft} onlog={logTime} />
+						<TimeLogger task={draft} onlog={logTime} defaultDate={logDate} />
 					</div>
 					<div class="relative space-y-4 pl-7">
 						<span class="absolute top-2 bottom-2 left-[10px] w-px bg-border"></span>

@@ -6,16 +6,18 @@
 	import Icon from '$lib/components/Icon.svelte';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
 	import { taskTimeMinutes } from '$lib/utils/task';
-	import { dayProjectGroups } from '$lib/utils/week';
+	import { dayProjectGroups, type DayEntry } from '$lib/utils/week';
 	import { m } from '$lib/paraglide/messages';
 
 	type Day = {
 		iso: string;
 		label: string;
 		dayOfMonth: number;
-		tasks: TaskSummary[];
+		/** Planned, carried-over and worked-on tasks for the day (placeWeekTasks). */
+		entries: DayEntry<TaskSummary>[];
 		minutes: number;
 	};
+	type DayNote = { kind: 'carried' | 'chunk'; label: string };
 	let {
 		days,
 		todayIso,
@@ -23,6 +25,7 @@
 		unscheduled,
 		unscheduledTabs,
 		projectHref,
+		dayNote,
 		onselect,
 		onadd
 	}: {
@@ -34,7 +37,10 @@
 		unscheduledTabs: Snippet;
 		/** Project detail link for a group header (tasks carry project keys). */
 		projectHref?: (key: string) => string | undefined;
-		onselect: (task: TaskSummary) => void;
+		/** Chip text for carried-over / worked-on entries. */
+		dayNote?: (entry: DayEntry<TaskSummary>) => DayNote | undefined;
+		/** `iso` is the day column the card was opened from (null: unscheduled). */
+		onselect: (task: TaskSummary, iso: string | null) => void;
 		onadd: (iso: string) => void;
 	} = $props();
 
@@ -66,7 +72,8 @@
 	});
 </script>
 
-{#snippet card(task: TaskSummary, planned: boolean)}
+{#snippet card(task: TaskSummary, entry: DayEntry<TaskSummary> | null, iso: string | null)}
+	{@const planned = entry !== null}
 	<!-- Day columns group cards under one project header; the unscheduled
 	     column is a flat mixed list, so its cards keep their own label. -->
 	<div>
@@ -83,8 +90,9 @@
 		<BoardCard
 			{task}
 			showPlanned={!planned}
-			timeLabel={formatMinutes(taskTimeMinutes(task) ?? 60)}
-			onclick={() => onselect(task)}
+			timeLabel={formatMinutes(entry ? entry.minutes : (taskTimeMinutes(task) ?? 60))}
+			dayNote={entry ? dayNote?.(entry) : undefined}
+			onclick={() => onselect(task, iso)}
 		/>
 	</div>
 {/snippet}
@@ -113,8 +121,8 @@
 	<div class="flex h-full min-h-0">
 		{#each days as day, index (day.iso)}
 			{@const today = day.iso === todayIso}
-			{@const visible = day.tasks.filter(isVisible)}
-			{@const hidden = day.tasks.length - visible.length}
+			{@const visible = day.entries.filter((e) => isVisible(e.task))}
+			{@const hidden = day.entries.length - visible.length}
 			<section
 				data-date={day.iso}
 				aria-label={day.label}
@@ -167,10 +175,10 @@
 								g.name,
 								g.color,
 								g.tasks.length,
-								g.tasks.reduce((sum, t) => sum + (taskTimeMinutes(t) ?? 60), 0)
+								g.tasks.reduce((sum, e) => sum + e.minutes, 0)
 							)}
-							{#each g.tasks as task (task.id)}
-								{@render card(task, true)}
+							{#each g.tasks as entry (entry.task.id)}
+								{@render card(entry.task, entry, day.iso)}
 							{/each}
 						</div>
 					{/each}
@@ -202,7 +210,7 @@
 			</div>
 			<div class="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
 				{#each unscheduled as task (task.id)}
-					{@render card(task, false)}
+					{@render card(task, null, null)}
 				{:else}
 					<div class="px-1 py-4 text-[13px]">
 						<p class="text-text-2">{m.week_inbox_zero()}</p>

@@ -1585,6 +1585,8 @@
 	"week_title": "My week",
 	"week_tokens_label": "Tokens:",
 	"week_unscheduled": "Unscheduled",
+	"week_entry_carried": "Carried over from {date}",
+	"week_entry_worked": "Worked {time}",
 	"week_filtered_hidden": "{n} hidden by filter",
 	"week_unscheduled_hint": "Open a task and pick a date to plan it.",
 	"wiki_aria_copy_link": "Copy link",

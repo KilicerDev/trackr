@@ -17,13 +17,19 @@
 	interface Props {
 		task: Task;
 		onlog?: (entry: { h: number; m: number; date: string; note: string }) => void;
+		/** Date the form starts on (My Week passes the day the task was opened from). */
+		defaultDate?: string;
 	}
-	let { task, onlog }: Props = $props();
+	let { task, onlog, defaultDate }: Props = $props();
 
 	let open = $state(false);
 	let h = $state(0);
 	let min = $state(0);
 	let date = $state(todayIso());
+	// Each time the form opens it starts on the caller's day (or today).
+	$effect(() => {
+		if (open) date = defaultDate ?? todayIso();
+	});
 	let note = $state('');
 
 	// Entries win over the aggregate while the inspector has them: the draft

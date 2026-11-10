@@ -9,13 +9,18 @@
 	import WeekBoard from '$lib/components/week/WeekBoard.svelte';
 	import SmartComposer from '$lib/components/week/SmartComposer.svelte';
 	import type { ComposerDraft } from '$lib/components/week/SmartComposer.svelte';
-	import { isClosedStatus, taskTimeMinutes } from '$lib/utils/task';
+	import { isClosedStatus } from '$lib/utils/task';
 	import { matchesTaskFilters, tagsInUse, type TaskFilters } from '$lib/utils/task-filters';
 	import { TRACKR_STATUSES } from '$lib/config/taxonomy';
 	import FilterTrigger from '$lib/components/view-panel/FilterTrigger.svelte';
 	import ViewPanel from '$lib/components/view-panel/ViewPanel.svelte';
 	import TaskFilterSection from '$lib/components/tasks/TaskFilterSection.svelte';
-	import { dayProjectGroups as groupByProject } from '$lib/utils/week';
+	import {
+		dayProjectGroups as groupByProject,
+		placeWeekTasks,
+		type DayEntry
+	} from '$lib/utils/week';
+	import { formatDateShort } from '$lib/utils/format';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -117,6 +122,8 @@
 
 	let composerDay = $state<number | null>(null);
 	let selectedId = $state<string | null>(null);
+	// The day the open task was picked from (null outside the day columns).
+	let selectedDay = $state<string | null>(null);
 	let selected = $derived(
 		selectedId ? (data.tasks.find((t) => t.id === selectedId) ?? null) : null
 	);
@@ -177,24 +184,46 @@
 		}
 	}
 
-	const plannedByDay = $derived.by(() => {
-		const out: Record<number, Task[]> = {};
-		for (let i = 0; i < 7; i++) out[i] = [];
-		for (const t of data.tasks) {
-			if (!t.plannedFor) continue;
-			const idx = data.weekDates.indexOf(t.plannedFor);
-			if (idx >= 0) out[idx].push(t);
-		}
-		return out;
-	});
+	// Each day's entries: the tasks planned that day, plus the days I worked on
+	// a task (chunks) and unfinished tasks carried over onto today. See
+	// placeWeekTasks for the rules and the minutes each entry counts for.
+	const entriesByDay = $derived(
+		placeWeekTasks({
+			tasks: data.tasks,
+			weekDates: data.weekDates,
+			todayIso: data.todayIso,
+			dayLogs: data.dayLogs,
+			defaultEstimate: DEFAULT_ESTIMATE
+		})
+	);
 
-	const weekMinutes = $derived.by(() => {
-		let total = 0;
-		for (let i = 0; i < 5; i++) {
-			for (const t of plannedByDay[i]) total += taskTimeMinutes(t) ?? DEFAULT_ESTIMATE;
+	const weekMinutes = $derived(
+		entriesByDay.slice(0, 5).reduce((total, day) => total + entryMinutes(day), 0)
+	);
+
+	function entryMinutes(entries: DayEntry<Task>[]): number {
+		return entries.reduce((sum, e) => sum + e.minutes, 0);
+	}
+
+	// The chip explaining a non-planned entry: carried over, or worked that day.
+	function dayNote(e: DayEntry<Task>): { kind: 'carried' | 'chunk'; label: string } | undefined {
+		if (e.kind === 'carried') {
+			return {
+				kind: 'carried',
+				label: m.week_entry_carried({ date: formatDateShort(e.task.plannedFor ?? '') })
+			};
 		}
-		return total;
-	});
+		if (e.kind === 'chunk') {
+			return { kind: 'chunk', label: m.week_entry_worked({ time: fmtMins(e.loggedThatDay) }) };
+		}
+		return undefined;
+	}
+
+	// Open a task from a day: the inspector's time logger starts on that day.
+	function openFromDay(task: Task, iso: string | null) {
+		selectedId = task.id;
+		selectedDay = iso;
+	}
 
 	function toggle(i: number) {
 		const iso = data.weekDates[i];
@@ -206,21 +235,17 @@
 	}
 
 	function dayMinutes(i: number): number {
-		return plannedByDay[i].reduce((s, t) => s + (taskTimeMinutes(t) ?? DEFAULT_ESTIMATE), 0);
+		return entryMinutes(entriesByDay[i] ?? []);
 	}
 
 	// Per-project sub-sections within a day (shared with the board).
-	function dayProjectGroups(tasks: Task[]) {
-		return groupByProject(tasks, resolveProject);
+	function dayProjectGroups(entries: DayEntry<Task>[]) {
+		return groupByProject(entries, resolveProject);
 	}
 
-	function groupMinutes(tasks: Task[]): number {
-		return tasks.reduce((sum, t) => sum + (taskTimeMinutes(t) ?? DEFAULT_ESTIMATE), 0);
-	}
-
-	// Planned tasks the filter hides this week (shown next to the Filter button).
+	// Day entries the filter hides this week (shown next to the Filter button).
 	const hiddenCount = $derived(
-		data.weekDates.reduce((n, _, i) => n + plannedByDay[i].filter((t) => !visibleTask(t)).length, 0)
+		entriesByDay.reduce((n, day) => n + day.filter((e) => !visibleTask(e.task)).length, 0)
 	);
 
 	function fmtMins(mins: number): string {
@@ -461,7 +486,7 @@
 			days={dayLabels.map((day, i) => ({
 				...day,
 				label: WEEK_DAY_LABELS[i](),
-				tasks: plannedByDay[i],
+				entries: entriesByDay[i] ?? [],
 				minutes: dayMinutes(i)
 			}))}
 			todayIso={data.todayIso}
@@ -469,14 +494,15 @@
 			{unscheduled}
 			{unscheduledTabs}
 			{projectHref}
-			onselect={(task) => (selectedId = task.id)}
+			{dayNote}
+			onselect={(task, iso) => openFromDay(task, iso)}
 			onadd={addBoardTask}
 		/>
 	{:else}
 		<div class="min-h-0 flex-1 overflow-y-auto">
 			<div class="min-w-0">
 				{#each WEEK_DAYS as day, i (day)}
-					{@const tasks = plannedByDay[i]}
+					{@const entries = entriesByDay[i] ?? []}
 					{@const mins = dayMinutes(i)}
 					{@const isToday = i === todayIndex}
 					{@const isWeekend = i >= 5}
@@ -506,7 +532,7 @@
 									>{m.common_today()}</span
 								>
 							{/if}
-							<span class="font-mono text-[12px] text-text-3">{tasks.length}</span>
+							<span class="font-mono text-[12px] text-text-3">{entries.length}</span>
 							<div class="ml-auto flex items-center gap-2.5">
 								<div class="h-1 w-16 overflow-hidden rounded-full bg-bg-elev sm:w-28">
 									<div
@@ -526,9 +552,9 @@
 						</button>
 						{#if !isCollapsed}
 							<div transition:slide={{ duration: 180, easing: cubicOut }}>
-								{#each dayProjectGroups(tasks).filter( (g) => g.tasks.some(visibleTask) ) as g (g.key)}
+								{#each dayProjectGroups(entries).filter( (g) => g.tasks.some( (e) => visibleTask(e.task) ) ) as g (g.key)}
 									{@const href = projectHref(g.key)}
-									{@const visible = g.tasks.filter(visibleTask)}
+									{@const visible = g.tasks.filter((e) => visibleTask(e.task))}
 									{@const hiddenByFilter = g.tasks.length - visible.length}
 									<div
 										class="flex h-8 items-center gap-2 border-b border-border/60 bg-surface/40 pr-4 pl-5 sm:pr-5"
@@ -550,16 +576,18 @@
 											>
 										{/if}
 										<span class="ml-auto font-mono text-[11px] text-text-4"
-											>{fmtMins(groupMinutes(g.tasks))}</span
+											>{fmtMins(entryMinutes(g.tasks))}</span
 										>
 									</div>
-									{#each visible as t (t.id)}
+									{#each visible as e (e.task.id)}
 										<TaskRow
-											task={t}
-											selected={selectedId === t.id}
+											task={e.task}
+											selected={selectedId === e.task.id}
 											showPlanned={false}
 											showTime
-											onclick={() => (selectedId = t.id)}
+											minutes={e.minutes}
+											dayNote={dayNote(e)}
+											onclick={() => openFromDay(e.task, data.weekDates[i] ?? null)}
 										/>
 									{/each}
 								{/each}
@@ -616,7 +644,7 @@
 								task={t}
 								selected={selectedId === t.id}
 								showTime
-								onclick={() => (selectedId = t.id)}
+								onclick={() => openFromDay(t, null)}
 							/>
 						{/each}
 						{#if unscheduled.length === 0}
@@ -650,6 +678,7 @@
 	onclose={() => (selectedId = null)}
 	users={data.users}
 	onopen={(id) => (selectedId = id)}
+	logDate={selectedDay ?? undefined}
 />
 
 <CreateTaskModal

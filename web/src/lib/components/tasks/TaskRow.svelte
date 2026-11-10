@@ -24,8 +24,24 @@
 		// My week trades the "updated" column for logged/estimated time —
 		// capacity is that page's currency.
 		showTime?: boolean;
+		/** My Week: the minutes this row counts for on its day (else logged/estimate). */
+		minutes?: number;
+		/**
+		 * My Week: why the task is on this day besides being planned there —
+		 * `carried` (unfinished, rolled over from an earlier day) or `chunk` (I
+		 * worked on it that day). `label` is the ready-to-show text.
+		 */
+		dayNote?: { kind: 'carried' | 'chunk'; label: string };
 	}
-	let { task, selected = false, onclick, showPlanned = true, showTime = false }: Props = $props();
+	let {
+		task,
+		selected = false,
+		onclick,
+		showPlanned = true,
+		showTime = false,
+		minutes,
+		dayNote
+	}: Props = $props();
 
 	let prio = $derived(TRACKR_PRIORITIES.find((p) => p.id === task.priority)!);
 	// Every assignee, not just the primary one — matches the ticket row and
@@ -39,7 +55,7 @@
 	let avatarMax = $derived(assigneeCount > 3 ? 2 : 3);
 	// Real logged time when any exists, otherwise the estimate.
 	let logged = $derived(loggedMinutes(task));
-	let timeMinutes = $derived(logged > 0 ? logged : task.estimate);
+	let timeMinutes = $derived(minutes ?? (logged > 0 ? logged : task.estimate));
 
 	// Suppress the countdown for completed tasks — a finished task isn't
 	// "overdue". Only show the live indicator while work is still pending.
@@ -94,6 +110,17 @@
 					<Icon name="bookmark" size={13} />
 					<span>{m.tasks_this_week()}</span>
 				{/if}
+			</span>
+		{/if}
+		{#if dayNote}
+			<span
+				class="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[12px] {dayNote.kind ===
+				'carried'
+					? 'bg-[color-mix(in_srgb,var(--color-status-paused)_16%,transparent)] text-[var(--color-status-paused)]'
+					: 'bg-surface-2 text-text-3'}"
+			>
+				<Icon name={dayNote.kind === 'carried' ? 'refresh' : 'calendar'} size={12} />
+				<span>{dayNote.label}</span>
 			</span>
 		{/if}
 		<span class="hidden md:contents">

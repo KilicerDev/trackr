@@ -17,8 +17,14 @@
 		onclick?: () => void;
 		showPlanned?: boolean;
 		timeLabel?: string;
+		/**
+		 * My Week: why the task is on this day besides being planned there —
+		 * `carried` (unfinished, rolled over from an earlier day) or `chunk` (I
+		 * worked on it that day). `label` is the ready-to-show text.
+		 */
+		dayNote?: { kind: 'carried' | 'chunk'; label: string };
 	}
-	let { task, onclick, showPlanned = true, timeLabel }: Props = $props();
+	let { task, onclick, showPlanned = true, timeLabel, dayNote }: Props = $props();
 
 	let assignees = $derived((task.assignees ?? [task.assignee]).map((id) => resolveUser(id)));
 
@@ -80,6 +86,21 @@
 	<div class="mb-1.5 line-clamp-3 text-[14px] leading-snug font-medium text-text">
 		{task.title}
 	</div>
+	{#if dayNote}
+		<div class="mb-1.5">
+			{#if dayNote}
+				<span
+					class="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[12px] {dayNote.kind ===
+					'carried'
+						? 'bg-[color-mix(in_srgb,var(--color-status-paused)_16%,transparent)] text-[var(--color-status-paused)]'
+						: 'bg-surface-2 text-text-3'}"
+				>
+					<Icon name={dayNote.kind === 'carried' ? 'refresh' : 'calendar'} size={12} />
+					<span>{dayNote.label}</span>
+				</span>
+			{/if}
+		</div>
+	{/if}
 	<div class="flex items-center gap-2 text-[12px] text-text-3">
 		{#if task.priority !== 'none'}
 			<PriorityBars priority={task.priority} />
