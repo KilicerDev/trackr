@@ -3,7 +3,7 @@
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
 	import Placeholder from '@tiptap/extension-placeholder';
-	import Link from '@tiptap/extension-link';
+	import { EditorLink, LINK_OPTIONS } from '$lib/editor/link';
 	import TaskList from '@tiptap/extension-task-list';
 	import TaskItem from '@tiptap/extension-task-item';
 	import { SlashCommand } from './slash-command.svelte';
@@ -37,14 +37,11 @@
 			content,
 			extensions: [
 				StarterKit.configure({
-					heading: { levels: [1, 2, 3] }
+					heading: { levels: [1, 2, 3] },
+					link: false
 				}),
 				Placeholder.configure({ placeholder }),
-				Link.configure({
-					openOnClick: !editable,
-					autolink: true,
-					HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' }
-				}),
+				EditorLink.configure({ ...LINK_OPTIONS, openOnClick: !editable }),
 				TaskList,
 				TaskItem.configure({ nested: true }),
 				SlashCommand

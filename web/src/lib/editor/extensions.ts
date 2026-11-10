@@ -10,6 +10,7 @@
 // into the Node server bundle.
 
 import StarterKit from '@tiptap/starter-kit';
+import { EditorLink, LINK_OPTIONS } from './link';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Image from '@tiptap/extension-image';
@@ -73,19 +74,17 @@ export const FileAttachment = Node.create({
 });
 
 export const collabSchemaExtensions: Extensions = [
-	// StarterKit v3 bundles Link, so it's configured here (not added separately)
-	// to avoid a duplicate-extension schema clash. `undoRedo: false` disables
-	// StarterKit's history — Collaboration provides its own Yjs-aware undo;
-	// leaving both on corrupts the shared document.
+	// StarterKit v3 bundles Link; it's switched off there in favour of the
+	// shared non-inclusive EditorLink (see link.ts) to avoid a duplicate-extension
+	// schema clash. `undoRedo: false` disables StarterKit's history —
+	// Collaboration provides its own Yjs-aware undo; leaving both on corrupts the
+	// shared document.
 	StarterKit.configure({
 		heading: { levels: [1, 2, 3] },
 		undoRedo: false,
-		link: {
-			openOnClick: false,
-			autolink: true,
-			HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' }
-		}
+		link: false
 	}),
+	EditorLink.configure({ ...LINK_OPTIONS, openOnClick: false }),
 	TaskList,
 	TaskItem.configure({ nested: true }),
 	// Image *node* only. Embedded images reference a stable /api/attachments/<id>

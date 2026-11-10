@@ -10,6 +10,7 @@
 // markdown message format).
 
 import StarterKit from '@tiptap/starter-kit';
+import { EditorLink, LINK_OPTIONS } from './link';
 import { Node, type Extensions } from '@tiptap/core';
 import {
 	MarkdownSerializer,
@@ -137,16 +138,13 @@ export interface MessageSchemaOptions {
 export function messageSchemaExtensions(opts: MessageSchemaOptions = {}): Extensions {
 	const { flavor = 'chat', mentions = true } = opts;
 	return [
-		// StarterKit v3 bundles Link — configured here to avoid a duplicate
-		// extension (mirrors the wiki schema's reasoning).
+		// StarterKit v3 bundles Link; it's switched off there in favour of the
+		// shared non-inclusive EditorLink (see link.ts).
 		StarterKit.configure({
 			heading: flavor === 'document' ? { levels: [1, 2, 3] } : false,
-			link: {
-				openOnClick: false,
-				autolink: true,
-				HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' }
-			}
+			link: false
 		}),
+		EditorLink.configure({ ...LINK_OPTIONS, openOnClick: false }),
 		// Entity refs ride the same gate: surfaces without mentions (descriptions)
 		// don't parse either token server-side, so neither node belongs there.
 		...(mentions ? [MessageMention, MessageEntityRef] : [])
@@ -206,7 +204,9 @@ const serializer = new MarkdownSerializer(
 		bold: d.marks.strong,
 		italic: d.marks.em,
 		code: d.marks.code,
-		link: d.marks.link,
+		// Whitespace at a link's edges is written outside the brackets, so a
+		// stray trailing space never ends up underlined as part of the link.
+		link: { ...d.marks.link, expelEnclosingWhitespace: true },
 		strike: { open: '~~', close: '~~', mixable: true, expelEnclosingWhitespace: true }
 	}
 );
