@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { matchesTaskFilters } from '$lib/utils/task-filters';
 	import { brandName, pageTitle } from '$lib/brand';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Toolbar from '$lib/components/tasks/Toolbar.svelte';
@@ -215,26 +216,7 @@
 	}
 
 	function matches(t: Task): boolean {
-		if (!withinWindow(t)) return false;
-		for (const [field, values] of Object.entries(filters)) {
-			if (values.length === 0) continue;
-			if (field === 'status' && !values.includes(t.status)) return false;
-			if (field === 'priority' && !values.includes(t.priority)) return false;
-			if (field === 'assignee') {
-				// Any-match over the assignee set; the `__unassigned__` sentinel
-				// (from the toolbar's "Unassigned" row) matches tasks with nobody on them.
-				const real = (t.assignees ?? [t.assignee]).filter((a): a is string => !!a);
-				const assignees = real.length ? real : ['__unassigned__'];
-				if (!assignees.some((a) => values.includes(a))) return false;
-			}
-			if (field === 'project' && !values.includes(t.project)) return false;
-			if (field === 'tags' && !t.labels.some((l) => values.includes(l))) return false;
-		}
-		if (search) {
-			const q = search.toLowerCase();
-			if (!t.title.toLowerCase().includes(q) && !t.id.toLowerCase().includes(q)) return false;
-		}
-		return true;
+		return withinWindow(t) && matchesTaskFilters(t, filters, search);
 	}
 
 	let tasks = $derived(data.tasks.filter(matches));

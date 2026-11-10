@@ -5,7 +5,7 @@
 	import BoardCard from '$lib/components/tasks/BoardCard.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
-	import { isClosedStatus, taskTimeMinutes } from '$lib/utils/task';
+	import { taskTimeMinutes } from '$lib/utils/task';
 	import { dayProjectGroups } from '$lib/utils/week';
 	import { m } from '$lib/paraglide/messages';
 
@@ -19,7 +19,7 @@
 	let {
 		days,
 		todayIso,
-		showDone,
+		visible: isVisible,
 		unscheduled,
 		unscheduledTabs,
 		projectHref,
@@ -28,7 +28,8 @@
 	}: {
 		days: Day[];
 		todayIso: string;
-		showDone: boolean;
+		/** The week's filter: hidden tasks still count towards day minutes. */
+		visible: (task: TaskSummary) => boolean;
 		unscheduled: TaskSummary[];
 		unscheduledTabs: Snippet;
 		/** Project detail link for a group header (tasks carry project keys). */
@@ -112,7 +113,7 @@
 	<div class="flex h-full min-h-0">
 		{#each days as day, index (day.iso)}
 			{@const today = day.iso === todayIso}
-			{@const visible = day.tasks.filter((task) => showDone || !isClosedStatus(task.status))}
+			{@const visible = day.tasks.filter(isVisible)}
 			{@const hidden = day.tasks.length - visible.length}
 			<section
 				data-date={day.iso}
@@ -157,7 +158,7 @@
 				</div>
 				<div class="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
 					{#if hidden > 0}
-						<p class="px-1 text-[12px] text-text-3">{m.week_done_hidden({ n: hidden })}</p>
+						<p class="px-1 text-[12px] text-text-3">{m.week_filtered_hidden({ n: hidden })}</p>
 					{/if}
 					{#each dayProjectGroups(visible, resolveProject) as g (g.key)}
 						<div class="space-y-2">

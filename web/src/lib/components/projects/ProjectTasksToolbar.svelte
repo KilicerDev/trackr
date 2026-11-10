@@ -1,21 +1,14 @@
 <script lang="ts">
 	import Icon from '../Icon.svelte';
-	import StatusDot from '../StatusDot.svelte';
-	import PriorityBars from '../PriorityBars.svelte';
-	import Avatar from '../Avatar.svelte';
-	import type { FilterField } from '../view-panel/FilterSection.svelte';
 	import ViewsMenu from '../ViewsMenu.svelte';
 	import type { SavedViewEntry } from '../ViewsMenu.svelte';
 	import ViewPanel from '../view-panel/ViewPanel.svelte';
 	import PanelSection from '../view-panel/PanelSection.svelte';
 	import SelectRow from '../view-panel/SelectRow.svelte';
 	import SortRow from '../view-panel/SortRow.svelte';
-	import FilterSection from '../view-panel/FilterSection.svelte';
 	import FilterTrigger from '../view-panel/FilterTrigger.svelte';
-	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/config/taxonomy';
-	import { labelMeta } from '$lib/utils/label-meta';
-	import { page } from '$app/state';
-	import { statusLabel, priorityLabel } from '$lib/utils/labels';
+	import TaskFilterSection from '../tasks/TaskFilterSection.svelte';
+	import { activeFilterCount, tagsInUse } from '$lib/utils/task-filters';
 	import { m } from '$lib/paraglide/messages';
 	import type { Task } from '$lib/types';
 	import { DEFAULT_TASK_LIST_SORT, type TaskSort, type TaskSortBy } from '$lib/utils/sort';
@@ -26,17 +19,6 @@
 		group: GroupBy;
 		filters: Record<string, string[]>;
 		sort: TaskSort;
-	};
-
-	type LayoutData = {
-		users?: {
-			id: string;
-			name: string;
-			initials: string;
-			color: string;
-			status: string;
-			internal?: boolean;
-		}[];
 	};
 
 	// Lean sibling of the /tasks Toolbar for the project detail page: one
@@ -73,19 +55,7 @@
 	}: Props = $props();
 
 	// Every tag actually in use across this project's tasks. Deduped.
-	const allTags = $derived.by(() => {
-		const seen = new Set<string>();
-		const out: string[] = [];
-		for (const t of tasks) {
-			for (const l of t.labels ?? []) {
-				if (!seen.has(l)) {
-					seen.add(l);
-					out.push(l);
-				}
-			}
-		}
-		return out;
-	});
+	const allTags = $derived(tagsInUse(tasks));
 
 	const GROUP_OPTIONS: { id: GroupBy; label: string }[] = [
 		{ id: 'status', label: m.tasks_group_status() },
@@ -101,111 +71,9 @@
 		{ id: 'title', label: m.sort_title() }
 	];
 
-	const FIELDS: FilterField[] = [
-		{ id: 'status', label: m.tasks_group_status(), icon: 'check' },
-		{ id: 'priority', label: m.tasks_group_priority(), icon: 'filter' },
-		{ id: 'assignee', label: m.tasks_group_assignee(), icon: 'users', searchable: true },
-		{ id: 'tags', label: m.tasks_tags(), icon: 'bookmark', searchable: true }
-	];
-
 	let panelOpen = $state(false);
-	const activeFilterCount = $derived(
-		Object.values(filters).reduce((n, v) => n + (v?.length ?? 0), 0)
-	);
-
-	// Search inside a long value list (query arrives lower-cased and trimmed).
-	const hit = (label: string, query: string) => !query || label.toLowerCase().includes(query);
-
-	function toggleValue(field: string, value: string) {
-		const cur = filters[field] ?? [];
-		const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
-		const merged = { ...filters, [field]: next };
-		if (next.length === 0) delete merged[field];
-		setFilters(merged);
-	}
-
-	// Resolve a raw filter value to its label; falls back to the raw value.
-	function valueLabel(field: string, value: string): string {
-		if (field === 'status')
-			return TRACKR_STATUSES.find((s) => s.id === value) ? statusLabel(value) : value;
-		if (field === 'priority')
-			return TRACKR_PRIORITIES.find((p) => p.id === value) ? priorityLabel(value) : value;
-		if (field === 'assignee') {
-			const u = ((page.data as LayoutData).users ?? []).find((x) => x.id === value);
-			return u?.name ?? value;
-		}
-		if (field === 'tags') return labelMeta(value).label;
-		return value;
-	}
+	const activeCount = $derived(activeFilterCount(filters));
 </script>
-
-{#snippet valuesList(field: string, query: string)}
-	{@const values = filters[field] ?? []}
-	{#if field === 'status'}
-		{#each TRACKR_STATUSES.filter((s) => hit(statusLabel(s.id), query)) as s (s.id)}
-			<button
-				type="button"
-				onclick={() => toggleValue('status', s.id)}
-				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
-			>
-				<StatusDot status={s.id} />
-				<span class="text-[14px]">{statusLabel(s.id)}</span>
-				<span class="ml-auto text-accent {values.includes(s.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={14} />
-				</span>
-			</button>
-		{/each}
-	{:else if field === 'priority'}
-		{#each TRACKR_PRIORITIES.filter((p) => hit(priorityLabel(p.id), query)) as p (p.id)}
-			<button
-				type="button"
-				onclick={() => toggleValue('priority', p.id)}
-				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
-			>
-				<PriorityBars priority={p.id} />
-				<span class="text-[14px]">{priorityLabel(p.id)}</span>
-				<span class="ml-auto text-accent {values.includes(p.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={14} />
-				</span>
-			</button>
-		{/each}
-	{:else if field === 'assignee'}
-		{@const dbUsers = ((page.data as LayoutData).users ?? []).filter(
-			(u) => u.internal && u.status !== 'disabled'
-		)}
-		{#each dbUsers.filter((u) => hit(u.name, query)) as u (u.id)}
-			<button
-				type="button"
-				onclick={() => toggleValue('assignee', u.id)}
-				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
-			>
-				<Avatar user={u} size={22} />
-				<span class="text-[14px]">{u.name}</span>
-				<span class="ml-auto text-accent {values.includes(u.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={14} />
-				</span>
-			</button>
-		{/each}
-	{:else if field === 'tags'}
-		{#each allTags.filter((id) => hit(labelMeta(id).label, query)) as id (id)}
-			{@const l = labelMeta(id)}
-			<button
-				type="button"
-				onclick={() => toggleValue('tags', id)}
-				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
-			>
-				<span class="h-2 w-2 rounded-full" style:background={l.color}></span>
-				<span class="truncate text-[14px]">{l.label}</span>
-				<span class="ml-auto text-accent {values.includes(id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={14} />
-				</span>
-			</button>
-		{/each}
-		{#if allTags.length === 0}
-			<div class="px-2 py-2 text-[12px] text-text-3">{m.common_none()}</div>
-		{/if}
-	{/if}
-{/snippet}
 
 <div class="flex min-w-0 items-center gap-2">
 	{#if viewsMenu}
@@ -217,11 +85,7 @@
 		/>
 		<div class="h-5 w-px shrink-0 bg-border"></div>
 	{/if}
-	<FilterTrigger
-		open={panelOpen}
-		count={activeFilterCount}
-		onclick={() => (panelOpen = !panelOpen)}
-	/>
+	<FilterTrigger open={panelOpen} count={activeCount} onclick={() => (panelOpen = !panelOpen)} />
 
 	<div class="relative ml-auto w-44 min-w-[132px] shrink">
 		<span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-text-3">
@@ -241,7 +105,7 @@
 	open={panelOpen}
 	onclose={() => (panelOpen = false)}
 	title={m.view_options_title()}
-	count={activeFilterCount}
+	count={activeCount}
 >
 	<PanelSection title={m.view_layout()}>
 		<div class="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
@@ -255,5 +119,11 @@
 		</div>
 	</PanelSection>
 
-	<FilterSection fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
+	<TaskFilterSection
+		{filters}
+		{setFilters}
+		fields={['status', 'priority', 'assignee', 'tags']}
+		tags={allTags}
+		unassigned={false}
+	/>
 </ViewPanel>

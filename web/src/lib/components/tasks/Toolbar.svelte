@@ -1,53 +1,24 @@
 <script lang="ts">
 	import Icon from '../Icon.svelte';
 	import Button from '../Button.svelte';
-	import StatusDot from '../StatusDot.svelte';
-	import PriorityBars from '../PriorityBars.svelte';
-	import Avatar from '../Avatar.svelte';
-	import type { FilterField } from '../view-panel/FilterSection.svelte';
 	import ViewsMenu from '../ViewsMenu.svelte';
 	import type { SavedViewEntry } from '../ViewsMenu.svelte';
 	import ViewPanel from '../view-panel/ViewPanel.svelte';
 	import PanelSection from '../view-panel/PanelSection.svelte';
 	import SelectRow from '../view-panel/SelectRow.svelte';
 	import SortRow from '../view-panel/SortRow.svelte';
-	import FilterSection from '../view-panel/FilterSection.svelte';
 	import FilterTrigger from '../view-panel/FilterTrigger.svelte';
-	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/config/taxonomy';
-	import { labelMeta } from '$lib/utils/label-meta';
+	import TaskFilterSection from './TaskFilterSection.svelte';
+	import { activeFilterCount, tagsInUse } from '$lib/utils/task-filters';
 	import { page } from '$app/state';
-	import { statusLabel, priorityLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 	import { DEFAULT_TASK_LIST_SORT, type TaskSort, type TaskSortBy } from '$lib/utils/sort';
 
-	type LayoutData = {
-		users?: {
-			id: string;
-			name: string;
-			initials: string;
-			color: string;
-			status: string;
-			internal?: boolean;
-		}[];
-		projects?: { key: string; name: string; color: string }[];
-		tasks?: { labels?: string[] }[];
-	};
+	type LayoutData = { tasks?: { labels?: string[] }[] };
 
 	// Every tag actually in use across the loaded tasks — the org-defined tag
 	// vocabulary. Deduped.
-	const allTags = $derived.by(() => {
-		const seen = new Set<string>();
-		const out: string[] = [];
-		for (const t of (page.data as LayoutData).tasks ?? []) {
-			for (const l of t.labels ?? []) {
-				if (!seen.has(l)) {
-					seen.add(l);
-					out.push(l);
-				}
-			}
-		}
-		return out;
-	});
+	const allTags = $derived(tagsInUse((page.data as LayoutData).tasks ?? []));
 
 	type GroupBy = 'status' | 'priority' | 'assignee' | 'project' | 'none';
 	type SubBy = 'none' | 'status' | 'priority' | 'assignee';
@@ -139,158 +110,9 @@
 	const opts = <T extends string>(list: { id: T; label: () => string }[]) =>
 		list.map((o) => ({ id: o.id, label: o.label() }));
 
-	const FIELDS: FilterField[] = [
-		{ id: 'status', label: m.tasks_group_status(), icon: 'check' },
-		{ id: 'priority', label: m.tasks_group_priority(), icon: 'filter' },
-		{ id: 'assignee', label: m.tasks_group_assignee(), icon: 'users', searchable: true },
-		{ id: 'project', label: m.tasks_group_project(), icon: 'folder', searchable: true },
-		{ id: 'tags', label: m.tasks_tags(), icon: 'bookmark', searchable: true }
-	];
-
 	let panelOpen = $state(false);
-	const activeFilterCount = $derived(
-		Object.values(filters).reduce((n, v) => n + (v?.length ?? 0), 0)
-	);
-
-	// Search inside a long value list (query arrives lower-cased and trimmed).
-	const hit = (label: string, query: string) => !query || label.toLowerCase().includes(query);
-
-	function toggleValue(field: string, value: string) {
-		const cur = filters[field] ?? [];
-		const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
-		const merged = { ...filters, [field]: next };
-		if (next.length === 0) delete merged[field];
-		setFilters(merged);
-	}
-
-	// Resolve a raw filter value (status id, user id, project key, …) to the
-	// human label shown in the row summary. Falls back to the raw value if no
-	// match — better to surface a stale id than to blank the row out.
-	function valueLabel(field: string, value: string): string {
-		if (field === 'status')
-			return TRACKR_STATUSES.find((s) => s.id === value) ? statusLabel(value) : value;
-		if (field === 'priority')
-			return TRACKR_PRIORITIES.find((p) => p.id === value) ? priorityLabel(value) : value;
-		if (field === 'assignee') {
-			if (value === '__unassigned__') return m.common_unassigned();
-			const u = ((page.data as LayoutData).users ?? []).find((x) => x.id === value);
-			return u?.name ?? value;
-		}
-		if (field === 'project') {
-			const p = ((page.data as LayoutData).projects ?? []).find((x) => x.key === value);
-			return p?.name ?? value;
-		}
-		if (field === 'tags') return labelMeta(value).label;
-		return value;
-	}
+	const activeCount = $derived(activeFilterCount(filters));
 </script>
-
-{#snippet valuesList(field: string, query: string)}
-	{@const values = filters[field] ?? []}
-	{#if field === 'status'}
-		{#each TRACKR_STATUSES.filter((s) => hit(statusLabel(s.id), query)) as s (s.id)}
-			<button
-				type="button"
-				onclick={() => toggleValue('status', s.id)}
-				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
-			>
-				<StatusDot status={s.id} />
-				<span class="text-[14px]">{statusLabel(s.id)}</span>
-				<span class="ml-auto text-accent {values.includes(s.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={14} />
-				</span>
-			</button>
-		{/each}
-	{:else if field === 'priority'}
-		{#each TRACKR_PRIORITIES.filter((p) => hit(priorityLabel(p.id), query)) as p (p.id)}
-			<button
-				type="button"
-				onclick={() => toggleValue('priority', p.id)}
-				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
-			>
-				<PriorityBars priority={p.id} />
-				<span class="text-[14px]">{priorityLabel(p.id)}</span>
-				<span class="ml-auto text-accent {values.includes(p.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={14} />
-				</span>
-			</button>
-		{/each}
-	{:else if field === 'assignee'}
-		<!-- Tasks are internal work, so only platform (internal team) users can be
-		     assignees — mirror the tickets toolbar and hide client/portal users. -->
-		{@const dbUsers = ((page.data as LayoutData).users ?? []).filter(
-			(u) => u.internal && u.status !== 'disabled'
-		)}
-		<!-- `__unassigned__` sentinel: matches tasks with no assignee. -->
-		{#if hit(m.common_unassigned(), query)}
-			<button
-				type="button"
-				onclick={() => toggleValue('assignee', '__unassigned__')}
-				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
-			>
-				<span
-					class="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border border-dashed border-text-3 text-text-3"
-				>
-					<Icon name="user" size={12} />
-				</span>
-				<span class="text-[14px]">{m.common_unassigned()}</span>
-				<span
-					class="ml-auto text-accent {values.includes('__unassigned__')
-						? 'opacity-100'
-						: 'opacity-0'}"
-				>
-					<Icon name="check" size={14} />
-				</span>
-			</button>
-		{/if}
-		{#each dbUsers.filter((u) => hit(u.name, query)) as u (u.id)}
-			<button
-				type="button"
-				onclick={() => toggleValue('assignee', u.id)}
-				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
-			>
-				<Avatar user={u} size={22} />
-				<span class="text-[14px]">{u.name}</span>
-				<span class="ml-auto text-accent {values.includes(u.id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={14} />
-				</span>
-			</button>
-		{/each}
-	{:else if field === 'project'}
-		{@const dbProjects = (page.data as LayoutData).projects ?? []}
-		{#each dbProjects.filter((p) => hit(p.name, query)) as p (p.key)}
-			<button
-				type="button"
-				onclick={() => toggleValue('project', p.key)}
-				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
-			>
-				<span class="h-2 w-2 rounded-full" style:background={p.color}></span>
-				<span class="text-[14px]">{p.name}</span>
-				<span class="ml-auto text-accent {values.includes(p.key) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={14} />
-				</span>
-			</button>
-		{/each}
-	{:else if field === 'tags'}
-		{#each allTags.filter((id) => hit(labelMeta(id).label, query)) as id (id)}
-			{@const l = labelMeta(id)}
-			<button
-				type="button"
-				onclick={() => toggleValue('tags', id)}
-				class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text"
-			>
-				<span class="h-2 w-2 rounded-full" style:background={l.color}></span>
-				<span class="truncate text-[14px]">{l.label}</span>
-				<span class="ml-auto text-accent {values.includes(id) ? 'opacity-100' : 'opacity-0'}">
-					<Icon name="check" size={14} />
-				</span>
-			</button>
-		{/each}
-		{#if allTags.length === 0}
-			<div class="px-2 py-2 text-[12px] text-text-3">{m.common_none()}</div>
-		{/if}
-	{/if}
-{/snippet}
 
 <div class="flex shrink-0 items-center gap-2 border-b border-border bg-bg px-5 py-2.5">
 	<!-- Controls strip: scrolls horizontally as a last resort on very narrow
@@ -336,11 +158,7 @@
 
 		<!-- Everything else (group, subgroup, sort, time, filters) lives in the
 		     side panel this button opens. -->
-		<FilterTrigger
-			open={panelOpen}
-			count={activeFilterCount}
-			onclick={() => (panelOpen = !panelOpen)}
-		/>
+		<FilterTrigger open={panelOpen} count={activeCount} onclick={() => (panelOpen = !panelOpen)} />
 
 		<!-- Search stays compact and right-aligned (ml-auto eats the slack), but is
 	     allowed to shrink as the toolbar narrows so the controls never squeeze
@@ -373,7 +191,7 @@
 	open={panelOpen}
 	onclose={() => (panelOpen = false)}
 	title={m.view_options_title()}
-	count={activeFilterCount}
+	count={activeCount}
 >
 	<PanelSection title={m.view_layout()}>
 		<div class="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
@@ -401,7 +219,7 @@
 		</div>
 	</PanelSection>
 
-	<FilterSection fields={FIELDS} {filters} {setFilters} {valueLabel} {valuesList} />
+	<TaskFilterSection {filters} {setFilters} tags={allTags} />
 </ViewPanel>
 
 <style>

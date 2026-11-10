@@ -23,6 +23,7 @@
 	import { PROJECT_STATUS } from '$lib/config/taxonomy';
 	import { projectStatusLabel } from '$lib/utils/labels';
 	import { isClosedStatus } from '$lib/utils/task';
+	import { matchesTaskFilters } from '$lib/utils/task-filters';
 	import { dueCountdown, formatEstimate, formatDateLong } from '$lib/utils/format';
 	import { m } from '$lib/paraglide/messages';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
@@ -177,24 +178,9 @@
 		flushViewSaves();
 	}
 
-	function taskMatches(t: Task): boolean {
-		for (const [field, values] of Object.entries(taskFilters)) {
-			if (values.length === 0) continue;
-			if (field === 'status' && !values.includes(t.status)) return false;
-			if (field === 'priority' && !values.includes(t.priority)) return false;
-			if (field === 'assignee') {
-				const assignees = t.assignees ?? [t.assignee];
-				if (!assignees.some((a) => values.includes(a))) return false;
-			}
-			if (field === 'tags' && !t.labels.some((l) => values.includes(l))) return false;
-		}
-		if (taskSearch) {
-			const q = taskSearch.toLowerCase();
-			if (!t.title.toLowerCase().includes(q) && !t.id.toLowerCase().includes(q)) return false;
-		}
-		return true;
-	}
-	const filteredTasks = $derived(tasks.filter(taskMatches));
+	const filteredTasks = $derived(
+		tasks.filter((t) => matchesTaskFilters(t, taskFilters, taskSearch))
+	);
 
 	// ── Connected meetings ─────────────────────────────────────────────────────
 	let newMeetingOpen = $state(false);

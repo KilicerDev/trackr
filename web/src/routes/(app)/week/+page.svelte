@@ -10,6 +10,11 @@
 	import SmartComposer from '$lib/components/week/SmartComposer.svelte';
 	import type { ComposerDraft } from '$lib/components/week/SmartComposer.svelte';
 	import { isClosedStatus, taskTimeMinutes } from '$lib/utils/task';
+	import { matchesTaskFilters, tagsInUse, type TaskFilters } from '$lib/utils/task-filters';
+	import { TRACKR_STATUSES } from '$lib/config/taxonomy';
+	import FilterTrigger from '$lib/components/view-panel/FilterTrigger.svelte';
+	import ViewPanel from '$lib/components/view-panel/ViewPanel.svelte';
+	import TaskFilterSection from '$lib/components/tasks/TaskFilterSection.svelte';
 	import { dayProjectGroups as groupByProject } from '$lib/utils/week';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
@@ -33,8 +38,11 @@
 		// so collapsing one day doesn't collapse that weekday in every week.
 		collapsedDates?: string[];
 		unscheduledCollapsed?: boolean;
-		// Done tasks are hidden from the day lists by default; their time still
-		// counts towards the day/week totals so the capacity picture holds.
+		// Task filters (status, priority, assignee, project, tags). Filtered-out
+		// tasks still count towards the day/week totals so the capacity picture
+		// holds. Defaults to hiding closed (done, cancelled) tasks.
+		filters?: TaskFilters;
+		// Legacy toggle, read once to seed `filters`.
 		showDone?: boolean;
 	};
 	// localStorage cache wins over the server snapshot — it's mirrored on
@@ -86,13 +94,26 @@
 			data.weekDates.map((iso, i) => (collapsedDates.has(iso) ? i : -1)).filter((i) => i >= 0)
 		)
 	);
-	let showDone = $state(saved.showDone === true);
-	function toggleShowDone() {
-		showDone = !showDone;
-		saveView('week', { showDone });
+	// Every open status: the default filter, which keeps the old "done hidden"
+	// behaviour. A saved `showDone: true` from before filters means no filter.
+	const OPEN_STATUSES = TRACKR_STATUSES.map((s) => s.id as string).filter(
+		(id) => !isClosedStatus(id)
+	);
+	function initialFilters(): TaskFilters {
+		if (saved.filters && typeof saved.filters === 'object') return saved.filters;
+		return saved.showDone === true ? {} : { status: [...OPEN_STATUSES] };
 	}
-	const isDone = (t: Task) => isClosedStatus(t.status);
-	const visibleTask = (t: Task) => showDone || !isDone(t);
+	let filters = $state<TaskFilters>(initialFilters());
+	function setFilters(next: TaskFilters) {
+		filters = next;
+		saveView('week', { filters: next });
+	}
+	let filterPanelOpen = $state(false);
+	const visibleTask = (t: Task) => matchesTaskFilters(t, filters);
+	// Badge = fields in use, so the default "open statuses" filter reads as 1.
+	const activeFilterFields = $derived(
+		Object.values(filters).filter((v) => (v?.length ?? 0) > 0).length
+	);
 
 	let composerDay = $state<number | null>(null);
 	let selectedId = $state<string | null>(null);
@@ -197,9 +218,9 @@
 		return tasks.reduce((sum, t) => sum + (taskTimeMinutes(t) ?? DEFAULT_ESTIMATE), 0);
 	}
 
-	// Done tasks hidden in the week (for the header hint / toggle badge).
-	const hiddenDoneCount = $derived(
-		showDone ? 0 : data.weekDates.reduce((n, _, i) => n + plannedByDay[i].filter(isDone).length, 0)
+	// Planned tasks the filter hides this week (shown next to the Filter button).
+	const hiddenCount = $derived(
+		data.weekDates.reduce((n, _, i) => n + plannedByDay[i].filter((t) => !visibleTask(t)).length, 0)
 	);
 
 	function fmtMins(mins: number): string {
@@ -227,13 +248,17 @@
 		saveView('week', { unscheduledCollapsed });
 	}
 
-	const unscheduled = $derived.by(() => {
-		// Open = still actionable; we never surface done/in-review here.
-		const isOpen = (t: Task) => !isClosedStatus(t.status) && t.status !== 'in_review';
+	const unscheduled = $derived(unscheduledFor(unscheduledTab));
+
+	function unscheduledFor(tab: UnscheduledTab): Task[] {
+		// Open = still actionable; we never surface done/in-review here. The
+		// week's filters apply too, before each tab's cap.
+		const isOpen = (t: Task) =>
+			!isClosedStatus(t.status) && t.status !== 'in_review' && visibleTask(t);
 		const me = data.currentUserId;
 		const mine = (t: Task) => t.assignee === me || (t.assignees ?? []).includes(me);
 
-		if (unscheduledTab === 'past') {
+		if (tab === 'past') {
 			// Open tasks I planned for a day in a week before this one — so I
 			// don't forget the overdue work. Oldest first.
 			return data.tasks
@@ -244,7 +269,7 @@
 				.slice(0, 16);
 		}
 
-		if (unscheduledTab === 'mine') {
+		if (tab === 'mine') {
 			// In my week, no specific date yet, assigned to me.
 			return data.tasks
 				.filter((t) => isOpen(t) && t.inMyPlan && !t.plannedFor && mine(t))
@@ -257,7 +282,7 @@
 		const planned = rest.filter((t) => t.inMyPlan);
 		const others = rest.filter((t) => !t.inMyPlan);
 		return [...planned, ...others].slice(0, 16);
-	});
+	}
 
 	function weekRangeLabel(): string {
 		if (data.weekDates.length === 0) return '';
@@ -406,21 +431,18 @@
 			<span class="hidden font-mono text-[14px] text-text-3 sm:inline">{weekRangeLabel()}</span>
 		</div>
 		<div class="ml-auto flex items-center gap-3">
-			<button
-				type="button"
-				onclick={toggleShowDone}
-				aria-pressed={showDone}
-				title={showDone ? m.week_hide_done() : m.week_show_done()}
-				class="inline-flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-[12px] transition-colors {showDone
-					? 'border-border bg-surface-2 text-text'
-					: 'border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'}"
-			>
-				<Icon name="check" size={13} />
-				<span>{showDone ? m.week_hide_done() : m.week_show_done()}</span>
-				{#if hiddenDoneCount > 0}
-					<span class="font-mono text-[11px] text-text-4">{hiddenDoneCount}</span>
+			<div class="flex items-center gap-2">
+				{#if hiddenCount > 0}
+					<span class="hidden text-[12px] text-text-4 sm:inline"
+						>{m.week_filtered_hidden({ n: hiddenCount })}</span
+					>
 				{/if}
-			</button>
+				<FilterTrigger
+					open={filterPanelOpen}
+					count={activeFilterFields}
+					onclick={() => (filterPanelOpen = !filterPanelOpen)}
+				/>
+			</div>
 			<div class="text-right">
 				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">{m.week_capacity()}</div>
 				<div class="font-mono text-[14px] text-text">{Math.round(weekMinutes / 60)}h / 40h</div>
@@ -443,7 +465,7 @@
 				minutes: dayMinutes(i)
 			}))}
 			todayIso={data.todayIso}
-			{showDone}
+			visible={visibleTask}
 			{unscheduled}
 			{unscheduledTabs}
 			{projectHref}
@@ -504,10 +526,10 @@
 						</button>
 						{#if !isCollapsed}
 							<div transition:slide={{ duration: 180, easing: cubicOut }}>
-								{#each dayProjectGroups(tasks) as g (g.key)}
+								{#each dayProjectGroups(tasks).filter( (g) => g.tasks.some(visibleTask) ) as g (g.key)}
 									{@const href = projectHref(g.key)}
 									{@const visible = g.tasks.filter(visibleTask)}
-									{@const hiddenDone = g.tasks.length - visible.length}
+									{@const hiddenByFilter = g.tasks.length - visible.length}
 									<div
 										class="flex h-8 items-center gap-2 border-b border-border/60 bg-surface/40 pr-4 pl-5 sm:pr-5"
 									>
@@ -522,9 +544,9 @@
 											<span class="truncate text-[13px] font-medium text-text-2">{g.name}</span>
 										{/if}
 										<span class="font-mono text-[11px] text-text-4">{visible.length}</span>
-										{#if hiddenDone > 0}
+										{#if hiddenByFilter > 0}
 											<span class="text-[11px] text-text-4"
-												>· {m.week_done_hidden({ n: hiddenDone })}</span
+												>· {m.week_filtered_hidden({ n: hiddenByFilter })}</span
 											>
 										{/if}
 										<span class="ml-auto font-mono text-[11px] text-text-4"
@@ -612,6 +634,15 @@
 		</div>
 	{/if}
 </div>
+
+<ViewPanel
+	open={filterPanelOpen}
+	onclose={() => (filterPanelOpen = false)}
+	title={m.view_options_title()}
+	count={activeFilterFields}
+>
+	<TaskFilterSection {filters} {setFilters} tags={tagsInUse(data.tasks)} />
+</ViewPanel>
 
 <Inspector
 	taskId={selectedId}
