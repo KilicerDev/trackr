@@ -15,8 +15,10 @@
 	interface Props {
 		crumbs: Crumb[];
 		actions?: Snippet;
+		/** A back button before the crumbs (detail pages). */
+		back?: { href: string; label: string };
 	}
-	let { crumbs, actions }: Props = $props();
+	let { crumbs, actions, back }: Props = $props();
 
 	// Notifications live in the rail now; on mobile the rail is a closed drawer,
 	// so the menu button carries the unread dot.
@@ -42,6 +44,16 @@
 				<span class="absolute top-1 right-1 h-2 w-2 rounded-full bg-accent ring-2 ring-bg"></span>
 			{/if}
 		</button>
+	{/if}
+	{#if back}
+		<a
+			href={back.href}
+			title={back.label}
+			aria-label={back.label}
+			class="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-border bg-surface text-text-2 transition-colors hover:border-border-strong hover:bg-surface-2 hover:text-text"
+		>
+			<Icon name="arrow-left" size={16} />
+		</a>
 	{/if}
 	<div class="flex min-w-0 items-center gap-2 overflow-hidden text-[14px] whitespace-nowrap">
 		<!--

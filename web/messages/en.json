@@ -1559,7 +1559,6 @@
 	"tickets_event_status_changed": "changed status from {from} to {to}",
 	"tickets_event_tags_updated": "updated the tags",
 	"tickets_event_unassigned": "unassigned {names}",
-	"tickets_opened_by": "Opened by {name}",
 	"tickets_n_changes": "{n} changes",
 	"tickets_team_tag": "Team",
 	"tickets_reply_tab": "Reply",

@@ -363,7 +363,7 @@
 	const idColor = $derived(categoryMeta?.color ?? '#7c7c84');
 
 	// ⋯ menu: create task, copy link (green check for a moment), delete.
-	let menuOpen = $state(false);
+	let menuOpen = $state<'mobile' | 'desktop' | null>(null);
 	let copied = $state(false);
 	let copiedTimer: ReturnType<typeof setTimeout> | undefined;
 	async function copyLink() {
@@ -373,10 +373,10 @@
 			clearTimeout(copiedTimer);
 			copiedTimer = setTimeout(() => {
 				copied = false;
-				menuOpen = false;
+				menuOpen = null;
 			}, 900);
 		} catch {
-			menuOpen = false;
+			menuOpen = null;
 			showToast('err', m.tickets_link_copy_failed());
 		}
 	}
@@ -456,6 +456,10 @@
 </svelte:head>
 
 <Topbar
+	back={{
+		href: fromPanel ? `/tickets?ticket=${t.id}` : '/tickets',
+		label: m.tickets_back_to_overview()
+	}}
 	crumbs={data.isPortalUser
 		? [{ label: t.orgName }, { label: t.displayId }]
 		: [
@@ -476,146 +480,9 @@
 	<div class="flex min-w-0 flex-1 flex-col">
 		<div class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
 			<div class="mx-auto w-full max-w-[760px] px-6 pt-6 pb-10">
-				{#if fromPanel}
-					<a
-						href="/tickets?ticket={t.id}"
-						class="mb-4 -ml-1 inline-flex items-center gap-1 rounded-md px-1 text-[13px] text-text-3 transition-colors hover:text-text"
-					>
-						<Icon name="chevron-r" size={14} class="rotate-180" />
-						{m.tickets_back_to_overview()}
-					</a>
-				{/if}
-
-				<!-- Head: id badge + org (as in the panels), pin and the ⋯ menu. -->
-				<div class="mb-3 flex items-center gap-2">
-					<span
-						class="inline-flex h-[20px] shrink-0 items-center gap-1.5 rounded-md border px-1.5 font-mono text-[12px] leading-none font-medium whitespace-nowrap"
-						style:color={idColor}
-						style:border-color="{idColor}40"
-						style:background="{idColor}14"
-					>
-						<Icon name="ticket" size={11} stroke={2.2} />
-						{t.displayId}
-					</span>
-					<span
-						class="inline-flex h-[20px] min-w-0 items-center rounded-md bg-surface px-1.5 font-mono text-[12px] leading-none text-text-3"
-					>
-						<span class="truncate">{t.orgName}</span>
-					</span>
-					<div class="ml-auto flex items-center gap-1">
-						<button
-							type="button"
-							onclick={togglePin}
-							disabled={pinPending}
-							aria-pressed={data.isPinned}
-							aria-label={data.isPinned ? m.tickets_unpin() : m.tickets_pin()}
-							title={data.isPinned ? m.tickets_unpin() : m.tickets_pin()}
-							class="grid h-[31px] w-[31px] place-items-center rounded-lg border transition-colors disabled:opacity-50 {data.isPinned
-								? 'border-accent/30 bg-accent-soft text-accent'
-								: 'border-transparent text-text-2 hover:border-border hover:bg-surface hover:text-text'}"
-						>
-							<Icon name="bookmark" size={15} />
-						</button>
-						<div class="relative">
-							<IconButton
-								size={31}
-								ariaLabel={m.tickets_more_actions()}
-								onclick={() => (menuOpen = !menuOpen)}
-							>
-								<Icon name="more" size={16} />
-							</IconButton>
-							{#if menuOpen}
-								<div
-									role="menu"
-									use:clickOutside={() => (menuOpen = false)}
-									in:fly={POPOVER_IN}
-									class="absolute top-full right-0 z-50 mt-1.5 min-w-[210px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-								>
-									{#if data.canCreateTask}
-										<button
-											type="button"
-											role="menuitem"
-											onclick={() => {
-												menuOpen = false;
-												creatingTask = true;
-											}}
-											class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
-										>
-											<Icon name="check-square" size={15} class="text-text-3" />
-											{m.tickets_create_task()}
-										</button>
-									{/if}
-									<button
-										type="button"
-										role="menuitem"
-										onclick={copyLink}
-										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
-									>
-										<span class="grid place-items-center [&>*]:[grid-area:1/1]">
-											{#if copied}
-												<span
-													class="text-[#7fc8a9]"
-													in:scale={{ start: 0.4, duration: 220, easing: backOut }}
-												>
-													<Icon name="check" size={15} stroke={2.4} />
-												</span>
-											{:else}
-												<span class="text-text-3" in:fade={{ duration: 150 }}>
-													<Icon name="copy" size={15} />
-												</span>
-											{/if}
-										</span>
-										<span class={copied ? 'text-[#7fc8a9]' : ''}
-											>{copied ? m.tickets_link_copied() : m.tickets_copy_link()}</span
-										>
-									</button>
-									{#if canDelete}
-										<div class="my-1 h-px bg-border"></div>
-										<button
-											type="button"
-											role="menuitem"
-											onclick={() => {
-												menuOpen = false;
-												void deleteTicket();
-											}}
-											class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-[#ef4f5e] hover:bg-[#ef4f5e]/10"
-										>
-											<Icon name="trash" size={15} />
-											{m.tickets_delete()}
-										</button>
-									{/if}
-								</div>
-							{/if}
-						</div>
-					</div>
-				</div>
-
 				<h1 class="text-[24px] leading-tight font-semibold tracking-[-0.012em] text-text">
 					{t.subject}
 				</h1>
-
-				<!-- Where the ticket stands, at a glance. -->
-				<div class="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[13px] text-text-3">
-					<span class="inline-flex items-center gap-1.5 leading-none text-text-2">
-						<span class="h-2 w-2 rounded-full" style:background={statusMeta?.dot ?? '#7c7c84'}
-						></span>
-						{ticketStatusLabel(t.status)}
-					</span>
-					{#if sla && sla.tone === 'wait'}
-						<span
-							class="inline-flex items-center gap-1 rounded-md bg-accent-soft px-1.5 py-1 text-[12px] leading-none text-accent"
-						>
-							<span class="h-1.5 w-1.5 rounded-full" style:background={sla.dot}></span>
-							{sla.label}
-						</span>
-					{/if}
-					<span class="text-text-4">·</span>
-					<span
-						>{m.tickets_opened_by({ name: reporter?.name ?? m.tickets_unknown_user() })} · {relTime(
-							t.createdAt
-						)}</span
-					>
-				</div>
 
 				<!-- Mobile: the properties and sections stack here. -->
 				<div class="mt-6 lg:hidden">
@@ -813,6 +680,7 @@
      under the header on mobile (pickers are keyed by placement). -->
 {#snippet detailsRail(placement: 'mobile' | 'desktop')}
 	{@const k = (f: string) => `${placement}:${f}`}
+	{@render headRow(placement)}
 	<div>
 		<PropertyRow label={m.tickets_field_status()}>
 			<button
@@ -824,6 +692,14 @@
 				<span class="h-2 w-2 shrink-0 rounded-full" style:background={statusMeta?.dot ?? '#7c7c84'}
 				></span>
 				<span>{ticketStatusLabel(t.status)}</span>
+				{#if sla && sla.tone === 'wait'}
+					<span
+						class="ml-1 inline-flex items-center gap-1 rounded-md bg-accent-soft px-1.5 py-1 text-[12px] leading-none text-accent"
+					>
+						<span class="h-1.5 w-1.5 rounded-full" style:background={sla.dot}></span>
+						{sla.label}
+					</span>
+				{/if}
 			</button>
 			{#if pop === k('status')}
 				<div
@@ -1100,6 +976,113 @@
 			{#if t.satisfactionScore != null}
 				<span>{m.tickets_meta_csat()} {t.satisfactionScore}/5</span>
 			{/if}
+		</div>
+	</div>
+{/snippet}
+
+{#snippet headRow(placement: 'mobile' | 'desktop')}
+	<!-- Head of the properties panel: id badge + org (as in the side panels),
+     pin and the ⋯ menu. -->
+	<div class="mb-4 flex items-center gap-2">
+		<span
+			class="inline-flex h-[20px] shrink-0 items-center gap-1.5 rounded-md border px-1.5 font-mono text-[12px] leading-none font-medium whitespace-nowrap"
+			style:color={idColor}
+			style:border-color="{idColor}40"
+			style:background="{idColor}14"
+		>
+			<Icon name="ticket" size={11} stroke={2.2} />
+			{t.displayId}
+		</span>
+		<span
+			class="inline-flex h-[20px] min-w-0 items-center rounded-md bg-surface px-1.5 font-mono text-[12px] leading-none text-text-3"
+		>
+			<span class="truncate">{t.orgName}</span>
+		</span>
+		<div class="ml-auto flex items-center gap-1">
+			<button
+				type="button"
+				onclick={togglePin}
+				disabled={pinPending}
+				aria-pressed={data.isPinned}
+				aria-label={data.isPinned ? m.tickets_unpin() : m.tickets_pin()}
+				title={data.isPinned ? m.tickets_unpin() : m.tickets_pin()}
+				class="grid h-[31px] w-[31px] place-items-center rounded-lg border transition-colors disabled:opacity-50 {data.isPinned
+					? 'border-accent/30 bg-accent-soft text-accent'
+					: 'border-transparent text-text-2 hover:border-border hover:bg-surface hover:text-text'}"
+			>
+				<Icon name="bookmark" size={15} />
+			</button>
+			<div class="relative">
+				<IconButton
+					size={31}
+					ariaLabel={m.tickets_more_actions()}
+					onclick={() => (menuOpen = menuOpen === placement ? null : placement)}
+				>
+					<Icon name="more" size={16} />
+				</IconButton>
+				{#if menuOpen === placement}
+					<div
+						role="menu"
+						use:clickOutside={() => (menuOpen = null)}
+						in:fly={POPOVER_IN}
+						class="absolute top-full right-0 z-50 mt-1.5 min-w-[210px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+					>
+						{#if data.canCreateTask}
+							<button
+								type="button"
+								role="menuitem"
+								onclick={() => {
+									menuOpen = null;
+									creatingTask = true;
+								}}
+								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
+							>
+								<Icon name="check-square" size={15} class="text-text-3" />
+								{m.tickets_create_task()}
+							</button>
+						{/if}
+						<button
+							type="button"
+							role="menuitem"
+							onclick={copyLink}
+							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
+						>
+							<span class="grid place-items-center [&>*]:[grid-area:1/1]">
+								{#if copied}
+									<span
+										class="text-[#7fc8a9]"
+										in:scale={{ start: 0.4, duration: 220, easing: backOut }}
+									>
+										<Icon name="check" size={15} stroke={2.4} />
+									</span>
+								{:else}
+									<span class="text-text-3" in:fade={{ duration: 150 }}>
+										<Icon name="copy" size={15} />
+									</span>
+								{/if}
+							</span>
+							<span class={copied ? 'text-[#7fc8a9]' : ''}
+								>{copied ? m.tickets_link_copied() : m.tickets_copy_link()}</span
+							>
+						</button>
+						{#if canDelete}
+							<div class="my-1 h-px bg-border"></div>
+							<button
+								type="button"
+								role="menuitem"
+								onclick={() => {
+									menuOpen = null;
+									void deleteTicket();
+								}}
+								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-[#ef4f5e] hover:bg-[#ef4f5e]/10"
+							>
+								<Icon name="trash" size={15} />
+								{m.tickets_delete()}
+							</button>
+						{/if}
+					</div>
+				{/if}
+			</div>
 		</div>
 	</div>
 {/snippet}

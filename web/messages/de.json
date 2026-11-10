@@ -1432,7 +1432,6 @@
 	"tickets_event_status_changed": "hat den Status von {from} auf {to} geändert",
 	"tickets_event_tags_updated": "hat die Tags aktualisiert",
 	"tickets_event_unassigned": "hat die Zuweisung von {names} entfernt",
-	"tickets_opened_by": "Eröffnet von {name}",
 	"tickets_n_changes": "{n} Änderungen",
 	"tickets_team_tag": "Team",
 	"tickets_reply_tab": "Antwort",
