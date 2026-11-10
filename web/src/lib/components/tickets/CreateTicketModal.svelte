@@ -6,8 +6,7 @@
 	import Modal from '../Modal.svelte';
 	import Icon from '../Icon.svelte';
 	import RichTextInput from '../RichTextInput.svelte';
-	import Button from '../Button.svelte';
-	import Kbd from '../Kbd.svelte';
+	import { QUIET_ADD } from '../tasks/panel/styles';
 	import PriorityBars from '../PriorityBars.svelte';
 	import Avatar from '../Avatar.svelte';
 	import AvatarStack from '../AvatarStack.svelte';
@@ -62,6 +61,13 @@
 		assignableOrgIds = []
 	}: Props = $props();
 
+	// Property rows (same as the create-task dialog's list) and the footer
+	// buttons, which share one box so Cancel and Create are the same height.
+	const ROW =
+		'grid w-full grid-cols-[100px_minmax(0,1fr)] items-center gap-3 rounded-lg px-2.5 py-2 text-left text-[13px] leading-5 transition-colors hover:bg-surface';
+	const FOOT_BUTTON =
+		'inline-flex h-9 items-center justify-center rounded-lg border px-4 text-[14px] leading-none font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50';
+
 	type Priority = (typeof TICKET_PRIORITIES)[number]['id'];
 	type Category = (typeof TICKET_CATEGORIES)[number]['id'];
 
@@ -91,7 +97,6 @@
 	}
 
 	const selectedOrg = $derived(orgs.find((o) => o.id === orgId));
-	const priorityMeta = $derived(TICKET_PRIORITIES.find((p) => p.id === priority)!);
 	const categoryMeta = $derived(TICKET_CATEGORIES.find((c) => c.id === category)!);
 
 	const canAssign = $derived(!!orgId && assignableOrgIds.includes(orgId));
@@ -144,9 +149,10 @@
 
 <svelte:window onkeydown={onKey} />
 
-<Modal {open} {onclose} maxWidth={580}>
+<Modal {open} {onclose} maxWidth={820}>
 	<form
 		bind:this={formEl}
+		class="relative"
 		method="POST"
 		action="/tickets?/create"
 		enctype="multipart/form-data"
@@ -177,67 +183,89 @@
 			disabled={submitting}
 			label={m.tickets_dropzone_create()}
 		>
-			<div class="flex items-center border-b border-border px-5 pt-4 pb-3">
-				<div>
-					<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
-						{m.tickets_support_eyebrow()}
-					</div>
-					<div class="text-[15px] font-semibold">{m.tickets_new_title()}</div>
+			<!-- Same anatomy as the create-task dialog: no head bar or divider
+			     lines, close floats top-right, writing on the wider left and the
+			     properties in a tinted column on the right. -->
+			<h2 class="sr-only">{m.tickets_new_title()}</h2>
+			<button
+				type="button"
+				onclick={onclose}
+				aria-label={m.common_close()}
+				class="absolute top-3 right-3 z-10 grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
+			>
+				<Icon name="x" size={15} />
+			</button>
+
+			<div class="grid md:grid-cols-[minmax(0,1fr)_320px]">
+				<div class="min-w-0 px-6 pt-6 pb-4">
+					<input
+						type="text"
+						name="subject"
+						bind:value={subject}
+						required
+						placeholder={m.tickets_subject_placeholder()}
+						class="mb-2 block w-full border-0 bg-transparent text-[22px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
+					/>
+					<RichTextInput
+						bind:value={description}
+						placeholder={m.tickets_description_placeholder()}
+						flavor="document"
+						mentions={false}
+						rows={5}
+						maxRows={14}
+						class="w-full border-0 bg-transparent text-[14px] leading-relaxed text-text-2"
+					/>
+					<input type="hidden" name="description" value={description} />
+
+					<input type="hidden" name="orgId" value={orgId} />
+					<input type="hidden" name="priority" value={priority} />
+					<input type="hidden" name="category" value={category} />
+					<input type="hidden" name="channel" value="web_form" />
+					{#each assignees as id (id)}
+						<input type="hidden" name="assignees" value={id} />
+					{/each}
+
+					{#if stagedFiles.length}
+						<div class="mt-4">
+							<StagedFileList
+								files={stagedFiles}
+								disabled={submitting}
+								onremove={(i) => (stagedFiles = stagedFiles.filter((_, idx) => idx !== i))}
+							/>
+						</div>
+					{/if}
+					<input bind:this={fileInput} type="file" multiple hidden onchange={onPick} />
 				</div>
-				<button
-					type="button"
-					onclick={onclose}
-					aria-label={m.common_close()}
-					class="ml-auto grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
+
+				<!-- Properties: label / value rows that open their picker. -->
+				<div
+					class="mx-3 mb-1 flex flex-col gap-px rounded-xl bg-surface/40 px-2 py-3 md:mx-0 md:mt-12 md:mr-3 md:mb-0"
 				>
-					<Icon name="x" size={15} />
-				</button>
-			</div>
-
-			<div class="px-5 pt-5 pb-3">
-				<input
-					type="text"
-					name="subject"
-					bind:value={subject}
-					required
-					placeholder={m.tickets_subject_placeholder()}
-					class="mb-3 block w-full border-0 bg-transparent text-[22px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3"
-				/>
-
-				<RichTextInput
-					bind:value={description}
-					placeholder={m.tickets_description_placeholder()}
-					flavor="document"
-					mentions={false}
-					rows={4}
-					maxRows={12}
-					class="mb-4 w-full border-0 bg-transparent text-[14px] leading-relaxed text-text-2"
-				/>
-				<input type="hidden" name="description" value={description} />
-
-				<div class="flex flex-wrap gap-2">
-					<!-- Org picker -->
 					<div class="relative">
 						<button
 							type="button"
 							disabled={!!lockedOrgId}
 							onclick={() => (pop = pop === 'org' ? null : 'org')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong disabled:cursor-not-allowed disabled:opacity-70"
+							class="{ROW} {selectedOrg ? 'text-text' : 'text-text-3'} {pop === 'org'
+								? 'bg-surface'
+								: ''} disabled:cursor-default disabled:hover:bg-transparent"
 						>
-							{#if selectedOrg}
-								<span class="h-2 w-2 rounded-full" style:background={selectedOrg.color}></span>
-								<span>{selectedOrg.name}</span>
-							{:else}
-								<Icon name="org" size={14} class="text-text-3" />
-								<span>{m.tickets_select_org_placeholder()}</span>
-							{/if}
-							{#if !lockedOrgId}<Icon name="chevron" size={12} class="text-text-3" />{/if}
+							<span class="text-text-3">{m.tickets_field_organization()}</span>
+							<span class="flex min-w-0 items-center gap-1.5">
+								{#if selectedOrg}
+									<span class="h-2 w-2 shrink-0 rounded-full" style:background={selectedOrg.color}
+									></span>
+									<span class="truncate">{selectedOrg.name}</span>
+								{:else}
+									<span class="truncate">{m.tickets_select_org_placeholder()}</span>
+								{/if}
+							</span>
 						</button>
 						{#if pop === 'org'}
 							<div
 								use:clickOutside={() => (pop = null)}
 								in:fly={POPOVER_IN}
-								class="absolute top-full z-50 mt-1.5 min-w-[242px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+								class="absolute top-full right-0 z-50 mt-1.5 min-w-[242px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 							>
 								{#each orgs as o (o.id)}
 									<button
@@ -266,22 +294,23 @@
 						{/if}
 					</div>
 
-					<!-- Priority picker -->
 					<div class="relative">
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'priority' ? null : 'priority')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
+							class="{ROW} text-text {pop === 'priority' ? 'bg-surface' : ''}"
 						>
-							<PriorityBars {priority} />
-							<span>{priorityLabel(priority)}</span>
-							<Icon name="chevron" size={12} class="text-text-3" />
+							<span class="text-text-3">{m.tickets_field_priority()}</span>
+							<span class="flex min-w-0 items-center gap-1.5">
+								<PriorityBars {priority} />
+								<span class="truncate">{priorityLabel(priority)}</span>
+							</span>
 						</button>
 						{#if pop === 'priority'}
 							<div
 								use:clickOutside={() => (pop = null)}
 								in:fly={POPOVER_IN}
-								class="absolute top-full z-50 mt-1.5 min-w-[176px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+								class="absolute top-full right-0 z-50 mt-1.5 min-w-[176px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 							>
 								{#each TICKET_PRIORITIES as p (p.id)}
 									<button
@@ -305,22 +334,24 @@
 						{/if}
 					</div>
 
-					<!-- Category picker -->
 					<div class="relative">
 						<button
 							type="button"
 							onclick={() => (pop = pop === 'category' ? null : 'category')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong"
+							class="{ROW} text-text {pop === 'category' ? 'bg-surface' : ''}"
 						>
-							<span class="h-2 w-2 rounded-full" style:background={categoryMeta.color}></span>
-							<span>{ticketCategoryLabel(category)}</span>
-							<Icon name="chevron" size={12} class="text-text-3" />
+							<span class="text-text-3">{m.tickets_field_category()}</span>
+							<span class="flex min-w-0 items-center gap-1.5">
+								<span class="h-2 w-2 shrink-0 rounded-full" style:background={categoryMeta.color}
+								></span>
+								<span class="truncate">{ticketCategoryLabel(category)}</span>
+							</span>
 						</button>
 						{#if pop === 'category'}
 							<div
 								use:clickOutside={() => (pop = null)}
 								in:fly={POPOVER_IN}
-								class="absolute top-full z-50 mt-1.5 min-w-[198px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+								class="absolute top-full right-0 z-50 mt-1.5 min-w-[198px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 							>
 								{#each TICKET_CATEGORIES as c (c.id)}
 									<button
@@ -344,29 +375,31 @@
 						{/if}
 					</div>
 
-					<!-- Assignee picker (agents only) -->
+					<!-- Assignee (agents only, for orgs where they may assign). -->
 					{#if canAssign}
 						<div class="relative">
 							<button
 								type="button"
 								onclick={() => (pop = pop === 'assignee' ? null : 'assignee')}
-								class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong hover:text-text {assigneeUsers.length
-									? 'border border-border bg-surface'
-									: 'border border-dashed border-border text-text-3'} {pop === 'assignee'
-									? 'ring-2 ring-accent/40'
+								class="{ROW} {assigneeUsers.length ? 'text-text' : 'text-text-3'} {pop ===
+								'assignee'
+									? 'bg-surface'
 									: ''}"
 							>
-								{#if assigneeUsers.length === 1}
-									<Avatar user={assigneeUsers[0]} size={18} />
-									<span>{assigneeUsers[0].name}</span>
-								{:else if assigneeUsers.length > 1}
-									<AvatarStack users={assigneeUsers} size={18} max={3} overlap={6} />
-									<span>{m.tickets_n_assignees({ n: assigneeUsers.length })}</span>
-								{:else}
-									<Icon name="user" size={14} />
-									<span>{m.common_unassigned()}</span>
-								{/if}
-								<Icon name="chevron" size={12} class="text-text-3" />
+								<span class="text-text-3">{m.tickets_field_assignee()}</span>
+								<span class="flex min-w-0 items-center gap-1.5">
+									{#if assigneeUsers.length === 1}
+										<Avatar user={assigneeUsers[0]} size={22} />
+										<span class="truncate">{assigneeUsers[0].name}</span>
+									{:else if assigneeUsers.length > 1}
+										<AvatarStack users={assigneeUsers} size={22} max={3} overlap={6} />
+										<span class="truncate"
+											>{m.tickets_n_assignees({ n: assigneeUsers.length })}</span
+										>
+									{:else}
+										<span class="truncate">{m.common_unassigned()}</span>
+									{/if}
+								</span>
 							</button>
 							{#if pop === 'assignee'}
 								<AssigneePopover
@@ -379,47 +412,28 @@
 						</div>
 					{/if}
 				</div>
-
-				<input type="hidden" name="orgId" value={orgId} />
-				<input type="hidden" name="priority" value={priority} />
-				<input type="hidden" name="category" value={category} />
-				<input type="hidden" name="channel" value="web_form" />
-				{#each assignees as id (id)}
-					<input type="hidden" name="assignees" value={id} />
-				{/each}
-
-				<!-- Attachments -->
-				<div class="mt-4 space-y-2">
-					{#if stagedFiles.length}
-						<StagedFileList
-							files={stagedFiles}
-							disabled={submitting}
-							onremove={(i) => (stagedFiles = stagedFiles.filter((_, idx) => idx !== i))}
-						/>
-					{/if}
-					<button
-						type="button"
-						onclick={() => fileInput?.click()}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2.5 py-1.5 text-[14px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
-					>
-						<Icon name="paperclip" size={14} />
-						<span>{m.tickets_attach_files()}</span>
-					</button>
-					<input bind:this={fileInput} type="file" multiple hidden onchange={onPick} />
-				</div>
 			</div>
 
-			<div class="flex items-center gap-2 rounded-b-2xl border-t border-border bg-bg/40 px-5 py-3">
-				<span class="text-[12px] text-text-3">
-					<Kbd>⌘↵</Kbd>
-					{m.tickets_kbd_to_create()}
-				</span>
+			<!-- Foot: attach on the left (files can also be dropped on the dialog);
+			     Cancel and Create built from the same box so they match. ⌘↵ still
+			     submits. The 12px right inset lines Create up with the column. -->
+			<div class="flex items-center gap-2 rounded-b-2xl pt-3 pr-3 pb-3 pl-6">
+				<button type="button" onclick={() => fileInput?.click()} class="{QUIET_ADD} -ml-2">
+					<Icon name="paperclip" size={14} />
+					{m.tickets_attach_files()}
+				</button>
 				<div class="ml-auto flex items-center gap-2">
-					<Button variant="default" onclick={onclose}>{m.common_cancel()}</Button>
+					<button
+						type="button"
+						onclick={onclose}
+						class="{FOOT_BUTTON} border-border bg-surface text-text hover:bg-surface-2"
+					>
+						{m.common_cancel()}
+					</button>
 					<button
 						type="submit"
 						disabled={submitting || !subject.trim() || !orgId}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[12px] py-[8px] text-[14px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
+						class="{FOOT_BUTTON} border-transparent bg-accent text-white hover:bg-accent-strong"
 					>
 						{submitting ? m.common_creating() : m.tickets_create()}
 					</button>

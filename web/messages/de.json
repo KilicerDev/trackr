@@ -1386,6 +1386,7 @@
 	"tickets_empty_title": "Noch keine Tickets",
 	"tickets_field_category": "Kategorie",
 	"tickets_field_org": "Organisation",
+	"tickets_field_organization": "Organisation",
 	"tickets_field_priority": "Priorität",
 	"tickets_field_status": "Status",
 	"tickets_group": "Gruppieren",

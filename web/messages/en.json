@@ -1513,6 +1513,7 @@
 	"tickets_empty_title": "No tickets yet",
 	"tickets_field_category": "Category",
 	"tickets_field_org": "Org",
+	"tickets_field_organization": "Organization",
 	"tickets_field_priority": "Priority",
 	"tickets_field_status": "Status",
 	"tickets_group": "Group",
