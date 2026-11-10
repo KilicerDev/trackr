@@ -702,12 +702,12 @@
 						class="{PROP_VALUE} {openPop === 'assignees' ? OPEN : ''}"
 					>
 						{#if assignees.length === 1}
-							<Avatar user={assignees[0]} size={20} />
+							<Avatar user={assignees[0]} size={22} />
 							<span class="truncate">{assignees[0]?.name}</span>
 						{:else if assignees.length === 0}
 							<span class="text-text-3">{m.common_unassigned()}</span>
 						{:else}
-							<AvatarStack users={assignees} size={20} max={3} overlap={5} />
+							<AvatarStack users={assignees} size={22} max={3} overlap={5} />
 							<span class="truncate">{m.tasks_n_assignees({ n: assignees.length })}</span>
 						{/if}
 					</button>
@@ -1162,11 +1162,11 @@
 								<div>
 									<div class="flex items-center gap-2 text-[13px] text-text-3">
 										{#if e.kind === 'created'}
-											<span class="grid h-5 w-5 shrink-0 place-items-center text-text-4">
+											<span class="grid h-[22px] w-[22px] shrink-0 place-items-center text-text-4">
 												<Icon name="plus" size={12} />
 											</span>
 										{:else}
-											<Avatar user={u} size={20} />
+											<Avatar user={u} size={22} />
 										{/if}
 										<span class="min-w-0 flex-1 truncate">
 											<span class="text-text-2">{u?.name ?? e.user}</span>
@@ -1180,12 +1180,12 @@
 									</div>
 									{#if e.kind === 'comment'}
 										<div
-											class="mt-1.5 ml-7 text-[14px] leading-relaxed whitespace-pre-wrap text-text"
+											class="mt-1.5 ml-[30px] text-[14px] leading-relaxed whitespace-pre-wrap text-text"
 										>
 											<MentionText text={e.data} />
 										</div>
 										{#if e.files?.length}
-											<div class="mt-2 ml-7">
+											<div class="mt-2 ml-[30px]">
 												<AttachmentList
 													attachments={e.files}
 													canDelete={canEdit}
@@ -1196,7 +1196,7 @@
 											</div>
 										{/if}
 									{:else if e.kind === 'time' && e.data.note}
-										<div class="mt-1 ml-7 text-[13px] text-text-3">{e.data.note}</div>
+										<div class="mt-1 ml-[30px] text-[13px] text-text-3">{e.data.note}</div>
 									{/if}
 								</div>
 							{/each}

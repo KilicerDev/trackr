@@ -461,10 +461,10 @@
 						class="{PROP_VALUE} {pop === 'assignee' ? OPEN : ''}"
 					>
 						{#if assigneeUsers.length === 1}
-							<Avatar user={assigneeUsers[0]} size={20} />
+							<Avatar user={assigneeUsers[0]} size={22} />
 							<span class="truncate">{assigneeUsers[0]?.name ?? m.common_unassigned()}</span>
 						{:else if assigneeUsers.length > 1}
-							<AvatarStack users={assigneeUsers} size={20} max={3} overlap={6} />
+							<AvatarStack users={assigneeUsers} size={22} max={3} overlap={6} />
 							<span class="truncate">{m.tickets_n_assignees({ n: assigneeUsers.length })}</span>
 						{:else}
 							<span class="text-text-3">{m.common_unassigned()}</span>
@@ -482,7 +482,7 @@
 
 				<PropertyRow label={m.tickets_meta_reporter()}>
 					<span class="inline-flex min-w-0 items-center gap-2 text-[14px] text-text">
-						{#if reporter}<Avatar user={reporter} size={20} />{/if}
+						{#if reporter}<Avatar user={reporter} size={22} />{/if}
 						<span class="truncate">{reporter?.name ?? '—'}</span>
 					</span>
 				</PropertyRow>
@@ -620,9 +620,9 @@
 								<div>
 									<div class="flex items-center gap-2 text-[13px] text-text-3">
 										{#if author}
-											<Avatar user={author} size={20} />
+											<Avatar user={author} size={22} />
 										{:else}
-											<span class="h-5 w-5 shrink-0 rounded-full bg-surface-2"></span>
+											<span class="h-[22px] w-[22px] shrink-0 rounded-full bg-surface-2"></span>
 										{/if}
 										<span class="min-w-0 truncate text-text-2">{author?.name ?? '—'}</span>
 										{#if msg.isInternalNote}
@@ -635,7 +635,7 @@
 										>
 									</div>
 									<div
-										class="mt-1 ml-7 line-clamp-3 text-[14px] leading-relaxed [overflow-wrap:anywhere] text-text-2"
+										class="mt-1 ml-[30px] line-clamp-3 text-[14px] leading-relaxed [overflow-wrap:anywhere] text-text-2"
 									>
 										<MentionText text={msg.body} />
 									</div>
