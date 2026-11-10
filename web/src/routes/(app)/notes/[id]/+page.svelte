@@ -102,6 +102,7 @@
 	let bulkTodos = $state<SourceTodo[]>([]);
 
 	// ─── Outline (meeting notes): see DocOutline ─────────────────────────────
+	// Bumped on every editor update (outline rebuild, open to-do check).
 	let tocRev = $state(0);
 
 	function onEditorReady(ed: Editor) {
@@ -158,6 +159,14 @@
 		});
 		return out;
 	}
+
+	// Bulk create needs at least one open to-do in the note; re-checked on
+	// every edit (tocRev bumps on each editor update) and when the menu opens.
+	const hasOpenTodos = $derived.by(() => {
+		void tocRev;
+		void menuOpen;
+		return !!editor && collectOpenTodos().length > 0;
+	});
 
 	function openBulk() {
 		const todos = collectOpenTodos();
@@ -448,11 +457,12 @@
 					{#if canEdit}
 						<button
 							type="button"
+							disabled={!hasOpenTodos}
 							onclick={() => {
 								menuOpen = false;
 								openBulk();
 							}}
-							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
 						>
 							<span class="grid h-4 w-4 place-items-center text-text-3"
 								><Icon name="check-square" size={14} /></span

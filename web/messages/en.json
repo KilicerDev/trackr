@@ -1070,7 +1070,7 @@
 	"notes_templates_title": "Templates",
 	"notes_todo_to_task": "Create a task from this to-do",
 	"notes_todo_to_task_short": "Task",
-	"notes_bulk_tooltip": "Create tasks from open to-dos",
+	"notes_bulk_tooltip": "Bulk create tasks",
 	"notes_bulk_title": "Create tasks from to-dos",
 	"notes_bulk_include": "Include",
 	"notes_bulk_prev": "Previous to-do",
