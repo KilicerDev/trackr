@@ -1045,33 +1045,43 @@
 											}}
 											class="flex min-w-0 flex-1 items-center gap-2.5"
 										>
-											{#if item.status}
-												<StatusDot status={item.status} size={13} />
-											{:else}
-												<Icon
-													name={item.kind === 'ticket' ? 'ticket' : 'chevron-r'}
-													size={14}
-													class="shrink-0 text-text-3"
-												/>
-											{/if}
-											<span class="shrink-0 font-mono text-[12px] text-text-3">{item.ref}</span>
+											<!-- One 20px line for every part of the row: the leading
+											     icon gets a fixed 20px slot, and each text uses
+											     leading-5, so mono id and label share a baseline. -->
+											<span class="grid h-5 w-5 shrink-0 place-items-center">
+												{#if item.status}
+													<StatusDot status={item.status} size={14} />
+												{:else}
+													<Icon
+														name={item.kind === 'ticket' ? 'ticket' : 'chevron-r'}
+														size={16}
+														class="text-text-3"
+													/>
+												{/if}
+											</span>
+											<span
+												class="shrink-0 font-mono text-[12px] leading-5 {item.kind === 'ticket' ||
+												item.kind === 'parent'
+													? 'text-text-2 group-hover/link:text-text'
+													: 'text-text-3'}">{item.ref}</span
+											>
 											{#if item.kind === 'prerequisite' || item.kind === 'dependent'}
 												<span
-													class="min-w-0 flex-1 truncate text-[14px] text-text-2 group-hover/link:text-text"
+													class="min-w-0 flex-1 truncate text-[14px] leading-5 text-text-2 group-hover/link:text-text"
 													>{item.title}</span
 												>
 											{:else}
-												<span class="min-w-0 flex-1 truncate text-[13px] text-text-3"
+												<span class="min-w-0 flex-1 truncate text-[13px] leading-5 text-text-3"
 													>{LINK_KIND_LABEL[item.kind]()}</span
 												>
 											{/if}
 										</a>
 										{#if item.blocking}
-											<span class="shrink-0 text-[12px] text-[var(--color-status-paused)]"
+											<span class="shrink-0 text-[12px] leading-5 text-[var(--color-status-paused)]"
 												>{m.tasks_panel_blocked()}</span
 											>
 										{:else if item.kind === 'dependent'}
-											<span class="shrink-0 text-[12px] text-text-4"
+											<span class="shrink-0 text-[12px] leading-5 text-text-4"
 												>{m.tasks_panel_kind_dependent()}</span
 											>
 										{/if}

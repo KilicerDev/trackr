@@ -574,10 +574,14 @@
 						<div class="space-y-px">
 							{#each linkedTasks as lt (lt.id)}
 								<a href="/tasks?task={lt.displayId}" class="group {ROW}">
-									<StatusDot status={lt.status as StatusId} size={13} />
-									<span class="shrink-0 font-mono text-[12px] text-text-3">{lt.displayId}</span>
+									<span class="grid h-5 w-5 shrink-0 place-items-center">
+										<StatusDot status={lt.status as StatusId} size={14} />
+									</span>
+									<span class="shrink-0 font-mono text-[12px] leading-5 text-text-3"
+										>{lt.displayId}</span
+									>
 									<span
-										class="min-w-0 flex-1 truncate text-[14px] text-text-2 group-hover:text-text"
+										class="min-w-0 flex-1 truncate text-[14px] leading-5 text-text-2 group-hover:text-text"
 										>{lt.title}</span
 									>
 								</a>
