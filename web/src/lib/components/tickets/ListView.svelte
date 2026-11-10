@@ -166,8 +166,10 @@
 						<button
 							type="button"
 							onclick={() => onSelect?.(t)}
-							class="grid w-full grid-cols-[30px_minmax(0,1fr)_auto_60px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors md:grid-cols-[30px_92px_minmax(0,1fr)_24px_minmax(92px,auto)_60px] {selectedId ===
-							t.id
+							class="grid w-full grid-cols-[30px_minmax(0,1fr)_auto_60px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors {group !==
+							'org'
+								? 'md:grid-cols-[30px_92px_minmax(0,1fr)_160px_24px_92px_60px]'
+								: 'md:grid-cols-[30px_92px_minmax(0,1fr)_24px_92px_60px]'} {selectedId === t.id
 								? 'bg-[var(--row-active)]'
 								: 'hover:bg-[var(--row-hover)]'}"
 							style:height="var(--row-h)"
@@ -177,7 +179,7 @@
 								style:background={statusDot(t.status)}
 								title={ticketStatusLabel(t.status)}
 							></span>
-							<span class="hidden truncate font-mono text-[12px] text-text-4 md:block"
+							<span class="hidden truncate font-mono text-[12px] leading-none text-text-4 md:block"
 								>{t.displayId}</span
 							>
 							<span class="flex min-w-0 items-center gap-2.5">
@@ -191,15 +193,6 @@
 									>
 										<span class="h-1.5 w-1.5 rounded-full" style:background={sla.dot}></span>
 										{sla.label}
-									</span>
-								{/if}
-								{#if group !== 'org'}
-									<span
-										class="hidden shrink-0 items-center gap-1 text-[12px] leading-none text-text-3 md:inline-flex"
-										title={t.orgName}
-									>
-										<span class="h-1.5 w-1.5 rounded-full" style:background={t.orgColor}></span>
-										<span class="max-w-[132px] truncate">{t.orgName}</span>
 									</span>
 								{/if}
 								{#if t.messageCount > 0}
@@ -220,11 +213,25 @@
 									</span>
 								{/if}
 							</span>
+							{#if group !== 'org'}
+								<!-- Organization in its own column, aligned row under row. -->
+								<span
+									class="hidden min-w-0 items-center gap-1.5 text-[12px] leading-none text-text-3 md:flex"
+									title={t.orgName}
+								>
+									<span class="h-1.5 w-1.5 shrink-0 rounded-full" style:background={t.orgColor}
+									></span>
+									<span class="truncate">{t.orgName}</span>
+								</span>
+							{/if}
 							<span class="hidden items-center md:flex" title={priorityLabel(t.priority)}>
 								<PriorityBars priority={t.priority} />
 							</span>
 							<!-- Activity: when the ticket last moved. -->
-							<span class="truncate text-right text-[12px] text-text-4" title={sla?.label}>
+							<span
+								class="truncate text-right text-[12px] leading-none text-text-4"
+								title={sla?.label}
+							>
 								{relTime(t.lastMessageAt ?? t.updatedAt)}
 							</span>
 							<span class="flex justify-end">

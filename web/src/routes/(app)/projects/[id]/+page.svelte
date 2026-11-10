@@ -1004,6 +1004,7 @@
 			{:else}
 				<ListView
 					tasks={filteredTasks}
+					showProject={false}
 					group={taskGroup}
 					sort={taskSort}
 					onSelect={(t) => (selectedId = t.id)}

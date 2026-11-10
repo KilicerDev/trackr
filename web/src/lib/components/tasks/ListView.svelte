@@ -30,6 +30,9 @@
 		// Server-persisted snapshot of collapsed ids per grouping, used as the
 		// SSR/first-paint fallback when localStorage isn't available yet.
 		initialCollapsed?: Record<string, string[]>;
+		/** Project column on each row (off on a project's own page). Hidden
+		 *  anyway when the list is grouped by project. */
+		showProject?: boolean;
 	}
 	let {
 		tasks,
@@ -39,7 +42,8 @@
 		selectedId,
 		onAddInProject,
 		persistKey,
-		initialCollapsed
+		initialCollapsed,
+		showProject = true
 	}: Props = $props();
 
 	const loadCollapsed = () =>
@@ -211,7 +215,12 @@
 			{#if !isCollapsed}
 				<div transition:slide={{ duration: 180, easing: cubicOut }}>
 					{#each g.tasks.slice(0, limitFor(g.id)) as t (t.id)}
-						<TaskRow task={t} selected={selectedId === t.id} onclick={() => onSelect?.(t)} />
+						<TaskRow
+							task={t}
+							selected={selectedId === t.id}
+							showProject={showProject && group !== 'project'}
+							onclick={() => onSelect?.(t)}
+						/>
 					{/each}
 					{#if g.tasks.length > limitFor(g.id)}
 						<button

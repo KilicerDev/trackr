@@ -104,7 +104,9 @@
 	{:else}
 		<StatusDot status={task.status} />
 	{/if}
-	<span class="hidden truncate font-mono text-[12px] text-text-4 md:block">{task.id}</span>
+	<span class="hidden truncate font-mono text-[12px] leading-none text-text-4 md:block"
+		>{task.id}</span
+	>
 	<span class="flex min-w-0 items-center gap-2">
 		<!-- Type as a plain icon, coloured only for bugs. -->
 		<span
@@ -210,7 +212,10 @@
 			{timeMinutes ? formatEstimate(timeMinutes) : '—'}
 		</span>
 	{:else}
-		<span class="hidden font-mono text-[12px] text-text-4 md:block" title={m.tasks_updated()}>
+		<span
+			class="hidden font-mono text-[12px] leading-none text-text-4 md:block"
+			title={m.tasks_updated()}
+		>
 			{formatDateShort(task.updated)}
 		</span>
 	{/if}
