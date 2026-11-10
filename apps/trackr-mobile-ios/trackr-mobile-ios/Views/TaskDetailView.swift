@@ -276,8 +276,8 @@ struct TaskDetailView: View {
             }
             TextField("", text: $task.title, prompt: Text("Task title").foregroundStyle(TK.text4), axis: .vertical)
                 .font(.tkDetailTitle)
-                .foregroundStyle(task.status == .done ? TK.text2 : TK.text)
-                .strikethrough(task.status == .done, color: TK.text3)
+                .foregroundStyle(task.status.isClosed ? TK.text2 : TK.text)
+                .strikethrough(task.status.isClosed, color: TK.text3)
                 .lineSpacing(2)
             ChipFlow {
                 chipButton(.type) {

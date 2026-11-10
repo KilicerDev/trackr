@@ -34,7 +34,7 @@ Tasks carry a small, fixed set of structured properties so you can group and fil
 
 | Property     | Values                                                                                                                        |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| `status`     | `backlog` · `todo` · `in_progress` · `paused` · `in_review` · `done`                                                          |
+| `status`     | `backlog` · `todo` · `in_progress` · `paused` · `in_review` · `done` · `cancelled`                                            |
 | `priority`   | `none` · `low` · `medium` · `high` · `urgent`                                                                                 |
 | `type`       | `task` · `bug` · `improvement` · `feature` · `chore`                                                                          |
 | `estimate`   | Minutes. Feeds My Week capacity.                                                                                              |

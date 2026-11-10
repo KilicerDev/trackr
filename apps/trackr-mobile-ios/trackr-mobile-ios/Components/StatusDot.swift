@@ -5,7 +5,8 @@
 //  Web parity (components/StatusDot.svelte) with the prototype's glyphs:
 //  dashed ring (backlog), ring (todo), half pie (in progress), ring with a
 //  pause bar (paused), three-quarter pie (in review), filled dot with a
-//  check (done). Colors come from the taxonomy.
+//  check (done), ring with a diagonal strike (cancelled). Colors come from
+//  the taxonomy.
 //
 
 import SwiftUI
@@ -39,6 +40,12 @@ struct StatusDot: View {
                 Image(systemName: "checkmark")
                     .font(.system(size: size * 0.45, weight: .bold))
                     .foregroundStyle(TK.bg)
+            case .cancelled:
+                ring()
+                Capsule()
+                    .fill(status.color)
+                    .frame(width: size * 0.62, height: lineWidth)
+                    .rotationEffect(.degrees(-45))
             }
         }
         .frame(width: size, height: size)

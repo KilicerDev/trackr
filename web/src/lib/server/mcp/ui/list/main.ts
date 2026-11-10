@@ -127,7 +127,7 @@ const KINDS: Record<Kind['id'], Kind> = {
 					checklistCell(s(r.checklist))
 				),
 				priorityCell(s(r.priority)),
-				dueCell(s(r.due), s(r.status) === 'done'),
+				dueCell(s(r.due), s(r.status) === 'done' || s(r.status) === 'cancelled'),
 				el('span', { class: 'when mono' }, dateShort(s(r.updated))),
 				el(
 					'span',

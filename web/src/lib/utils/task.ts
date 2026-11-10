@@ -1,5 +1,13 @@
 import type { TaskSummary } from '$lib/types';
 
+// Statuses that end a task: nothing left to do, never overdue, never blocking
+// a dependent. Cancelled counts as closed everywhere done does.
+export const CLOSED_TASK_STATUSES = ['done', 'cancelled'] as const;
+
+export function isClosedStatus(status: string | null | undefined): boolean {
+	return status === 'done' || status === 'cancelled';
+}
+
 // Total time actually logged against a task, in minutes. List rows carry the
 // server-side sum; a full detail also carries the entries, which are summed
 // when the aggregate is missing (older callers, fixtures).

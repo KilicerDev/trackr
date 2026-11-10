@@ -26,7 +26,7 @@ struct ProjectDetailView: View {
     }
 
     private var openTasks: [TaskItem] {
-        tasks.filter { $0.status != .done }
+        tasks.filter { !$0.status.isClosed }
     }
 
     private var loggedMinutes: Int {
@@ -300,7 +300,7 @@ struct ProjectDetailView: View {
 private struct ProjectTaskRow: View {
     let task: TaskItem
 
-    private var done: Bool { task.status == .done }
+    private var done: Bool { task.status.isClosed }
 
     private var due: (text: String, color: Color)? {
         if let countdown = task.dueCountdown {

@@ -1253,6 +1253,7 @@
 	"shell_switch_workspace": "Switch workspace",
 	"shell_workspace_crumb": "{brand} Workspace",
 	"status_backlog": "Backlog",
+	"status_cancelled": "Cancelled",
 	"status_done": "Done",
 	"status_in_progress": "In Progress",
 	"status_in_review": "In Review",

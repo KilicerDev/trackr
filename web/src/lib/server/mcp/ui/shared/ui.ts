@@ -200,6 +200,7 @@ export function avatarStack(people: Person[], size = 22, max = 3): HTMLElement {
 /** The tasks list's status marker: a ring in the status colour, filled as work progresses. */
 export function taskStatusDot(status: string): HTMLElement {
 	const meta = TASK_STATUS[status];
+	// Cancelled shows as an empty ring in its own colour: closed, not completed.
 	const fill = status === 'done' ? 'full' : status === 'in_progress' ? 'half' : 'none';
 	return el('span', {
 		class: `sdot ${fill}`,

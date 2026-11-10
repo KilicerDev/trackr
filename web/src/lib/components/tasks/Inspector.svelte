@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidate } from '$app/navigation';
+	import { isClosedStatus } from '$lib/utils/task';
 	import { deserialize } from '$app/forms';
 	import { page } from '$app/state';
 	import { untrack } from 'svelte';
@@ -369,7 +370,7 @@
 	// the server gets uuids (whole-array replace, `__clear__` for empty).
 	const dependsOn = $derived(draft?.dependsOn ?? []);
 	const dependents = $derived(draft?.dependents ?? []);
-	const openPrerequisites = $derived(dependsOn.filter((d) => d.status !== 'done'));
+	const openPrerequisites = $derived(dependsOn.filter((d) => !isClosedStatus(d.status)));
 	const isBlocked = $derived(openPrerequisites.length > 0);
 	const byRef = (a: TaskLink, b: TaskLink) =>
 		a.id.localeCompare(b.id, undefined, { numeric: true });
@@ -377,7 +378,7 @@
 	function setDependencies(next: TaskLink[]) {
 		if (!draft) return;
 		draft.dependsOn = next.length ? next : undefined;
-		draft.blocked = next.some((d) => d.status !== 'done');
+		draft.blocked = next.some((d) => !isClosedStatus(d.status));
 		void patch('dependsOn', { dependsOn: next.map((d) => d.uuid) });
 	}
 	function toggleDependency(link: TaskLink) {

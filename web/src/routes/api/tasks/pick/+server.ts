@@ -41,7 +41,10 @@ export const GET: RequestHandler = async ({ locals, url }) => {
 		.select({ id: task.id, number: task.number, title: task.title, status: task.status })
 		.from(task)
 		.where(and(...conditions))
-		.orderBy(sql`case when ${task.status} = 'done' then 1 else 0 end`, desc(task.createdAt))
+		.orderBy(
+			sql`case when ${task.status} in ('done', 'cancelled') then 1 else 0 end`,
+			desc(task.createdAt)
+		)
 		.limit(50);
 
 	const tasks: TaskLink[] = rows.map((r) => ({

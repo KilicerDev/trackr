@@ -323,7 +323,7 @@ func (v *TasksView) renderRow(t api.Task, users map[string]api.UserRef, now time
 
 	titleW := width - 2 - lipgloss.Width(left) - lipgloss.Width(right) - 2
 	titleStyle := lipgloss.NewStyle().Foreground(theme.Text)
-	if t.Status == "done" {
+	if t.Status == "done" || t.Status == "cancelled" {
 		titleStyle = theme.DimStyle
 	}
 	title := titleStyle.Render(ui.Pad(t.Title, max(titleW, 4)))

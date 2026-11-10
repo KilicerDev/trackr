@@ -246,7 +246,7 @@ var taskCommentCmd = &cobra.Command{
 func init() {
 	taskListCmd.Flags().StringVar(&taskListScope, "scope", "", "mine (default) or all")
 	taskListCmd.Flags().StringVar(&taskListProject, "project", "", "filter by project key")
-	taskListCmd.Flags().StringVar(&taskListStatus, "status", "", "filter by status (backlog|todo|in_progress|paused|in_review|done)")
+	taskListCmd.Flags().StringVar(&taskListStatus, "status", "", "filter by status (backlog|todo|in_progress|paused|in_review|done|cancelled)")
 	taskListCmd.Flags().BoolVar(&taskListJSON, "json", false, "print the raw API response (unfiltered)")
 
 	taskCreateCmd.Flags().StringVarP(&taskCreateMsg, "message", "m", "", "title and description in one flag: \"Title\\n\\nDescription\"")

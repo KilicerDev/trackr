@@ -53,7 +53,7 @@ struct TaskRow: View {
         model?.tasks.first { $0.id == task.id } ?? task
     }
 
-    private var done: Bool { live.status == .done }
+    private var done: Bool { live.status.isClosed }
 
     private var projectColor: Color {
         model?.projects.first { $0.name == live.project }?.color ?? TK.text3
@@ -219,7 +219,7 @@ struct TaskBoardCard: View {
     var timeLabel: String? = nil
 
     private var live: TaskItem { model?.tasks.first { $0.id == task.id } ?? task }
-    private var done: Bool { live.status == .done }
+    private var done: Bool { live.status.isClosed }
     private var projectColor: Color {
         model?.projects.first { $0.name == live.project }?.color ?? TK.text3
     }

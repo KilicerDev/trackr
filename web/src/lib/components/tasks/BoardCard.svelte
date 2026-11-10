@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { TaskSummary } from '$lib/types';
+	import { isClosedStatus } from '$lib/utils/task';
 	import StatusDot from '../StatusDot.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
 	import Avatar from '../Avatar.svelte';
@@ -23,11 +24,11 @@
 
 	// Same nearing/overdue indicator as the list view; suppressed for done tasks.
 	let dueDate = $derived(task.endDate ?? task.due);
-	let due = $derived(task.status === 'done' ? null : dueCountdown(dueDate));
+	let due = $derived(isClosedStatus(task.status) ? null : dueCountdown(dueDate));
 	// Open prerequisites: the link indicator replaces the status dot (same as
 	// the list row); the status stays in its tooltip.
 	let openDeps = $derived(
-		task.blocked ? (task.dependsOn ?? []).filter((d) => d.status !== 'done').length : 0
+		task.blocked ? (task.dependsOn ?? []).filter((d) => !isClosedStatus(d.status)).length : 0
 	);
 	const DUE_TONE: Record<string, string> = {
 		overdue: 'text-[#ef4f5e] font-medium',

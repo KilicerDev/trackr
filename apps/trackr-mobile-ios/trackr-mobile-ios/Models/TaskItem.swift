@@ -99,9 +99,9 @@ struct TaskItem: Identifiable, Hashable {
 
     /// Web parity (utils/format.ts dueCountdown): relative label + urgency
     /// tone within a week of the due date, nil label beyond that so callers
-    /// fall back to the absolute date. Done tasks are never "overdue".
+    /// fall back to the absolute date. Closed tasks are never "overdue".
     var dueCountdown: (label: String, tone: DueTone)? {
-        guard let due, status != .done else { return nil }
+        guard let due, !status.isClosed else { return nil }
         let days = Calendar.current
             .dateComponents([.day], from: .now.startOfDay, to: due.startOfDay)
             .day ?? 0

@@ -55,7 +55,7 @@ type Meta struct {
 }
 
 // TaskStatuses in workflow display order (matches the web's grouping).
-var TaskStatusOrder = []string{"in_progress", "in_review", "todo", "backlog", "paused", "done"}
+var TaskStatusOrder = []string{"in_progress", "in_review", "todo", "backlog", "paused", "done", "cancelled"}
 
 var TaskStatus = map[string]Meta{
 	"backlog":     {"◌", lipgloss.Color("#7c7c84"), "Backlog"},
@@ -64,10 +64,11 @@ var TaskStatus = map[string]Meta{
 	"paused":      {"⊖", lipgloss.Color("#e9c46a"), "Paused"},
 	"in_review":   {"◕", lipgloss.Color("#b591e3"), "In Review"},
 	"done":        {"●", lipgloss.Color("#7fc8a9"), "Done"},
+	"cancelled":   {"⊘", lipgloss.Color("#b87d80"), "Cancelled"},
 }
 
 // TaskStatusOptions is the picker order (workflow forward).
-var TaskStatusOptions = []string{"backlog", "todo", "in_progress", "paused", "in_review", "done"}
+var TaskStatusOptions = []string{"backlog", "todo", "in_progress", "paused", "in_review", "done", "cancelled"}
 
 var TicketStatus = map[string]Meta{
 	"open":                {"○", lipgloss.Color("#7a9cf0"), "Open"},

@@ -22,6 +22,7 @@
 	import TagsPopover from '$lib/components/popovers/TagsPopover.svelte';
 	import { PROJECT_STATUS } from '$lib/config/taxonomy';
 	import { projectStatusLabel } from '$lib/utils/labels';
+	import { isClosedStatus } from '$lib/utils/task';
 	import { dueCountdown, formatEstimate, formatDateLong } from '$lib/utils/format';
 	import { m } from '$lib/paraglide/messages';
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
@@ -54,17 +55,19 @@
 	const tasks = $derived(data.tasks);
 
 	const total = $derived(tasks.length);
+	// Cancelled tasks are out of scope: progress is done over what's left to do.
+	const inScope = $derived(tasks.filter((t) => t.status !== 'cancelled').length);
 	const active = $derived(
 		tasks.filter((t) => t.status === 'in_progress' || t.status === 'paused').length
 	);
 	const done = $derived(
 		tasks.filter((t) => t.status === 'done' || t.status === 'in_review').length
 	);
-	const pct = $derived(total === 0 ? 0 : Math.round((done / total) * 100));
+	const pct = $derived(inScope === 0 ? 0 : Math.round((done / inScope) * 100));
 
-	// Overdue — mirrors TaskRow: the countdown is suppressed only for 'done'.
+	// Overdue — mirrors TaskRow: closed tasks (done, cancelled) never count.
 	const overdue = $derived(
-		tasks.filter((t) => t.status !== 'done' && dueCountdown(t.due)?.tone === 'overdue').length
+		tasks.filter((t) => !isClosedStatus(t.status) && dueCountdown(t.due)?.tone === 'overdue').length
 	);
 
 	// Time spent: per task, logged minutes win; else the estimate; else assume 1h.

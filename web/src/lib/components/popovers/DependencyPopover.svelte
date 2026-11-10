@@ -4,6 +4,7 @@
 	// /api/tasks/pick result (complete, server-filtered) as soon as it lands.
 	// Multi-select: stays open across picks, like the assignee popover.
 	import { clickOutside } from '$lib/actions/clickOutside';
+	import { isClosedStatus } from '$lib/utils/task';
 	import { autoPlace } from '$lib/actions/autoPlace';
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
@@ -74,7 +75,10 @@
 		// Open tasks first, done ones last; otherwise keep the source order.
 		return list
 			.map((t, i) => ({ t, i }))
-			.sort((a, b) => Number(a.t.status === 'done') - Number(b.t.status === 'done') || a.i - b.i)
+			.sort(
+				(a, b) =>
+					Number(isClosedStatus(a.t.status)) - Number(isClosedStatus(b.t.status)) || a.i - b.i
+			)
 			.map((x) => x.t);
 	});
 	const showSkeleton = $derived(loading && remote === null && seed.length === 0);
@@ -146,7 +150,7 @@
 					class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:text-text {i ===
 					active
 						? 'bg-surface-2 text-text'
-						: ''} {t.status === 'done' ? 'opacity-60' : ''}"
+						: ''} {isClosedStatus(t.status) ? 'opacity-60' : ''}"
 				>
 					<StatusDot status={t.status} size={12} />
 					<span class="shrink-0 font-mono text-[12px] text-text-3">{t.id}</span>

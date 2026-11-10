@@ -5,7 +5,7 @@
 	import BoardCard from '$lib/components/tasks/BoardCard.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
-	import { taskTimeMinutes } from '$lib/utils/task';
+	import { isClosedStatus, taskTimeMinutes } from '$lib/utils/task';
 	import { dayProjectGroups } from '$lib/utils/week';
 	import { m } from '$lib/paraglide/messages';
 
@@ -112,7 +112,7 @@
 	<div class="flex h-full min-h-0">
 		{#each days as day, index (day.iso)}
 			{@const today = day.iso === todayIso}
-			{@const visible = day.tasks.filter((task) => showDone || task.status !== 'done')}
+			{@const visible = day.tasks.filter((task) => showDone || !isClosedStatus(task.status))}
 			{@const hidden = day.tasks.length - visible.length}
 			<section
 				data-date={day.iso}

@@ -256,26 +256,25 @@ func TestAppStatusPickerFlow(t *testing.T) {
 	tm, fake := newTestApp(t)
 	waitFor(t, tm, "Ship the TUI")
 
-	// Open the status picker on the selected task and pick "In Review"
-	// (j moves from current in_progress → paused → wait; simpler: jump
-	// to "done" with G then enter).
+	// Open the status picker on the selected task and jump to the last
+	// option (Cancelled) with G, then enter.
 	typeKey(tm, "s")
 	waitFor(t, tm, "Backlog") // picker open
-	typeKey(tm, "G")          // last option: Done
+	typeKey(tm, "G")          // last option: Cancelled
 	typeKey(tm, "enter")
-	waitFor(t, tm, "PRJ-2 → Done")
+	waitFor(t, tm, "PRJ-2 → Cancelled")
 
 	typeKey(tm, "q")
 	tm.WaitFinished(t, teatest.WithFinalTimeout(5*time.Second))
 
 	found := false
 	for _, c := range fake.Calls() {
-		if c == "UpdateTaskStatus:u2:done" {
+		if c == "UpdateTaskStatus:u2:cancelled" {
 			found = true
 		}
 	}
 	if !found {
-		t.Fatalf("expected UpdateTaskStatus:u2:done, calls: %v", fake.Calls())
+		t.Fatalf("expected UpdateTaskStatus:u2:cancelled, calls: %v", fake.Calls())
 	}
 }
 

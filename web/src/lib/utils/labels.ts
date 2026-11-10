@@ -21,7 +21,8 @@ export function statusLabel(id: string, locale?: Locale): string {
 		in_progress: m.status_in_progress,
 		paused: m.status_paused,
 		in_review: m.status_in_review,
-		done: m.status_done
+		done: m.status_done,
+		cancelled: m.status_cancelled
 	};
 	return map[id]?.(undefined, locale ? { locale } : undefined) ?? id;
 }

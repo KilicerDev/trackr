@@ -171,7 +171,7 @@
 	//
 	// Allowed values:
 	//   type:      "task" | "bug" | "improvement" | "feature" | "chore"                  (default "task")
-	//   status:    "backlog" | "todo" | "in_progress" | "paused" | "in_review" | "done"  (default "todo")
+	//   status:    "backlog" | "todo" | "in_progress" | "paused" | "in_review" | "done" | "cancelled"  (default "todo")
 	//   priority:  "none" | "low" | "medium" | "high" | "urgent"                         (default "medium")
 	//
 	// Other fields:

@@ -34,7 +34,7 @@ Aufgaben tragen einen kleinen, festen Satz strukturierter Eigenschaften, damit d
 
 | Eigenschaft  | Werte                                                                                                                                                              |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `status`     | `backlog` · `todo` · `in_progress` · `paused` · `in_review` · `done`                                                                                               |
+| `status`     | `backlog` · `todo` · `in_progress` · `paused` · `in_review` · `done` · `cancelled`                                                                                 |
 | `priority`   | `none` · `low` · `medium` · `high` · `urgent`                                                                                                                      |
 | `type`       | `task` · `bug` · `improvement` · `feature` · `chore`                                                                                                               |
 | `estimate`   | Minuten. Fließt in die Kapazität von Meine Woche ein.                                                                                                              |

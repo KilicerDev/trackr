@@ -9,7 +9,7 @@
 	import WeekBoard from '$lib/components/week/WeekBoard.svelte';
 	import SmartComposer from '$lib/components/week/SmartComposer.svelte';
 	import type { ComposerDraft } from '$lib/components/week/SmartComposer.svelte';
-	import { taskTimeMinutes } from '$lib/utils/task';
+	import { isClosedStatus, taskTimeMinutes } from '$lib/utils/task';
 	import { dayProjectGroups as groupByProject } from '$lib/utils/week';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
@@ -91,7 +91,7 @@
 		showDone = !showDone;
 		saveView('week', { showDone });
 	}
-	const isDone = (t: Task) => t.status === 'done';
+	const isDone = (t: Task) => isClosedStatus(t.status);
 	const visibleTask = (t: Task) => showDone || !isDone(t);
 
 	let composerDay = $state<number | null>(null);
@@ -229,7 +229,7 @@
 
 	const unscheduled = $derived.by(() => {
 		// Open = still actionable; we never surface done/in-review here.
-		const isOpen = (t: Task) => t.status !== 'done' && t.status !== 'in_review';
+		const isOpen = (t: Task) => !isClosedStatus(t.status) && t.status !== 'in_review';
 		const me = data.currentUserId;
 		const mine = (t: Task) => t.assignee === me || (t.assignees ?? []).includes(me);
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { TaskSummary } from '$lib/types';
+	import { isClosedStatus } from '$lib/utils/task';
 	import StatusDot from '../StatusDot.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
 	import LabelChip from '../LabelChip.svelte';
@@ -42,11 +43,11 @@
 
 	// Suppress the countdown for completed tasks — a finished task isn't
 	// "overdue". Only show the live indicator while work is still pending.
-	let due = $derived(task.status === 'done' ? null : dueCountdown(task.due));
+	let due = $derived(isClosedStatus(task.status) ? null : dueCountdown(task.due));
 	// Open prerequisites. When any exist the link indicator replaces the
 	// status dot in the leading column; the status stays in its tooltip.
 	let openDeps = $derived(
-		task.blocked ? (task.dependsOn ?? []).filter((d) => d.status !== 'done').length : 0
+		task.blocked ? (task.dependsOn ?? []).filter((d) => !isClosedStatus(d.status)).length : 0
 	);
 	const DUE_TONE: Record<string, string> = {
 		overdue: 'text-[#ef4f5e] font-medium',

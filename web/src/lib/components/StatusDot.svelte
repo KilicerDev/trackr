@@ -46,5 +46,13 @@
 		></span>
 	{:else if status === 'done'}
 		<span class="absolute inset-0 rounded-full" style:background={meta.dot}></span>
+	{:else if status === 'cancelled'}
+		<!-- Ring with a diagonal strike: ended without being done. -->
+		<span class="absolute inset-0 rounded-full border-[1.5px]" style:border-color={meta.dot}></span>
+		<span
+			class="absolute top-1/2 left-1/2 h-[1.5px] -translate-x-1/2 -translate-y-1/2 -rotate-45 rounded-full"
+			style:width="{size * 0.62}px"
+			style:background={meta.dot}
+		></span>
 	{/if}
 </span>

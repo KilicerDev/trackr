@@ -8,6 +8,7 @@
 import type { TicketMessageRow, TicketRow } from '$lib/server/tickets';
 import type { Task, TaskSummary } from '$lib/types';
 import { formatBytes, type AttachmentDTO } from '$lib/config/attachments';
+import { isClosedStatus } from '$lib/utils/task';
 
 /** id → display name; built from `loadTicketDisplayUsers` rows. */
 export type UserDirectory = Map<string, string>;
@@ -304,10 +305,10 @@ export function taskDetailMd(input: { task: Task; users: UserDirectory; origin: 
 	if (t.inMyPlan) out.push(`- In your plan: ${t.plannedFor ?? 'undated'}`);
 	if (t.sourceTicket) out.push(`- Source ticket: ${t.sourceTicket.displayId}`);
 	if (t.dependsOn?.length) {
-		const open = t.dependsOn.filter((d) => d.status !== 'done').length;
+		const open = t.dependsOn.filter((d) => !isClosedStatus(d.status)).length;
 		out.push(`- Depends on: ${t.dependsOn.map((d) => `${d.id} (${d.status})`).join(', ')}`);
 		out.push(
-			`- Blocked: ${open ? `yes — ${open} of ${t.dependsOn.length} prerequisites still open` : 'no — every prerequisite is done'}`
+			`- Blocked: ${open ? `yes — ${open} of ${t.dependsOn.length} prerequisites still open` : 'no — every prerequisite is done or cancelled'}`
 		);
 	}
 	if (t.dependents?.length) {

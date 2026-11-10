@@ -26,6 +26,7 @@ import { emitWebhookEvent, taskSnapshot } from './webhooks';
 import { recordAudit } from './audit';
 import { normalizeTag } from '$lib/utils/label-meta';
 import { m } from '$lib/paraglide/messages';
+import { CLOSED_TASK_STATUSES, isClosedStatus } from '$lib/utils/task';
 
 // Drizzle's transaction callback parameter — structurally a subset of `db`.
 export type Tx = Parameters<Parameters<(typeof db)['transaction']>[0]>[0];
@@ -43,7 +44,8 @@ export const ALLOWED_TASK_STATUS = new Set([
 	'in_progress',
 	'paused',
 	'in_review',
-	'done'
+	'done',
+	'cancelled'
 ]);
 export const ALLOWED_TASK_PRIORITY = new Set(['none', 'low', 'medium', 'high', 'urgent']);
 export const ALLOWED_TASK_TYPE = new Set(['task', 'bug', 'improvement', 'feature', 'chore']);
@@ -116,7 +118,10 @@ function taskScope(opts: TaskQueryOpts) {
 	if (opts.ids) conditions.push(inArray(task.id, opts.ids));
 	if (opts.inMyPlanOnly) conditions.push(isNotNull(taskPlanning.taskId));
 	if (opts.unplannedOpenOnly) {
-		conditions.push(isNull(taskPlanning.taskId), notInArray(task.status, ['done', 'in_review']));
+		conditions.push(
+			isNull(taskPlanning.taskId),
+			notInArray(task.status, [...CLOSED_TASK_STATUSES, 'in_review'])
+		);
 	}
 	return and(...conditions);
 }
@@ -287,7 +292,7 @@ async function hydrateSummaries(rows: SummaryRow[]): Promise<TaskSummary[]> {
 			plannedFor: t.inMyPlan ? dateOnly(t.plannedFor) || null : null,
 			inMyPlan: !!t.inMyPlan,
 			dependsOn: dependsOn.length ? dependsOn : undefined,
-			blocked: dependsOn.some((d) => d.status !== 'done'),
+			blocked: dependsOn.some((d) => !isClosedStatus(d.status)),
 			loggedMinutes: minutesByTask.get(t.id) ?? 0,
 			checklistDone: checklist.filter((i) => i.done).length,
 			checklistTotal: checklist.length

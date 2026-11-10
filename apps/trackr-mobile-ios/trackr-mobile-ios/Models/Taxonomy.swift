@@ -9,7 +9,7 @@
 import SwiftUI
 
 enum TaskStatus: String, CaseIterable, Identifiable {
-    case backlog, todo, inProgress, paused, inReview, done
+    case backlog, todo, inProgress, paused, inReview, done, cancelled
 
     var id: String { rawValue }
 
@@ -21,6 +21,7 @@ enum TaskStatus: String, CaseIterable, Identifiable {
         case .paused: "Paused"
         case .inReview: "In Review"
         case .done: "Done"
+        case .cancelled: "Cancelled"
         }
     }
 
@@ -32,8 +33,12 @@ enum TaskStatus: String, CaseIterable, Identifiable {
         case .paused: Color(hex: 0xE9C46A)
         case .inReview: Color(hex: 0xB591E3)
         case .done: Color(hex: 0x7FC8A9)
+        case .cancelled: Color(hex: 0xB87D80)
         }
     }
+
+    /// Done and cancelled both end a task: never overdue, never open work.
+    var isClosed: Bool { self == .done || self == .cancelled }
 }
 
 enum TaskPriority: String, CaseIterable, Identifiable {

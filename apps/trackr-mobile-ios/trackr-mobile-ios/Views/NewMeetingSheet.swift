@@ -30,7 +30,7 @@ struct NewMeetingSheet: View {
 
     private var projectOptions: [ProjectItem] { model.projects }
     private var taskOptions: [TaskItem] {
-        model.tasks.filter { $0.project == project && $0.status != .done }
+        model.tasks.filter { $0.project == project && !$0.status.isClosed }
     }
     private var projectColor: Color? {
         model.projects.first { $0.name == project }?.color

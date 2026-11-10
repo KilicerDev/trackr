@@ -117,7 +117,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	//
 	// Allowed values:
 	//   type:      "task" | "bug" | "improvement" | "feature" | "chore"
-	//   status:    "backlog" | "todo" | "in_progress" | "paused" | "in_review" | "done"
+	//   status:    "backlog" | "todo" | "in_progress" | "paused" | "in_review" | "done" | "cancelled"
 	//   priority:  "none" | "low" | "medium" | "high" | "urgent"
 	//
 	// Other fields:

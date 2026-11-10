@@ -19,7 +19,8 @@ export const TRACKR_STATUSES = [
 	{ id: 'in_progress', label: 'In Progress', dot: '#f0a85c', tint: 'rgba(240,168,92,0.16)' },
 	{ id: 'paused', label: 'Paused', dot: '#e9c46a', tint: 'rgba(233,196,106,0.14)' },
 	{ id: 'in_review', label: 'In Review', dot: '#b591e3', tint: 'rgba(181,145,227,0.16)' },
-	{ id: 'done', label: 'Done', dot: '#7fc8a9', tint: 'rgba(127,200,169,0.16)' }
+	{ id: 'done', label: 'Done', dot: '#7fc8a9', tint: 'rgba(127,200,169,0.16)' },
+	{ id: 'cancelled', label: 'Cancelled', dot: '#b87d80', tint: 'rgba(184,125,128,0.14)' }
 ] as const;
 
 export const TRACKR_PRIORITIES = [

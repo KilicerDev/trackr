@@ -21,6 +21,7 @@ extension TaskStatus {
         case "paused": self = .paused
         case "in_review": self = .inReview
         case "done": self = .done
+        case "cancelled": self = .cancelled
         default: return nil
         }
     }
@@ -33,6 +34,7 @@ extension TaskStatus {
         case .paused: "paused"
         case .inReview: "in_review"
         case .done: "done"
+        case .cancelled: "cancelled"
         }
     }
 }
