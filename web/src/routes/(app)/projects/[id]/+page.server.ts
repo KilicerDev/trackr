@@ -21,7 +21,7 @@ import { assertCan, isTrackrTeam } from '$lib/server/permissions';
 import { listProjectMeetings, listTemplates } from '$lib/server/notes';
 import { getPreferences } from '$lib/server/preferences';
 import { m } from '$lib/paraglide/messages';
-import { normalizeTags } from '$lib/server/projects';
+import { normalizeTags, PROJECT_STATUSES, updateProject } from '$lib/server/projects';
 
 // "KEY · Name" for the audit log's target column. Best-effort; returns the id
 // if the project can't be read.
@@ -296,6 +296,20 @@ export const actions: Actions = {
 			targetLabel: name,
 			meta: { status, statusFrom: prior.status }
 		});
+		return { success: true };
+	},
+
+	// Quick status change from the project header pill. Archiving keeps its
+	// own action (separate permission, archives the tasks' visibility too).
+	status: async ({ request, params, locals }) => {
+		if (!locals.user) throw error(401, m.projects_not_authenticated());
+		if (!params.id) return fail(400, { message: m.projects_missing_id() });
+		const form = await request.formData();
+		const status = String(form.get('status') ?? '');
+		if (status === 'archived' || !(PROJECT_STATUSES as readonly string[]).includes(status)) {
+			return fail(400, { message: m.projects_invalid_status() });
+		}
+		await updateProject(locals, params.id, { status });
 		return { success: true };
 	},
 

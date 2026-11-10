@@ -43,8 +43,11 @@
 	let { data }: { data: PageData } = $props();
 
 	const p = $derived(data.project);
+	// Optimistic status while a quick change from the header pill is saving.
+	let statusDraft = $state<string | null>(null);
+	const heroStatus = $derived(statusDraft ?? p.status);
 	const st = $derived(
-		PROJECT_STATUS[p.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.active
+		PROJECT_STATUS[heroStatus as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.active
 	);
 
 	// Tasks come from the DB load (same Task shape as the /tasks page).
@@ -225,6 +228,37 @@
 	// Optimistic copy of the header tag list while a save is in flight.
 	let tagsDraft = $state<string[] | null>(null);
 	const heroTags = $derived(tagsDraft ?? p.tags ?? []);
+
+	// Archiving stays in the settings flow (own permission and confirm).
+	const QUICK_STATUSES = (Object.keys(PROJECT_STATUS) as (keyof typeof PROJECT_STATUS)[]).filter(
+		(s) => s !== 'archived'
+	);
+	let statusOpen = $state(false);
+
+	async function saveStatus(next: string) {
+		statusOpen = false;
+		if (next === p.status) return;
+		statusDraft = next;
+		const body = new FormData();
+		body.set('status', next);
+		try {
+			const res = await fetch('?/status', {
+				method: 'POST',
+				body,
+				headers: { 'x-sveltekit-action': 'true' }
+			});
+			const result: ActionResult = deserialize(await res.text());
+			if (result.type !== 'success') {
+				showToast('err', m.projects_update_failed());
+				return;
+			}
+			await invalidateAll();
+		} catch {
+			showToast('err', m.projects_update_failed());
+		} finally {
+			statusDraft = null;
+		}
+	}
 
 	async function saveTags(next: string[]) {
 		tagsDraft = next;
@@ -449,14 +483,48 @@
 					</h1>
 				</div>
 				<div class="mt-1.5 flex items-center gap-2 text-[14px] text-text-3">
-					<span
-						class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px]"
-						style:background={st.color + '24'}
-						style:color={st.color}
-					>
-						<span class="h-1.5 w-1.5 rounded-full" style:background={st.color}></span>
-						{projectStatusLabel(p.status)}
-					</span>
+					<div class="relative">
+						<button
+							type="button"
+							aria-haspopup="menu"
+							aria-expanded={statusOpen}
+							title={m.projects_change_status()}
+							onclick={() => (statusOpen = !statusOpen)}
+							class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] transition-[filter] hover:brightness-125 {statusOpen
+								? 'ring-2 ring-accent/40'
+								: ''}"
+							style:background={st.color + '24'}
+							style:color={st.color}
+						>
+							<span class="h-1.5 w-1.5 rounded-full" style:background={st.color}></span>
+							{projectStatusLabel(heroStatus)}
+							<Icon name="chevron" size={11} />
+						</button>
+						{#if statusOpen}
+							<div
+								role="menu"
+								use:clickOutside={() => (statusOpen = false)}
+								use:autoPlace
+								in:fly={POPOVER_IN}
+								class="absolute top-full z-50 mt-1.5 min-w-[180px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+							>
+								{#each QUICK_STATUSES as s (s)}
+									{@const meta = PROJECT_STATUS[s]}
+									<button
+										type="button"
+										role="menuitemradio"
+										aria-checked={heroStatus === s}
+										onclick={() => saveStatus(s)}
+										class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
+									>
+										<span class="h-2 w-2 rounded-full" style:background={meta.color}></span>
+										<span class="flex-1">{projectStatusLabel(s)}</span>
+										{#if heroStatus === s}<Icon name="check" size={13} />{/if}
+									</button>
+								{/each}
+							</div>
+						{/if}
+					</div>
 					<span class="text-text-4">·</span>
 					<span class="font-mono">{p.key}</span>
 					{#if data.org}
