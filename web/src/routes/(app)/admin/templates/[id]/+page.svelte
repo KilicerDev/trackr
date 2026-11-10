@@ -442,7 +442,6 @@
 		{/if}
 
 		{#each tasks as t, i (t.id)}
-			{@const checked = t.checklist.filter((c) => c.done).length}
 			{@const isActive = openId === t.id}
 			<div
 				animate:flip={{ duration: 180, easing: cubicOut }}
@@ -456,7 +455,7 @@
 			>
 				<div
 					class="grid items-center gap-2 py-1.5 pr-2 pl-2 text-[14px]"
-					style:grid-template-columns="20px 34px auto minmax(0,1fr) auto auto auto 76px 28px"
+					style:grid-template-columns="20px 34px auto minmax(0,1fr) auto auto 76px 28px"
 				>
 					<button
 						type="button"
@@ -501,36 +500,43 @@
 						</Popover>
 					</div>
 
-					<!-- Title opens the detail panel, like a row in the real task list. -->
+					<!-- Title and what the task carries open its detail panel
+					     (description, checklist, tags) — the whole stretch is the
+					     button, with an arrow on hover so it reads as openable. -->
 					<button
 						type="button"
 						onclick={() => (openId = isActive ? null : t.id)}
 						title={m.templates_editor_open_task()}
-						class="min-w-0 truncate rounded-md px-1.5 py-1 text-left text-text transition-colors hover:text-accent"
+						class="group/open flex h-8 min-w-0 items-center gap-3 rounded-md px-1.5 text-left transition-colors hover:bg-surface"
 					>
-						{t.title}
+						<span class="min-w-0 truncate text-text">{t.title}</span>
+						<span class="flex shrink-0 items-center gap-2.5 text-[12px] leading-none text-text-4">
+							{#if t.description}
+								<span title={m.tasks_description_placeholder()}><Icon name="file" size={13} /></span
+								>
+							{/if}
+							{#if t.checklist.length > 0}
+								<span class="inline-flex items-center gap-1" title={m.tasks_checklist()}>
+									<Icon name="check-square" size={13} />
+									<span class="font-mono">{t.checklist.length}</span>
+								</span>
+							{/if}
+							{#if t.tags.length > 0}
+								<span class="inline-flex items-center gap-1" title={m.tasks_tags()}>
+									<Icon name="bookmark" size={12} />
+									<span class="font-mono">{t.tags.length}</span>
+								</span>
+							{/if}
+						</span>
+						<span
+							class="ml-auto inline-flex shrink-0 items-center gap-1 text-[12px] leading-none text-text-3 opacity-0 transition-opacity group-hover/open:opacity-100 {isActive
+								? 'opacity-100'
+								: ''}"
+						>
+							{m.templates_editor_details()}
+							<Icon name="chevron-r" size={13} />
+						</span>
 					</button>
-
-					<!-- What the panel holds, at a glance -->
-					<span class="flex items-center gap-2 text-[12px] text-text-4">
-						{#if t.description}
-							<span title={m.tasks_description_placeholder()}><Icon name="file" size={13} /></span>
-						{/if}
-						{#if t.checklist.length > 0}
-							<span
-								class="inline-flex items-center gap-1 font-mono {checked === t.checklist.length
-									? 'text-[#7fc8a9]'
-									: ''}"
-							>
-								<Icon name="check" size={12} />{checked}/{t.checklist.length}
-							</span>
-						{/if}
-						{#if t.tags.length > 0}
-							<span class="inline-flex items-center gap-1 font-mono">
-								<Icon name="bookmark" size={12} />{t.tags.length}
-							</span>
-						{/if}
-					</span>
 
 					<div class="relative">
 						<button

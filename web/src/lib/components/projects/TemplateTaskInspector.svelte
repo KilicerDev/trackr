@@ -24,7 +24,9 @@
 	import StatusDot from '../StatusDot.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
 	import TypeBadge from '../TypeBadge.svelte';
-	import LabelChip from '../LabelChip.svelte';
+	import PropertyRow from '../tasks/panel/PropertyRow.svelte';
+	import { OPEN, PROP_VALUE, TAG } from '../tasks/panel/styles';
+	import { labelMeta } from '$lib/utils/label-meta';
 	import RichTextInput from '../RichTextInput.svelte';
 	import Checklist from '../Checklist.svelte';
 	import StatusPopover from '../popovers/StatusPopover.svelte';
@@ -93,9 +95,9 @@
 
 <Drawer open={!!task} {onclose}>
 	{#if task}
-		<div class="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3">
+		<div class="flex h-14 shrink-0 items-center gap-2 border-b border-border/70 px-5">
 			<TypeBadge type={task.type as TypeId} idText="#{index + 1}" showLabel={false} />
-			<span class="rounded bg-surface px-1.5 py-0.5 font-mono text-[12px] text-text-3">
+			<span class="text-[12px] text-text-4">
 				{m.templates_inspector_chip()}
 			</span>
 			{#if saving}
@@ -145,104 +147,10 @@
 						onpatch({ title: next });
 					}
 				}}
-				class="mb-4 w-full resize-none border-0 bg-transparent text-[22px] leading-tight font-semibold tracking-[-0.012em] text-text outline-none placeholder:text-text-4"
+				class="mb-2 w-full resize-none border-0 bg-transparent text-[22px] leading-tight font-semibold tracking-[-0.012em] text-text outline-none placeholder:text-text-4"
 			></textarea>
 
-			<!-- properties rail -->
-			<div class="mb-5 flex flex-wrap gap-2">
-				<div class="relative">
-					<button
-						type="button"
-						onclick={() => toggle('type')}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong {openPop ===
-						'type'
-							? 'ring-2 ring-accent/40'
-							: ''}"
-					>
-						<TypeBadge type={task.type as TypeId} showLabel={false} />
-						<span>{typeLabel(task.type)}</span>
-					</button>
-					{#if openPop === 'type'}
-						<TypePopover
-							value={task.type as TypeId}
-							onchange={(v) => onpatch({ type: v })}
-							onclose={() => (openPop = null)}
-						/>
-					{/if}
-				</div>
-
-				<div class="relative">
-					<button
-						type="button"
-						onclick={() => toggle('status')}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong {openPop ===
-						'status'
-							? 'ring-2 ring-accent/40'
-							: ''}"
-					>
-						<StatusDot status={task.status as StatusId} />
-						<span>{statusLabel(task.status)}</span>
-					</button>
-					{#if openPop === 'status'}
-						<StatusPopover
-							value={task.status as StatusId}
-							onchange={(v) => onpatch({ status: v })}
-							onclose={() => (openPop = null)}
-						/>
-					{/if}
-				</div>
-
-				<div class="relative">
-					<button
-						type="button"
-						onclick={() => toggle('priority')}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong {openPop ===
-						'priority'
-							? 'ring-2 ring-accent/40'
-							: ''}"
-					>
-						{#if prio && prio.bars > 0}
-							<PriorityBars priority={task.priority as PriorityId} />
-						{/if}
-						<span>{priorityLabel(task.priority)}</span>
-					</button>
-					{#if openPop === 'priority'}
-						<PriorityPopover
-							value={task.priority as PriorityId}
-							onchange={(v) => onpatch({ priority: v })}
-							onclose={() => (openPop = null)}
-						/>
-					{/if}
-				</div>
-
-				<div class="relative">
-					<button
-						type="button"
-						onclick={() => toggle('estimate')}
-						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors hover:border-border-strong {task.estimateMinutes
-							? 'border border-border bg-surface'
-							: 'border border-dashed border-border text-text-3 hover:text-text'} {openPop ===
-						'estimate'
-							? 'ring-2 ring-accent/40'
-							: ''}"
-					>
-						{#if task.estimateMinutes}
-							<span class="text-text-3">{m.tasks_est()}</span>
-							<span class="font-mono">{formatEstimate(task.estimateMinutes)}</span>
-						{:else}
-							<span>{m.tasks_estimate()}</span>
-						{/if}
-					</button>
-					{#if openPop === 'estimate'}
-						<EstimatePopover
-							value={task.estimateMinutes ?? undefined}
-							onchange={(v) => onpatch({ estimateMinutes: v ?? null })}
-							onclose={() => (openPop = null)}
-						/>
-					{/if}
-				</div>
-			</div>
-
+			<!-- Description right under the title, like the task panel. -->
 			{#key task.id}
 				<div class="mb-5">
 					<RichTextInput
@@ -259,30 +167,96 @@
 				</div>
 			{/key}
 
-			<Checklist
-				items={task.checklist}
-				canEdit
-				label={m.tasks_checklist()}
-				addPlaceholder={m.tasks_checklist_add()}
-				onChange={(items) => onpatch({ checklist: items })}
-			/>
-			{#if task.checklist.length > 0}
-				<p class="-mt-4 mb-6 text-[12px] text-text-4">{m.templates_inspector_checklist_hint()}</p>
-			{/if}
-
-			<div class="mb-6 flex flex-wrap items-center gap-2">
-				{#each task.tags as t (t)}<LabelChip id={t} />{/each}
-				<div class="relative">
+			<!-- Properties: quiet label / value rows (the task panel's style). -->
+			<div class="mb-6">
+				<PropertyRow label={m.tasks_panel_type()}>
+					<button
+						type="button"
+						onclick={() => toggle('type')}
+						class="{PROP_VALUE} {openPop === 'type' ? OPEN : ''}"
+					>
+						<TypeBadge type={task.type as TypeId} showLabel={false} />
+						<span>{typeLabel(task.type)}</span>
+					</button>
+					{#if openPop === 'type'}
+						<TypePopover
+							value={task.type as TypeId}
+							onchange={(v) => onpatch({ type: v })}
+							onclose={() => (openPop = null)}
+						/>
+					{/if}
+				</PropertyRow>
+				<PropertyRow label={m.tasks_panel_status()}>
+					<button
+						type="button"
+						onclick={() => toggle('status')}
+						class="{PROP_VALUE} {openPop === 'status' ? OPEN : ''}"
+					>
+						<StatusDot status={task.status as StatusId} />
+						<span>{statusLabel(task.status)}</span>
+					</button>
+					{#if openPop === 'status'}
+						<StatusPopover
+							value={task.status as StatusId}
+							onchange={(v) => onpatch({ status: v })}
+							onclose={() => (openPop = null)}
+						/>
+					{/if}
+				</PropertyRow>
+				<PropertyRow label={m.tasks_panel_priority()}>
+					<button
+						type="button"
+						onclick={() => toggle('priority')}
+						class="{PROP_VALUE} {openPop === 'priority' ? OPEN : ''}"
+					>
+						{#if prio && prio.bars > 0}
+							<PriorityBars priority={task.priority as PriorityId} />
+						{/if}
+						<span>{priorityLabel(task.priority)}</span>
+					</button>
+					{#if openPop === 'priority'}
+						<PriorityPopover
+							value={task.priority as PriorityId}
+							onchange={(v) => onpatch({ priority: v })}
+							onclose={() => (openPop = null)}
+						/>
+					{/if}
+				</PropertyRow>
+				<PropertyRow label={m.tasks_estimate()}>
+					<button
+						type="button"
+						onclick={() => toggle('estimate')}
+						class="{PROP_VALUE} {openPop === 'estimate' ? OPEN : ''}"
+					>
+						{#if task.estimateMinutes}
+							<span class="font-mono">{formatEstimate(task.estimateMinutes)}</span>
+						{:else}
+							<span class="text-text-3">{m.tasks_panel_set_estimate()}</span>
+						{/if}
+					</button>
+					{#if openPop === 'estimate'}
+						<EstimatePopover
+							value={task.estimateMinutes ?? undefined}
+							onchange={(v) => onpatch({ estimateMinutes: v ?? null })}
+							onclose={() => (openPop = null)}
+						/>
+					{/if}
+				</PropertyRow>
+				<PropertyRow label={m.tasks_tags()}>
 					<button
 						type="button"
 						onclick={() => toggle('tags')}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text {openPop ===
-						'tags'
-							? 'ring-2 ring-accent/40'
-							: ''}"
+						class="{PROP_VALUE} flex-wrap {openPop === 'tags' ? OPEN : ''}"
 					>
-						<Icon name="bookmark" size={13} />
-						<span>{task.tags.length > 0 ? m.tasks_add_tag() : m.tasks_add_tags()}</span>
+						{#each task.tags as t (t)}
+							{@const l = labelMeta(t)}
+							<span class={TAG}>
+								<span class="h-1.5 w-1.5 shrink-0 rounded-full" style:background={l.color}></span>
+								<span class="max-w-[140px] truncate">{l.label}</span>
+							</span>
+						{:else}
+							<span class="text-text-3">{m.tasks_add_tags()}</span>
+						{/each}
 					</button>
 					{#if openPop === 'tags'}
 						<TagsPopover
@@ -292,7 +266,22 @@
 							onclose={() => (openPop = null)}
 						/>
 					{/if}
-				</div>
+				</PropertyRow>
+			</div>
+
+			<!-- Checklist: always open here — a starter checklist is the main
+			     thing a template task carries. -->
+			<div class="border-t border-border/60 pt-5">
+				<Checklist
+					items={task.checklist}
+					canEdit
+					label={m.tasks_checklist()}
+					addPlaceholder={m.tasks_checklist_add()}
+					onChange={(items) => onpatch({ checklist: items })}
+					variant="panel"
+					addLabel={m.tasks_checklist_add()}
+				/>
+				<p class="mt-2 text-[12px] text-text-4">{m.templates_inspector_checklist_hint()}</p>
 			</div>
 		</div>
 	{/if}
