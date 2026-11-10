@@ -458,3 +458,43 @@
 .wiki-editor .ProseMirror[contenteditable='false'] .wiki-media-delete {
 	display: none;
 }
+
+/* ── Tables ── */
+.wiki-editor .ProseMirror table {
+	border-collapse: collapse;
+	table-layout: fixed;
+	width: 100%;
+	margin: 6px 0;
+	overflow: hidden;
+	font-size: 15px;
+}
+.wiki-editor .ProseMirror :is(th, td) {
+	position: relative;
+	min-width: 4em;
+	border: 1px solid var(--border);
+	padding: 5px 9px;
+	text-align: left;
+	vertical-align: top;
+	box-sizing: border-box;
+}
+.wiki-editor .ProseMirror th {
+	background: var(--surface-2);
+	color: var(--text);
+	font-weight: 600;
+}
+.wiki-editor .ProseMirror :is(th, td) > p {
+	margin: 0;
+	padding: 0;
+}
+/* Multi-cell selection (drag across cells). */
+.wiki-editor .ProseMirror .selectedCell::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: color-mix(in srgb, var(--accent) 16%, transparent);
+	pointer-events: none;
+}
+/* Wide tables scroll sideways instead of stretching the page. */
+.wiki-editor .ProseMirror .tableWrapper {
+	overflow-x: auto;
+}

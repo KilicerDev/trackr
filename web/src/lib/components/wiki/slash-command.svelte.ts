@@ -142,6 +142,24 @@ const ITEMS: (SlashItem & { run: (args: RunArgs) => void })[] = [
 		run: ({ editor, range }) => editor.chain().focus().deleteRange(range).setHorizontalRule().run()
 	},
 	{
+		id: 'table',
+		section: 'basic',
+		get label() {
+			return m.wiki_slash_table_label();
+		},
+		get hint() {
+			return m.wiki_slash_table_hint();
+		},
+		icon: '▦',
+		run: ({ editor, range }) =>
+			editor
+				.chain()
+				.focus()
+				.deleteRange(range)
+				.insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+				.run()
+	},
+	{
 		id: 'image',
 		section: 'media',
 		get label() {
@@ -187,10 +205,12 @@ export const SlashCommand = Extension.create({
 				startOfLine: false,
 				allowSpaces: false,
 
-				items: ({ query }) => {
+				items: ({ query, editor }) => {
 					const q = query.trim().toLowerCase();
-					if (!q) return ITEMS;
-					return ITEMS.filter(
+					// Only offer node types this editor's schema has (tables).
+					const available = ITEMS.filter((i) => i.id !== 'table' || !!editor.schema.nodes.table);
+					if (!q) return available;
+					return available.filter(
 						(i) => i.label.toLowerCase().includes(q) || i.id.toLowerCase().includes(q)
 					);
 				},

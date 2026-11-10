@@ -4,9 +4,10 @@
 // into a pdfmake document definition and triggers a browser download. The output
 // is a real vector PDF with selectable, searchable text — no headless browser and
 // no rasterization. The mapping below covers the wiki's full schema
-// (see src/lib/collab/extensions.ts): StarterKit nodes/marks + TaskList/TaskItem.
+// (see src/lib/editor/extensions.ts): StarterKit nodes/marks, TaskList/TaskItem
+// and tables.
 
-import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces';
+import type { Content, TableCell, TDocumentDefinitions } from 'pdfmake/interfaces';
 
 // Minimal structural types for the slice of ProseMirror JSON we consume. Kept
 // local so this module stays decoupled from TipTap internals.
@@ -131,6 +132,47 @@ function taskItemContent(item: Node): Content {
 	return row;
 }
 
+/**
+ * Editor table → pdfmake table. Header cells get a shaded fill; colspans map to
+ * pdfmake's colSpan (plus the placeholder cells it expects). Rows shorter than
+ * the widest one (e.g. under a rowspan) are padded so every row has the same
+ * number of cells, which pdfmake requires.
+ */
+function tableContent(table: Node): Content {
+	const rows = (table.content ?? []).filter((r) => r.type === 'tableRow');
+	const body: TableCell[][] = rows.map((row) => {
+		const cells: TableCell[] = [];
+		for (const cell of row.content ?? []) {
+			const span = Math.max(1, Number(cell.attrs?.colspan ?? 1));
+			const header = cell.type === 'tableHeader';
+			cells.push({
+				stack: mapNodes(cell.content),
+				...(span > 1 ? { colSpan: span } : {}),
+				...(header ? { fillColor: '#f2f4f7', bold: true } : {})
+			});
+			for (let i = 1; i < span; i++) cells.push({});
+		}
+		return cells;
+	});
+	const cols = Math.max(1, ...body.map((r) => r.length));
+	const widths: '*'[] = Array.from({ length: cols }, () => '*');
+	for (const r of body) while (r.length < cols) r.push({ text: '' });
+	return {
+		table: { widths, body },
+		layout: {
+			hLineWidth: () => 0.5,
+			vLineWidth: () => 0.5,
+			hLineColor: () => '#d0d7de',
+			vLineColor: () => '#d0d7de',
+			paddingLeft: () => 6,
+			paddingRight: () => 6,
+			paddingTop: () => 4,
+			paddingBottom: () => 0
+		},
+		margin: [0, 2, 0, 10]
+	};
+}
+
 /** Map block-level nodes to pdfmake content. */
 function mapNodes(nodes: Node[] | undefined): Content[] {
 	if (!nodes) return [];
@@ -179,6 +221,9 @@ function mapNodes(nodes: Node[] | undefined): Content[] {
 			case 'taskList':
 				// Plain stack (not a `ul`) so our drawn checkboxes replace bullets.
 				out.push({ stack: (n.content ?? []).map(taskItemContent), margin: [0, 0, 0, 6] });
+				break;
+			case 'table':
+				out.push(tableContent(n));
 				break;
 			case 'horizontalRule':
 				out.push({

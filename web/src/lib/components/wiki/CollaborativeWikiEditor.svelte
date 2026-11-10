@@ -13,6 +13,7 @@
 	import { WikiFileUpload } from './file-upload';
 	import { FileAttachmentWithControls, WikiImageWithControls } from './media-node-views';
 	import { MarkdownPaste } from './markdown-paste';
+	import TableControls from './TableControls.svelte';
 	import { BlockGutter } from './block-gutter';
 	import { ClipboardTaskLists } from './clipboard-tasks';
 	import { NOTE_FILE_EXTENSIONS, type AttachmentEntityType } from '$lib/config/attachments';
@@ -59,7 +60,29 @@
 	}: Props = $props();
 
 	let host: HTMLDivElement | undefined = $state();
-	let editor: Editor | undefined;
+	let wrapper: HTMLDivElement | undefined = $state();
+	let editor: Editor | undefined = $state.raw();
+
+	// Where the table controls sit: just above the table the caret is in, or
+	// null when the selection isn't in a table (or the editor is read-only).
+	let tableBar = $state<{ top: number; left: number } | null>(null);
+	function updateTableBar() {
+		if (!editor || !wrapper || !editor.isEditable) return (tableBar = null);
+		const from = editor.state.selection.$from;
+		let tablePos: number | null = null;
+		for (let d = from.depth; d > 0; d--) {
+			if (from.node(d).type.name === 'table') {
+				tablePos = from.before(d);
+				break;
+			}
+		}
+		if (tablePos === null) return (tableBar = null);
+		const dom = editor.view.nodeDOM(tablePos);
+		if (!(dom instanceof HTMLElement)) return (tableBar = null);
+		const t = dom.getBoundingClientRect();
+		const w = wrapper.getBoundingClientRect();
+		tableBar = { top: Math.max(0, t.top - w.top - 38), left: Math.max(0, t.left - w.left) };
+	}
 	let provider: HocuspocusProvider | undefined;
 	let ydoc: Y.Doc | undefined;
 
@@ -175,7 +198,9 @@
 				MarkdownPaste
 			],
 			onUpdate: ({ editor }) => onUpdate?.(editor),
-			onCreate: ({ editor }) => onReady?.(editor)
+			onCreate: ({ editor }) => onReady?.(editor),
+			onTransaction: () => updateTableBar(),
+			onBlur: () => (tableBar = null)
 		});
 	});
 
@@ -198,4 +223,11 @@
 	});
 </script>
 
-<div bind:this={host} class="wiki-editor"></div>
+<svelte:window onresize={updateTableBar} />
+
+<div bind:this={wrapper} class="relative">
+	<div bind:this={host} class="wiki-editor"></div>
+	{#if editor && tableBar}
+		<TableControls {editor} top={tableBar.top} left={tableBar.left} />
+	{/if}
+</div>

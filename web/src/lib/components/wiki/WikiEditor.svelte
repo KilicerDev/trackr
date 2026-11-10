@@ -4,6 +4,7 @@
 	import StarterKit from '@tiptap/starter-kit';
 	import Placeholder from '@tiptap/extension-placeholder';
 	import { EditorLink, LINK_OPTIONS } from '$lib/editor/link';
+	import { TableKit } from '@tiptap/extension-table';
 	import TaskList from '@tiptap/extension-task-list';
 	import TaskItem from '@tiptap/extension-task-item';
 	import { SlashCommand } from './slash-command.svelte';
@@ -44,6 +45,7 @@
 				EditorLink.configure({ ...LINK_OPTIONS, openOnClick: !editable }),
 				TaskList,
 				TaskItem.configure({ nested: true }),
+				TableKit.configure({ table: { resizable: false } }),
 				SlashCommand
 			],
 			onUpdate: ({ editor }) => {

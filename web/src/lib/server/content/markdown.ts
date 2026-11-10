@@ -149,11 +149,26 @@ function service(): TurndownService {
 	return td;
 }
 
+// Tiptap tables carry editor-only markup the GFM table rule can't take: a
+// <colgroup> before <tbody> (which makes turndown-plugin-gfm treat the header
+// row as not-first and keep the whole table as raw HTML) and a <p> around each
+// cell's text (which would put newlines inside a markdown row). Strip both;
+// multi-paragraph cells are joined with a space so the row stays one line.
+function flattenEditorTables(html: string): string {
+	if (!html.includes('<table')) return html;
+	return html
+		.replace(/<colgroup>[\s\S]*?<\/colgroup>/g, '')
+		.replace(/(<t[hd]\b[^>]*>)([\s\S]*?)(<\/t[hd]>)/g, (_m, open, inner: string, close) => {
+			const flat = inner.replace(/<\/p>\s*<p(\s[^>]*)?>/g, ' ').replace(/<p(\s[^>]*)?>|<\/p>/g, '');
+			return `${open}${flat}${close}`;
+		});
+}
+
 /** Convert stored document HTML back to GFM markdown. Images keep their src. */
 export function docHtmlToMarkdown(html: string): string {
 	if (!html || !html.trim()) return '';
 	return service()
-		.turndown(html)
+		.turndown(flattenEditorTables(html))
 		.replace(/\n{3,}/g, '\n\n')
 		.trim();
 }

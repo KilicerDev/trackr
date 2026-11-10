@@ -14,6 +14,7 @@ import { EditorLink, LINK_OPTIONS } from './link';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Image from '@tiptap/extension-image';
+import { TableKit } from '@tiptap/extension-table';
 import { Node, type Extensions } from '@tiptap/core';
 import { formatBytes } from '$lib/config/attachments';
 
@@ -87,6 +88,10 @@ export const collabSchemaExtensions: Extensions = [
 	EditorLink.configure({ ...LINK_OPTIONS, openOnClick: false }),
 	TaskList,
 	TaskItem.configure({ nested: true }),
+	// Tables (table, tableRow, tableHeader, tableCell). Not resizable: column
+	// widths would be per-viewer pixel values in the shared doc, and the resize
+	// node view is DOM-only, which the server-side transformer can't load.
+	TableKit.configure({ table: { resizable: false } }),
 	// Image *node* only. Embedded images reference a stable /api/attachments/<id>
 	// URL (uploaded via the client-only WikiImageUpload extension); base64 data
 	// URIs are disallowed to keep the CRDT and derived HTML small.
