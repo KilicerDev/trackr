@@ -2,11 +2,13 @@
 //  StatusDot.swift
 //  trackr-mobile-ios
 //
-//  Web parity (components/StatusDot.svelte) with the prototype's glyphs:
-//  dashed ring (backlog), ring (todo), half pie (in progress), ring with a
-//  pause bar (paused), three-quarter pie (in review), filled dot with a
-//  check (done), the xmark.circle symbol (cancelled). Colors come from the
-//  taxonomy.
+//  Task status marker: one SF Symbol per status in the status colour, the
+//  native counterpart of the web's lucide icons (components/StatusDot.svelte)
+//  — no hand-drawn shapes.
+//    backlog → circle.dashed            todo → circle
+//    in progress → circle.lefthalf.filled   paused → pause.circle
+//    in review → smallcircle.filled.circle  done → checkmark.circle
+//    cancelled → xmark.circle
 //
 
 import SwiftUI
@@ -15,74 +17,26 @@ struct StatusDot: View {
     let status: TaskStatus
     var size: CGFloat = 16
 
-    private var lineWidth: CGFloat { max(1.4, size * 0.1) }
+    private var symbol: String {
+        switch status {
+        case .backlog: "circle.dashed"
+        case .todo: "circle"
+        case .inProgress: "circle.lefthalf.filled"
+        case .paused: "pause.circle"
+        case .inReview: "smallcircle.filled.circle"
+        case .done: "checkmark.circle"
+        case .cancelled: "xmark.circle"
+        }
+    }
 
     var body: some View {
-        ZStack {
-            switch status {
-            case .backlog:
-                ring(dash: [2, 2])
-            case .todo:
-                ring()
-            case .inProgress:
-                ring()
-                pie(fraction: 0.5)
-            case .paused:
-                ring()
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(status.color)
-                    .frame(width: size * 0.4, height: lineWidth)
-            case .inReview:
-                ring()
-                pie(fraction: 0.75)
-            case .done:
-                Circle().fill(status.color)
-                Image(systemName: "checkmark")
-                    .font(.system(size: size * 0.45, weight: .bold))
-                    .foregroundStyle(TK.bg)
-            case .cancelled:
-                // System symbol (like the web's lucide circle-x), not a drawn
-                // ring + capsule.
-                Image(systemName: "xmark.circle")
-                    .resizable()
-                    .scaledToFit()
-                    .fontWeight(.semibold)
-                    .foregroundStyle(status.color)
-            }
-        }
-        .frame(width: size, height: size)
-        .accessibilityLabel(status.label)
-    }
-
-    private func ring(dash: [CGFloat] = []) -> some View {
-        Circle()
-            .strokeBorder(status.color, style: StrokeStyle(lineWidth: lineWidth, dash: dash))
-    }
-
-    private func pie(fraction: Double) -> some View {
-        PieSlice(fraction: fraction)
-            .fill(status.color)
-            .padding(lineWidth + 1.5)
-    }
-}
-
-/// Filled pie wedge starting at 12 o'clock, like the web's conic-gradient.
-private struct PieSlice: Shape {
-    let fraction: Double
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        path.move(to: center)
-        path.addArc(
-            center: center,
-            radius: min(rect.width, rect.height) / 2,
-            startAngle: .degrees(-90),
-            endAngle: .degrees(-90 + 360 * fraction),
-            clockwise: false
-        )
-        path.closeSubpath()
-        return path
+        Image(systemName: symbol)
+            .resizable()
+            .scaledToFit()
+            .fontWeight(.medium)
+            .foregroundStyle(status.color)
+            .frame(width: size, height: size)
+            .accessibilityLabel(status.label)
     }
 }
 
