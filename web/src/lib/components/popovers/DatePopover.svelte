@@ -155,14 +155,18 @@
 		{#each cells as c, i (i)}
 			{@const isToday = sameDay(c.date, today)}
 			{@const isVal = valueDate && sameDay(c.date, valueDate)}
+			<!-- The picked day is the strongest mark (solid accent), today a soft
+			     tint; when today is the picked day it reads as picked. -->
 			<button
 				type="button"
 				onclick={() => pick(c.date)}
+				aria-pressed={!!isVal}
 				class="grid aspect-square place-items-center rounded-md font-mono text-[13px] transition-colors
-				{c.current ? 'text-text-2' : 'text-text-4'}
-				{isVal ? 'border border-accent text-accent' : ''}
-				{isToday && !isVal ? 'bg-accent-soft font-medium text-accent' : ''}
-				hover:bg-surface-2"
+				{isVal
+					? 'bg-accent font-medium text-white hover:bg-accent-strong'
+					: isToday
+						? 'bg-accent-soft font-medium text-accent hover:bg-surface-2'
+						: `${c.current ? 'text-text-2' : 'text-text-4'} hover:bg-surface-2`}"
 			>
 				{c.date.getDate()}
 			</button>
