@@ -21,6 +21,7 @@
 		type DayEntry
 	} from '$lib/utils/week';
 	import { formatDateShort } from '$lib/utils/format';
+	import { ICON_ACTION } from '$lib/components/tasks/panel/styles';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -501,32 +502,57 @@
 					{@const isCollapsed = collapsed.has(i)}
 					{@const pct = Math.min(100, (mins / CAPACITY) * 100)}
 					{@const over = mins > CAPACITY}
+					{@const empty = entries.length === 0}
 					<section>
-						<button
-							type="button"
-							onclick={() => toggle(i)}
-							class="sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-y border-border bg-surface pr-3 pl-4 text-left sm:pl-5"
+						<!-- Day header: one sticky band per day. The + opens the quick
+						     composer right under it; there is no add row per day and
+						     no project sub-headers (rows carry their project). -->
+						<div
+							class="group/day sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-b border-border bg-bg-elev pr-3 pl-4 sm:pl-5"
 						>
-							<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
-								<Icon name="chevron" size={13} />
-							</span>
-							<span
-								class="text-[14px] font-semibold {isToday
-									? 'text-accent'
-									: isWeekend
-										? 'text-text-2'
-										: 'text-text'}">{WEEK_DAY_LABELS[i]()}</span
+							<button
+								type="button"
+								onclick={() => toggle(i)}
+								aria-expanded={!isCollapsed}
+								class="flex h-full min-w-0 flex-1 items-center gap-2.5 text-left"
 							>
-							<span class="font-mono text-[13px] text-text-4">{dayLabels[i].dayOfMonth}</span>
-							{#if isToday}
+								<span class="text-text-4 transition-transform {isCollapsed ? '-rotate-90' : ''}">
+									<Icon name="chevron" size={13} />
+								</span>
 								<span
-									class="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium tracking-[0.06em] text-accent uppercase"
-									>{m.common_today()}</span
+									class="text-[14px] font-medium {isToday
+										? 'text-accent'
+										: empty || isWeekend
+											? 'text-text-3'
+											: 'text-text'}">{WEEK_DAY_LABELS[i]()}</span
 								>
-							{/if}
-							<span class="font-mono text-[12px] text-text-3">{entries.length}</span>
-							<div class="ml-auto flex items-center gap-2.5">
-								<div class="h-1 w-16 overflow-hidden rounded-full bg-bg-elev sm:w-28">
+								<span class="font-mono text-[12px] text-text-4"
+									>{formatDateShort(data.weekDates[i])}</span
+								>
+								{#if isToday}
+									<span
+										class="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent"
+										>{m.common_today()}</span
+									>
+								{/if}
+								{#if !empty}
+									<span class="font-mono text-[12px] text-text-4">· {entries.length}</span>
+								{/if}
+							</button>
+							<button
+								type="button"
+								aria-label={m.week_add_task()}
+								title={m.week_add_task()}
+								onclick={() => (composerDay = composerDay === i ? null : i)}
+								class="{ICON_ACTION} opacity-0 group-hover/day:opacity-100 focus-visible:opacity-100 {composerDay ===
+								i
+									? 'opacity-100'
+									: ''}"
+							>
+								<Icon name="plus" size={14} />
+							</button>
+							<div class="flex items-center gap-2.5">
+								<div class="h-1 w-16 overflow-hidden rounded-full bg-surface-2 sm:w-28">
 									<div
 										class="h-full"
 										style:width="{pct}%"
@@ -541,48 +567,9 @@
 									{fmtMins(mins)}
 								</span>
 							</div>
-						</button>
-						{#if !isCollapsed}
+						</div>
+						{#if !isCollapsed && (!empty || composerDay === i)}
 							<div transition:slide={{ duration: 180, easing: cubicOut }}>
-								{#each dayProjectGroups(entries).filter( (g) => g.tasks.some( (e) => visibleTask(e.task) ) ) as g (g.key)}
-									{@const href = projectHref(g.key)}
-									{@const visible = g.tasks.filter((e) => visibleTask(e.task))}
-									{@const hiddenByFilter = g.tasks.length - visible.length}
-									<div
-										class="flex h-8 items-center gap-2 border-b border-border/60 bg-surface/40 pr-4 pl-5 sm:pr-5"
-									>
-										<span class="h-2 w-2 shrink-0 rounded-full" style:background={g.color}></span>
-										{#if href}
-											<a
-												{href}
-												class="truncate text-[13px] font-medium text-text-2 hover:text-text hover:underline"
-												>{g.name}</a
-											>
-										{:else}
-											<span class="truncate text-[13px] font-medium text-text-2">{g.name}</span>
-										{/if}
-										<span class="font-mono text-[11px] text-text-4">{visible.length}</span>
-										{#if hiddenByFilter > 0}
-											<span class="text-[11px] text-text-4"
-												>· {m.week_filtered_hidden({ n: hiddenByFilter })}</span
-											>
-										{/if}
-										<span class="ml-auto font-mono text-[11px] text-text-4"
-											>{fmtMins(entryMinutes(g.tasks))}</span
-										>
-									</div>
-									{#each visible as e (e.task.id)}
-										<TaskRow
-											task={e.task}
-											selected={selectedId === e.task.id}
-											showPlanned={false}
-											showTime
-											minutes={e.minutes}
-											dayNote={dayNote(e)}
-											onclick={() => openFromDay(e.task, data.weekDates[i] ?? null)}
-										/>
-									{/each}
-								{/each}
 								{#if composerDay === i}
 									<SmartComposer
 										users={data.users}
@@ -594,16 +581,23 @@
 										oncancel={() => (composerDay = null)}
 										onexpand={expandComposer}
 									/>
-								{:else}
-									<button
-										type="button"
-										onclick={() => (composerDay = i)}
-										class="flex h-9 w-full items-center gap-1.5 border-b border-border/60 px-4 text-left text-[13px] text-text-3 transition-colors hover:bg-surface hover:text-text sm:px-5"
-									>
-										<Icon name="plus" size={13} />
-										{m.week_add_task()}
-									</button>
 								{/if}
+								<!-- Rows stay ordered by project; the project shows in
+								     each row instead of a sub-header. -->
+								{#each dayProjectGroups(entries) as g (g.key)}
+									{#each g.tasks.filter((e) => visibleTask(e.task)) as e (e.task.id)}
+										<TaskRow
+											task={e.task}
+											selected={selectedId === e.task.id}
+											showPlanned={false}
+											showProject
+											showTime
+											minutes={e.minutes}
+											dayNote={dayNote(e)}
+											onclick={() => openFromDay(e.task, data.weekDates[i] ?? null)}
+										/>
+									{/each}
+								{/each}
 							</div>
 						{/if}
 					</section>
@@ -612,7 +606,7 @@
 
 			<section class="pb-6">
 				<div
-					class="sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-y border-border bg-surface pr-3 pl-4 sm:pl-5"
+					class="sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-b border-border bg-bg-elev pr-3 pl-4 sm:pl-5"
 				>
 					<button
 						type="button"
@@ -624,8 +618,8 @@
 						>
 							<Icon name="chevron" size={13} />
 						</span>
-						<span class="text-[14px] font-semibold text-text">{m.week_unscheduled()}</span>
-						<span class="font-mono text-[12px] text-text-3">{unscheduled.length}</span>
+						<span class="text-[14px] font-medium text-text">{m.week_unscheduled()}</span>
+						<span class="font-mono text-[12px] text-text-4">· {unscheduled.length}</span>
 					</button>
 					{@render unscheduledTabs()}
 				</div>
@@ -635,6 +629,7 @@
 							<TaskRow
 								task={t}
 								selected={selectedId === t.id}
+								showProject
 								showTime
 								onclick={() => openFromDay(t, null)}
 							/>

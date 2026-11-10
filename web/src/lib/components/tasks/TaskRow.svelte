@@ -9,7 +9,7 @@
 	import { labelMeta } from '$lib/utils/label-meta';
 	import { formatDateShort, formatEstimate, dueCountdown } from '$lib/utils/format';
 	import { loggedMinutes } from '$lib/utils/task';
-	import { resolveUser } from '$lib/stores/lookup.svelte';
+	import { resolveProject, resolveUser } from '$lib/stores/lookup.svelte';
 	import { priorityLabel, statusLabel, typeLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 
@@ -31,6 +31,9 @@
 		 * worked on it that day). `label` is the ready-to-show text.
 		 */
 		dayNote?: { kind: 'carried' | 'chunk'; label: string };
+		/** Show the project (dot + name) after the title — My Week, where rows
+		 *  from several projects share a day. */
+		showProject?: boolean;
 	}
 	let {
 		task,
@@ -39,8 +42,10 @@
 		showPlanned = true,
 		showTime = false,
 		minutes,
-		dayNote
+		dayNote,
+		showProject = false
 	}: Props = $props();
+	let project = $derived(showProject ? resolveProject(task.project) : undefined);
 
 	let prio = $derived(TRACKR_PRIORITIES.find((p) => p.id === task.priority)!);
 	let type = $derived(TRACKR_TYPES.find((t) => t.id === (task.type ?? 'task')) ?? TRACKR_TYPES[0]);
@@ -108,6 +113,16 @@
 			<Icon name={type.icon} size={13} stroke={2} />
 		</span>
 		<span class="truncate text-[14px] text-text">{task.title}</span>
+		{#if showProject}
+			<span
+				class="hidden shrink-0 items-center gap-1 text-[12px] text-text-3 md:inline-flex"
+				title={project?.name ?? task.project}
+			>
+				<span class="h-1.5 w-1.5 rounded-full" style:background={project?.color ?? 'var(--text-4)'}
+				></span>
+				<span class="max-w-[140px] truncate">{project?.name ?? task.project}</span>
+			</span>
+		{/if}
 		{#if showPlanned && (task.plannedFor || task.inMyPlan)}
 			<span
 				class="inline-flex shrink-0 items-center gap-1 text-[12px] text-accent"
