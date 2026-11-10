@@ -4,7 +4,6 @@ import { env } from '$env/dynamic/private';
 import { building } from '$app/environment';
 import { auth } from '$lib/server/auth';
 import { looksLikeApiKey, resolveApiKey } from '$lib/server/api-keys';
-import { svelteKitHandler } from 'better-auth/svelte-kit';
 import { can, deriveIsAdmin, loadMemberships } from '$lib/server/permissions';
 import { adminRoutePermission, SUPERADMIN_REQUIRED_MESSAGE } from '$lib/server/admin-routes';
 import { getPreferences, PREF_DEFAULTS } from '$lib/server/preferences';
@@ -111,9 +110,23 @@ async function loadActorContext(event: Parameters<Handle>[0]['event'], userId: s
 	event.locals.preferences = preferences;
 }
 
+// Dispatch /api/auth/* to better-auth by pathname. better-auth's own
+// `svelteKitHandler` additionally requires `event.url.origin` to equal the
+// configured `baseURL` (ORIGIN) — which fails behind any TLS-terminating
+// proxy whose upstream is plain http, e.g. vite under `skali dev` (the
+// gateway serves https, vite sees http), where every auth route turned into
+// a 404. In production adapter-node pins `event.url` to ORIGIN, so the two
+// checks were equivalent there; matching the path alone is what we mean.
+const AUTH_BASE_PATH = '/api/auth/';
+const handleAuthRoutes: Handle = ({ event, resolve }) => {
+	if (building) return resolve(event);
+	if (event.url.pathname.startsWith(AUTH_BASE_PATH)) return auth.handler(event.request);
+	return resolve(event);
+};
+
 const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	if (await resolveApiKeyAuth(event)) {
-		return svelteKitHandler({ event, resolve, auth, building });
+		return handleAuthRoutes({ event, resolve });
 	}
 
 	const session = await auth.api.getSession({ headers: event.request.headers });
@@ -130,7 +143,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 	// operation in the app runs server-side through `auth.api.*` from a form
 	// action that enforces the role hierarchy. Over HTTP the plugin would only
 	// check `hasPermission(role)`, so any admin could act on a superadmin.
-	// This has to live here: svelteKitHandler answers /api/auth/* itself and
+	// This has to live here: handleAuthRoutes answers /api/auth/* itself and
 	// never calls resolve(), so later handles (handleAdminGuard) don't run.
 	if (event.url.pathname.startsWith('/api/auth/admin/')) {
 		void recordAudit(
@@ -148,7 +161,7 @@ const handleBetterAuth: Handle = async ({ event, resolve }) => {
 		);
 	}
 
-	return svelteKitHandler({ event, resolve, auth, building });
+	return handleAuthRoutes({ event, resolve });
 };
 
 // Method-agnostic /admin gate (page routes + their form actions; the
