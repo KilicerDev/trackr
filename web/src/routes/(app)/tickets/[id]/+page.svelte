@@ -965,18 +965,23 @@
 			</div>
 		{/if}
 
-		<!-- Meta, one muted line. -->
-		<div class="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-text-4">
-			<span>{m.tickets_meta_channel()} {ticketChannelLabel(t.channel)}</span>
-			<span>{m.tickets_meta_created()} {fmtDate(t.createdAt)}</span>
-			<span>{m.tickets_meta_first_response()} {fmtDate(t.firstResponseAt)}</span>
+		<!-- Meta: muted label / value pairs, stacked. -->
+		<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[12px] leading-5">
+			<dt class="text-text-4">{m.tickets_meta_channel()}</dt>
+			<dd class="text-text-3">{ticketChannelLabel(t.channel)}</dd>
+			<dt class="text-text-4">{m.tickets_meta_created()}</dt>
+			<dd class="text-text-3">{fmtDate(t.createdAt)}</dd>
+			<dt class="text-text-4">{m.tickets_meta_first_response()}</dt>
+			<dd class="text-text-3">{fmtDate(t.firstResponseAt)}</dd>
 			{#if t.resolvedAt}
-				<span>{m.tickets_meta_resolved()} {fmtDate(t.resolvedAt)}</span>
+				<dt class="text-text-4">{m.tickets_meta_resolved()}</dt>
+				<dd class="text-text-3">{fmtDate(t.resolvedAt)}</dd>
 			{/if}
 			{#if t.satisfactionScore != null}
-				<span>{m.tickets_meta_csat()} {t.satisfactionScore}/5</span>
+				<dt class="text-text-4">{m.tickets_meta_csat()}</dt>
+				<dd class="text-text-3">{t.satisfactionScore}/5</dd>
 			{/if}
-		</div>
+		</dl>
 	</div>
 {/snippet}
 
