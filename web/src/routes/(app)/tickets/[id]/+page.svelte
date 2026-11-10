@@ -497,7 +497,7 @@
 				</div>
 
 				<!-- Conversation -->
-				<div class="mt-8 space-y-4">
+				<div class="mt-8 space-y-6">
 					{#each items as item (item.id)}
 						{#if item.kind === 'run'}
 							{@const folded = item.events.length >= FOLD_AT && !openRuns.includes(item.id)}
@@ -539,56 +539,62 @@
 							<!-- A message card: the opening (with the description) or a
 							     reply. Team replies carry a "Team" tag; internal notes stay
 							     amber. -->
-							<article
-								class="rounded-xl border px-4 py-3.5 {isNote
-									? 'border-[#e9c46a]/30 bg-[#e9c46a]/[0.06]'
-									: 'border-border bg-surface/40'}"
-							>
-								<header class="flex min-w-0 items-center gap-2.5 text-[13px]">
-									{#if u}
-										<Avatar user={u} size={28} />
-									{:else}
-										<span class="h-7 w-7 shrink-0 rounded-full bg-surface-2"></span>
-									{/if}
-									<span class="truncate font-medium text-text"
-										>{u?.name ?? m.tickets_unknown_user()}</span
-									>
-									{#if isTeam(item.userId)}
-										<span
-											class="rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] leading-none text-text-3"
-											>{m.tickets_team_tag()}</span
-										>
-									{/if}
-									{#if item.kind === 'created'}
-										<span class="text-text-3">{m.tickets_opened_this()}</span>
-									{:else if isNote}
-										<span class="text-[#e9c46a]">{m.tickets_internal_note()}</span>
-									{/if}
-									<span class="ml-auto shrink-0 text-[12px] text-text-4">{relTime(item.at)}</span>
-								</header>
-								{#if item.kind === 'created'}
-									{#if t.description}
-										<div
-											class="mt-2.5 pl-[38px] text-[14px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-text"
-										>
-											<MentionText text={t.description} flavor="document" />
-										</div>
-									{/if}
+							<!-- A message: no box — avatar, then name and time with the text
+							     under it, like the task activity. Team replies carry a
+							     "Team" tag; internal notes get an amber rule. -->
+							<article class="flex gap-3">
+								{#if u}
+									<Avatar user={u} size={28} />
 								{:else}
-									<div
-										class="mt-2.5 pl-[38px] text-[14px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-text"
-									>
-										<MentionText text={item.body} />
-									</div>
-									{#if data.messageAttachments[item.id]?.length}
-										<div class="mt-3 pl-[38px]">
-											<AttachmentList
-												attachments={data.messageAttachments[item.id]}
-												canDelete={isAgent}
-											/>
-										</div>
-									{/if}
+									<span class="h-7 w-7 shrink-0 rounded-full bg-surface-2"></span>
 								{/if}
+								<div
+									class="min-w-0 flex-1 {isNote
+										? '-my-1 rounded-r-lg border-l-2 border-[#e9c46a]/60 bg-[#e9c46a]/[0.05] py-1 pr-3 pl-3'
+										: ''}"
+								>
+									<header class="flex h-7 min-w-0 items-center gap-2 text-[13px] leading-none">
+										<span class="truncate font-medium text-text"
+											>{u?.name ?? m.tickets_unknown_user()}</span
+										>
+										{#if isTeam(item.userId)}
+											<span
+												class="rounded-md bg-surface-2 px-1.5 py-1 text-[11px] leading-none text-text-3"
+												>{m.tickets_team_tag()}</span
+											>
+										{/if}
+										{#if item.kind === 'created'}
+											<span class="text-text-3">{m.tickets_opened_this()}</span>
+										{:else if isNote}
+											<span class="text-[#e9c46a]">{m.tickets_internal_note()}</span>
+										{/if}
+										<span class="ml-auto shrink-0 text-[12px] text-text-4">{relTime(item.at)}</span>
+									</header>
+									{#if item.kind === 'created'}
+										{#if t.description}
+											<div
+												class="mt-1 text-[14px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-text"
+											>
+												<MentionText text={t.description} flavor="document" />
+											</div>
+										{/if}
+									{:else}
+										<div
+											class="mt-1 text-[14px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-text"
+										>
+											<MentionText text={item.body} />
+										</div>
+										{#if data.messageAttachments[item.id]?.length}
+											<div class="mt-2.5">
+												<AttachmentList
+													variant="chips"
+													attachments={data.messageAttachments[item.id]}
+													canDelete={isAgent}
+												/>
+											</div>
+										{/if}
+									{/if}
+								</div>
 							</article>
 						{/if}
 					{/each}

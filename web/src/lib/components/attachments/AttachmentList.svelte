@@ -16,6 +16,8 @@
 		ondeleted?: (id: string) => void;
 		/** The row's main link downloads the file instead of opening it inline. */
 		downloadOnly?: boolean;
+		/** `chips`: compact pills that wrap (files under a message). */
+		variant?: 'list' | 'chips';
 	}
 
 	let {
@@ -23,7 +25,8 @@
 		canDelete = false,
 		currentUserId = null,
 		ondeleted,
-		downloadOnly = false
+		downloadOnly = false,
+		variant = 'list'
 	}: Props = $props();
 
 	let deleting = $state<string | null>(null);
@@ -57,7 +60,63 @@
 	}
 </script>
 
-{#if attachments.length}
+{#if attachments.length && variant === 'chips'}
+	<ul class="flex flex-wrap gap-1.5">
+		{#each attachments as att (att.id)}
+			<li
+				class="group relative flex h-9 max-w-[280px] min-w-0 items-center gap-2 rounded-lg border border-border bg-surface pr-1 pl-1.5 transition-colors hover:border-border-strong hover:bg-surface-2"
+			>
+				{#if att.hasThumbnail}
+					<img
+						src={`/api/attachments/${att.id}?thumb`}
+						alt=""
+						loading="lazy"
+						class="h-6 w-6 shrink-0 rounded-md border border-border object-cover"
+					/>
+				{:else}
+					<span
+						class="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-surface-2 text-text-3"
+					>
+						<Icon name="file" size={13} />
+					</span>
+				{/if}
+				<!-- Stretched link: the whole chip opens the file; the actions sit above it. -->
+				<a
+					href={downloadOnly ? `/api/attachments/${att.id}/download` : `/api/attachments/${att.id}`}
+					target={downloadOnly ? undefined : '_blank'}
+					rel="noopener"
+					title={att.filename}
+					class="min-w-0 truncate text-[13px] leading-none text-text after:absolute after:inset-0 after:rounded-lg"
+				>
+					{att.filename}
+				</a>
+				<span class="shrink-0 text-[12px] leading-none text-text-4"
+					>{formatBytes(att.sizeBytes)}</span
+				>
+				<a
+					href={`/api/attachments/${att.id}/download`}
+					class="relative grid h-6 w-6 shrink-0 place-items-center rounded-md text-text-3 transition-colors hover:bg-border hover:text-text"
+					aria-label={m.attach_download({ filename: att.filename })}
+					title={m.attach_download({ filename: att.filename })}
+				>
+					<Icon name="download" size={13} />
+				</a>
+				{#if deletable(att)}
+					<button
+						type="button"
+						disabled={deleting === att.id}
+						onclick={() => remove(att)}
+						aria-label={m.attach_delete_file({ filename: att.filename })}
+						title={m.attach_delete_file({ filename: att.filename })}
+						class="relative -ml-1 grid h-6 w-6 shrink-0 place-items-center rounded-md text-text-3 transition-colors hover:bg-border hover:text-red-500 disabled:opacity-50"
+					>
+						<Icon name="trash" size={13} />
+					</button>
+				{/if}
+			</li>
+		{/each}
+	</ul>
+{:else if attachments.length}
 	<ul class="flex flex-col gap-1.5">
 		{#each attachments as att (att.id)}
 			<li
