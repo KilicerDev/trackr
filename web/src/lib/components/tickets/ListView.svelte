@@ -182,6 +182,17 @@
 							>
 							<span class="flex min-w-0 items-center gap-2.5">
 								<span class="truncate text-[14px] text-text">{t.subject}</span>
+								{#if sla && sla.tone === 'wait'}
+									<!-- Unanswered: right behind the subject, so it reads as
+									     part of the ticket, not as a column value. -->
+									<span
+										class="inline-flex shrink-0 items-center gap-1 rounded-md bg-accent-soft px-1.5 py-1 text-[12px] leading-none text-accent"
+										title={sla.label}
+									>
+										<span class="h-1.5 w-1.5 rounded-full" style:background={sla.dot}></span>
+										{sla.label}
+									</span>
+								{/if}
 								{#if group !== 'org'}
 									<span
 										class="hidden shrink-0 items-center gap-1 text-[12px] leading-none text-text-3 md:inline-flex"
@@ -212,16 +223,9 @@
 							<span class="hidden items-center md:flex" title={priorityLabel(t.priority)}>
 								<PriorityBars priority={t.priority} />
 							</span>
-							<!-- Activity: an unanswered ticket says so in accent; otherwise
-							     when it last moved. -->
-							<span class="truncate text-right text-[12px]">
-								{#if sla && sla.tone === 'wait'}
-									<span class="text-accent" title={sla.label}>{sla.label}</span>
-								{:else}
-									<span class="text-text-4" title={sla?.label}
-										>{relTime(t.lastMessageAt ?? t.updatedAt)}</span
-									>
-								{/if}
+							<!-- Activity: when the ticket last moved. -->
+							<span class="truncate text-right text-[12px] text-text-4" title={sla?.label}>
+								{relTime(t.lastMessageAt ?? t.updatedAt)}
 							</span>
 							<span class="flex justify-end">
 								{#if assignees.length}
