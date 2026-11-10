@@ -10,7 +10,7 @@
 	let { label, children }: Props = $props();
 </script>
 
-<div class="grid min-h-9 grid-cols-[112px_minmax(0,1fr)] items-center gap-3">
+<div class="grid min-h-8 grid-cols-[96px_minmax(0,1fr)] items-center gap-3">
 	<span class="text-[13px] text-text-3">{label}</span>
 	<div class="relative min-w-0">{@render children()}</div>
 </div>

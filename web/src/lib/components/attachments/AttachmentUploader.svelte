@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { SECTION_ACTION } from '../tasks/panel/styles';
+	import { ICON_ACTION, QUIET_ADD } from '../tasks/panel/styles';
 	import { invalidateAll } from '$app/navigation';
 	import Icon from '../Icon.svelte';
 	import AttachmentDropzone from './AttachmentDropzone.svelte';
@@ -25,8 +25,11 @@
 		 * server re-validates regardless.
 		 */
 		accept?: string;
-		/** `section`: the task panel's "+ …" section action style. */
-		variant?: 'default' | 'section';
+		/**
+		 * Task panel styles: `icon` is the section header's "+" button, `quiet`
+		 * the borderless "+ File" link of the empty-sections row.
+		 */
+		variant?: 'default' | 'icon' | 'quiet';
 	}
 
 	let {
@@ -97,16 +100,22 @@
 		type="button"
 		disabled={uploading}
 		onclick={() => input?.click()}
-		class={variant === 'section'
-			? SECTION_ACTION
-			: 'inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border bg-surface px-2.5 py-1.5 text-[14px] text-text-2 transition-colors hover:border-border-strong hover:text-text disabled:opacity-60'}
+		aria-label={label}
+		title={variant === 'icon' ? label : undefined}
+		class={variant === 'icon'
+			? ICON_ACTION
+			: variant === 'quiet'
+				? QUIET_ADD
+				: 'inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border bg-surface px-2.5 py-1.5 text-[14px] text-text-2 transition-colors hover:border-border-strong hover:text-text disabled:opacity-60'}
 	>
 		<Icon
-			name={uploading ? 'refresh' : variant === 'section' ? 'plus' : 'paperclip'}
-			size={variant === 'section' ? 13 : 14}
+			name={uploading ? 'refresh' : variant === 'default' ? 'paperclip' : 'plus'}
+			size={variant === 'default' ? 14 : variant === 'icon' ? 14 : 13}
 			class={uploading ? 'animate-spin' : ''}
 		/>
-		<span>{uploading ? m.attach_uploading() : label}</span>
+		{#if variant !== 'icon'}
+			<span>{uploading ? m.attach_uploading() : label}</span>
+		{/if}
 	</button>
 	<input bind:this={input} type="file" multiple hidden {accept} onchange={onPick} />
 {/snippet}

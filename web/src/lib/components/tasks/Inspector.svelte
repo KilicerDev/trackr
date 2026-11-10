@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { invalidate } from '$app/navigation';
-	import { isClosedStatus } from '$lib/utils/task';
+	import { isClosedStatus, loggedMinutes } from '$lib/utils/task';
 	import { deserialize } from '$app/forms';
 	import { page } from '$app/state';
 	import { untrack } from 'svelte';
@@ -21,11 +21,11 @@
 	import RichTextInput from '../RichTextInput.svelte';
 	import Checklist from '../Checklist.svelte';
 	import TypeBadge from '../TypeBadge.svelte';
-	import TaskTimeCard from './panel/TaskTimeCard.svelte';
+	import TimeLogger from './TimeLogger.svelte';
 	import SectionHeader from './panel/SectionHeader.svelte';
 	import PropertyRow from './panel/PropertyRow.svelte';
-	import { CHIP, CHIP_INTERACTIVE, OPEN_RING, ROW_CARD, SECTION_ACTION } from './panel/styles';
-	import { linkedItems, type LinkedKind } from '$lib/utils/task-panel';
+	import { ICON_ACTION, OPEN, PROP_VALUE, QUIET_ADD, ROW, TAG } from './panel/styles';
+	import { linkedItems, timeSummary, type LinkedKind } from '$lib/utils/task-panel';
 	import { labelMeta } from '$lib/utils/label-meta';
 	import AttachmentList from '../attachments/AttachmentList.svelte';
 	import AttachmentUploader from '../attachments/AttachmentUploader.svelte';
@@ -42,7 +42,7 @@
 	import DependencyPopover from '../popovers/DependencyPopover.svelte';
 	import TaskMenuPopover from '../popovers/TaskMenuPopover.svelte';
 	import NewMeetingDialog from '../notes/NewMeetingDialog.svelte';
-	import { TRACKR_PRIORITIES, TRACKR_STATUSES, TRACKR_TYPES } from '$lib/config/taxonomy';
+	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/config/taxonomy';
 	import { dueCountdown, formatDateLong, formatEstimate } from '$lib/utils/format';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
 	import { taskChannelLabel, statusLabel, priorityLabel, typeLabel } from '$lib/utils/labels';
@@ -447,10 +447,6 @@
 		const d = draft;
 		return d ? TRACKR_PRIORITIES.find((p) => p.id === d.priority)! : null;
 	});
-	let taskType = $derived.by(() => {
-		const d = draft;
-		return d ? TRACKR_TYPES.find((t) => t.id === (d.type ?? 'task'))! : null;
-	});
 	let assigneeIds = $derived.by(() => {
 		const d = draft;
 		return d ? (d.assignees ?? [d.assignee]) : [];
@@ -461,8 +457,9 @@
 		return d ? resolveProject(d.project) : null;
 	});
 
-	// Due countdown chip: only while the task is open and the date is near or past.
-	const dueChip = $derived.by(() => {
+	// Countdown next to the due date, only while the task is open and the
+	// date is near or past ("3 days left", "Overdue · 15 days").
+	const dueHint = $derived.by(() => {
 		const d = draft;
 		if (!d?.due || isClosedStatus(d.status)) return null;
 		const c = dueCountdown(d.due);
@@ -474,20 +471,31 @@
 			label: n === 1 ? m.tasks_panel_overdue_one() : m.tasks_panel_overdue_days({ n })
 		};
 	});
-	const DUE_CHIP: Record<string, string> = {
-		overdue: 'bg-[#ef4f5e]/15 text-[#ef4f5e]',
-		urgent: 'bg-accent-soft text-accent',
-		soon: 'bg-[#d8a24a]/15 text-[#d8a24a]'
-	};
 	const DUE_TEXT: Record<string, string> = {
 		overdue: 'text-[#ef4f5e]',
 		urgent: 'text-accent',
-		soon: 'text-[#d8a24a]',
-		normal: ''
+		soon: 'text-[#d8a24a]'
 	};
-	// Property values: quiet until hovered, so the list reads like a summary.
-	const PROP_VALUE =
-		'inline-flex max-w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-[14px] text-text transition-colors hover:bg-surface disabled:cursor-default disabled:hover:bg-transparent';
+
+	// Logged time vs the estimate (entries win over the aggregate while the
+	// panel has them: they're patched locally right after a log).
+	const time = $derived.by(() => {
+		const d = draft;
+		if (!d) return timeSummary(0, null);
+		const logged = d.timeLogs?.length
+			? d.timeLogs.reduce((sum, t) => sum + t.minutes, 0)
+			: loggedMinutes(d);
+		return timeSummary(logged, d.estimate);
+	});
+	const formatLogged = (mins: number) => (mins > 0 ? formatEstimate(mins) : '0m');
+	let logOpen = $state(false);
+	// The checklist section appears once it has items, or when asked for.
+	let checklistOpen = $state(false);
+	$effect(() => {
+		void draft?.id;
+		checklistOpen = false;
+		logOpen = false;
+	});
 
 	// Prerequisites, dependents, source ticket and parent in one "Linked" list.
 	const linked = $derived(
@@ -638,135 +646,8 @@
 				></textarea>
 			</div>
 
-			<!-- Chip row: status, due countdown, priority, type and tags — the
-			     task's state at a glance, each opening its picker. -->
-			<div class="mb-4 flex flex-wrap items-center gap-1.5">
-				<div class="relative">
-					<button
-						type="button"
-						onclick={() => toggle('status')}
-						disabled={!canEdit}
-						class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-transparent px-2.5 text-[13px] font-medium transition-[filter] disabled:cursor-default {canEdit
-							? 'hover:brightness-125'
-							: ''} {openPop === 'status' ? OPEN_RING : ''}"
-						style:background="{status.dot}1f"
-						style:color={status.dot}
-					>
-						<StatusDot status={draft.status} size={12} />
-						<span>{statusLabel(draft.status)}</span>
-					</button>
-					{#if openPop === 'status'}
-						<StatusPopover
-							value={draft.status}
-							onchange={(v: StatusId) => {
-								if (draft) draft.status = v;
-								void patch('status', { status: v });
-							}}
-							onclose={() => (openPop = null)}
-						/>
-					{/if}
-				</div>
-
-				{#if dueChip}
-					<span
-						class="inline-flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium {DUE_CHIP[
-							dueChip.tone
-						] ?? ''}"
-						title={draft.due ? formatDateLong(draft.due) : undefined}
-					>
-						<Icon name="calendar" size={12} />
-						{dueChip.label}
-					</span>
-				{/if}
-
-				<div class="relative">
-					<button
-						type="button"
-						onclick={() => toggle('priority')}
-						disabled={!canEdit}
-						class="{CHIP} {CHIP_INTERACTIVE} {openPop === 'priority' ? OPEN_RING : ''}"
-					>
-						{#if prio.bars > 0}<PriorityBars priority={draft.priority} />{/if}
-						<span>{priorityLabel(draft.priority)}</span>
-					</button>
-					{#if openPop === 'priority'}
-						<PriorityPopover
-							value={draft.priority}
-							onchange={(v: PriorityId) => {
-								if (draft) draft.priority = v;
-								void patch('priority', { priority: v });
-							}}
-							onclose={() => (openPop = null)}
-						/>
-					{/if}
-				</div>
-
-				{#if taskType}
-					<div class="relative">
-						<button
-							type="button"
-							onclick={() => toggle('type')}
-							disabled={!canEdit}
-							class="{CHIP} {CHIP_INTERACTIVE} {openPop === 'type' ? OPEN_RING : ''}"
-						>
-							<TypeBadge type={draft.type ?? 'task'} showLabel={false} />
-							<span>{typeLabel(draft.type ?? 'task')}</span>
-						</button>
-						{#if openPop === 'type'}
-							<TypePopover
-								value={draft.type ?? 'task'}
-								onchange={(v: TypeId) => {
-									if (draft) draft.type = v;
-									void patch('type', { type: v });
-								}}
-								onclose={() => (openPop = null)}
-							/>
-						{/if}
-					</div>
-				{/if}
-
-				{#each draft.labels as l (l)}
-					{@const meta = labelMeta(l)}
-					<button
-						type="button"
-						onclick={() => toggle('tags')}
-						disabled={!canEdit}
-						class="{CHIP} {CHIP_INTERACTIVE}"
-					>
-						<span class="h-2 w-2 shrink-0 rounded-full" style:background={meta.color}></span>
-						<span class="max-w-[160px] truncate">{meta.label}</span>
-					</button>
-				{/each}
-				{#if canEdit}
-					<div class="relative">
-						<button
-							type="button"
-							onclick={() => toggle('tags')}
-							aria-label={m.tasks_add_tag()}
-							title={m.tasks_add_tag()}
-							class="{CHIP} {CHIP_INTERACTIVE} text-text-3 {openPop === 'tags' ? OPEN_RING : ''}"
-						>
-							<Icon name="plus" size={13} />
-							{#if draft.labels.length === 0}<span>{m.tasks_add_tags()}</span>{/if}
-						</button>
-						{#if openPop === 'tags'}
-							<TagsPopover
-								value={draft.labels}
-								suggestions={tagSuggestions}
-								kind="task"
-								onchange={(v) => {
-									if (draft) draft.labels = v;
-									void patch('tags', { tags: v });
-								}}
-								onclose={() => (openPop = null)}
-							/>
-						{/if}
-					</div>
-				{/if}
-			</div>
-
-			<!-- Description needs the fetched detail; the rest above and the
-			     properties below render from the list row right away. -->
+			<!-- Description sits right under the title, like a document. It needs
+			     the fetched detail; everything else renders from the list row. -->
 			{#if task}
 				{#if canEdit}
 					{#key draft.id}
@@ -785,7 +666,7 @@
 								placeholder={m.tasks_description_placeholder()}
 								flavor="document"
 								mentions={false}
-								rows={2}
+								rows={1}
 								maxRows={16}
 								class="w-full border-0 bg-transparent text-[14px] leading-relaxed text-text-2"
 							/>
@@ -800,16 +681,59 @@
 				{/if}
 			{/if}
 
-			<TaskTimeCard task={draft} onlog={logTime} defaultDate={logDate} />
+			<!-- Properties: one quiet label / value row each, no boxes. Values
+			     open their picker; empty ones read as a muted prompt. -->
+			<div class="mb-2">
+				<PropertyRow label={m.tasks_panel_status()}>
+					<button
+						type="button"
+						onclick={() => toggle('status')}
+						disabled={!canEdit}
+						class="{PROP_VALUE} {openPop === 'status' ? OPEN : ''}"
+					>
+						<StatusDot status={draft.status} size={13} />
+						<span>{statusLabel(draft.status)}</span>
+					</button>
+					{#if openPop === 'status'}
+						<StatusPopover
+							value={draft.status}
+							onchange={(v: StatusId) => {
+								if (draft) draft.status = v;
+								void patch('status', { status: v });
+							}}
+							onclose={() => (openPop = null)}
+						/>
+					{/if}
+				</PropertyRow>
 
-			<!-- Properties: one label / value row each; values open their picker. -->
-			<div class="mb-5">
+				<PropertyRow label={m.tasks_panel_priority()}>
+					<button
+						type="button"
+						onclick={() => toggle('priority')}
+						disabled={!canEdit}
+						class="{PROP_VALUE} {openPop === 'priority' ? OPEN : ''}"
+					>
+						{#if prio.bars > 0}<PriorityBars priority={draft.priority} />{/if}
+						<span class={prio.bars > 0 ? '' : 'text-text-3'}>{priorityLabel(draft.priority)}</span>
+					</button>
+					{#if openPop === 'priority'}
+						<PriorityPopover
+							value={draft.priority}
+							onchange={(v: PriorityId) => {
+								if (draft) draft.priority = v;
+								void patch('priority', { priority: v });
+							}}
+							onclose={() => (openPop = null)}
+						/>
+					{/if}
+				</PropertyRow>
+
 				<PropertyRow label={m.tasks_panel_assignees()}>
 					<button
 						type="button"
 						onclick={() => toggle('assignees')}
 						disabled={!canEdit}
-						class="{PROP_VALUE} {openPop === 'assignees' ? OPEN_RING : ''}"
+						class="{PROP_VALUE} {openPop === 'assignees' ? OPEN : ''}"
 					>
 						{#if assignees.length === 1}
 							<Avatar user={assignees[0]} size={20} />
@@ -838,32 +762,20 @@
 					{/if}
 				</PropertyRow>
 
-				<PropertyRow label={m.tasks_panel_project()}>
-					<span class="inline-flex max-w-full items-center gap-2 px-2 py-1 text-[14px] text-text">
-						<span class="h-2 w-2 shrink-0 rounded-full" style:background={project.color}></span>
-						<span class="truncate">{project.name}</span>
-					</span>
-				</PropertyRow>
-
-				{#if draft.startDate}
-					<PropertyRow label={m.tasks_panel_start()}>
-						<span class="inline-flex px-2 py-1 font-mono text-[14px] text-text"
-							>{formatDateLong(draft.startDate)}</span
-						>
-					</PropertyRow>
-				{/if}
-
 				<PropertyRow label={m.tasks_panel_due()}>
 					<button
 						type="button"
 						onclick={() => toggle('due')}
 						disabled={!canEdit}
-						class="{PROP_VALUE} {openPop === 'due' ? OPEN_RING : ''}"
+						class="{PROP_VALUE} {openPop === 'due' ? OPEN : ''}"
 					>
 						{#if draft.due}
-							<span class="font-mono {dueChip ? DUE_TEXT[dueChip.tone] : ''}"
-								>{formatDateLong(draft.due)}</span
-							>
+							<span>{formatDateLong(draft.due)}</span>
+							{#if dueHint}
+								<span class="text-[13px] {DUE_TEXT[dueHint.tone] ?? 'text-text-3'}"
+									>· {dueHint.label}</span
+								>
+							{/if}
 						{:else}
 							<span class="text-text-3">{m.tasks_panel_set_due()}</span>
 						{/if}
@@ -880,17 +792,21 @@
 					{/if}
 				</PropertyRow>
 
+				{#if draft.startDate}
+					<PropertyRow label={m.tasks_panel_start()}>
+						<span class="text-[14px] text-text">{formatDateLong(draft.startDate)}</span>
+					</PropertyRow>
+				{/if}
+
 				<PropertyRow label={m.tasks_panel_plan()}>
 					<button
 						type="button"
 						onclick={() => toggle('plan')}
-						class="{PROP_VALUE} {openPop === 'plan' ? OPEN_RING : ''}"
+						class="{PROP_VALUE} {openPop === 'plan' ? OPEN : ''}"
 					>
 						{#if draft.plannedFor}
-							<Icon name="bookmark" size={13} class="text-accent" />
-							<span class="font-mono">{formatDateLong(draft.plannedFor)}</span>
+							<span>{formatDateLong(draft.plannedFor)}</span>
 						{:else if draft.inMyPlan}
-							<Icon name="bookmark" size={13} class="text-accent" />
 							<span>{m.tasks_in_my_week()}</span>
 						{:else}
 							<span class="text-text-3">{m.tasks_panel_set_plan()}</span>
@@ -908,19 +824,50 @@
 					{/if}
 				</PropertyRow>
 
-				<PropertyRow label={m.tasks_panel_estimate_label()}>
-					<button
-						type="button"
-						onclick={() => toggle('estimate')}
-						disabled={!canEdit}
-						class="{PROP_VALUE} {openPop === 'estimate' ? OPEN_RING : ''}"
-					>
-						{#if draft.estimate}
-							<span class="font-mono">{formatEstimate(draft.estimate)}</span>
-						{:else}
-							<span class="text-text-3">{m.tasks_panel_set_estimate()}</span>
+				<!-- Time: logged against the estimate, with a hairline bar. The
+				     value edits the estimate; "Log" opens the log form below. -->
+				<PropertyRow label={m.tasks_panel_time()}>
+					<div class="flex min-w-0 items-center gap-2">
+						<button
+							type="button"
+							onclick={() => toggle('estimate')}
+							disabled={!canEdit}
+							class="{PROP_VALUE} {openPop === 'estimate' ? OPEN : ''}"
+						>
+							<span>{formatLogged(time.logged)}</span>
+							{#if time.estimate !== null}
+								<span class="text-text-3">/ {formatEstimate(time.estimate)}</span>
+							{:else}
+								<span class="text-[13px] text-text-3">· {m.tasks_panel_set_estimate()}</span>
+							{/if}
+						</button>
+						{#if time.estimate !== null}
+							<span
+								class="hidden h-1 w-14 shrink-0 overflow-hidden rounded-full bg-surface-2 sm:flex"
+								aria-hidden="true"
+							>
+								<span class="h-full bg-text-3" style:width="{time.fillPct}%"></span>
+								{#if time.overPct > 0}
+									<span class="h-full bg-[var(--color-status-paused)]" style:width="{time.overPct}%"
+									></span>
+								{/if}
+							</span>
+							{#if time.over > 0}
+								<span class="shrink-0 text-[12px] text-[var(--color-status-paused)]"
+									>{m.tasks_panel_over({ time: formatEstimate(time.over) })}</span
+								>
+							{/if}
 						{/if}
-					</button>
+						<button
+							type="button"
+							onclick={() => (logOpen = !logOpen)}
+							aria-expanded={logOpen}
+							class="{QUIET_ADD} ml-auto {logOpen ? OPEN : ''}"
+						>
+							<Icon name="plus" size={13} />
+							{m.tasks_panel_log()}
+						</button>
+					</div>
 					{#if openPop === 'estimate'}
 						<EstimatePopover
 							value={draft.estimate}
@@ -932,143 +879,196 @@
 						/>
 					{/if}
 				</PropertyRow>
+
+				<PropertyRow label={m.tasks_panel_type()}>
+					<button
+						type="button"
+						onclick={() => toggle('type')}
+						disabled={!canEdit}
+						class="{PROP_VALUE} {openPop === 'type' ? OPEN : ''}"
+					>
+						<TypeBadge type={draft.type ?? 'task'} showLabel={false} />
+						<span>{typeLabel(draft.type ?? 'task')}</span>
+					</button>
+					{#if openPop === 'type'}
+						<TypePopover
+							value={draft.type ?? 'task'}
+							onchange={(v: TypeId) => {
+								if (draft) draft.type = v;
+								void patch('type', { type: v });
+							}}
+							onclose={() => (openPop = null)}
+						/>
+					{/if}
+				</PropertyRow>
+
+				{#if draft.labels.length > 0 || canEdit}
+					<PropertyRow label={m.tasks_tags()}>
+						<button
+							type="button"
+							onclick={() => toggle('tags')}
+							disabled={!canEdit}
+							class="{PROP_VALUE} flex-wrap py-1 {openPop === 'tags' ? OPEN : ''}"
+						>
+							{#each draft.labels as l (l)}
+								{@const meta = labelMeta(l)}
+								<span class={TAG}>
+									<span class="h-1.5 w-1.5 shrink-0 rounded-full" style:background={meta.color}
+									></span>
+									<span class="max-w-[140px] truncate">{meta.label}</span>
+								</span>
+							{:else}
+								<span class="text-text-3">{m.tasks_add_tags()}</span>
+							{/each}
+						</button>
+						{#if openPop === 'tags'}
+							<TagsPopover
+								value={draft.labels}
+								suggestions={tagSuggestions}
+								kind="task"
+								onchange={(v) => {
+									if (draft) draft.labels = v;
+									void patch('tags', { tags: v });
+								}}
+								onclose={() => (openPop = null)}
+							/>
+						{/if}
+					</PropertyRow>
+				{/if}
+			</div>
+
+			<div class={logOpen ? 'mt-2 mb-4' : ''}>
+				<TimeLogger
+					task={draft}
+					onlog={logTime}
+					defaultDate={logDate}
+					trigger="none"
+					bind:open={logOpen}
+				/>
 			</div>
 
 			{#if isBlocked}
 				<div
-					class="mb-5 rounded-lg border border-l-[3px] border-border border-l-[var(--color-status-paused)] bg-surface px-3 py-2.5"
+					class="mt-3 mb-1 flex items-start gap-2 rounded-lg bg-[color-mix(in_srgb,var(--color-status-paused)_10%,transparent)] px-3 py-2 text-[13px] leading-snug text-text-2"
 					role="status"
 				>
-					<div class="flex items-start gap-2 text-[13px] leading-snug text-text-2">
-						<span class="mt-px shrink-0 text-[var(--color-status-paused)]">
-							<Icon name="alert-triangle" size={14} />
-						</span>
-						<span>
-							{dependsOn.length === 1
-								? m.tasks_blocked_banner_one()
-								: m.tasks_blocked_banner({
-										open: openPrerequisites.length,
-										total: dependsOn.length
-									})}
-						</span>
-					</div>
+					<span class="mt-px shrink-0 text-[var(--color-status-paused)]">
+						<Icon name="alert-triangle" size={14} />
+					</span>
+					<span>
+						{dependsOn.length === 1
+							? m.tasks_blocked_banner_one()
+							: m.tasks_blocked_banner({
+									open: openPrerequisites.length,
+									total: dependsOn.length
+								})}
+					</span>
 				</div>
 			{/if}
 
-			<!-- Everything below needs the fetched detail (checklist items, files,
-			     dependents, comments, time logs). -->
+			<!-- Everything below needs the fetched detail. Sections only show up
+			     once they have something in them; the empty ones collapse into a
+			     single row of quiet "+ …" links. -->
 			{#if task}
-				<Checklist
-					items={checklistItems}
-					{canEdit}
-					label={m.tasks_checklist()}
-					addPlaceholder={m.tasks_checklist_add()}
-					onChange={onChecklistChange}
-					variant="panel"
-					addLabel={m.tasks_panel_add_item()}
-				/>
+				<div class="mt-4 space-y-6 border-t border-border/60 pt-5">
+					{#if checklistItems.length > 0 || checklistOpen}
+						<Checklist
+							items={checklistItems}
+							{canEdit}
+							label={m.tasks_checklist()}
+							addPlaceholder={m.tasks_checklist_add()}
+							onChange={onChecklistChange}
+							variant="panel"
+							addLabel={m.tasks_checklist_add()}
+							focusAdd={checklistOpen && checklistItems.length === 0}
+						/>
+					{/if}
 
-				{#if draft.uuid}
-					<section class="mb-6">
-						<SectionHeader label={m.tasks_attachments()} count={draft.files?.length ?? 0}>
-							{#snippet action()}
-								<AttachmentUploader
-									bind:this={taskAttachmentUploader}
-									entityType="task"
-									entityId={draft!.uuid!}
-									dropzone={false}
-									variant="section"
-									label={m.tasks_panel_add_file()}
-									onuploaded={() => void refresh()}
-								/>
-							{/snippet}
-						</SectionHeader>
-						{#if draft.files?.length}
+					{#if draft.uuid && draft.files?.length}
+						<section>
+							<SectionHeader label={m.tasks_attachments()} count={draft.files.length}>
+								{#snippet action()}
+									<AttachmentUploader
+										bind:this={taskAttachmentUploader}
+										entityType="task"
+										entityId={draft!.uuid!}
+										dropzone={false}
+										variant="icon"
+										label={m.tasks_attach_files()}
+										onuploaded={() => void refresh()}
+									/>
+								{/snippet}
+							</SectionHeader>
 							<AttachmentList
 								attachments={draft.files}
 								canDelete={canEdit}
 								currentUserId={(page.data as { currentUserId?: string }).currentUserId ?? null}
 								ondeleted={() => void refresh()}
 							/>
-						{:else}
-							<p class="text-[13px] text-text-3">{m.tasks_no_files_attached()}</p>
-						{/if}
-					</section>
-				{/if}
+						</section>
+					{/if}
 
-				{#if isTeam && draft.uuid}
-					<section class="mb-6">
-						<SectionHeader label={m.notes_section_meetings()} count={meetingNotes.length}>
-							{#snippet action()}
-								{#if taskProjectId}
-									<button
-										type="button"
-										onclick={() => (newMeetingOpen = true)}
-										class={SECTION_ACTION}
-									>
-										<Icon name="plus" size={13} />
-										{m.tasks_panel_add_note()}
-									</button>
-								{/if}
-							{/snippet}
-						</SectionHeader>
-						{#if meetingNotes.length}
-							<div class="grid gap-1.5">
+					{#if isTeam && draft.uuid && meetingNotes.length > 0}
+						<section>
+							<SectionHeader label={m.notes_section_meetings()} count={meetingNotes.length}>
+								{#snippet action()}
+									{#if taskProjectId}
+										<button
+											type="button"
+											onclick={() => (newMeetingOpen = true)}
+											aria-label={m.notes_new_meeting()}
+											title={m.notes_new_meeting()}
+											class={ICON_ACTION}
+										>
+											<Icon name="plus" size={14} />
+										</button>
+									{/if}
+								{/snippet}
+							</SectionHeader>
+							<div class="space-y-px">
 								{#each meetingNotes as n (n.id)}
-									<a href="/notes/{n.id}" class="group {ROW_CARD}">
-										<Icon name="users" size={15} class="shrink-0 text-text-3" />
-										<span class="min-w-0 flex-1">
-											<span class="block truncate text-[14px] text-text-2 group-hover:text-text"
-												>{n.title || m.notes_untitled()}</span
+									<a href="/notes/{n.id}" class="group {ROW}">
+										<Icon name="users" size={14} class="shrink-0 text-text-3" />
+										<span
+											class="min-w-0 flex-1 truncate text-[14px] text-text-2 group-hover:text-text"
+											>{n.title || m.notes_untitled()}</span
+										>
+										{#if n.meetingDate}
+											<span class="shrink-0 text-[12px] text-text-4"
+												>{meetingDateLabel(n.meetingDate)}</span
 											>
-											{#if n.meetingDate}
-												<span class="block text-[12px] text-text-4"
-													>{meetingDateLabel(n.meetingDate)}</span
-												>
-											{/if}
-										</span>
-										<Icon name="chevron-r" size={13} class="shrink-0 text-text-4" />
+										{/if}
 									</a>
 								{/each}
 							</div>
-						{:else}
-							<p class="text-[13px] text-text-3">{m.notes_task_no_meetings()}</p>
-						{/if}
-					</section>
-				{/if}
+						</section>
+					{/if}
 
-				{#if draft.uuid && (linked.length > 0 || canEdit)}
-					<section class="mb-6">
-						<SectionHeader label={m.tasks_panel_linked()} count={linked.length}>
-							{#snippet action()}
-								{#if canEdit}
-									<button
-										type="button"
-										onclick={() => toggle('deps')}
-										class="{SECTION_ACTION} {openPop === 'deps' ? OPEN_RING : ''}"
-									>
-										<Icon name="plus" size={13} />
-										{m.tasks_panel_add_link()}
-									</button>
-									{#if openPop === 'deps'}
-										<DependencyPopover
-											projectKey={draft!.project}
-											value={dependsOn.map((d) => d.uuid)}
-											exclude={[draft!.uuid!, ...dependents.map((d) => d.uuid)]}
-											seed={dependencySeed}
-											ontoggle={toggleDependency}
-											onclose={() => (openPop = null)}
-										/>
+					{#if draft.uuid && linked.length > 0}
+						<section>
+							<SectionHeader label={m.tasks_panel_linked()} count={linked.length}>
+								{#snippet action()}
+									{#if canEdit}
+										<button
+											type="button"
+											onclick={() => toggle('deps')}
+											aria-label={m.tasks_add_prerequisite()}
+											title={m.tasks_add_prerequisite()}
+											class="{ICON_ACTION} {openPop === 'deps' ? OPEN : ''}"
+										>
+											<Icon name="plus" size={14} />
+										</button>
+										{#if openPop === 'deps'}
+											{@render depsPopover()}
+										{/if}
 									{/if}
-								{/if}
-							{/snippet}
-						</SectionHeader>
-						{#if linked.length}
-							<div class="grid gap-1.5">
+								{/snippet}
+							</SectionHeader>
+							<div class="space-y-px">
 								{#each linked as item (item.key)}
 									<div
-										class="group/link {ROW_CARD} {item.status && isClosedStatus(item.status)
-											? 'opacity-70'
+										class="group/link {ROW} {item.status && isClosedStatus(item.status)
+											? 'opacity-60'
 											: ''}"
 									>
 										<a
@@ -1087,24 +1087,25 @@
 													class="shrink-0 text-text-3"
 												/>
 											{/if}
-											<span class="min-w-0 flex-1">
+											<span class="shrink-0 font-mono text-[12px] text-text-3">{item.ref}</span>
+											{#if item.kind === 'prerequisite' || item.kind === 'dependent'}
 												<span
-													class="block truncate text-[14px] text-text-2 group-hover/link:text-text"
+													class="min-w-0 flex-1 truncate text-[14px] text-text-2 group-hover/link:text-text"
 													>{item.title}</span
 												>
-												<span class="block truncate text-[12px] text-text-4">
-													{LINK_KIND_LABEL[
-														item.kind
-													]()}{#if item.kind === 'prerequisite' || item.kind === 'dependent'}
-														· <span class="font-mono">{item.ref}</span>{/if}{#if item.status}
-														· {statusLabel(item.status)}{/if}
-												</span>
-											</span>
+											{:else}
+												<span class="min-w-0 flex-1 truncate text-[13px] text-text-3"
+													>{LINK_KIND_LABEL[item.kind]()}</span
+												>
+											{/if}
 										</a>
 										{#if item.blocking}
-											<span
-												class="shrink-0 rounded-md bg-[color-mix(in_srgb,var(--color-status-paused)_16%,transparent)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--color-status-paused)]"
+											<span class="shrink-0 text-[12px] text-[var(--color-status-paused)]"
 												>{m.tasks_panel_blocked()}</span
+											>
+										{:else if item.kind === 'dependent'}
+											<span class="shrink-0 text-[12px] text-text-4"
+												>{m.tasks_panel_kind_dependent()}</span
 											>
 										{/if}
 										{#if item.removable && canEdit}
@@ -1115,7 +1116,7 @@
 													aria-label={m.tasks_remove_prerequisite()}
 													title={m.tasks_remove_prerequisite()}
 													onclick={() => toggleDependency(dep)}
-													class="grid h-6 w-6 shrink-0 place-items-center rounded-md text-text-3 opacity-0 transition-opacity group-hover/link:opacity-100 hover:bg-surface-2 hover:text-text focus-visible:opacity-100"
+													class="{ICON_ACTION} opacity-0 group-hover/link:opacity-100 focus-visible:opacity-100"
 												>
 													<Icon name="x" size={13} />
 												</button>
@@ -1124,94 +1125,143 @@
 									</div>
 								{/each}
 							</div>
-						{:else}
-							<p class="text-[13px] text-text-3">{m.tasks_panel_no_links()}</p>
-						{/if}
-					</section>
-				{/if}
+						</section>
+					{/if}
 
-				<section>
-					<SectionHeader label={m.tasks_activity()} />
-					<div class="space-y-3">
-						{#each events as e (e.id)}
-							{@const u = resolveUser(e.user)}
-							<div>
-								<div class="flex items-center gap-2.5 text-[13px] text-text-2">
-									{#if e.kind === 'created'}
-										<span
-											class="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border border-border text-text-3"
+					<!-- One quiet row for whatever is still empty. -->
+					{#if draft.uuid}
+						<!-- Uploading stays open to anyone who can see the task, as before. -->
+						{@const noChecklist = canEdit && checklistItems.length === 0 && !checklistOpen}
+						{@const noFiles = !draft.files?.length}
+						{@const noMeetings = isTeam && !!taskProjectId && meetingNotes.length === 0}
+						{@const noLinks = canEdit && linked.length === 0}
+						{#if noChecklist || noFiles || noMeetings || noLinks}
+							<div class="-mx-2 flex flex-wrap items-center gap-0.5">
+								{#if noChecklist}
+									<button type="button" onclick={() => (checklistOpen = true)} class={QUIET_ADD}>
+										<Icon name="plus" size={13} />
+										{m.tasks_checklist()}
+									</button>
+								{/if}
+								{#if noFiles}
+									<AttachmentUploader
+										bind:this={taskAttachmentUploader}
+										entityType="task"
+										entityId={draft.uuid}
+										dropzone={false}
+										variant="quiet"
+										label={m.tasks_panel_add_file()}
+										onuploaded={() => void refresh()}
+									/>
+								{/if}
+								{#if noMeetings}
+									<button type="button" onclick={() => (newMeetingOpen = true)} class={QUIET_ADD}>
+										<Icon name="plus" size={13} />
+										{m.tasks_panel_add_note()}
+									</button>
+								{/if}
+								{#if noLinks}
+									<div class="relative">
+										<button
+											type="button"
+											onclick={() => toggle('deps')}
+											class="{QUIET_ADD} {openPop === 'deps' ? OPEN : ''}"
 										>
-											<Icon name="plus" size={12} />
-										</span>
-									{:else}
-										<Avatar user={u} size={22} />
-									{/if}
-									<span class="min-w-0 flex-1 truncate">
-										<span class="font-medium text-text">{u?.name ?? e.user}</span>
-										{#if e.kind === 'comment'}{m.tasks_event_commented()}
-										{:else if e.kind === 'time'}{m.tasks_event_logged()}
-											<span class="font-mono font-medium text-text"
-												>{formatEstimate(e.data.minutes)}</span
-											>
-										{:else if e.kind === 'created'}{m.tasks_event_created()}
+											<Icon name="plus" size={13} />
+											{m.tasks_panel_add_link()}
+										</button>
+										{#if openPop === 'deps'}
+											{@render depsPopover()}
 										{/if}
-									</span>
-									<span class="shrink-0 font-mono text-[12px] text-text-4">{e.date}</span>
-								</div>
-								{#if e.kind === 'comment'}
-									<div
-										class="mt-2 ml-[32px] rounded-xl border border-border bg-surface px-3 py-2.5 text-[14px] leading-relaxed whitespace-pre-wrap text-text"
-									>
-										<MentionText text={e.data} />
 									</div>
-									{#if e.files?.length}
-										<div class="mt-2 ml-[32px]">
-											<AttachmentList
-												attachments={e.files}
-												canDelete={canEdit}
-												currentUserId={(page.data as { currentUserId?: string }).currentUserId ??
-													null}
-												ondeleted={() => void refresh()}
-											/>
-										</div>
-									{/if}
-								{:else if e.kind === 'time' && e.data.note}
-									<div class="mt-1 ml-[32px] text-[13px] text-text-3 italic">{e.data.note}</div>
 								{/if}
 							</div>
-						{/each}
-					</div>
-				</section>
+						{/if}
+					{/if}
+
+					<section>
+						<SectionHeader label={m.tasks_activity()} />
+						<div class="space-y-3.5">
+							{#each events as e (e.id)}
+								{@const u = resolveUser(e.user)}
+								<div>
+									<div class="flex items-center gap-2 text-[13px] text-text-3">
+										{#if e.kind === 'created'}
+											<span class="grid h-5 w-5 shrink-0 place-items-center text-text-4">
+												<Icon name="plus" size={12} />
+											</span>
+										{:else}
+											<Avatar user={u} size={20} />
+										{/if}
+										<span class="min-w-0 flex-1 truncate">
+											<span class="text-text-2">{u?.name ?? e.user}</span>
+											{#if e.kind === 'comment'}{m.tasks_event_commented()}
+											{:else if e.kind === 'time'}{m.tasks_event_logged()}
+												<span class="text-text-2">{formatEstimate(e.data.minutes)}</span>
+											{:else if e.kind === 'created'}{m.tasks_event_created()}
+											{/if}
+										</span>
+										<span class="shrink-0 text-[12px] text-text-4">{e.date}</span>
+									</div>
+									{#if e.kind === 'comment'}
+										<div
+											class="mt-1.5 ml-7 text-[14px] leading-relaxed whitespace-pre-wrap text-text"
+										>
+											<MentionText text={e.data} />
+										</div>
+										{#if e.files?.length}
+											<div class="mt-2 ml-7">
+												<AttachmentList
+													attachments={e.files}
+													canDelete={canEdit}
+													currentUserId={(page.data as { currentUserId?: string }).currentUserId ??
+														null}
+													ondeleted={() => void refresh()}
+												/>
+											</div>
+										{/if}
+									{:else if e.kind === 'time' && e.data.note}
+										<div class="mt-1 ml-7 text-[13px] text-text-3">{e.data.note}</div>
+									{/if}
+								</div>
+							{/each}
+						</div>
+					</section>
+				</div>
 			{:else if loading}
-				<div class="space-y-3 py-1" aria-busy="true" aria-live="polite">
+				<div class="mt-4 space-y-3 py-1" aria-busy="true" aria-live="polite">
 					<div class="h-3.5 w-11/12 animate-pulse rounded bg-surface"></div>
 					<div class="h-3.5 w-4/5 animate-pulse rounded bg-surface"></div>
 					<div class="h-3.5 w-2/3 animate-pulse rounded bg-surface"></div>
-					<div class="mt-6 h-3 w-24 animate-pulse rounded bg-surface"></div>
-					<div class="h-9 w-full animate-pulse rounded-xl bg-surface"></div>
 				</div>
 			{/if}
 
-			<div
-				class="mt-8 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-4 text-[12px] text-text-4"
-			>
+			<div class="mt-8 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-text-4">
 				{#if draft.createdBy}<span
 						>{m.tasks_created_by()}
-						<span class="text-text-2">{resolveUser(draft.createdBy)?.name ?? '—'}</span></span
+						<span class="text-text-3">{resolveUser(draft.createdBy)?.name ?? '—'}</span></span
 					>{/if}
-				{#if draft.createdAt}<span
-						>{m.tasks_created()}
-						<span class="font-mono text-text-3">{draft.createdAt}</span></span
-					>{/if}
-				<span>{m.tasks_updated()} <span class="font-mono text-text-3">{draft.updated}</span></span>
-				{#if draft.channel}<span
-						>{m.tasks_meta_channel()}
-						<span class="text-text-2">{taskChannelLabel(draft.channel)}</span></span
+				{#if draft.createdAt}<span>{m.tasks_created()} {draft.createdAt}</span>{/if}
+				<span>{m.tasks_updated()} {draft.updated}</span>
+				{#if draft.channel}<span>{m.tasks_meta_channel()} {taskChannelLabel(draft.channel)}</span
 					>{/if}
 			</div>
 		</div>
 
-		<div class="border-t border-border p-3">
+		{#snippet depsPopover()}
+			{#if draft?.uuid}
+				<DependencyPopover
+					projectKey={draft.project}
+					value={dependsOn.map((d) => d.uuid)}
+					exclude={[draft.uuid, ...dependents.map((d) => d.uuid)]}
+					seed={dependencySeed}
+					ontoggle={toggleDependency}
+					onclose={() => (openPop = null)}
+				/>
+			{/if}
+		{/snippet}
+
+		<div class="px-4 pt-2 pb-4">
 			<AttachmentDropzone
 				onfiles={addCommentFiles}
 				disabled={commentSending}

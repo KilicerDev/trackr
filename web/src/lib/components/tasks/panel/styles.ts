@@ -1,22 +1,28 @@
-// One class string per control role in the task side panel, so every "add"
-// button, chip and list row looks the same. Radii follow the app: rounded-lg
-// for controls and rows, rounded-xl for cards.
+// Control styles for the task side panel. The panel stays calm by keeping
+// borders off almost everything: values and rows are plain text that gets a
+// soft background on hover, section actions are small icon buttons, and empty
+// sections collapse into one row of quiet "+ …" links. Radii follow the app
+// (rounded-md for icon buttons, rounded-lg for rows and values).
 
-/** Every "+ …" action in a section header (link, tag, file, note, item, log time). */
-export const SECTION_ACTION =
-	'inline-flex h-7 shrink-0 items-center gap-1 rounded-lg border border-border bg-surface px-2.5 text-[13px] text-text-2 transition-colors hover:bg-surface-2 hover:text-text disabled:cursor-not-allowed disabled:opacity-60';
+/** The "+" in a section header (checklist, files, meetings, linked). */
+export const ICON_ACTION =
+	'grid h-6 w-6 shrink-0 place-items-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text disabled:cursor-not-allowed disabled:opacity-60';
 
-/** Neutral chip in the chip row (priority, type, tags, add tag). */
-export const CHIP =
-	'inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[13px] text-text-2 transition-colors';
+/** "+ Checklist", "+ File", … in the row that stands in for empty sections. */
+export const QUIET_ADD =
+	'inline-flex h-7 items-center gap-1.5 rounded-lg px-2 text-[13px] text-text-3 transition-colors hover:bg-surface hover:text-text disabled:cursor-not-allowed disabled:opacity-60';
 
-/** Chips that open a picker get this on top of CHIP / the status chip. */
-export const CHIP_INTERACTIVE =
-	'hover:border-border-strong hover:text-text disabled:cursor-default disabled:hover:border-border';
+/** A property value: plain until hovered; text lines up with the column. */
+export const PROP_VALUE =
+	'-mx-2 inline-flex max-w-[calc(100%+1rem)] items-center gap-2 rounded-lg px-2 py-1 text-left text-[14px] text-text transition-colors hover:bg-surface disabled:cursor-default disabled:hover:bg-transparent';
 
-/** A row in a section list (meetings, linked items). */
-export const ROW_CARD =
-	'flex min-w-0 items-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-2 transition-colors hover:border-border-strong';
+/** A row in a section list (meetings, linked items): no border, hover tint. */
+export const ROW =
+	'-mx-2 flex min-w-0 items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-surface';
 
-/** The open-popover ring, shared by chips and property values. */
-export const OPEN_RING = 'ring-2 ring-accent/40';
+/** Small tag pill inside the Tags property. */
+export const TAG =
+	'inline-flex h-6 items-center gap-1.5 rounded-md bg-surface px-2 text-[12px] text-text-2';
+
+/** The state of a control whose popover is open. */
+export const OPEN = 'bg-surface';

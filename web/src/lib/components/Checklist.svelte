@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Icon from './Icon.svelte';
-	import { SECTION_ACTION } from './tasks/panel/styles';
+	import { onMount } from 'svelte';
+	import { ICON_ACTION } from './tasks/panel/styles';
 	import { m } from '$lib/paraglide/messages';
 
 	type Item = { id: string; text: string; done: boolean };
@@ -20,6 +21,8 @@
 		 */
 		variant?: 'default' | 'panel';
 		addLabel?: string;
+		/** Focus the add-item input when mounted (opened from an empty state). */
+		focusAdd?: boolean;
 	}
 	let {
 		items,
@@ -28,11 +31,16 @@
 		label,
 		addPlaceholder,
 		variant = 'default',
-		addLabel = ''
+		addLabel = '',
+		focusAdd = false
 	}: Props = $props();
 
 	let newItem = $state('');
 	let addInput = $state<HTMLInputElement>();
+	onMount(() => {
+		if (focusAdd) addInput?.focus();
+	});
+	const panel = $derived(variant === 'panel');
 
 	const total = $derived(items.length);
 	const done = $derived(items.filter((it) => it.done).length);
@@ -60,36 +68,25 @@
 
 {#if canEdit || total > 0}
 	<div class="mb-6">
-		{#if variant === 'panel'}
-			<div class="mb-2.5">
-				<div class="flex min-h-7 items-center gap-2">
-					<h3 class="text-[12px] font-medium tracking-[0.08em] text-text-4 uppercase">
-						{label}{#if total > 0}<span
-								class="ml-1.5 font-mono tracking-normal {allDone
-									? 'text-[#7fc8a9]'
-									: 'text-text-3'}">{done}/{total}</span
-							>{/if}
-					</h3>
-					{#if canEdit}
-						<button
-							type="button"
-							onclick={() => addInput?.focus()}
-							class="{SECTION_ACTION} ml-auto"
-						>
-							<Icon name="plus" size={13} />
-							{addLabel}
-						</button>
-					{/if}
-				</div>
-				{#if total > 0}
-					<div class="mt-2 h-1 overflow-hidden rounded-full bg-surface-2">
-						<div
-							class="h-full rounded-full transition-all duration-300 {allDone
-								? 'bg-[#7fc8a9]'
-								: 'bg-accent'}"
-							style:width="{(done / total) * 100}%"
-						></div>
-					</div>
+		{#if panel}
+			<div class="mb-1.5 flex min-h-7 items-center gap-2">
+				<h3 class="text-[13px] font-medium text-text-2">
+					{label}{#if total > 0}<span
+							class="ml-1.5 font-mono text-[12px] font-normal {allDone
+								? 'text-[#7fc8a9]'
+								: 'text-text-4'}">{done}/{total}</span
+						>{/if}
+				</h3>
+				{#if canEdit}
+					<button
+						type="button"
+						onclick={() => addInput?.focus()}
+						aria-label={addLabel}
+						title={addLabel}
+						class="{ICON_ACTION} ml-auto"
+					>
+						<Icon name="plus" size={14} />
+					</button>
 				{/if}
 			</div>
 		{:else}
@@ -111,11 +108,15 @@
 			</div>
 		{/if}
 		<div
-			class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface/40"
+			class={panel
+				? 'space-y-px'
+				: 'divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface/40'}
 		>
 			{#each items as item (item.id)}
 				<div
-					class="group flex items-center gap-2.5 px-2.5 py-2 transition-colors hover:bg-surface-2/60"
+					class="group flex items-center gap-2.5 transition-colors {panel
+						? '-mx-2 rounded-lg px-2 py-1.5 hover:bg-surface'
+						: 'px-2.5 py-2 hover:bg-surface-2/60'}"
 				>
 					<button
 						type="button"
@@ -159,7 +160,7 @@
 				</div>
 			{/each}
 			{#if canEdit}
-				<div class="flex items-center gap-2.5 px-2.5 py-2">
+				<div class="flex items-center gap-2.5 {panel ? '-mx-2 px-2 py-1.5' : 'px-2.5 py-2'}">
 					<span class="grid h-[20px] w-[20px] shrink-0 place-items-center text-text-4">
 						<Icon name="plus" size={14} />
 					</span>
