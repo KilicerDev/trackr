@@ -6,6 +6,7 @@
 	import { confirm as uiConfirm } from '$lib/components/confirm.svelte';
 	import Drawer from '../Drawer.svelte';
 	import Icon from '../Icon.svelte';
+	import IconButton from '../IconButton.svelte';
 	import Avatar from '../Avatar.svelte';
 	import AvatarStack from '../AvatarStack.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
@@ -244,45 +245,45 @@
 	{#if ticket}
 		{@const statusMeta = TICKET_STATUSES.find((s) => s.id === ticket.status)}
 		{@const categoryMeta = TICKET_CATEGORIES.find((c) => c.id === ticket.category)}
-		<!-- Header -->
-		<div class="flex items-center gap-2 border-b border-border px-5 py-3 text-[12px] text-text-3">
-			<span class="font-mono text-text-4">{ticket.displayId}</span>
-			<span class="inline-flex min-w-0 items-center gap-1.5">
-				<span class="h-1.5 w-1.5 shrink-0 rounded-full" style:background={ticket.orgColor}></span>
-				<span class="max-w-[176px] truncate">{ticket.orgName}</span>
+		<!-- Header: same shape as the task panel's — a tinted id badge (ticket
+		     icon in the category colour), the organization as a muted chip, then
+		     the actions. -->
+		{@const idColor = categoryMeta?.color ?? '#7c7c84'}
+		<div class="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3">
+			<span
+				class="inline-flex h-[20px] shrink-0 items-center gap-1.5 rounded-md border px-1.5 font-mono text-[12px] leading-none font-medium whitespace-nowrap"
+				style:color={idColor}
+				style:border-color="{idColor}40"
+				style:background="{idColor}14"
+			>
+				<Icon name="ticket" size={11} stroke={2.2} />
+				{ticket.displayId}
 			</span>
+			<span
+				class="min-w-0 truncate rounded bg-surface px-1.5 py-0.5 font-mono text-[12px] text-text-3"
+			>
+				{ticket.orgName}
+			</span>
+			{#if pending}
+				<span class="inline-flex items-center gap-1.5 text-[12px] text-text-3">
+					<span
+						class="h-2.5 w-2.5 animate-spin rounded-full border border-text-3 border-t-transparent"
+					></span>
+					{m.common_saving()}
+				</span>
+			{/if}
 			<div class="ml-auto flex items-center gap-1">
-				{#if pending}
-					<span class="text-text-4"><Icon name="refresh" size={14} /></span>
-				{/if}
-				<button
-					type="button"
-					onclick={copyLink}
-					aria-label={m.tickets_copy_link()}
-					title={m.tickets_copy_link()}
-					class="grid h-7 w-7 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
-				>
+				<IconButton size={31} ariaLabel={m.tickets_copy_link()} onclick={copyLink}>
 					<Icon name="link" size={15} />
-				</button>
+				</IconButton>
 				{#if canDelete}
-					<button
-						type="button"
-						onclick={deleteTicket}
-						aria-label={m.tickets_delete()}
-						title={m.tickets_delete()}
-						class="grid h-7 w-7 place-items-center rounded-lg text-text-3 transition-colors hover:bg-[#ef4f5e]/10 hover:text-[#ef4f5e]"
-					>
+					<IconButton size={31} ariaLabel={m.tickets_delete()} onclick={deleteTicket}>
 						<Icon name="trash" size={15} />
-					</button>
+					</IconButton>
 				{/if}
-				<button
-					type="button"
-					onclick={onclose}
-					aria-label={m.common_close()}
-					class="grid h-7 w-7 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
-				>
+				<IconButton size={31} ariaLabel={m.common_close()} onclick={onclose}>
 					<Icon name="x" size={15} />
-				</button>
+				</IconButton>
 			</div>
 		</div>
 
