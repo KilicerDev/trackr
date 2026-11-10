@@ -7,6 +7,7 @@
 	import type { ActionResult } from '@sveltejs/kit';
 	import { page } from '$app/state';
 	import Icon from '$lib/components/Icon.svelte';
+	import DocOutline from '$lib/components/wiki/DocOutline.svelte';
 	import SyncStatus from '$lib/components/SyncStatus.svelte';
 	import { autosize } from '$lib/actions/autosize';
 	import IconButton from '$lib/components/IconButton.svelte';
@@ -109,53 +110,13 @@
 		return formatDate(dt);
 	}
 
-	// ─── Outline + scroll-spy (driven by the live editor) ───────────────────
-	const outline = $state<{ items: { level: number; text: string }[] }>({ items: [] });
-	let activeIdx = $state(-1);
-
-	function headingEls(): HTMLElement[] {
-		if (!editor) return [];
-		return Array.from(editor.view.dom.querySelectorAll('h1, h2, h3'));
-	}
-	function rebuildOutline(ed?: Editor) {
-		const e = ed ?? editor;
-		if (!e) return (outline.items = []);
-		const items: { level: number; text: string }[] = [];
-		e.state.doc.descendants((node) => {
-			if (node.type.name === 'heading' && node.textContent.trim()) {
-				items.push({ level: node.attrs.level as number, text: node.textContent });
-			}
-		});
-		outline.items = items;
-		recomputeActive();
-	}
-	function recomputeActive() {
-		const heads = headingEls();
-		if (!heads.length) return (activeIdx = -1);
-		let idx = 0;
-		for (let i = 0; i < heads.length; i++) {
-			if (heads[i].getBoundingClientRect().top - 140 <= 0) idx = i;
-			else break;
-		}
-		activeIdx = idx;
-	}
-	function scrollToHeading(i: number) {
-		headingEls()[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-	}
+	// ─── Outline: see DocOutline ─────────────────────────────────────────────
+	let editorWrap = $state<HTMLElement>();
+	let tocRev = $state(0);
 	function onEditorReady(ed: Editor) {
 		editor = ed;
-		rebuildOutline(ed);
+		tocRev++;
 	}
-	function onEditorUpdate(ed: Editor) {
-		rebuildOutline(ed);
-	}
-	$effect(() => {
-		if (!browser) return;
-		// `true` capture also catches scroll inside the layout's scroll container.
-		const onScroll = () => recomputeActive();
-		window.addEventListener('scroll', onScroll, true);
-		return () => window.removeEventListener('scroll', onScroll, true);
-	});
 
 	// ─── Title (always-editable inline; debounced autosave) ──────────────────
 	let titleDraft = $state(pg.title);
@@ -349,28 +310,39 @@
 				/>
 			{/if}
 
-			<div class="h-4 w-px bg-border"></div>
-
-			<IconButton ariaLabel={m.wiki_aria_copy_link()} onclick={copyLink}
-				><Icon name="link" size={15} /></IconButton
-			>
+			<!-- Everything else lives in the ⋯ menu. -->
 			<div class="relative">
 				<IconButton ariaLabel={m.wiki_aria_more()} onclick={() => (menuOpen = !menuOpen)}>
-					<Icon name="settings" size={15} />
+					<Icon name="more" size={16} />
 				</IconButton>
-				<Popover open={menuOpen} onclose={() => (menuOpen = false)} align="right" minWidth={160}>
+				<Popover open={menuOpen} onclose={() => (menuOpen = false)} align="right" minWidth={210}>
+					<button
+						type="button"
+						onclick={() => {
+							menuOpen = false;
+							copyLink();
+						}}
+						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+					>
+						<span class="grid h-4 w-4 place-items-center text-text-3"
+							><Icon name="link" size={14} /></span
+						>
+						<span>{m.wiki_aria_copy_link()}</span>
+					</button>
 					{#if !pg.isFolder && editor}
 						<button
 							type="button"
 							disabled={exporting}
 							onclick={() => void onExportPdf()}
-							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 disabled:opacity-50"
+							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
 						>
-							<span class="grid h-4 w-4 place-items-center"><Icon name="download" size={14} /></span
+							<span class="grid h-4 w-4 place-items-center text-text-3"
+								><Icon name="download" size={14} /></span
 							>
 							<span>{exporting ? m.wiki_exporting() : m.wiki_export_pdf()}</span>
 						</button>
 					{/if}
+					<div class="-mx-0.5 my-1 h-px bg-border"></div>
 					<button
 						type="button"
 						onclick={() => {
@@ -379,18 +351,24 @@
 						}}
 						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-accent hover:bg-surface-2"
 					>
-						<span class="grid h-4 w-4 place-items-center"><Icon name="x" size={14} /></span>
+						<span class="grid h-4 w-4 place-items-center"><Icon name="trash" size={14} /></span>
 						<span>{pg.isFolder ? m.wiki_delete_folder() : m.wiki_delete_page()}</span>
 					</button>
+					<!-- What the old details rail showed, as a quiet footer. -->
+					<div class="-mx-0.5 my-1 h-px bg-border"></div>
+					<div class="px-2 pt-1 pb-1.5 text-[12px] leading-5 text-text-4">
+						{m.wiki_detail_created()}
+						{fmtDate(pg.createdAt)}<br />
+						{m.wiki_detail_updated()}
+						{fmtDate(pg.updatedAt)}
+					</div>
 				</Popover>
 			</div>
 		</div>
 	</header>
 
-	<div
-		class="relative z-10 mx-auto max-w-[1188px] px-8 pt-12 pb-28 lg:grid lg:[grid-template-columns:minmax(0,1fr)_212px] lg:gap-14"
-	>
-		<article class="max-w-[792px] min-w-0">
+	<div class="relative z-10 mx-auto max-w-[848px] px-14 pt-12 pb-28">
+		<article class="min-w-0">
 			<!-- Document title block -->
 			<div class="mb-5 flex items-start gap-3.5">
 				<!-- Icon centered against the title's first line (see note page). -->
@@ -432,24 +410,26 @@
 
 			<div class="mb-8 h-px bg-gradient-to-r from-border to-transparent"></div>
 
-			{#if browser && pg.documentId}
-				{#key pg.documentId}
-					<CollaborativeWikiEditor
-						documentId={pg.documentId}
-						pageId={pg.id}
-						user={collabUser}
-						placeholder={pg.isFolder
-							? m.wiki_placeholder_description()
-							: m.wiki_placeholder_write_or_commands()}
-						onUpdate={onEditorUpdate}
-						onReady={onEditorReady}
-						onStatus={(s) => (collabStatus = s)}
-						onPresence={(u) => (presence = u)}
-					/>
-				{/key}
-			{:else if pg.body}
-				<WikiEditor content={pg.body} editable={false} />
-			{/if}
+			<div bind:this={editorWrap}>
+				{#if browser && pg.documentId}
+					{#key pg.documentId}
+						<CollaborativeWikiEditor
+							documentId={pg.documentId}
+							pageId={pg.id}
+							user={collabUser}
+							placeholder={pg.isFolder
+								? m.wiki_placeholder_description()
+								: m.wiki_placeholder_write_or_commands()}
+							onUpdate={() => tocRev++}
+							onReady={onEditorReady}
+							onStatus={(s) => (collabStatus = s)}
+							onPresence={(u) => (presence = u)}
+						/>
+					{/key}
+				{:else if pg.body}
+					<WikiEditor content={pg.body} editable={false} />
+				{/if}
+			</div>
 
 			{#if pg.isFolder}
 				{#if children.length > 0}
@@ -489,53 +469,11 @@
 				{/if}
 			{/if}
 		</article>
-
-		<!-- Right rail -->
-		<aside class="hidden lg:block">
-			<div class="sticky top-[76px] max-h-[calc(100vh-96px)] space-y-7 overflow-y-auto pb-4">
-				{#if outline.items.length > 0}
-					<nav>
-						<div class="wiki-rail__label mb-3">{m.wiki_on_this_page()}</div>
-						<ul class="space-y-0.5 border-l border-border">
-							{#each outline.items as h, i (i + h.text)}
-								<li>
-									<button
-										type="button"
-										onclick={() => scrollToHeading(i)}
-										class="wiki-toc-item {activeIdx === i ? 'is-active' : ''}"
-										style:padding-left="{12 + (h.level - 1) * 12}px"
-									>
-										{h.text}
-									</button>
-								</li>
-							{/each}
-						</ul>
-					</nav>
-				{/if}
-
-				<div>
-					<div class="wiki-rail__label mb-3">{m.wiki_details()}</div>
-					<dl class="space-y-2.5 text-[14px]">
-						<div class="flex items-center justify-between gap-2">
-							<dt class="text-text-4">{m.wiki_detail_type()}</dt>
-							<dd class="flex items-center gap-1.5 text-text-2">
-								<Icon name={pg.isFolder ? 'folder' : 'file'} size={13} />
-								{pg.isFolder ? m.wiki_type_folder() : m.wiki_type_page()}
-							</dd>
-						</div>
-						<div class="flex items-center justify-between gap-2">
-							<dt class="text-text-4">{m.wiki_detail_created()}</dt>
-							<dd class="text-text-2">{fmtDate(pg.createdAt)}</dd>
-						</div>
-						<div class="flex items-center justify-between gap-2">
-							<dt class="text-text-4">{m.wiki_detail_updated()}</dt>
-							<dd class="text-text-2">{fmtDate(pg.updatedAt)}</dd>
-						</div>
-					</dl>
-				</div>
-			</div>
-		</aside>
 	</div>
+
+	{#key pg.id}
+		<DocOutline root={editorWrap} rev={tocRev} label={m.wiki_on_this_page()} />
+	{/key}
 </div>
 
 <style>
@@ -574,34 +512,5 @@
 		text-transform: uppercase;
 		letter-spacing: 0.13em;
 		color: var(--text-4);
-	}
-
-	/* Table-of-contents items with an active marker on the rail line */
-	.wiki-toc-item {
-		position: relative;
-		display: block;
-		width: 100%;
-		min-width: 0;
-		/* Long or unbroken heading text wraps inside the rail, never past it. */
-		overflow-wrap: anywhere;
-		text-align: left;
-		font-size: 12.5px;
-		line-height: 1.35;
-		padding-top: 4px;
-		padding-bottom: 4px;
-		color: var(--text-3);
-		border-left: 1.5px solid transparent;
-		margin-left: -1px;
-		transition:
-			color 0.15s,
-			border-color 0.15s;
-	}
-	.wiki-toc-item:hover {
-		color: var(--text);
-	}
-	.wiki-toc-item.is-active {
-		color: var(--text);
-		font-weight: 500;
-		border-left-color: var(--accent);
 	}
 </style>

@@ -50,7 +50,6 @@
 	const activeId = $derived(page.url.pathname.split('/').pop());
 
 	const topLevel = $derived(childrenOf(null));
-	const pageCount = $derived(tree.filter((n) => !n.isFolder).length);
 
 	const filtered = $derived.by(() => {
 		const q = search.trim().toLowerCase();
@@ -309,16 +308,25 @@
 <aside
 	class="flex min-h-0 w-[286px] flex-col border-r border-border bg-bg-elev max-md:w-full max-md:border-r-0"
 >
-	<div class="flex items-center gap-2 px-4 pt-4 pb-2.5">
-		<span class="wiki-eyebrow">{m.wiki_breadcrumb_root()}</span>
-		{#if pageCount > 0}
-			<span class="wiki-count">{pageCount}</span>
-		{/if}
-		<div class="relative ml-auto">
+	<!-- Search + create (the page header already names the wiki). -->
+	<div class="flex items-stretch gap-1.5 px-3 pt-3 pb-2">
+		<div
+			class="wiki-search flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2.5 py-[6px] text-[14px]"
+		>
+			<span class="text-text-4"><Icon name="search" size={14} /></span>
+			<input
+				type="text"
+				bind:value={search}
+				placeholder={m.wiki_tree_search_placeholder()}
+				class="min-w-0 flex-1 border-0 bg-transparent outline-none placeholder:text-text-4"
+			/>
+		</div>
+		<div class="relative shrink-0">
 			<button
 				onclick={() => (createOpen = !createOpen)}
-				class="grid h-[29px] w-[29px] place-items-center rounded-md text-text-3 transition-colors hover:bg-surface hover:text-text"
+				class="grid h-full w-[34px] place-items-center rounded-lg border border-border bg-bg text-text-3 transition-colors hover:border-border-strong hover:text-text disabled:opacity-50"
 				aria-label={m.wiki_tree_new_page_or_folder()}
+				title={m.wiki_tree_new_page_or_folder()}
 			>
 				<Icon name="plus" size={15} />
 			</button>
@@ -353,18 +361,6 @@
 		</div>
 	</div>
 
-	<div class="px-3 pb-2">
-		<div class="wiki-search flex items-center gap-2 rounded-lg px-2.5 py-[7px] text-[14px]">
-			<span class="text-text-4"><Icon name="search" size={14} /></span>
-			<input
-				type="text"
-				bind:value={search}
-				placeholder={m.wiki_tree_search_placeholder()}
-				class="min-w-0 flex-1 border-0 bg-transparent outline-none placeholder:text-text-4"
-			/>
-		</div>
-	</div>
-
 	<div class="min-h-0 flex-1 overflow-y-auto px-2 pt-1 pb-4">
 		{#if topLevel.length === 0}
 			<div class="px-3 py-6 text-center text-[14px] text-text-4">{m.wiki_tree_no_pages()}</div>
@@ -377,24 +373,6 @@
 </aside>
 
 <style>
-	.wiki-eyebrow {
-		font-family: var(--font-mono);
-		font-size: 10.5px;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.16em;
-		color: var(--text-4);
-	}
-	.wiki-count {
-		font-family: var(--font-mono);
-		font-size: 10px;
-		color: var(--text-4);
-		background: var(--surface);
-		padding: 1px 6px;
-		border-radius: 999px;
-		line-height: 1.5;
-	}
-
 	.wiki-search {
 		background: var(--bg);
 		border: 1px solid var(--border);

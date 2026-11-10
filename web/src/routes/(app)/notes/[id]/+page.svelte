@@ -7,6 +7,7 @@
 	import { deserialize } from '$app/forms';
 	import type { ActionResult } from '@sveltejs/kit';
 	import Icon from '$lib/components/Icon.svelte';
+	import DocOutline from '$lib/components/wiki/DocOutline.svelte';
 	import SyncStatus from '$lib/components/SyncStatus.svelte';
 	import { autosize } from '$lib/actions/autosize';
 	import IconButton from '$lib/components/IconButton.svelte';
@@ -95,147 +96,13 @@
 	let bulkOpen = $state(false);
 	let bulkTodos = $state<SourceTodo[]>([]);
 
-	// ─── Outline / table of contents (meeting notes) ────────────────────────
-	// A sticky module at the top-right of the note (TRACK-137, Notion-style):
-	// closed by default it is a column of short bars, one per heading, indented
-	// by level with the section you're reading in accent — a scroll position
-	// indicator that costs no space. Hovering it (or tabbing into it) opens
-	// the full outline over the page; leaving closes it again. Meeting-note
-	// only, and only with headings.
-	type TocItem = { index: number; level: number; text: string };
-	let tocItems = $state<TocItem[]>([]);
-	let activeIndex = $state(-1);
-	const showToc = $derived(note.kind === 'meeting' && tocItems.length > 0);
-
-	let tocHover = $state(false);
-	let tocFocus = $state(false);
-	const tocOpen = $derived(tocHover || tocFocus);
-	let tocTimer: ReturnType<typeof setTimeout> | undefined;
-	// Open at once (the bars are the affordance, a delay would feel dead) and
-	// close with a short grace period so a cursor drifting off the edge of
-	// the panel doesn't snap it shut mid-read.
-	function setTocHover(next: boolean) {
-		clearTimeout(tocTimer);
-		if (next) tocHover = true;
-		else tocTimer = setTimeout(() => (tocHover = false), 160);
-	}
-	$effect(() => () => clearTimeout(tocTimer));
-
-	function headingEls(): HTMLElement[] {
-		const root = editorWrap?.querySelector('.ProseMirror');
-		if (!root) return [];
-		return Array.from(root.querySelectorAll('h1, h2, h3')) as HTMLElement[];
-	}
-
-	// Build the outline from the rendered heading DOM, keyed by each heading's
-	// position in the list. We deliberately do NOT inject ids: ProseMirror
-	// re-renders heading nodes on every edit and strips any attribute it doesn't
-	// own, so a persisted id would silently disappear. Instead we re-query the
-	// live DOM by index whenever we need to scroll or find the active section.
-	function buildToc() {
-		const items: TocItem[] = [];
-		headingEls().forEach((el, index) => {
-			const text = (el.textContent ?? '').trim();
-			if (text) items.push({ index, level: Number(el.tagName[1]), text });
-		});
-		tocItems = items;
-		computeActive();
-	}
-
-	// The active section is the last heading whose top has scrolled above the
-	// sticky header band (57px + a little), so it highlights what you're reading.
-	function computeActive() {
-		const els = headingEls();
-		if (!tocItems.length) {
-			activeIndex = -1;
-			return;
-		}
-		// At the very bottom the last heading can't reach the top band, so pin it
-		// active — otherwise the final section could never highlight.
-		const scroller = els[0] ? scrollParentOf(els[0]) : null;
-		if (scroller && scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4) {
-			activeIndex = tocItems[tocItems.length - 1].index;
-			return;
-		}
-		let active = tocItems[0].index;
-		for (const item of tocItems) {
-			const el = els[item.index];
-			if (!el) continue;
-			if (el.getBoundingClientRect().top <= 96) active = item.index;
-			else break;
-		}
-		activeIndex = active;
-	}
-
-	// Nearest scrollable ancestor of an element (the notes page scroll column).
-	function scrollParentOf(el: HTMLElement): HTMLElement | null {
-		let p = el.parentElement;
-		while (p) {
-			const oy = getComputedStyle(p).overflowY;
-			if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight) return p;
-			p = p.parentElement;
-		}
-		return null;
-	}
-
-	// Animate the scroll ourselves: native scroll-behavior:smooth is unreliable
-	// inside this nested scroll container, so we drive scrollTop with rAF.
-	function smoothScrollTo(scroller: HTMLElement, target: number) {
-		const start = scroller.scrollTop;
-		const dest = Math.max(0, Math.min(target, scroller.scrollHeight - scroller.clientHeight));
-		const dist = dest - start;
-		if (Math.abs(dist) < 2) {
-			scroller.scrollTop = dest;
-			return;
-		}
-		const duration = 320;
-		let startTs: number | null = null;
-		const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
-		const step = (ts: number) => {
-			startTs ??= ts;
-			const t = Math.min(1, (ts - startTs) / duration);
-			scroller.scrollTop = start + dist * ease(t);
-			if (t < 1) requestAnimationFrame(step);
-			else computeActive();
-		};
-		requestAnimationFrame(step);
-	}
-
-	function scrollToHeading(index: number) {
-		const el = headingEls()[index];
-		if (!el) return;
-		const scroller = scrollParentOf(el);
-		if (!scroller) {
-			el.scrollIntoView({ block: 'start' });
-			return;
-		}
-		// Land the heading just below the sticky header band (matches its
-		// scroll-margin-top in wiki-editor.css).
-		const offset = el.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
-		smoothScrollTo(scroller, scroller.scrollTop + offset - 76);
-	}
+	// ─── Outline (meeting notes): see DocOutline ─────────────────────────────
+	let tocRev = $state(0);
 
 	function onEditorReady(ed: Editor) {
 		editor = ed;
-		buildToc();
-		// Collaborative content streams in after mount; rebuild once it has settled.
-		setTimeout(buildToc, 400);
+		tocRev++;
 	}
-
-	// Keep the active-section highlight current as the document scrolls. The
-	// observer is a cheap trigger; the actual pick is done by computeActive.
-	$effect(() => {
-		void tocItems; // re-observe whenever the outline changes
-		if (!showToc) return;
-		const els = headingEls();
-		if (!els.length) return;
-		const io = new IntersectionObserver(computeActive, {
-			rootMargin: '-96px 0px 0px 0px',
-			threshold: [0, 1]
-		});
-		els.forEach((el) => io.observe(el));
-		return () => io.disconnect();
-	});
 
 	// Block gutter → convert this to-do into a task (pos = the taskItem's start).
 	function openConvert(pos: number, text: string) {
@@ -363,10 +230,6 @@
 		titleDraft = note.title;
 		collabStatus = undefined;
 		presence = [];
-		tocItems = [];
-		activeIndex = -1;
-		tocHover = false;
-		tocFocus = false;
 	});
 
 	async function saveTitle() {
@@ -544,35 +407,63 @@
 				<SyncStatus state={collabStatus ?? 'idle'} label={statusLabel} />
 			{/if}
 
-			<div class="h-4 w-px bg-border"></div>
-
-			{#if canEdit}
-				<IconButton ariaLabel={m.notes_bulk_tooltip()} onclick={openBulk}>
-					<Icon name="check-square" size={15} />
-				</IconButton>
-			{/if}
-			{#if isOwner}
-				<IconButton ariaLabel={m.notes_share_title()} onclick={() => (shareOpen = true)}>
-					<Icon name="link" size={15} />
-				</IconButton>
-			{/if}
+			<!-- Everything else lives in the ⋯ menu. -->
 			<div class="relative">
 				<IconButton ariaLabel={m.notes_more()} onclick={() => (menuOpen = !menuOpen)}>
-					<Icon name="settings" size={15} />
+					<Icon name="more" size={16} />
 				</IconButton>
-				<Popover open={menuOpen} onclose={() => (menuOpen = false)} align="right" minWidth={170}>
-					<button
-						type="button"
-						onclick={() => void onSaveAsTemplate()}
-						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2"
-					>
-						<span class="grid h-4 w-4 place-items-center"><Icon name="bookmark" size={14} /></span>
-						<span>{m.notes_save_as_template()}</span>
-					</button>
+				<Popover open={menuOpen} onclose={() => (menuOpen = false)} align="right" minWidth={230}>
+					{#if canEdit}
+						<button
+							type="button"
+							onclick={() => {
+								menuOpen = false;
+								openBulk();
+							}}
+							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+						>
+							<span class="grid h-4 w-4 place-items-center text-text-3"
+								><Icon name="check-square" size={14} /></span
+							>
+							<span>{m.notes_bulk_tooltip()}</span>
+						</button>
+					{/if}
 					{#if isOwner}
 						<button
 							type="button"
-							onclick={() => void onDelete()}
+							onclick={() => {
+								menuOpen = false;
+								shareOpen = true;
+							}}
+							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+						>
+							<span class="grid h-4 w-4 place-items-center text-text-3"
+								><Icon name="link" size={14} /></span
+							>
+							<span>{m.notes_share_title()}</span>
+						</button>
+					{/if}
+					<button
+						type="button"
+						onclick={() => {
+							menuOpen = false;
+							void onSaveAsTemplate();
+						}}
+						class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-text-2 hover:bg-surface-2 hover:text-text"
+					>
+						<span class="grid h-4 w-4 place-items-center text-text-3"
+							><Icon name="bookmark" size={14} /></span
+						>
+						<span>{m.notes_save_as_template()}</span>
+					</button>
+					{#if isOwner}
+						<div class="-mx-0.5 my-1 h-px bg-border"></div>
+						<button
+							type="button"
+							onclick={() => {
+								menuOpen = false;
+								void onDelete();
+							}}
 							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] leading-none text-accent hover:bg-surface-2"
 						>
 							<span class="grid h-4 w-4 place-items-center"><Icon name="trash" size={14} /></span>
@@ -619,7 +510,7 @@
 						user={collabUser}
 						placeholder={m.notes_editor_placeholder()}
 						onReady={onEditorReady}
-						onUpdate={buildToc}
+						onUpdate={() => tocRev++}
 						onStatus={(s) => (collabStatus = s)}
 						onPresence={(u) => (presence = u)}
 						onConvertTodo={canEdit ? openConvert : undefined}
@@ -629,79 +520,10 @@
 		{/if}
 	</div>
 
-	{#if showToc}
-		<!--
-			The module floats over the top-right of the note and sticks while you
-			scroll, so it's available at any width. Two layers share one anchor:
-			the bar rail (closed) and the outline panel (open) cross-fade in place,
-			and the panel overlays the rail's footprint so the hover never breaks
-			while it opens.
-		-->
-		<aside class="pointer-events-none absolute inset-y-0 right-0 z-10 hidden sm:block">
-			<div
-				role="presentation"
-				onmouseenter={() => setTocHover(true)}
-				onmouseleave={() => setTocHover(false)}
-				onfocusin={() => (tocFocus = true)}
-				onfocusout={(e) => {
-					if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node | null)) {
-						tocFocus = false;
-					}
-				}}
-				class="pointer-events-auto sticky top-[73px] mr-3 flex justify-end"
-			>
-				<!-- Closed: the bar rail. Decorative — the panel carries the controls. -->
-				<div
-					aria-hidden="true"
-					class="flex max-h-[calc(100vh-89px)] flex-col items-start gap-[7px] overflow-hidden px-3.5 py-3 transition-opacity duration-150 {tocOpen
-						? 'opacity-0'
-						: 'opacity-100'}"
-				>
-					{#each tocItems as item (item.index)}
-						<span
-							class="block h-[3px] rounded-full transition-colors duration-200 {activeIndex ===
-							item.index
-								? 'bg-accent'
-								: 'bg-text-4'}"
-							style:width="{22 - (item.level - 1) * 6}px"
-							style:margin-left="{(item.level - 1) * 6}px"
-						></span>
-					{/each}
-				</div>
-
-				<!-- Open: the outline panel, anchored to the rail's top-right corner. -->
-				<nav
-					aria-label={m.notes_toc_title()}
-					class="absolute top-0 right-0 flex max-h-[calc(100vh-89px)] w-[240px] flex-col overflow-hidden rounded-xl border border-border bg-bg-elev/95 shadow-[var(--shadow-elev)] backdrop-blur transition-[opacity,transform] duration-150 ease-out {tocOpen
-						? 'translate-x-0 opacity-100'
-						: 'pointer-events-none translate-x-1.5 opacity-0'}"
-				>
-					<ul class="overflow-y-auto py-2 pr-2 pl-1.5">
-						{#each tocItems as item (item.index)}
-							{@const active = activeIndex === item.index}
-							<li>
-								<button
-									type="button"
-									onclick={() => scrollToHeading(item.index)}
-									title={item.text}
-									style:padding-left="{(item.level - 1) * 12 + 10}px"
-									class="relative line-clamp-2 w-full rounded-md py-1.5 pr-2 text-left text-[13px] leading-snug [overflow-wrap:anywhere] transition-colors {active
-										? 'font-medium text-text'
-										: 'text-text-3 hover:bg-surface-2/70 hover:text-text'}"
-								>
-									{#if active}
-										<span
-											class="absolute top-1/2 left-0 h-3.5 w-[2px] -translate-y-1/2 rounded-full bg-accent"
-										></span>
-									{/if}
-									{item.text}
-								</button>
-							</li>
-						{/each}
-					</ul>
-				</nav>
-			</div>
-		</aside>
+	{#if note.kind === 'meeting'}
+		{#key note.id}
+			<DocOutline root={editorWrap} rev={tocRev} />
+		{/key}
 	{/if}
 </div>
 

@@ -544,18 +544,25 @@
 <aside
 	class="flex min-h-0 w-[286px] flex-col border-r border-border bg-bg-elev max-md:w-full max-md:border-r-0"
 >
-	<!-- Header: eyebrow + count + create menu -->
-	<div class="flex items-center gap-2 px-4 pt-4 pb-2">
-		<span class="eyebrow">{m.shell_nav_notes()}</span>
-		{#if mine.length > 0}
-			<span class="count">{mine.length}</span>
-		{/if}
-		<div class="relative ml-auto">
+	<!-- Search + create (the page header already names the notebook). -->
+	<div class="flex items-stretch gap-1.5 px-3 pt-3 pb-1">
+		<div
+			class="search flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2.5 py-[6px] text-[14px]"
+		>
+			<span class="text-text-4"><Icon name="search" size={14} /></span>
+			<input
+				type="text"
+				bind:value={search}
+				placeholder={m.notes_tree_search_placeholder()}
+				class="min-w-0 flex-1 border-0 bg-transparent outline-none placeholder:text-text-4"
+			/>
+		</div>
+		<div class="relative shrink-0">
 			<button
 				type="button"
 				onclick={() => (createOpen = !createOpen)}
 				disabled={creating}
-				class="grid h-[29px] w-[29px] place-items-center rounded-md text-text-3 transition-colors hover:bg-surface hover:text-text disabled:opacity-50"
+				class="grid h-full w-[34px] place-items-center rounded-lg border border-border bg-bg text-text-3 transition-colors hover:border-border-strong hover:text-text disabled:opacity-50"
 				aria-label={m.notes_new_note()}
 				title={m.notes_new_note()}
 			>
@@ -582,18 +589,6 @@
 					<span>{m.notes_new_meeting()}</span>
 				</button>
 			</Popover>
-		</div>
-	</div>
-
-	<div class="px-3 pb-1">
-		<div class="search flex items-center gap-2 rounded-lg px-2.5 py-[6px] text-[14px]">
-			<span class="text-text-4"><Icon name="search" size={14} /></span>
-			<input
-				type="text"
-				bind:value={search}
-				placeholder={m.notes_tree_search_placeholder()}
-				class="min-w-0 flex-1 border-0 bg-transparent outline-none placeholder:text-text-4"
-			/>
 		</div>
 	</div>
 
@@ -733,23 +728,6 @@
 </aside>
 
 <style>
-	.eyebrow {
-		font-family: var(--font-mono);
-		font-size: 10.5px;
-		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.16em;
-		color: var(--text-4);
-	}
-	.count {
-		font-family: var(--font-mono);
-		font-size: 10px;
-		color: var(--text-4);
-		background: var(--surface);
-		padding: 1px 6px;
-		border-radius: 999px;
-		line-height: 1.5;
-	}
 	.search {
 		background: var(--bg);
 		border: 1px solid var(--border);
