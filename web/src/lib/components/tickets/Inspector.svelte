@@ -29,6 +29,12 @@
 	import type { TicketRow } from '$lib/server/tickets';
 	import type { StatusId } from '$lib/types';
 	import type { AttachmentDTO } from '$lib/config/attachments';
+	import type { TicketMessageRow } from '$lib/server/tickets';
+	import MentionText from '../MentionText.svelte';
+	import PropertyRow from '../tasks/panel/PropertyRow.svelte';
+	import SectionHeader from '../tasks/panel/SectionHeader.svelte';
+	import { ICON_ACTION, OPEN, PROP_VALUE, QUIET_ADD, ROW, TAG } from '../tasks/panel/styles';
+	import { formatDateShort } from '$lib/utils/format';
 	import { m } from '$lib/paraglide/messages';
 
 	type AgentUser = { id: string; name: string; initials: string; color: string; status?: string };
@@ -85,11 +91,43 @@
 			lastTicketId = id;
 			pop = null;
 			attachments = [];
+			checklistOpen = false;
+			conversation = [];
+			conversationLoaded = false;
 			if (id) void loadAttachments(id);
 		}
 		subjectDraft = ticket?.subject ?? '';
 		checklistDraft = ticket?.checklist ?? [];
 	});
+
+	// The checklist section shows once it has items, or when asked for.
+	let checklistOpen = $state(false);
+
+	// Conversation peek: the ticket's replies (internal notes for the team),
+	// reloaded when the ticket opens and whenever it changes (a new reply bumps
+	// updatedAt). The panel shows the last PEEK of them.
+	const PEEK = 3;
+	let conversation = $state<TicketMessageRow[]>([]);
+	let conversationLoaded = $state(false);
+	$effect(() => {
+		const id = ticket?.id;
+		void ticket?.updatedAt;
+		void ticket?.messageCount;
+		if (id) void loadConversation(id);
+	});
+	async function loadConversation(id: string) {
+		try {
+			const res = await fetch(`/api/tickets/${id}/messages`);
+			if (!res.ok) return;
+			const body = (await res.json()) as { messages: TicketMessageRow[] };
+			if (ticket?.id !== id) return;
+			conversation = body.messages;
+		} catch {
+			/* non-fatal — the peek just stays empty */
+		} finally {
+			if (ticket?.id === id) conversationLoaded = true;
+		}
+	}
 
 	// Ticket-level attachments, fetched on demand when a ticket opens — kept out
 	// of the bulk ticket-list load (mirrors the tasks Inspector's meetings).
@@ -207,10 +245,10 @@
 		{@const statusMeta = TICKET_STATUSES.find((s) => s.id === ticket.status)}
 		{@const categoryMeta = TICKET_CATEGORIES.find((c) => c.id === ticket.category)}
 		<!-- Header -->
-		<div class="flex items-center gap-2 border-b border-border px-4 py-3 text-[12px] text-text-3">
+		<div class="flex items-center gap-2 border-b border-border px-5 py-3 text-[12px] text-text-3">
 			<span class="font-mono text-text-4">{ticket.displayId}</span>
-			<span class="inline-flex items-center gap-1.5">
-				<span class="h-1.5 w-1.5 rounded-full" style:background={ticket.orgColor}></span>
+			<span class="inline-flex min-w-0 items-center gap-1.5">
+				<span class="h-1.5 w-1.5 shrink-0 rounded-full" style:background={ticket.orgColor}></span>
 				<span class="max-w-[176px] truncate">{ticket.orgName}</span>
 			</span>
 			<div class="ml-auto flex items-center gap-1">
@@ -248,7 +286,7 @@
 			</div>
 		</div>
 
-		<div class="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-4">
+		<div class="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-5 pt-4 pb-6">
 			<!-- Subject -->
 			{#if canEdit}
 				<!-- A textarea so long subjects wrap like the read-only heading; Enter commits. -->
@@ -263,338 +301,348 @@
 							(e.currentTarget as HTMLTextAreaElement).blur();
 						}
 					}}
-					class="mb-4 block w-full resize-none overflow-hidden rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-[20px] leading-tight font-semibold tracking-[-0.01em] text-text outline-none hover:border-border focus:border-border-strong focus:bg-surface"
+					class="-mx-1 mb-4 block w-[calc(100%+0.5rem)] resize-none overflow-hidden rounded-lg bg-transparent px-1 py-0.5 text-[20px] leading-tight font-semibold tracking-[-0.01em] text-text outline-none focus:bg-surface"
 				></textarea>
 			{:else}
-				<h2 class="mb-4 px-1 text-[20px] leading-tight font-semibold tracking-[-0.01em] text-text">
+				<h2 class="mb-4 text-[20px] leading-tight font-semibold tracking-[-0.01em] text-text">
 					{ticket.subject}
 				</h2>
 			{/if}
 
-			<!-- Properties -->
-			<div class="space-y-1">
-				<!-- Status -->
-				<div class="flex items-center gap-3">
-					<span class="w-[92px] shrink-0 text-[13px] text-text-3">{m.tickets_field_status()}</span>
-					<div class="relative">
-						<button
-							type="button"
-							disabled={!canEdit}
-							onclick={() => (pop = pop === 'status' ? null : 'status')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
-								? 'hover:border-border-strong'
-								: ''} {pop === 'status' ? 'ring-2 ring-accent/40' : ''}"
-						>
-							<span class="h-2 w-2 rounded-full" style:background={statusMeta?.dot ?? '#7c7c84'}
-							></span>
-							<span>{ticketStatusLabel(ticket.status)}</span>
-						</button>
-						{#if pop === 'status'}
-							<div
-								use:clickOutside={() => (pop = null)}
-								in:fly={POPOVER_IN}
-								class="absolute top-full left-0 z-50 mt-1.5 min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-							>
-								{#each TICKET_STATUSES as s (s.id)}
-									<button
-										type="button"
-										disabled={pending}
-										onclick={() => patch('status', s.id)}
-										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
-									>
-										<span class="h-2 w-2 rounded-full" style:background={s.dot}></span>
-										<span class="text-[14px]">{ticketStatusLabel(s.id)}</span>
-										<span
-											class="ml-auto text-accent {ticket.status === s.id
-												? 'opacity-100'
-												: 'opacity-0'}"
-										>
-											<Icon name="check" size={14} />
-										</span>
-									</button>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				</div>
-
-				<!-- Priority -->
-				<div class="flex items-center gap-3">
-					<span class="w-[92px] shrink-0 text-[13px] text-text-3">{m.tickets_field_priority()}</span
+			<!-- Properties: quiet label / value rows, values open their picker. -->
+			<div>
+				<PropertyRow label={m.tickets_field_status()}>
+					<button
+						type="button"
+						disabled={!canEdit}
+						onclick={() => (pop = pop === 'status' ? null : 'status')}
+						class="{PROP_VALUE} {pop === 'status' ? OPEN : ''}"
 					>
-					<div class="relative">
-						<button
-							type="button"
-							disabled={!canEdit}
-							onclick={() => (pop = pop === 'priority' ? null : 'priority')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
-								? 'hover:border-border-strong'
-								: ''} {pop === 'priority' ? 'ring-2 ring-accent/40' : ''}"
+						<span
+							class="h-2 w-2 shrink-0 rounded-full"
+							style:background={statusMeta?.dot ?? '#7c7c84'}
+						></span>
+						<span>{ticketStatusLabel(ticket.status)}</span>
+					</button>
+					{#if pop === 'status'}
+						<div
+							use:clickOutside={() => (pop = null)}
+							in:fly={POPOVER_IN}
+							class="absolute top-full left-0 z-50 mt-1.5 min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 						>
-							<PriorityBars priority={ticket.priority} />
-							<span>{priorityLabel(ticket.priority)}</span>
-						</button>
-						{#if pop === 'priority'}
-							<div
-								use:clickOutside={() => (pop = null)}
-								in:fly={POPOVER_IN}
-								class="absolute top-full left-0 z-50 mt-1.5 min-w-[176px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-							>
-								{#each TICKET_PRIORITIES as p (p.id)}
-									<button
-										type="button"
-										disabled={pending}
-										onclick={() => patch('priority', p.id)}
-										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+							{#each TICKET_STATUSES as s (s.id)}
+								<button
+									type="button"
+									disabled={pending}
+									onclick={() => patch('status', s.id)}
+									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+								>
+									<span class="h-2 w-2 rounded-full" style:background={s.dot}></span>
+									<span class="text-[14px]">{ticketStatusLabel(s.id)}</span>
+									<span
+										class="ml-auto text-accent {ticket.status === s.id
+											? 'opacity-100'
+											: 'opacity-0'}"
 									>
-										<PriorityBars priority={p.id} />
-										<span class="text-[14px]">{priorityLabel(p.id)}</span>
-										<span
-											class="ml-auto text-accent {ticket.priority === p.id
-												? 'opacity-100'
-												: 'opacity-0'}"
-										>
-											<Icon name="check" size={14} />
-										</span>
-									</button>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				</div>
+										<Icon name="check" size={14} />
+									</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</PropertyRow>
 
-				<!-- Category -->
-				<div class="flex items-center gap-3">
-					<span class="w-[92px] shrink-0 text-[13px] text-text-3">{m.tickets_field_category()}</span
+				<PropertyRow label={m.tickets_field_priority()}>
+					<button
+						type="button"
+						disabled={!canEdit}
+						onclick={() => (pop = pop === 'priority' ? null : 'priority')}
+						class="{PROP_VALUE} {pop === 'priority' ? OPEN : ''}"
 					>
-					<div class="relative">
-						<button
-							type="button"
-							disabled={!canEdit}
-							onclick={() => (pop = pop === 'category' ? null : 'category')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
-								? 'hover:border-border-strong'
-								: ''} {pop === 'category' ? 'ring-2 ring-accent/40' : ''}"
+						<PriorityBars priority={ticket.priority} />
+						<span>{priorityLabel(ticket.priority)}</span>
+					</button>
+					{#if pop === 'priority'}
+						<div
+							use:clickOutside={() => (pop = null)}
+							in:fly={POPOVER_IN}
+							class="absolute top-full left-0 z-50 mt-1.5 min-w-[176px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 						>
-							<span class="h-2 w-2 rounded-full" style:background={categoryMeta?.color ?? '#7c7c84'}
-							></span>
-							<span>{ticketCategoryLabel(ticket.category)}</span>
-						</button>
-						{#if pop === 'category'}
-							<div
-								use:clickOutside={() => (pop = null)}
-								in:fly={POPOVER_IN}
-								class="absolute top-full left-0 z-50 mt-1.5 min-w-[198px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-							>
-								{#each TICKET_CATEGORIES as c (c.id)}
-									<button
-										type="button"
-										disabled={pending}
-										onclick={() => patch('category', c.id)}
-										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+							{#each TICKET_PRIORITIES as p (p.id)}
+								<button
+									type="button"
+									disabled={pending}
+									onclick={() => patch('priority', p.id)}
+									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+								>
+									<PriorityBars priority={p.id} />
+									<span class="text-[14px]">{priorityLabel(p.id)}</span>
+									<span
+										class="ml-auto text-accent {ticket.priority === p.id
+											? 'opacity-100'
+											: 'opacity-0'}"
 									>
-										<span class="h-2 w-2 rounded-full" style:background={c.color}></span>
-										<span class="text-[14px]">{ticketCategoryLabel(c.id)}</span>
-										<span
-											class="ml-auto text-accent {ticket.category === c.id
-												? 'opacity-100'
-												: 'opacity-0'}"
-										>
-											<Icon name="check" size={14} />
-										</span>
-									</button>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				</div>
+										<Icon name="check" size={14} />
+									</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</PropertyRow>
 
-				<!-- Assignee -->
-				<div class="flex items-center gap-3">
-					<span class="w-[92px] shrink-0 text-[13px] text-text-3">{m.tickets_field_assignee()}</span
+				<PropertyRow label={m.tickets_field_category()}>
+					<button
+						type="button"
+						disabled={!canEdit}
+						onclick={() => (pop = pop === 'category' ? null : 'category')}
+						class="{PROP_VALUE} {pop === 'category' ? OPEN : ''}"
 					>
-					<div class="relative">
+						<span
+							class="h-2 w-2 shrink-0 rounded-full"
+							style:background={categoryMeta?.color ?? '#7c7c84'}
+						></span>
+						<span>{ticketCategoryLabel(ticket.category)}</span>
+					</button>
+					{#if pop === 'category'}
+						<div
+							use:clickOutside={() => (pop = null)}
+							in:fly={POPOVER_IN}
+							class="absolute top-full left-0 z-50 mt-1.5 min-w-[198px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+						>
+							{#each TICKET_CATEGORIES as c (c.id)}
+								<button
+									type="button"
+									disabled={pending}
+									onclick={() => patch('category', c.id)}
+									class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+								>
+									<span class="h-2 w-2 rounded-full" style:background={c.color}></span>
+									<span class="text-[14px]">{ticketCategoryLabel(c.id)}</span>
+									<span
+										class="ml-auto text-accent {ticket.category === c.id
+											? 'opacity-100'
+											: 'opacity-0'}"
+									>
+										<Icon name="check" size={14} />
+									</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</PropertyRow>
+
+				<PropertyRow label={m.tickets_field_assignee()}>
+					<button
+						type="button"
+						disabled={!canEdit}
+						onclick={() => (pop = pop === 'assignee' ? null : 'assignee')}
+						class="{PROP_VALUE} {pop === 'assignee' ? OPEN : ''}"
+					>
+						{#if assigneeUsers.length === 1}
+							<Avatar user={assigneeUsers[0]} size={20} />
+							<span class="truncate">{assigneeUsers[0]?.name ?? m.common_unassigned()}</span>
+						{:else if assigneeUsers.length > 1}
+							<AvatarStack users={assigneeUsers} size={20} max={3} overlap={6} />
+							<span class="truncate">{m.tickets_n_assignees({ n: assigneeUsers.length })}</span>
+						{:else}
+							<span class="text-text-3">{m.common_unassigned()}</span>
+						{/if}
+					</button>
+					{#if pop === 'assignee'}
+						<AssigneePopover
+							value={ticket.assignees}
+							{users}
+							onchange={(v) => patch('assignees', v, { keepOpen: true })}
+							onclose={() => (pop = null)}
+						/>
+					{/if}
+				</PropertyRow>
+
+				<PropertyRow label={m.tickets_meta_reporter()}>
+					<span class="inline-flex min-w-0 items-center gap-2 text-[14px] text-text">
+						{#if reporter}<Avatar user={reporter} size={20} />{/if}
+						<span class="truncate">{reporter?.name ?? '—'}</span>
+					</span>
+				</PropertyRow>
+
+				{#if ticket.tags.length > 0 || canEdit}
+					<PropertyRow label={m.tasks_tags()}>
 						<button
 							type="button"
 							disabled={!canEdit}
-							onclick={() => (pop = pop === 'assignee' ? null : 'assignee')}
-							class="inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {assigneeUsers.length
-								? 'border border-border bg-surface'
-								: 'border border-dashed border-border text-text-3'} {canEdit
-								? 'hover:border-border-strong hover:text-text'
-								: ''} {pop === 'assignee' ? 'ring-2 ring-accent/40' : ''}"
+							onclick={() => (pop = pop === 'tags' ? null : 'tags')}
+							class="{PROP_VALUE} flex-wrap {pop === 'tags' ? OPEN : ''}"
 						>
-							{#if assigneeUsers.length === 1}
-								<Avatar user={assigneeUsers[0]} size={20} />
-								<span>{assigneeUsers[0]?.name ?? m.common_unassigned()}</span>
-							{:else if assigneeUsers.length > 1}
-								<AvatarStack users={assigneeUsers} size={20} max={3} overlap={6} />
-								<span>{m.tickets_n_assignees({ n: assigneeUsers.length })}</span>
+							{#each ticket.tags as tag (tag)}
+								{@const l = labelMeta(tag)}
+								<span class={TAG}>
+									<span class="h-1.5 w-1.5 shrink-0 rounded-full" style:background={l.color}></span>
+									<span class="max-w-[140px] truncate">{l.label}</span>
+								</span>
 							{:else}
-								<Icon name="user" size={14} />
-								<span>{m.common_unassigned()}</span>
-							{/if}
+								<span class="text-text-3">{m.tasks_add_tags()}</span>
+							{/each}
 						</button>
-						{#if pop === 'assignee'}
-							<AssigneePopover
-								value={ticket.assignees}
-								{users}
-								onchange={(v) => patch('assignees', v, { keepOpen: true })}
+						{#if pop === 'tags'}
+							<TagsPopover
+								value={ticket.tags}
+								suggestions={tagSuggestions}
+								onchange={(v) => patch('tags', v)}
 								onclose={() => (pop = null)}
 							/>
 						{/if}
-					</div>
-				</div>
-
-				<!-- Tags -->
-				<div class="flex items-start gap-3 pt-0.5">
-					<span class="w-[92px] shrink-0 pt-1.5 text-[13px] text-text-3">{m.tasks_tags()}</span>
-					<div class="relative flex flex-wrap items-center gap-1.5">
-						{#each ticket.tags as tag (tag)}
-							{@const l = labelMeta(tag)}
-							<span
-								class="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2 py-1 text-[13px] text-text-2"
-							>
-								<span class="h-1.5 w-1.5 rounded-full" style:background={l.color}></span>
-								{l.label}
-							</span>
-						{/each}
-						{#if canEdit}
-							<button
-								type="button"
-								onclick={() => (pop = pop === 'tags' ? null : 'tags')}
-								class="inline-flex items-center gap-1 rounded-md border border-dashed border-border px-2 py-1 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
-							>
-								<Icon name="plus" size={13} />
-								{#if ticket.tags.length === 0}{m.tasks_tags()}{/if}
-							</button>
-							{#if pop === 'tags'}
-								<TagsPopover
-									value={ticket.tags}
-									suggestions={tagSuggestions}
-									onchange={(v) => patch('tags', v)}
-									onclose={() => (pop = null)}
-								/>
-							{/if}
-						{:else if ticket.tags.length === 0}
-							<span class="py-1 text-[13px] text-text-4">—</span>
-						{/if}
-					</div>
-				</div>
+					</PropertyRow>
+				{/if}
 			</div>
 
-			<!-- Description -->
-			{#if ticket.description}
-				<div class="mt-5 border-t border-border pt-4">
-					<div class="mb-2 text-[12px] tracking-[0.08em] text-text-4 uppercase">
-						{m.tickets_description()}
-					</div>
-					<p
-						class="text-[14px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-text-2"
-					>
-						{ticket.description}
-					</p>
-				</div>
-			{/if}
+			<!-- Sections: only the ones with content; an empty checklist is one
+			     quiet "+ Checklist" link. -->
+			<div class="mt-4 space-y-6 border-t border-border/60 pt-5">
+				{#if ticket.description}
+					<section>
+						<SectionHeader label={m.tickets_description()} />
+						<p
+							class="text-[14px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-text-2"
+						>
+							{ticket.description}
+						</p>
+					</section>
+				{/if}
 
-			<!-- Checklist (shared across all ticket participants) -->
-			{#if canEditChecklist || checklistDraft.length > 0}
-				<div class="mt-5 border-t border-border pt-4">
+				{#if checklistDraft.length > 0 || checklistOpen}
 					<Checklist
 						items={checklistDraft}
 						canEdit={canEditChecklist}
 						label={m.tasks_checklist()}
 						addPlaceholder={m.tasks_checklist_add()}
 						onChange={saveChecklist}
+						variant="panel"
+						addLabel={m.tasks_checklist_add()}
+						focusAdd={checklistOpen && checklistDraft.length === 0}
 					/>
-				</div>
-			{/if}
-
-			<!-- Attachments (ticket-level; message files live in the conversation) -->
-			{#if attachments.length}
-				<div class="mt-5 border-t border-border pt-4">
-					<div class="mb-2 text-[12px] tracking-[0.08em] text-text-4 uppercase">
-						{m.tickets_attachments()}<span class="ml-1.5 text-text-3">{attachments.length}</span>
+				{:else if canEditChecklist}
+					<div class="-mx-2">
+						<button type="button" onclick={() => (checklistOpen = true)} class={QUIET_ADD}>
+							<Icon name="plus" size={13} />
+							{m.tasks_checklist()}
+						</button>
 					</div>
-					<AttachmentList
-						{attachments}
-						canDelete={canEdit}
-						currentUserId={(page.data as { currentUserId?: string }).currentUserId ?? null}
-						ondeleted={(id) => (attachments = attachments.filter((a) => a.id !== id))}
-					/>
-				</div>
-			{/if}
+				{/if}
 
-			<!-- Linked tasks -->
-			{#if linkedTasks.length}
-				<div class="mt-5 border-t border-border pt-4">
-					<div class="mb-2 text-[12px] tracking-[0.08em] text-text-4 uppercase">
-						{m.tickets_linked_tasks()}<span class="ml-1.5 text-text-3">{linkedTasks.length}</span>
-					</div>
-					<ul class="flex flex-col gap-1">
-						{#each linkedTasks as lt (lt.id)}
-							<li>
-								<a
-									href="/tasks?task={lt.displayId}"
-									class="group flex items-center gap-2.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 transition-colors hover:border-border-strong"
-								>
-									<StatusDot status={lt.status as StatusId} size={14} />
-									<span class="font-mono text-[12px] text-text-4">{lt.displayId}</span>
-									<span class="truncate text-[14px] text-text-2 group-hover:text-text"
+				<!-- Ticket-level attachments; message files live in the conversation. -->
+				{#if attachments.length}
+					<section>
+						<SectionHeader label={m.tickets_attachments()} count={attachments.length} />
+						<AttachmentList
+							{attachments}
+							canDelete={canEdit}
+							currentUserId={(page.data as { currentUserId?: string }).currentUserId ?? null}
+							ondeleted={(id) => (attachments = attachments.filter((a) => a.id !== id))}
+						/>
+					</section>
+				{/if}
+
+				{#if linkedTasks.length}
+					<section>
+						<SectionHeader label={m.tickets_linked_tasks()} count={linkedTasks.length} />
+						<div class="space-y-px">
+							{#each linkedTasks as lt (lt.id)}
+								<a href="/tasks?task={lt.displayId}" class="group {ROW}">
+									<StatusDot status={lt.status as StatusId} size={13} />
+									<span class="shrink-0 font-mono text-[12px] text-text-3">{lt.displayId}</span>
+									<span
+										class="min-w-0 flex-1 truncate text-[14px] text-text-2 group-hover:text-text"
 										>{lt.title}</span
 									>
 								</a>
-							</li>
-						{/each}
-					</ul>
-				</div>
-			{/if}
+							{/each}
+						</div>
+					</section>
+				{/if}
 
-			<!-- Metadata -->
-			<div class="mt-5 grid grid-cols-2 gap-x-4 gap-y-2.5 border-t border-border pt-4 text-[13px]">
-				<div>
-					<div class="text-text-4">{m.tickets_meta_reporter()}</div>
-					<div class="mt-0.5 flex items-center gap-1.5 text-text-2">
-						{#if reporter}<Avatar user={reporter} size={17} />{/if}
-						<span class="truncate">{reporter?.name ?? '—'}</span>
-					</div>
-				</div>
-				<div>
-					<div class="text-text-4">{m.tickets_meta_channel()}</div>
-					<div class="mt-0.5 text-text-2">{ticketChannelLabel(ticket.channel)}</div>
-				</div>
-				<div>
-					<div class="text-text-4">{m.tickets_meta_created()}</div>
-					<div class="mt-0.5 font-mono text-text-3">{fmtDate(ticket.createdAt)}</div>
-				</div>
-				<div>
-					<div class="text-text-4">{m.tickets_meta_first_response()}</div>
-					<div class="mt-0.5 font-mono text-text-3">{fmtDate(ticket.firstResponseAt)}</div>
-				</div>
+				<!-- Conversation peek: the latest replies, so you can tell where the
+				     ticket stands without opening it. -->
+				<section>
+					<SectionHeader label={m.tickets_conversation()} count={conversation.length}>
+						{#snippet action()}
+							<a
+								href="/tickets/{ticket.id}?from=panel"
+								aria-label={m.tickets_open_conversation()}
+								title={m.tickets_open_conversation()}
+								class={ICON_ACTION}
+							>
+								<Icon name="chevron-r" size={14} />
+							</a>
+						{/snippet}
+					</SectionHeader>
+					{#if conversation.length === 0}
+						<p class="text-[13px] text-text-3">
+							{conversationLoaded ? m.tickets_conversation_empty() : '…'}
+						</p>
+					{:else}
+						{#if conversation.length > PEEK}
+							<a
+								href="/tickets/{ticket.id}?from=panel"
+								class="-mx-2 mb-1 inline-flex rounded-lg px-2 py-1 text-[12px] text-text-3 transition-colors hover:bg-surface hover:text-text"
+							>
+								{m.tickets_conversation_earlier({ n: conversation.length - PEEK })}
+							</a>
+						{/if}
+						<div class="space-y-3.5">
+							{#each conversation.slice(-PEEK) as msg (msg.id)}
+								{@const author = msg.authorId ? resolveUser(msg.authorId) : undefined}
+								<div>
+									<div class="flex items-center gap-2 text-[13px] text-text-3">
+										{#if author}
+											<Avatar user={author} size={20} />
+										{:else}
+											<span class="h-5 w-5 shrink-0 rounded-full bg-surface-2"></span>
+										{/if}
+										<span class="min-w-0 truncate text-text-2">{author?.name ?? '—'}</span>
+										{#if msg.isInternalNote}
+											<span class="shrink-0 text-[12px] text-[#e9c46a]"
+												>· {m.tickets_internal_note()}</span
+											>
+										{/if}
+										<span class="ml-auto shrink-0 text-[12px] text-text-4"
+											>{formatDateShort(msg.createdAt)}</span
+										>
+									</div>
+									<div
+										class="mt-1 ml-7 line-clamp-3 text-[14px] leading-relaxed [overflow-wrap:anywhere] text-text-2"
+									>
+										<MentionText text={msg.body} />
+									</div>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				</section>
+			</div>
+
+			<!-- Metadata, one quiet line -->
+			<div class="mt-8 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-text-4">
+				<span>{m.tickets_meta_channel()} {ticketChannelLabel(ticket.channel)}</span>
+				<span>{m.tickets_meta_created()} {fmtDate(ticket.createdAt)}</span>
+				<span>{m.tickets_meta_first_response()} {fmtDate(ticket.firstResponseAt)}</span>
 				{#if ticket.resolvedAt}
-					<div>
-						<div class="text-text-4">{m.tickets_meta_resolved()}</div>
-						<div class="mt-0.5 font-mono text-text-3">{fmtDate(ticket.resolvedAt)}</div>
-					</div>
+					<span>{m.tickets_meta_resolved()} {fmtDate(ticket.resolvedAt)}</span>
 				{/if}
 				{#if ticket.satisfactionScore != null}
-					<div>
-						<div class="text-text-4">{m.tickets_meta_csat()}</div>
-						<div class="mt-0.5 text-text-2">{ticket.satisfactionScore}/5</div>
-					</div>
+					<span>{m.tickets_meta_csat()} {ticket.satisfactionScore}/5</span>
 				{/if}
 			</div>
 		</div>
 
-		<!-- Footer: open full conversation -->
-		<div class="border-t border-border px-4 py-3">
+		<!-- Footer: open the full conversation -->
+		<div class="px-5 pt-2 pb-4">
 			<a
 				href="/tickets/{ticket.id}?from=panel"
-				class="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-surface py-2 text-[14px] text-text-2 transition-colors hover:border-border-strong hover:text-text"
+				class="flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-surface text-[14px] text-text-2 transition-colors hover:bg-surface-2 hover:text-text"
 			>
 				<Icon name="msg" size={15} />
 				{m.tickets_open_conversation()}
-				<Icon name="chevron-r" size={14} />
+				<Icon name="arrow-right" size={14} />
 			</a>
 		</div>
 	{/if}
