@@ -314,6 +314,39 @@ export async function copyAttachments(opts: {
 		)
 		.orderBy(desc(attachment.createdAt));
 
+	return insertAttachmentCopies(rows, opts);
+}
+
+/**
+ * Like copyAttachments, but only the given attachment ids, and only those the
+ * caller's `allow` accepts (e.g. "belongs to this ticket or one of its
+ * messages"), so a tampered id list can't pull in someone else's file. Same
+ * shared-bytes, best-effort semantics. Returns the number linked.
+ */
+export async function copyAttachmentsByIds(opts: {
+	ids: string[];
+	allow: (row: Attachment) => boolean;
+	to: { entityType: AttachmentEntityType; entityId: string };
+	orgId: string | null;
+	projectId: string | null;
+}): Promise<number> {
+	if (opts.ids.length === 0) return 0;
+	const rows = await db
+		.select()
+		.from(attachment)
+		.where(and(inArray(attachment.id, opts.ids), isNull(attachment.deletedAt)))
+		.orderBy(desc(attachment.createdAt));
+	return insertAttachmentCopies(rows.filter(opts.allow), opts);
+}
+
+async function insertAttachmentCopies(
+	rows: Attachment[],
+	opts: {
+		to: { entityType: AttachmentEntityType; entityId: string };
+		orgId: string | null;
+		projectId: string | null;
+	}
+): Promise<number> {
 	let copied = 0;
 	for (const row of rows) {
 		try {

@@ -31,7 +31,7 @@
 	import type { TicketRow } from '$lib/server/tickets';
 	import type { StatusId, TypeId } from '$lib/types';
 	import CreateTaskModal from '../tasks/CreateTaskModal.svelte';
-	import type { AttachmentDTO } from '$lib/config/attachments';
+	import { selectStageable, type AttachmentDTO } from '$lib/config/attachments';
 	import type { TicketMessageRow } from '$lib/server/tickets';
 	import MentionText from '../MentionText.svelte';
 	import PropertyRow from '../tasks/panel/PropertyRow.svelte';
@@ -110,7 +110,8 @@
 	// reloaded when the ticket opens and whenever it changes (a new reply bumps
 	// updatedAt). The panel shows the last PEEK of them.
 	const PEEK = 3;
-	let conversation = $state<TicketMessageRow[]>([]);
+	type ConversationMessage = TicketMessageRow & { attachments?: AttachmentDTO[] };
+	let conversation = $state<ConversationMessage[]>([]);
 	let conversationLoaded = $state(false);
 	$effect(() => {
 		const id = ticket?.id;
@@ -122,13 +123,43 @@
 		try {
 			const res = await fetch(`/api/tickets/${id}/messages`);
 			if (!res.ok) return;
-			const body = (await res.json()) as { messages: TicketMessageRow[] };
+			const body = (await res.json()) as { messages: ConversationMessage[] };
 			if (ticket?.id !== id) return;
 			conversation = body.messages;
 		} catch {
 			/* non-fatal — the peek just stays empty */
 		} finally {
 			if (ticket?.id === id) conversationLoaded = true;
+		}
+	}
+
+	// Files dropped anywhere on the panel are uploaded as ticket attachments
+	// (same endpoint and limits as the ticket page's uploader).
+	let uploading = $state(false);
+	async function uploadDropped(files: File[]) {
+		const id = ticket?.id;
+		if (!id || uploading) return;
+		const { accepted, errors } = selectStageable(files, 0);
+		for (const err of errors) showToast('err', err);
+		if (!accepted.length) return;
+		uploading = true;
+		pending = true;
+		try {
+			for (const file of accepted) {
+				const form = new FormData();
+				form.set('entityType', 'ticket');
+				form.set('entityId', id);
+				form.set('file', file);
+				const res = await fetch('/api/attachments', { method: 'POST', body: form });
+				if (!res.ok) {
+					const body = (await res.json().catch(() => null)) as { message?: string } | null;
+					showToast('err', body?.message ?? m.attach_upload_failed({ filename: file.name }));
+				}
+			}
+			await loadAttachments(id);
+		} finally {
+			uploading = false;
+			pending = false;
 		}
 	}
 
@@ -265,7 +296,13 @@
 	}
 </script>
 
-<Drawer {open} {onclose} width={460}>
+<Drawer
+	{open}
+	{onclose}
+	width={460}
+	onfiles={(files) => void uploadDropped(files)}
+	dropDisabled={uploading}
+>
 	{#if ticket}
 		{@const statusMeta = TICKET_STATUSES.find((s) => s.id === ticket.status)}
 		{@const categoryMeta = TICKET_CATEGORIES.find((c) => c.id === ticket.category)}
@@ -748,6 +785,7 @@
 		action="/tickets/{ticket.id}?/createTask"
 		sourceTicketId={ticket.id}
 		prefill={taskPrefill}
+		carryAttachments={[...attachments, ...conversation.flatMap((msg) => msg.attachments ?? [])]}
 		onclose={() => (creatingTask = false)}
 		oncreated={(displayId) => showToast('ok', m.tickets_create_task_toast({ ref: displayId }))}
 	/>

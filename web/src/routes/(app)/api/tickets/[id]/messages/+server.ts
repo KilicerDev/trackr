@@ -8,6 +8,7 @@
 import { json } from '@sveltejs/kit';
 import { canViewTicket, isTrackrTeam } from '$lib/server/permissions';
 import { getTicket, loadTicketMessages } from '$lib/server/tickets';
+import { listAttachmentsForMany } from '$lib/server/attachments';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -25,7 +26,14 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	const includeInternal = isTrackrTeam(locals);
 	// Conversation only — the inline preview renders each row as a message
 	// bubble, so the ticket's system activity events are excluded here.
-	const messages = await loadTicketMessages(ticketId, { includeInternal, includeSystem: false });
+	const rows = await loadTicketMessages(ticketId, { includeInternal, includeSystem: false });
+	// Files posted with each reply (the ticket panel offers them when a task is
+	// created from the ticket).
+	const files = await listAttachmentsForMany(
+		'message',
+		rows.map((msg) => msg.id)
+	);
+	const messages = rows.map((msg) => ({ ...msg, attachments: files.get(msg.id) ?? [] }));
 
 	return json({
 		ticket: {

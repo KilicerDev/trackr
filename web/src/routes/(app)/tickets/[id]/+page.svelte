@@ -831,6 +831,7 @@
 		action="/tickets/{t.id}?/createTask"
 		sourceTicketId={t.id}
 		prefill={taskPrefill}
+		carryAttachments={[...data.attachments, ...Object.values(data.messageAttachments).flat()]}
 		onclose={() => (creatingTask = false)}
 		users={page.data.users}
 		projects={page.data.projects}

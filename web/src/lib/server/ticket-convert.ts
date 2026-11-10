@@ -13,7 +13,7 @@ import { db } from '$lib/server/db';
 import { emitWebhookEvent, taskSnapshot } from '$lib/server/webhooks';
 import { project } from '$lib/server/db/app.schema';
 import { assertCan, isTrackrTeam } from '$lib/server/permissions';
-import { addTicketMessage, getTicket } from '$lib/server/tickets';
+import { addTicketMessage, getTicket, loadTicketMessages } from '$lib/server/tickets';
 import {
 	type TaskChannel,
 	ALLOWED_TASK_PRIORITY,
@@ -21,7 +21,7 @@ import {
 	ALLOWED_TASK_TYPE,
 	createTask
 } from '$lib/server/tasks';
-import { attachFormFiles, copyAttachments } from '$lib/server/attachments';
+import { attachFormFiles, copyAttachments, copyAttachmentsByIds } from '$lib/server/attachments';
 import { normalizeTag } from '$lib/utils/label-meta';
 import { notifyTaskAssigned } from '$lib/server/notify/events/task';
 import { recordAudit } from '$lib/server/audit';
@@ -55,6 +55,12 @@ export interface ConvertTicketInput {
 	assigneeIds?: string[];
 	/** Files staged on the create modal (multipart `attachments` entries). */
 	attachments?: FormDataEntryValue[];
+	/**
+	 * Which existing ticket files to carry over (ticket-level or from the
+	 * ticket's messages), as picked in the create modal. Omitted → every
+	 * ticket-level attachment, as before (mobile API).
+	 */
+	carryAttachmentIds?: string[];
 	/** Request origin for notification links. */
 	origin: string;
 	/** Creating surface recorded on the task (default `web`). */
@@ -136,12 +142,29 @@ export async function convertTicketToTask(
 	// duplicated — see copyAttachments. Best-effort: the task already exists,
 	// so a failure is logged, not surfaced as a failed conversion.
 	try {
-		await copyAttachments({
-			from: { entityType: 'ticket', entityId: input.ticketId },
-			to: { entityType: 'task', entityId: created.id },
-			orgId: null,
-			projectId: p.id
-		});
+		if (input.carryAttachmentIds) {
+			// Only what the user kept in the modal, and only files that really
+			// belong to this ticket or one of its messages.
+			const messageIds = new Set(
+				(await loadTicketMessages(input.ticketId, { includeInternal: true })).map((msg) => msg.id)
+			);
+			await copyAttachmentsByIds({
+				ids: input.carryAttachmentIds,
+				allow: (row) =>
+					(row.entityType === 'ticket' && row.entityId === input.ticketId) ||
+					(row.entityType === 'message' && messageIds.has(row.entityId)),
+				to: { entityType: 'task', entityId: created.id },
+				orgId: null,
+				projectId: p.id
+			});
+		} else {
+			await copyAttachments({
+				from: { entityType: 'ticket', entityId: input.ticketId },
+				to: { entityType: 'task', entityId: created.id },
+				orgId: null,
+				projectId: p.id
+			});
+		}
 	} catch (err) {
 		console.error('ticket→task attachment copy failed', err);
 	}

@@ -1345,6 +1345,8 @@
 	"tasks_panel_add_link": "Link",
 	"tasks_panel_overdue_one": "Overdue · 1 day",
 	"tasks_panel_overdue_days": "Overdue · {n} days",
+	"tasks_from_ticket_files": "From the ticket: {kept} of {total} files",
+	"tasks_remove_carried_file": "Don't add {name}",
 	"tasks_err_time_positive": "Time must be greater than zero.",
 	"tasks_time_auto_note": "Estimate logged on completion",
 	"tasks_err_title_empty": "Title cannot be empty.",

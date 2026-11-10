@@ -15,7 +15,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import AttachmentDropzone from '../attachments/AttachmentDropzone.svelte';
 	import StagedFileList from '../attachments/StagedFileList.svelte';
-	import { selectStageable } from '$lib/config/attachments';
+	import { formatBytes, selectStageable, type AttachmentDTO } from '$lib/config/attachments';
 
 	interface Prefill {
 		project?: string;
@@ -70,6 +70,12 @@
 		// When set, the new task is linked to the note it was created from (a
 		// meeting's action item), so the task lists that meeting.
 		sourceNoteId?: string;
+		/**
+		 * Existing files offered to the new task (a ticket's own files and those
+		 * posted in its conversation). Shown as a list the user can trim; the
+		 * kept ids are sent as `carryAttachmentIds`.
+		 */
+		carryAttachments?: AttachmentDTO[];
 	}
 
 	let {
@@ -85,8 +91,12 @@
 		onerror,
 		action = '/tasks?/create',
 		sourceTicketId,
-		sourceNoteId
+		sourceNoteId,
+		carryAttachments
 	}: Props = $props();
+
+	// The offered files the user still keeps (reset each time the modal opens).
+	let carried = $state<AttachmentDTO[]>([]);
 
 	// Prefer explicitly provided lists; otherwise read the app-wide layout data
 	// so the modal works from any context without threading props.
@@ -146,6 +156,7 @@
 			pop = null;
 			submitting = false;
 			stagedFiles = [];
+			carried = [...(carryAttachments ?? [])];
 		}
 	});
 
@@ -317,6 +328,59 @@
 
 				<!-- Attachments -->
 				<div class="mt-4 space-y-2">
+					{#if carryAttachments}
+						<!-- The ticket's files: kept ones are copied to the task (the
+						     stored file is shared, not duplicated). -->
+						<input type="hidden" name="carrySelection" value="1" />
+						{#each carried as a (a.id)}
+							<input type="hidden" name="carryAttachmentIds" value={a.id} />
+						{/each}
+						{#if carryAttachments.length}
+							<div class="text-[12px] font-medium text-text-3">
+								{m.tasks_from_ticket_files({
+									kept: carried.length,
+									total: carryAttachments.length
+								})}
+							</div>
+							{#if carried.length}
+								<ul class="flex flex-col gap-1.5">
+									{#each carried as a (a.id)}
+										<li
+											class="flex items-center gap-2.5 rounded-lg border border-border bg-surface px-2 py-1.5"
+										>
+											{#if a.hasThumbnail}
+												<img
+													src="/api/attachments/{a.id}?thumb"
+													alt=""
+													class="h-8 w-8 shrink-0 rounded-md border border-border object-cover"
+												/>
+											{:else}
+												<span
+													class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-surface-2 text-text-3"
+												>
+													<Icon name="file" size={16} />
+												</span>
+											{/if}
+											<div class="min-w-0 flex-1">
+												<div class="truncate text-[14px] text-text">{a.filename}</div>
+												<div class="text-[12px] text-text-3">{formatBytes(a.sizeBytes)}</div>
+											</div>
+											<button
+												type="button"
+												disabled={submitting}
+												onclick={() => (carried = carried.filter((x) => x.id !== a.id))}
+												aria-label={m.tasks_remove_carried_file({ name: a.filename })}
+												title={m.tasks_remove_carried_file({ name: a.filename })}
+												class="grid h-7 w-7 shrink-0 place-items-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text disabled:opacity-50"
+											>
+												<Icon name="x" size={14} />
+											</button>
+										</li>
+									{/each}
+								</ul>
+							{/if}
+						{/if}
+					{/if}
 					{#if stagedFiles.length}
 						<StagedFileList
 							files={stagedFiles}

@@ -1218,6 +1218,8 @@
 	"tasks_panel_add_link": "Link",
 	"tasks_panel_overdue_one": "Überfällig · 1 Tag",
 	"tasks_panel_overdue_days": "Überfällig · {n} Tage",
+	"tasks_from_ticket_files": "Aus dem Ticket: {kept} von {total} Dateien",
+	"tasks_remove_carried_file": "{name} nicht übernehmen",
 	"tasks_err_time_positive": "Die Zeit muss größer als null sein.",
 	"tasks_time_auto_note": "Schätzung beim Erledigen erfasst",
 	"tasks_err_title_empty": "Titel darf nicht leer sein.",

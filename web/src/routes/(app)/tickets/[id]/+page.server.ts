@@ -196,6 +196,11 @@ export const actions: Actions = {
 					.map((v) => String(v))
 					.filter(Boolean),
 				attachments: form.getAll('attachments'),
+				// The modal sends its file list (possibly emptied) only when it
+				// showed one; otherwise every ticket file carries over as before.
+				carryAttachmentIds: form.has('carrySelection')
+					? form.getAll('carryAttachmentIds').map((v) => String(v))
+					: undefined,
 				origin: url.origin
 			});
 			return { ok: true, displayId: created.displayId };
