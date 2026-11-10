@@ -15,7 +15,6 @@
 	import TagsPopover from '$lib/components/popovers/TagsPopover.svelte';
 	import Composer from '$lib/components/Composer.svelte';
 	import MentionText from '$lib/components/MentionText.svelte';
-	import LabelChip from '$lib/components/LabelChip.svelte';
 	import Checklist from '$lib/components/Checklist.svelte';
 	import PriorityBars from '$lib/components/PriorityBars.svelte';
 	import { clickOutside } from '$lib/actions/clickOutside';
@@ -38,6 +37,14 @@
 	} from '$lib/utils/labels';
 	import CreateTaskModal from '$lib/components/tasks/CreateTaskModal.svelte';
 	import StatusDot from '$lib/components/StatusDot.svelte';
+	import IconButton from '$lib/components/IconButton.svelte';
+	import PropertyRow from '$lib/components/tasks/panel/PropertyRow.svelte';
+	import SectionHeader from '$lib/components/tasks/panel/SectionHeader.svelte';
+	import { OPEN, PROP_VALUE, QUIET_ADD, ROW, TAG } from '$lib/components/tasks/panel/styles';
+	import { labelMeta } from '$lib/utils/label-meta';
+	import { slaSignal } from '$lib/utils/ticket-sla';
+	import { fade, scale } from 'svelte/transition';
+	import { backOut } from 'svelte/easing';
 	import type { TypeId } from '$lib/types';
 
 	type PageData = {
@@ -105,7 +112,6 @@
 	// conversation"); links back to the overview with the panel reopened.
 	const fromPanel = $derived(page.url.searchParams.get('from') === 'panel');
 	const statusMeta = $derived(TICKET_STATUSES.find((s) => s.id === t.status));
-	const priorityMeta = $derived(TICKET_PRIORITIES.find((p) => p.id === t.priority));
 	const categoryMeta = $derived(TICKET_CATEGORIES.find((c) => c.id === t.category));
 	const assigneeUsers = $derived((t.assignees ?? []).map((id) => who(id)));
 	// Older API/MCP tickets can have a creator but no customer.
@@ -127,7 +133,13 @@
 			.catch(() => {});
 	});
 
-	let pop = $state<'status' | 'priority' | 'category' | 'assignee' | null>(null);
+	// Open picker, keyed by placement too ('desktop:status', 'mobile:status'):
+	// the property list renders in both the sidebar and the mobile block, and
+	// a hidden copy's click-outside must not close the visible one.
+	let pop = $state<string | null>(null);
+	function togglePop(key: string) {
+		pop = pop === key ? null : key;
+	}
 	let tagsPop = $state<'mobile' | 'desktop' | null>(null);
 	let ticketAttachmentUploader = $state<AttachmentUploaderHandle>();
 	let pending = $state(false);
@@ -201,10 +213,10 @@
 		target.value = '';
 	}
 
-	async function send() {
+	async function send(): Promise<boolean> {
 		const text = body.trim();
 		// Allow a files-only reply (attachment with no text).
-		if ((!text && commentFiles.length === 0) || sending) return;
+		if ((!text && commentFiles.length === 0) || sending) return false;
 		sending = true;
 		const fd = new FormData();
 		fd.set('id', t.id);
@@ -229,11 +241,21 @@
 			internal = false;
 			commentFiles = [];
 			await invalidate('app:tickets');
+			return true;
 		} catch (err) {
 			showToast('err', err instanceof Error ? err.message : m.tickets_send_failed());
+			return false;
 		} finally {
 			sending = false;
 		}
+	}
+
+	// Reply and move the ticket in one step (agents): send, then set status.
+	let sendMenuOpen = $state(false);
+	const SEND_AND_SET = ['waiting_on_customer', 'resolved'] as const;
+	async function sendAndSet(status: string) {
+		sendMenuOpen = false;
+		if (await send()) await patch('status', status);
 	}
 
 	// ─── Activity events (timeline) ─────────────────────────────────────────
@@ -329,6 +351,58 @@
 		}
 	}
 
+	// Conversation items: messages stay one by one; runs of system events
+	// (status/priority/assignee changes) become one group, folded to a single
+	// "N changes" line when there are 3 or more, until opened.
+	type SystemEvent = Extract<TimelineEvent, { kind: 'system' }>;
+	type ConvItem =
+		| Exclude<TimelineEvent, { kind: 'system' }>
+		| { id: string; kind: 'run'; events: SystemEvent[] };
+	const items = $derived.by<ConvItem[]>(() => {
+		const out: ConvItem[] = [];
+		for (const e of events) {
+			if (e.kind === 'system') {
+				const last = out[out.length - 1];
+				if (last?.kind === 'run') last.events.push(e);
+				else out.push({ id: `run:${e.id}`, kind: 'run', events: [e] });
+			} else out.push(e);
+		}
+		return out;
+	});
+	let openRuns = $state<string[]>([]);
+	const FOLD_AT = 3;
+
+	// Team member (internal staff) vs customer, for the "Team" tag on replies.
+	const teamIds = $derived(
+		new Set((data.mentionUsers ?? []).filter((u) => u.internal).map((u) => u.id))
+	);
+	const isTeam = (id: string | null) => !!id && teamIds.has(id);
+
+	const sla = $derived(slaSignal(t));
+	const idColor = $derived(categoryMeta?.color ?? '#7c7c84');
+
+	// ⋯ menu: create task, copy link (green check for a moment), delete.
+	let menuOpen = $state(false);
+	let copied = $state(false);
+	let copiedTimer: ReturnType<typeof setTimeout> | undefined;
+	async function copyLink() {
+		try {
+			await navigator.clipboard.writeText(`${window.location.origin}/tickets/${t.id}`);
+			copied = true;
+			clearTimeout(copiedTimer);
+			copiedTimer = setTimeout(() => {
+				copied = false;
+				menuOpen = false;
+			}, 900);
+		} catch {
+			menuOpen = false;
+			showToast('err', m.tickets_link_copy_failed());
+		}
+	}
+
+	// The checklist section appears once it has items, or when asked for.
+	let checklistOpen = $state(false);
+
 	function relTime(iso: string): string {
 		const ts = new Date(iso).getTime();
 		const diff = Date.now() - ts;
@@ -411,336 +485,290 @@
 />
 
 <div class="flex min-h-0 flex-1">
-	<!-- Left column: conversation + composer -->
+	<!-- Left: the conversation, with the composer docked under it. -->
 	<div class="flex min-w-0 flex-1 flex-col">
 		<div class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
-			<div class="mx-auto w-full max-w-[836px] px-6 py-6">
+			<div class="mx-auto w-full max-w-[760px] px-6 pt-6 pb-10">
 				{#if fromPanel}
 					<a
 						href="/tickets?ticket={t.id}"
-						class="mb-3 inline-flex items-center gap-1.5 text-[13px] text-text-3 transition-colors hover:text-text"
+						class="mb-4 -ml-1 inline-flex items-center gap-1 rounded-md px-1 text-[13px] text-text-3 transition-colors hover:text-text"
 					>
 						<Icon name="chevron-r" size={14} class="rotate-180" />
 						{m.tickets_back_to_overview()}
 					</a>
 				{/if}
-				<!-- Header -->
-				<div class="mb-1 flex items-center gap-2 text-[12px] text-text-3">
-					<span class="font-mono text-text-4">{t.displayId}</span>
-					<span class="inline-flex items-center gap-1.5">
-						<span class="h-1.5 w-1.5 rounded-full" style:background={t.orgColor}></span>
-						<span>{t.orgName}</span>
+
+				<!-- Head: id badge + org (as in the panels), pin and the ⋯ menu. -->
+				<div class="mb-3 flex items-center gap-2">
+					<span
+						class="inline-flex h-[20px] shrink-0 items-center gap-1.5 rounded-md border px-1.5 font-mono text-[12px] leading-none font-medium whitespace-nowrap"
+						style:color={idColor}
+						style:border-color="{idColor}40"
+						style:background="{idColor}14"
+					>
+						<Icon name="ticket" size={11} stroke={2.2} />
+						{t.displayId}
 					</span>
-					<div class="ml-auto flex items-center gap-2">
+					<span
+						class="inline-flex h-[20px] min-w-0 items-center rounded-md bg-surface px-1.5 font-mono text-[12px] leading-none text-text-3"
+					>
+						<span class="truncate">{t.orgName}</span>
+					</span>
+					<div class="ml-auto flex items-center gap-1">
 						<button
 							type="button"
 							onclick={togglePin}
 							disabled={pinPending}
 							aria-pressed={data.isPinned}
+							aria-label={data.isPinned ? m.tickets_unpin() : m.tickets_pin()}
 							title={data.isPinned ? m.tickets_unpin() : m.tickets_pin()}
-							class="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[13px] transition-colors disabled:opacity-50 {data.isPinned
-								? 'border-accent/40 bg-accent/10 text-accent'
-								: 'border-border bg-surface text-text-2 hover:border-border-strong hover:text-text'}"
+							class="grid h-[31px] w-[31px] place-items-center rounded-lg border transition-colors disabled:opacity-50 {data.isPinned
+								? 'border-accent/30 bg-accent-soft text-accent'
+								: 'border-transparent text-text-2 hover:border-border hover:bg-surface hover:text-text'}"
 						>
 							<Icon name="bookmark" size={15} />
-							<span>{data.isPinned ? m.tickets_pinned() : m.tickets_pin_short()}</span>
 						</button>
-						{#if data.canCreateTask}
-							<button
-								type="button"
-								onclick={() => (creatingTask = true)}
-								class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] text-text-2 transition-colors hover:border-border-strong hover:text-text"
+						<div class="relative">
+							<IconButton
+								size={31}
+								ariaLabel={m.tickets_more_actions()}
+								onclick={() => (menuOpen = !menuOpen)}
 							>
-								<Icon name="plus" size={15} />
-								<span>{m.tickets_create_task()}</span>
-							</button>
-						{/if}
-						{#if canDelete}
-							<button
-								type="button"
-								onclick={deleteTicket}
-								class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[13px] text-text-2 transition-colors hover:border-[#ef4f5e]/40 hover:bg-[#ef4f5e]/10 hover:text-[#ef4f5e]"
-							>
-								<Icon name="trash" size={15} />
-								<span>{m.tickets_delete()}</span>
-							</button>
-						{/if}
+								<Icon name="more" size={16} />
+							</IconButton>
+							{#if menuOpen}
+								<div
+									role="menu"
+									use:clickOutside={() => (menuOpen = false)}
+									in:fly={POPOVER_IN}
+									class="absolute top-full right-0 z-50 mt-1.5 min-w-[210px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+								>
+									{#if data.canCreateTask}
+										<button
+											type="button"
+											role="menuitem"
+											onclick={() => {
+												menuOpen = false;
+												creatingTask = true;
+											}}
+											class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
+										>
+											<Icon name="check-square" size={15} class="text-text-3" />
+											{m.tickets_create_task()}
+										</button>
+									{/if}
+									<button
+										type="button"
+										role="menuitem"
+										onclick={copyLink}
+										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
+									>
+										<span class="grid place-items-center [&>*]:[grid-area:1/1]">
+											{#if copied}
+												<span
+													class="text-[#7fc8a9]"
+													in:scale={{ start: 0.4, duration: 220, easing: backOut }}
+												>
+													<Icon name="check" size={15} stroke={2.4} />
+												</span>
+											{:else}
+												<span class="text-text-3" in:fade={{ duration: 150 }}>
+													<Icon name="copy" size={15} />
+												</span>
+											{/if}
+										</span>
+										<span class={copied ? 'text-[#7fc8a9]' : ''}
+											>{copied ? m.tickets_link_copied() : m.tickets_copy_link()}</span
+										>
+									</button>
+									{#if canDelete}
+										<div class="my-1 h-px bg-border"></div>
+										<button
+											type="button"
+											role="menuitem"
+											onclick={() => {
+												menuOpen = false;
+												void deleteTicket();
+											}}
+											class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-[#ef4f5e] hover:bg-[#ef4f5e]/10"
+										>
+											<Icon name="trash" size={15} />
+											{m.tickets_delete()}
+										</button>
+									{/if}
+								</div>
+							{/if}
+						</div>
 					</div>
 				</div>
-				<h1 class="mb-4 text-[26px] leading-tight font-semibold tracking-[-0.012em] text-text">
+
+				<h1 class="text-[24px] leading-tight font-semibold tracking-[-0.012em] text-text">
 					{t.subject}
 				</h1>
 
-				<!-- Properties rail -->
-				<div class="mb-6 flex flex-wrap gap-2">
-					<!-- Status -->
-					<div class="relative">
-						<button
-							type="button"
-							disabled={!isAgent}
-							onclick={() => (pop = pop === 'status' ? null : 'status')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {isAgent
-								? 'hover:border-border-strong'
-								: ''} {pop === 'status' ? 'ring-2 ring-accent/40' : ''}"
+				<!-- Where the ticket stands, at a glance. -->
+				<div class="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[13px] text-text-3">
+					<span class="inline-flex items-center gap-1.5 leading-none text-text-2">
+						<span class="h-2 w-2 rounded-full" style:background={statusMeta?.dot ?? '#7c7c84'}
+						></span>
+						{ticketStatusLabel(t.status)}
+					</span>
+					{#if sla && sla.tone === 'wait'}
+						<span
+							class="inline-flex items-center gap-1 rounded-md bg-accent-soft px-1.5 py-1 text-[12px] leading-none text-accent"
 						>
-							<span class="h-2 w-2 rounded-full" style:background={statusMeta?.dot ?? '#7c7c84'}
-							></span>
-							<span>{ticketStatusLabel(t.status)}</span>
-						</button>
-						{#if pop === 'status'}
-							<div
-								use:clickOutside={() => (pop = null)}
-								in:fly={POPOVER_IN}
-								class="absolute top-full left-0 z-50 mt-1.5 min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-							>
-								{#each TICKET_STATUSES as s (s.id)}
-									<button
-										type="button"
-										disabled={pending}
-										onclick={() => patch('status', s.id)}
-										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
-									>
-										<span class="h-2 w-2 rounded-full" style:background={s.dot}></span>
-										<span class="text-[14px]">{ticketStatusLabel(s.id)}</span>
-										<span
-											class="ml-auto text-accent {t.status === s.id ? 'opacity-100' : 'opacity-0'}"
-										>
-											<Icon name="check" size={14} />
-										</span>
-									</button>
-								{/each}
-							</div>
-						{/if}
-					</div>
-
-					<!-- Priority -->
-					<div class="relative">
-						<button
-							type="button"
-							disabled={!isAgent}
-							onclick={() => (pop = pop === 'priority' ? null : 'priority')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {isAgent
-								? 'hover:border-border-strong'
-								: ''} {pop === 'priority' ? 'ring-2 ring-accent/40' : ''}"
-						>
-							<PriorityBars priority={t.priority} />
-							<span>{priorityLabel(t.priority)}</span>
-						</button>
-						{#if pop === 'priority'}
-							<div
-								use:clickOutside={() => (pop = null)}
-								in:fly={POPOVER_IN}
-								class="absolute top-full left-0 z-50 mt-1.5 min-w-[176px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-							>
-								{#each TICKET_PRIORITIES as p (p.id)}
-									<button
-										type="button"
-										disabled={pending}
-										onclick={() => patch('priority', p.id)}
-										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
-									>
-										<PriorityBars priority={p.id} />
-										<span class="text-[14px]">{priorityLabel(p.id)}</span>
-										<span
-											class="ml-auto text-accent {t.priority === p.id
-												? 'opacity-100'
-												: 'opacity-0'}"
-										>
-											<Icon name="check" size={14} />
-										</span>
-									</button>
-								{/each}
-							</div>
-						{/if}
-					</div>
-
-					<!-- Category -->
-					<div class="relative">
-						<button
-							type="button"
-							disabled={!isAgent}
-							onclick={() => (pop = pop === 'category' ? null : 'category')}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {isAgent
-								? 'hover:border-border-strong'
-								: ''} {pop === 'category' ? 'ring-2 ring-accent/40' : ''}"
-						>
-							<span class="h-2 w-2 rounded-full" style:background={categoryMeta?.color ?? '#7c7c84'}
-							></span>
-							<span>{ticketCategoryLabel(t.category)}</span>
-						</button>
-						{#if pop === 'category'}
-							<div
-								use:clickOutside={() => (pop = null)}
-								in:fly={POPOVER_IN}
-								class="absolute top-full left-0 z-50 mt-1.5 min-w-[198px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-							>
-								{#each TICKET_CATEGORIES as c (c.id)}
-									<button
-										type="button"
-										disabled={pending}
-										onclick={() => patch('category', c.id)}
-										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
-									>
-										<span class="h-2 w-2 rounded-full" style:background={c.color}></span>
-										<span class="text-[14px]">{ticketCategoryLabel(c.id)}</span>
-										<span
-											class="ml-auto text-accent {t.category === c.id
-												? 'opacity-100'
-												: 'opacity-0'}"
-										>
-											<Icon name="check" size={14} />
-										</span>
-									</button>
-								{/each}
-							</div>
-						{/if}
-					</div>
-
-					<!-- Assignee -->
-					<div class="relative">
-						<button
-							type="button"
-							disabled={!isAgent}
-							onclick={() => (pop = pop === 'assignee' ? null : 'assignee')}
-							class="inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {assigneeUsers.length
-								? 'border border-border bg-surface'
-								: 'border border-dashed border-border text-text-3'} {isAgent
-								? assigneeUsers.length
-									? 'hover:border-border-strong'
-									: 'hover:border-border-strong hover:text-text'
-								: ''} {pop === 'assignee' ? 'ring-2 ring-accent/40' : ''}"
-						>
-							{#if assigneeUsers.length === 1}
-								<Avatar user={assigneeUsers[0]} size={20} />
-								<span>{assigneeUsers[0]?.name ?? m.common_unassigned()}</span>
-							{:else if assigneeUsers.length > 1}
-								<AvatarStack users={assigneeUsers} size={20} max={3} overlap={6} />
-								<span>{m.tickets_n_assignees({ n: assigneeUsers.length })}</span>
-							{:else}
-								<Icon name="user" size={14} />
-								<span>{m.common_unassigned()}</span>
-							{/if}
-						</button>
-						{#if pop === 'assignee'}
-							<AssigneePopover
-								value={t.assignees}
-								{users}
-								onchange={(v) => patch('assignees', v, { keepOpen: true })}
-								onclose={() => (pop = null)}
-							/>
-						{/if}
-					</div>
+							<span class="h-1.5 w-1.5 rounded-full" style:background={sla.dot}></span>
+							{sla.label}
+						</span>
+					{/if}
+					<span class="text-text-4">·</span>
+					<span
+						>{m.tickets_opened_by({ name: reporter?.name ?? m.tickets_unknown_user() })} · {relTime(
+							t.createdAt
+						)}</span
+					>
 				</div>
 
-				<!-- Description (if any) shown as opening message -->
-				{#if t.description}
-					<div
-						class="mb-6 text-[14px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-text"
-					>
-						<MentionText text={t.description} flavor="document" />
-					</div>
-				{/if}
-
-				<!-- Details (checklist, attachments, linked tasks) live in the right rail
-		     on desktop; on mobile they stack inline here. -->
-				<div class="mb-6 lg:hidden">
+				<!-- Mobile: the properties and sections stack here. -->
+				<div class="mt-6 lg:hidden">
 					{@render detailsRail('mobile')}
 				</div>
 
-				<!-- Activity timeline -->
-				<div class="mt-2">
-					<div class="mb-3 text-[12px] tracking-[0.08em] text-text-4 uppercase">
-						{m.tickets_activity()}
-					</div>
-					<div class="relative space-y-4 pl-7">
-						<span class="absolute top-2 bottom-2 left-[10px] w-px bg-border"></span>
-						{#each events as e (e.id)}
-							{@const u = who(e.userId)}
-							<div class="relative min-w-0">
-								<span
-									class="absolute top-0.5 -left-7 grid h-5 w-5 place-items-center rounded-full border border-border bg-bg-elev"
+				<!-- Conversation -->
+				<div class="mt-8 space-y-4">
+					{#each items as item (item.id)}
+						{#if item.kind === 'run'}
+							{@const folded = item.events.length >= FOLD_AT && !openRuns.includes(item.id)}
+							{#if folded}
+								<button
+									type="button"
+									onclick={() => (openRuns = [...openRuns, item.id])}
+									class="flex items-center gap-2 pl-[7px] text-[12px] text-text-4 transition-colors hover:text-text-2"
 								>
-									{#if e.kind === 'created'}
-										<Icon name="plus" size={12} />
-									{:else}
-										<Avatar user={u} size={20} />
-									{/if}
-								</span>
-								<div class="text-[14px] text-text-2">
-									<span class="font-medium text-text">{u?.name ?? m.tickets_unknown_user()}</span>
-									{#if e.kind === 'created'}
-										{m.tickets_opened_this()}
-									{:else if e.kind === 'system'}
-										{systemText(e.meta)}
-										{#if e.internal}
-											<span
-												class="ml-1 rounded border border-[#e9c46a]/30 bg-[#e9c46a]/8 px-1 text-[11px] text-[#e9c46a]"
-												>{m.tickets_internal_note()}</span
-											>
-										{/if}
-									{:else if e.internal}
-										{m.tickets_added_internal_note_pre()}
-										<span class="text-[#e9c46a]">{m.tickets_internal_note()}</span>
-										{m.tickets_added_internal_note_post()}
-									{:else}
-										{m.tickets_replied()}
-									{/if}
-									<span class="font-mono text-text-4">· {relTime(e.at)}</span>
+									<Icon name="logs" size={14} />
+									{m.tickets_n_changes({ n: item.events.length })}
+									<Icon name="chevron" size={12} />
+								</button>
+							{:else}
+								<div class="space-y-1.5">
+									{#each item.events as e (e.id)}
+										{@const u = who(e.userId)}
+										<div
+											class="flex min-w-0 items-center gap-2 pl-[7px] text-[12px] leading-5 text-text-4"
+										>
+											<span class="grid h-[14px] w-[14px] shrink-0 place-items-center">
+												<Icon name="refresh" size={12} />
+											</span>
+											<span class="min-w-0 truncate">
+												<span class="text-text-3">{u?.name ?? m.tickets_unknown_user()}</span>
+												{systemText(e.meta)}
+												{#if e.internal}
+													<span class="text-[#e9c46a]">· {m.tickets_internal_note()}</span>
+												{/if}
+											</span>
+											<span class="shrink-0">· {relTime(e.at)}</span>
+										</div>
+									{/each}
 								</div>
-								{#if e.kind === 'message'}
-									<div
-										class="mt-2 min-w-0 rounded-lg p-3 text-[14px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap {e.internal
-											? 'border border-[#e9c46a]/30 bg-[#e9c46a]/8 text-text'
-											: 'border border-border bg-surface text-text'}"
+							{/if}
+						{:else}
+							{@const u = who(item.userId)}
+							{@const isNote = item.kind === 'message' && item.internal}
+							<!-- A message card: the opening (with the description) or a
+							     reply. Team replies carry a "Team" tag; internal notes stay
+							     amber. -->
+							<article
+								class="rounded-xl border px-4 py-3.5 {isNote
+									? 'border-[#e9c46a]/30 bg-[#e9c46a]/[0.06]'
+									: 'border-border bg-surface/40'}"
+							>
+								<header class="flex min-w-0 items-center gap-2.5 text-[13px]">
+									{#if u}
+										<Avatar user={u} size={28} />
+									{:else}
+										<span class="h-7 w-7 shrink-0 rounded-full bg-surface-2"></span>
+									{/if}
+									<span class="truncate font-medium text-text"
+										>{u?.name ?? m.tickets_unknown_user()}</span
 									>
-										<MentionText text={e.body} />
+									{#if isTeam(item.userId)}
+										<span
+											class="rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] leading-none text-text-3"
+											>{m.tickets_team_tag()}</span
+										>
+									{/if}
+									{#if item.kind === 'created'}
+										<span class="text-text-3">{m.tickets_opened_this()}</span>
+									{:else if isNote}
+										<span class="text-[#e9c46a]">{m.tickets_internal_note()}</span>
+									{/if}
+									<span class="ml-auto shrink-0 text-[12px] text-text-4">{relTime(item.at)}</span>
+								</header>
+								{#if item.kind === 'created'}
+									{#if t.description}
+										<div
+											class="mt-2.5 pl-[38px] text-[14px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-text"
+										>
+											<MentionText text={t.description} flavor="document" />
+										</div>
+									{/if}
+								{:else}
+									<div
+										class="mt-2.5 pl-[38px] text-[14px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-text"
+									>
+										<MentionText text={item.body} />
 									</div>
-									{#if data.messageAttachments[e.id]?.length}
-										<div class="mt-2">
+									{#if data.messageAttachments[item.id]?.length}
+										<div class="mt-3 pl-[38px]">
 											<AttachmentList
-												attachments={data.messageAttachments[e.id]}
+												attachments={data.messageAttachments[item.id]}
 												canDelete={isAgent}
 											/>
 										</div>
 									{/if}
 								{/if}
-							</div>
-						{/each}
-					</div>
-				</div>
-
-				<!-- Footer meta -->
-				<div
-					class="mt-8 flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-4 text-[12px] text-text-4"
-				>
-					<span>
-						{m.tickets_meta_reporter()} <span class="text-text-2">{reporter?.name ?? '—'}</span>
-					</span>
-					<span>
-						{m.tickets_meta_channel()}
-						<span class="text-text-2">{ticketChannelLabel(t.channel)}</span>
-					</span>
-					<span>
-						{m.tickets_meta_created()}
-						<span class="font-mono text-text-3">{fmtDate(t.createdAt)}</span>
-					</span>
-					<span>
-						{m.tickets_meta_first_response()}
-						<span class="font-mono text-text-3">{fmtDate(t.firstResponseAt)}</span>
-					</span>
-					{#if t.resolvedAt}
-						<span>
-							{m.tickets_meta_resolved()}
-							<span class="font-mono text-text-3">{fmtDate(t.resolvedAt)}</span>
-						</span>
-					{/if}
+							</article>
+						{/if}
+					{/each}
 				</div>
 			</div>
 		</div>
 
-		<!-- Composer docked at the bottom of the conversation column -->
-		<div class="px-6 py-3">
-			<div class="mx-auto w-full max-w-[836px]">
+		<!-- Composer, docked. Agents pick Reply / Internal note above it. -->
+		<div class="px-6 pt-2 pb-4">
+			<div class="mx-auto w-full max-w-[760px]">
+				{#if data.canUseInternalNotes}
+					<div
+						class="mb-2 inline-flex rounded-lg border border-border bg-surface p-0.5 text-[13px]"
+						role="tablist"
+					>
+						<button
+							type="button"
+							role="tab"
+							aria-selected={!internal}
+							onclick={() => (internal = false)}
+							class="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 transition-colors {!internal
+								? 'bg-bg-elev text-text'
+								: 'text-text-3 hover:text-text'}"
+						>
+							<Icon name="msg" size={13} />
+							{m.tickets_reply_tab()}
+						</button>
+						<button
+							type="button"
+							role="tab"
+							aria-selected={internal}
+							onclick={() => (internal = true)}
+							class="inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 transition-colors {internal
+								? 'bg-[#e9c46a]/15 text-[#e9c46a]'
+								: 'text-text-3 hover:text-text'}"
+						>
+							<Icon name="shield" size={13} />
+							{m.tickets_internal_note_tab()}
+						</button>
+					</div>
+				{/if}
 				<AttachmentDropzone
 					onfiles={addCommentFiles}
 					disabled={sending}
@@ -767,7 +795,8 @@
 						refTypes={['ticket']}
 						refOrgId={data.ticket.orgId}
 						{sending}
-						onsend={send}
+						onsend={() => void send()}
+						hasAttachments={commentFiles.length > 0}
 					>
 						{#snippet rightActions()}
 							<button
@@ -775,28 +804,51 @@
 								aria-label={m.tickets_attach_files()}
 								title={m.tickets_attach_files()}
 								onclick={() => commentFileInput?.click()}
-								class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-text-3 transition-colors hover:bg-surface-2 hover:text-text"
+								class="grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface-2 hover:text-text"
 							>
 								<Icon name="paperclip" size={15} />
 							</button>
-							{#if data.canUseInternalNotes}
-								<button
-									type="button"
-									aria-label={internal
-										? m.tickets_switch_to_reply()
-										: m.tickets_switch_to_internal()}
-									title={internal
-										? m.tickets_internal_note_tooltip()
-										: m.tickets_internal_note_agents_only()}
-									aria-pressed={internal}
-									onclick={() => (internal = !internal)}
-									class="inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[13px] transition-colors {internal
-										? 'border-[#e9c46a]/40 bg-[#e9c46a]/15 text-[#e9c46a]'
-										: 'border-transparent bg-transparent text-text-3 hover:bg-surface-2 hover:text-text'}"
-								>
-									<Icon name="shield" size={13} />
-									<span>{internal ? m.tickets_internal() : m.tickets_public()}</span>
-								</button>
+							{#if isAgent && !internal}
+								<!-- Send & set status: reply and move the ticket in one step. -->
+								<div class="relative">
+									<button
+										type="button"
+										aria-label={m.tickets_send_and_set()}
+										title={m.tickets_send_and_set()}
+										aria-expanded={sendMenuOpen}
+										disabled={sending || (!body.trim() && commentFiles.length === 0)}
+										onclick={() => (sendMenuOpen = !sendMenuOpen)}
+										class="grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface-2 hover:text-text disabled:opacity-40 {sendMenuOpen
+											? 'bg-surface-2 text-text'
+											: ''}"
+									>
+										<Icon name="chevron" size={14} class="rotate-180" />
+									</button>
+									{#if sendMenuOpen}
+										<div
+											role="menu"
+											use:clickOutside={() => (sendMenuOpen = false)}
+											in:fly={POPOVER_IN}
+											class="absolute right-0 bottom-full z-50 mb-1.5 min-w-[240px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+										>
+											<div class="px-2 pt-1 pb-1.5 text-[12px] text-text-4">
+												{m.tickets_send_and_set()}
+											</div>
+											{#each SEND_AND_SET as st (st)}
+												{@const meta = TICKET_STATUSES.find((s) => s.id === st)}
+												<button
+													type="button"
+													role="menuitem"
+													onclick={() => void sendAndSet(st)}
+													class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
+												>
+													<span class="h-2 w-2 rounded-full" style:background={meta?.dot}></span>
+													{ticketStatusLabel(st)}
+												</button>
+											{/each}
+										</div>
+									{/if}
+								</div>
 							{/if}
 						{/snippet}
 					</Composer>
@@ -812,13 +864,14 @@
 		</div>
 	</div>
 
-	<!-- Right: details rail (checklist, attachments, linked tasks) -->
+	<!-- Right: properties and sections, its own scroll; drop files here to
+	     attach them to the ticket. -->
 	<AttachmentDropzone
 		onfiles={(files) => void ticketAttachmentUploader?.upload(files)}
-		class="hidden w-[374px] shrink-0 lg:block"
+		class="hidden w-[340px] shrink-0 lg:block"
 	>
-		<aside class="h-full overflow-y-auto border-l border-border">
-			<div class="space-y-6 px-5 py-6">
+		<aside class="h-full overflow-y-auto border-l border-border/70">
+			<div class="px-5 py-6">
 				{@render detailsRail('desktop')}
 			</div>
 		</aside>
@@ -842,131 +895,319 @@
 	/>
 {/if}
 
-<!-- Shared by the desktop right rail and the mobile inline block. -->
+<!-- Properties and sections; rendered in the right sidebar on desktop and
+     under the header on mobile (pickers are keyed by placement). -->
 {#snippet detailsRail(placement: 'mobile' | 'desktop')}
-	<div class="space-y-6">
-		<!-- Ticket tags -->
-		<div>
-			<div class="mb-2 text-[12px] tracking-[0.08em] text-text-4 uppercase">
-				{m.tasks_tags()}
-			</div>
-			<div class="relative flex flex-wrap items-center gap-1.5">
-				{#each t.tags as tag (tag)}
-					<LabelChip id={tag} />
-				{/each}
-				{#if isAgent}
-					<button
-						type="button"
-						disabled={pending}
-						title={m.tasks_add_tag()}
-						aria-label={m.tasks_add_tag()}
-						onclick={() => (tagsPop = tagsPop === placement ? null : placement)}
-						class="inline-flex items-center justify-center gap-1 rounded-md border border-dashed border-border text-text-3 transition-colors hover:border-border-strong hover:text-text disabled:opacity-50 {t
-							.tags.length
-							? 'h-5 w-5'
-							: 'h-6 px-2 text-[13px]'}"
-					>
-						<Icon name="plus" size={12} />
-						{#if t.tags.length === 0}<span>{m.tasks_add_tags()}</span>{/if}
-					</button>
-					{#if tagsPop === placement}
-						<TagsPopover
-							value={t.tags}
-							suggestions={data.tagSuggestions}
-							onchange={(v) => patch('tags', v, { keepOpen: true })}
-							onclose={() => (tagsPop = null)}
-						/>
-					{/if}
-				{:else if t.tags.length === 0}
-					<p class="text-[14px] text-text-3">{m.tasks_no_tags()}</p>
-				{/if}
-			</div>
-		</div>
-
-		<!-- Checklist (shared across all ticket participants) -->
-		<Checklist
-			items={checklist}
-			canEdit={data.canEditChecklist}
-			label={m.tasks_checklist()}
-			addPlaceholder={m.tasks_checklist_add()}
-			onChange={saveChecklist}
-		/>
-
-		<!-- Attachments -->
-		<div>
-			<div class="mb-2 flex items-center justify-between">
-				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
-					{m.tickets_attachments()}{#if data.attachments.length}<span class="ml-1.5 text-text-3"
-							>{data.attachments.length}</span
-						>{/if}
+	{@const k = (f: string) => `${placement}:${f}`}
+	<div>
+		<PropertyRow label={m.tickets_field_status()}>
+			<button
+				type="button"
+				disabled={!isAgent}
+				onclick={() => togglePop(k('status'))}
+				class="{PROP_VALUE} {pop === k('status') ? OPEN : ''}"
+			>
+				<span class="h-2 w-2 shrink-0 rounded-full" style:background={statusMeta?.dot ?? '#7c7c84'}
+				></span>
+				<span>{ticketStatusLabel(t.status)}</span>
+			</button>
+			{#if pop === k('status')}
+				<div
+					use:clickOutside={() => (pop = null)}
+					in:fly={POPOVER_IN}
+					class="absolute top-full left-0 z-50 mt-1.5 min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+				>
+					{#each TICKET_STATUSES as s (s.id)}
+						<button
+							type="button"
+							disabled={pending}
+							onclick={() => patch('status', s.id)}
+							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+						>
+							<span class="h-2 w-2 rounded-full" style:background={s.dot}></span>
+							<span class="text-[14px]">{ticketStatusLabel(s.id)}</span>
+							<span class="ml-auto text-accent {t.status === s.id ? 'opacity-100' : 'opacity-0'}">
+								<Icon name="check" size={14} />
+							</span>
+						</button>
+					{/each}
 				</div>
-				{#if placement === 'desktop'}
-					<AttachmentUploader
-						bind:this={ticketAttachmentUploader}
-						entityType="ticket"
-						entityId={t.id}
-						dropzone={false}
-					/>
-				{:else}
-					<AttachmentUploader entityType="ticket" entityId={t.id} />
-				{/if}
-			</div>
-			{#if data.attachments.length}
-				<!-- Deletion is agent-only; clients/members can attach but not remove. -->
-				<AttachmentList attachments={data.attachments} canDelete={isAgent} />
-			{:else}
-				<p class="text-[14px] text-text-3">{m.tickets_no_files()}</p>
 			{/if}
-		</div>
+		</PropertyRow>
+
+		<PropertyRow label={m.tickets_field_priority()}>
+			<button
+				type="button"
+				disabled={!isAgent}
+				onclick={() => togglePop(k('priority'))}
+				class="{PROP_VALUE} {pop === k('priority') ? OPEN : ''}"
+			>
+				<PriorityBars priority={t.priority} />
+				<span>{priorityLabel(t.priority)}</span>
+			</button>
+			{#if pop === k('priority')}
+				<div
+					use:clickOutside={() => (pop = null)}
+					in:fly={POPOVER_IN}
+					class="absolute top-full left-0 z-50 mt-1.5 min-w-[176px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+				>
+					{#each TICKET_PRIORITIES as p (p.id)}
+						<button
+							type="button"
+							disabled={pending}
+							onclick={() => patch('priority', p.id)}
+							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+						>
+							<PriorityBars priority={p.id} />
+							<span class="text-[14px]">{priorityLabel(p.id)}</span>
+							<span class="ml-auto text-accent {t.priority === p.id ? 'opacity-100' : 'opacity-0'}">
+								<Icon name="check" size={14} />
+							</span>
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</PropertyRow>
+
+		<PropertyRow label={m.tickets_field_category()}>
+			<button
+				type="button"
+				disabled={!isAgent}
+				onclick={() => togglePop(k('category'))}
+				class="{PROP_VALUE} {pop === k('category') ? OPEN : ''}"
+			>
+				<span
+					class="h-2 w-2 shrink-0 rounded-full"
+					style:background={categoryMeta?.color ?? '#7c7c84'}
+				></span>
+				<span>{ticketCategoryLabel(t.category)}</span>
+			</button>
+			{#if pop === k('category')}
+				<div
+					use:clickOutside={() => (pop = null)}
+					in:fly={POPOVER_IN}
+					class="absolute top-full left-0 z-50 mt-1.5 min-w-[198px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+				>
+					{#each TICKET_CATEGORIES as c (c.id)}
+						<button
+							type="button"
+							disabled={pending}
+							onclick={() => patch('category', c.id)}
+							class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+						>
+							<span class="h-2 w-2 rounded-full" style:background={c.color}></span>
+							<span class="text-[14px]">{ticketCategoryLabel(c.id)}</span>
+							<span class="ml-auto text-accent {t.category === c.id ? 'opacity-100' : 'opacity-0'}">
+								<Icon name="check" size={14} />
+							</span>
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</PropertyRow>
+
+		<PropertyRow label={m.tickets_field_assignee()}>
+			<button
+				type="button"
+				disabled={!isAgent}
+				onclick={() => togglePop(k('assignee'))}
+				class="{PROP_VALUE} {pop === k('assignee') ? OPEN : ''}"
+			>
+				{#if assigneeUsers.length === 1}
+					<Avatar user={assigneeUsers[0]} size={22} />
+					<span class="truncate">{assigneeUsers[0]?.name ?? m.common_unassigned()}</span>
+				{:else if assigneeUsers.length > 1}
+					<AvatarStack users={assigneeUsers} size={22} max={3} overlap={6} />
+					<span class="truncate">{m.tickets_n_assignees({ n: assigneeUsers.length })}</span>
+				{:else}
+					<span class="text-text-3">{m.common_unassigned()}</span>
+				{/if}
+			</button>
+			{#if pop === k('assignee')}
+				<AssigneePopover
+					value={t.assignees}
+					{users}
+					onchange={(v) => patch('assignees', v, { keepOpen: true })}
+					onclose={() => (pop = null)}
+				/>
+			{/if}
+		</PropertyRow>
+
+		<PropertyRow label={m.tickets_meta_reporter()}>
+			<span class="inline-flex min-w-0 items-center gap-2 text-[14px] text-text">
+				{#if reporter}<Avatar user={reporter} size={22} />{/if}
+				<span class="truncate">{reporter?.name ?? '—'}</span>
+			</span>
+		</PropertyRow>
+
+		<PropertyRow label={m.tickets_field_organization()}>
+			<span class="inline-flex min-w-0 items-center gap-2 text-[14px] text-text">
+				<span class="h-2 w-2 shrink-0 rounded-full" style:background={t.orgColor}></span>
+				<span class="truncate">{t.orgName}</span>
+			</span>
+		</PropertyRow>
+
+		{#if t.tags.length > 0 || isAgent}
+			<PropertyRow label={m.tasks_tags()}>
+				<button
+					type="button"
+					disabled={!isAgent || pending}
+					onclick={() => (tagsPop = tagsPop === placement ? null : placement)}
+					class="{PROP_VALUE} flex-wrap {tagsPop === placement ? OPEN : ''}"
+				>
+					{#each t.tags as tag (tag)}
+						{@const l = labelMeta(tag)}
+						<span class={TAG}>
+							<span class="h-1.5 w-1.5 shrink-0 rounded-full" style:background={l.color}></span>
+							<span class="max-w-[140px] truncate">{l.label}</span>
+						</span>
+					{:else}
+						<span class="text-text-3">{m.tasks_add_tags()}</span>
+					{/each}
+				</button>
+				{#if tagsPop === placement}
+					<TagsPopover
+						value={t.tags}
+						suggestions={data.tagSuggestions}
+						onchange={(v) => patch('tags', v, { keepOpen: true })}
+						onclose={() => (tagsPop = null)}
+					/>
+				{/if}
+			</PropertyRow>
+		{/if}
+	</div>
+
+	<div class="mt-5 space-y-6 border-t border-border/60 pt-5">
+		<!-- Checklist (shared across all ticket participants) -->
+		{#if checklist.length > 0 || checklistOpen}
+			<Checklist
+				items={checklist}
+				canEdit={data.canEditChecklist}
+				label={m.tasks_checklist()}
+				addPlaceholder={m.tasks_checklist_add()}
+				onChange={saveChecklist}
+				variant="panel"
+				addLabel={m.tasks_checklist_add()}
+				focusAdd={checklistOpen && checklist.length === 0}
+			/>
+		{/if}
+
+		<!-- Attachments: anyone on the ticket may add; deleting is agent-only. -->
+		{#if data.attachments.length}
+			<section>
+				<SectionHeader label={m.tickets_attachments()} count={data.attachments.length}>
+					{#snippet action()}
+						{#if placement === 'desktop'}
+							<AttachmentUploader
+								bind:this={ticketAttachmentUploader}
+								entityType="ticket"
+								entityId={t.id}
+								dropzone={false}
+								variant="icon"
+								label={m.tickets_attach_files()}
+							/>
+						{:else}
+							<AttachmentUploader
+								entityType="ticket"
+								entityId={t.id}
+								dropzone={false}
+								variant="icon"
+								label={m.tickets_attach_files()}
+							/>
+						{/if}
+					{/snippet}
+				</SectionHeader>
+				<AttachmentList attachments={data.attachments} canDelete={isAgent} />
+			</section>
+		{/if}
 
 		<!-- Linked tasks (team-only) -->
-		{#if data.canCreateTask}
-			<div>
-				<div class="mb-2 text-[12px] tracking-[0.08em] text-text-4 uppercase">
-					{m.tickets_linked_tasks()}{#if data.linkedTasks.length}<span class="ml-1.5 text-text-3"
-							>{data.linkedTasks.length}</span
-						>{/if}
+		{#if data.canCreateTask && data.linkedTasks.length}
+			<section>
+				<SectionHeader label={m.tickets_linked_tasks()} count={data.linkedTasks.length} />
+				<div class="space-y-px">
+					{#each data.linkedTasks as lt (lt.id)}
+						<a href="/tasks?task={lt.displayId}" class="group {ROW}">
+							<span class="grid h-5 w-5 shrink-0 place-items-center">
+								<StatusDot status={lt.status as import('$lib/types').StatusId} size={14} />
+							</span>
+							<span class="shrink-0 font-mono text-[12px] leading-5 text-text-3"
+								>{lt.displayId}</span
+							>
+							<span
+								class="min-w-0 flex-1 truncate text-[14px] leading-5 text-text-2 group-hover:text-text"
+								>{lt.title}</span
+							>
+						</a>
+					{/each}
 				</div>
-				{#if data.linkedTasks.length}
-					<ul class="flex flex-col gap-1">
-						{#each data.linkedTasks as lt (lt.id)}
-							<li>
-								<a
-									href="/tasks?task={lt.displayId}"
-									class="group flex items-center gap-2.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 transition-colors hover:border-border-strong"
-								>
-									<StatusDot status={lt.status as import('$lib/types').StatusId} size={14} />
-									<span class="font-mono text-[12px] text-text-4">{lt.displayId}</span>
-									<span class="truncate text-[14px] text-text-2 group-hover:text-text"
-										>{lt.title}</span
-									>
-								</a>
-							</li>
-						{/each}
-					</ul>
-				{:else}
-					<p class="text-[14px] text-text-3">{m.tickets_linked_tasks_empty()}</p>
-				{/if}
-			</div>
+			</section>
 		{/if}
 
 		<!-- Created from a chat thread -->
 		{#if data.sourceChat}
-			<div>
-				<div class="mb-2 text-[12px] tracking-[0.08em] text-text-4 uppercase">
-					{m.tickets_source_chat()}
-				</div>
+			<section>
+				<SectionHeader label={m.tickets_source_chat()} />
 				<a
 					href="/chat?org={data.sourceChat.orgId}&thread={data.sourceChat.threadId}"
-					class="group flex items-center gap-2.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 transition-colors hover:border-border-strong"
+					class="group {ROW}"
 				>
-					<Icon name="msg" size={14} class="shrink-0 text-text-4" />
-					<span class="truncate text-[14px] text-text-2 group-hover:text-text">
+					<span class="grid h-5 w-5 shrink-0 place-items-center text-text-3">
+						<Icon name="msg" size={15} />
+					</span>
+					<span
+						class="min-w-0 flex-1 truncate text-[14px] leading-5 text-text-2 group-hover:text-text"
+					>
 						{data.sourceChat.title ?? m.chat_untitled()}
 					</span>
-					<Icon name="link" size={13} class="ml-auto shrink-0 text-text-4" />
+					<Icon name="chevron-r" size={13} class="shrink-0 text-text-4" />
 				</a>
+			</section>
+		{/if}
+
+		<!-- Whatever is still empty, as quiet links. -->
+		{#if (data.canEditChecklist && checklist.length === 0 && !checklistOpen) || !data.attachments.length}
+			<div class="-mx-2 flex flex-wrap items-center gap-0.5">
+				{#if data.canEditChecklist && checklist.length === 0 && !checklistOpen}
+					<button type="button" onclick={() => (checklistOpen = true)} class={QUIET_ADD}>
+						<Icon name="plus" size={13} />
+						{m.tasks_checklist()}
+					</button>
+				{/if}
+				{#if !data.attachments.length}
+					{#if placement === 'desktop'}
+						<AttachmentUploader
+							bind:this={ticketAttachmentUploader}
+							entityType="ticket"
+							entityId={t.id}
+							dropzone={false}
+							variant="quiet"
+							label={m.tasks_panel_add_file()}
+						/>
+					{:else}
+						<AttachmentUploader
+							entityType="ticket"
+							entityId={t.id}
+							dropzone={false}
+							variant="quiet"
+							label={m.tasks_panel_add_file()}
+						/>
+					{/if}
+				{/if}
 			</div>
 		{/if}
+
+		<!-- Meta, one muted line. -->
+		<div class="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-text-4">
+			<span>{m.tickets_meta_channel()} {ticketChannelLabel(t.channel)}</span>
+			<span>{m.tickets_meta_created()} {fmtDate(t.createdAt)}</span>
+			<span>{m.tickets_meta_first_response()} {fmtDate(t.firstResponseAt)}</span>
+			{#if t.resolvedAt}
+				<span>{m.tickets_meta_resolved()} {fmtDate(t.resolvedAt)}</span>
+			{/if}
+			{#if t.satisfactionScore != null}
+				<span>{m.tickets_meta_csat()} {t.satisfactionScore}/5</span>
+			{/if}
+		</div>
 	</div>
 {/snippet}
