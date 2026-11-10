@@ -12,7 +12,7 @@
 	import type { ActionResult } from '@sveltejs/kit';
 	import Modal from '../Modal.svelte';
 	import Icon from '../Icon.svelte';
-	import Button from '../Button.svelte';
+	import FormDialogLayout from '../FormDialogLayout.svelte';
 	import TaskPropertyRail from './TaskPropertyRail.svelte';
 	import RichTextInput from '../RichTextInput.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
@@ -213,130 +213,103 @@
 
 <svelte:window onkeydown={open ? handleKey : undefined} />
 
-<Modal {open} {onclose} maxWidth={640}>
+<Modal {open} {onclose} maxWidth={820}>
 	{#if current}
-		<!-- Head -->
-		<div class="flex items-center gap-2 border-b border-border px-5 pt-4 pb-3">
-			<Icon name="check-square" size={16} class="text-text-2" />
-			<div class="text-[14px] font-medium text-text">{m.notes_bulk_title()}</div>
-			<span class="font-mono text-[12px] text-text-3">{index + 1} / {total}</span>
-			<button
-				type="button"
-				onclick={onclose}
-				class="ml-auto grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
-				aria-label={m.common_close()}
+		<!-- Same layout as the single create dialog (FormDialogLayout + the
+		     property rail); the stepper sits in the foot. -->
+		<div class="relative">
+			<FormDialogLayout
+				title={m.notes_bulk_title()}
+				{onclose}
+				submitLabel={creating
+					? m.common_creating()
+					: m.notes_bulk_create_all({ n: creatable.length })}
+				submitDisabled={creating || creatable.length === 0 || allDone}
+				onsubmit={createAll}
 			>
-				<Icon name="x" size={15} />
-			</button>
-		</div>
-
-		<!-- Stepper controls -->
-		<div class="flex items-center gap-2 px-5 pt-3">
-			<button
-				type="button"
-				onclick={() => go(index - 1)}
-				disabled={index === 0 || creating}
-				class="grid h-7 w-7 place-items-center rounded-lg border border-border text-text-2 transition-colors hover:border-border-strong hover:text-text disabled:pointer-events-none disabled:opacity-40"
-				aria-label={m.notes_bulk_prev()}
-			>
-				<Icon name="chevron" size={15} class="rotate-90" />
-			</button>
-			<button
-				type="button"
-				onclick={() => go(index + 1)}
-				disabled={index >= total - 1 || creating}
-				class="grid h-7 w-7 place-items-center rounded-lg border border-border text-text-2 transition-colors hover:border-border-strong hover:text-text disabled:pointer-events-none disabled:opacity-40"
-				aria-label={m.notes_bulk_next()}
-			>
-				<Icon name="chevron" size={15} class="-rotate-90" />
-			</button>
-
-			<label
-				class="ml-auto inline-flex cursor-pointer items-center gap-2 text-[14px] select-none {current.created
-					? 'pointer-events-none opacity-50'
-					: ''}"
-			>
-				<input type="checkbox" bind:checked={current.include} class="accent-accent" />
-				<span class="text-text-2">{m.notes_bulk_include()}</span>
-			</label>
-		</div>
-
-		<!-- Body: the current draft -->
-		<div class="px-5 pt-3 pb-3 {current.include ? '' : 'opacity-50'}">
-			<input
-				type="text"
-				bind:value={current.title}
-				disabled={current.created}
-				placeholder={m.tasks_title_placeholder()}
-				class="mb-2 w-full border-0 bg-transparent text-[22px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3 disabled:text-text-3"
-			/>
-			<RichTextInput
-				bind:value={current.description}
-				disabled={current.created}
-				placeholder={m.tasks_description_placeholder()}
-				flavor="document"
-				mentions={false}
-				rows={2}
-				maxRows={8}
-				class="w-full border-0 bg-transparent text-[14px] leading-relaxed text-text-2"
-			/>
-
-			<div class="mt-3">
-				<TaskPropertyRail
-					bind:project={current.project}
-					bind:type={current.type}
-					bind:status={current.status}
-					bind:priority={current.priority}
-					bind:assignees={current.assignees}
-					bind:due={current.due}
-					bind:estimate={current.estimate}
-					bind:tags={current.tags}
-					{projects}
-					{users}
-					{memberProjectIds}
-					{allAccess}
-				/>
-			</div>
-
-			{#if current.created}
-				<div class="mt-3 inline-flex items-center gap-1.5 text-[13px] text-accent">
-					<Icon name="check" size={14} />
-					{m.notes_bulk_created_badge()}
-				</div>
-			{:else if current.error}
-				<div class="mt-3 text-[13px] text-accent">{current.error}</div>
-			{/if}
-		</div>
-
-		<!-- Progress dots -->
-		<div class="flex flex-wrap items-center gap-1.5 px-5 pb-3">
-			{#each drafts as d, i (d.pos)}
-				<button
-					type="button"
-					onclick={() => go(i)}
-					aria-label={`${i + 1}`}
-					title={d.title}
-					class="h-2.5 w-2.5 rounded-full transition-colors {d.created
-						? 'bg-accent'
-						: !d.include
-							? 'bg-border'
-							: 'bg-text-3 hover:bg-text-2'} {i === index ? 'ring-2 ring-accent/40' : ''}"
-				></button>
-			{/each}
-		</div>
-
-		<!-- Foot -->
-		<div class="flex items-center gap-2 rounded-b-2xl border-t border-border bg-bg/40 px-5 py-3">
-			<Button variant="default" onclick={onclose}>{m.common_cancel()}</Button>
-			<div class="ml-auto">
-				<Button
-					variant="primary"
-					onclick={createAll}
-					disabled={creating || creatable.length === 0 || allDone}
-				>
-					{creating ? m.common_creating() : m.notes_bulk_create_all({ n: creatable.length })}
-				</Button>
-			</div>
+				{#snippet main()}
+					<div class={current.include ? '' : 'opacity-50'}>
+						<input
+							type="text"
+							bind:value={current.title}
+							disabled={current.created}
+							placeholder={m.tasks_title_placeholder()}
+							class="mb-2 w-full border-0 bg-transparent text-[22px] font-semibold tracking-[-0.01em] text-text outline-none placeholder:text-text-3 disabled:text-text-3"
+						/>
+						<RichTextInput
+							bind:value={current.description}
+							disabled={current.created}
+							placeholder={m.tasks_description_placeholder()}
+							flavor="document"
+							mentions={false}
+							rows={5}
+							maxRows={14}
+							class="w-full border-0 bg-transparent text-[14px] leading-relaxed text-text-2"
+						/>
+					</div>
+					{#if current.created}
+						<div class="mt-3 inline-flex items-center gap-1.5 text-[13px] text-accent">
+							<Icon name="check" size={14} />
+							{m.notes_bulk_created_badge()}
+						</div>
+					{:else if current.error}
+						<div class="mt-3 text-[13px] text-accent">{current.error}</div>
+					{/if}
+				{/snippet}
+				{#snippet aside()}
+					<div class={current.include ? '' : 'pointer-events-none opacity-50'}>
+						<TaskPropertyRail
+							bind:project={current.project}
+							bind:type={current.type}
+							bind:status={current.status}
+							bind:priority={current.priority}
+							bind:assignees={current.assignees}
+							bind:due={current.due}
+							bind:estimate={current.estimate}
+							bind:tags={current.tags}
+							{projects}
+							{users}
+							{memberProjectIds}
+							{allAccess}
+						/>
+					</div>
+				{/snippet}
+				{#snippet footStart()}
+					<!-- Stepper: previous / next, where you are, and whether this
+					     to-do becomes a task. -->
+					<div class="-ml-2 flex items-center gap-1">
+						<button
+							type="button"
+							onclick={() => go(index - 1)}
+							disabled={index === 0 || creating}
+							class="grid h-7 w-7 place-items-center rounded-lg text-text-2 transition-colors hover:bg-surface hover:text-text disabled:pointer-events-none disabled:opacity-40"
+							aria-label={m.notes_bulk_prev()}
+						>
+							<Icon name="chevron" size={15} class="rotate-90" />
+						</button>
+						<span class="min-w-[44px] text-center font-mono text-[12px] text-text-3"
+							>{index + 1} / {total}</span
+						>
+						<button
+							type="button"
+							onclick={() => go(index + 1)}
+							disabled={index >= total - 1 || creating}
+							class="grid h-7 w-7 place-items-center rounded-lg text-text-2 transition-colors hover:bg-surface hover:text-text disabled:pointer-events-none disabled:opacity-40"
+							aria-label={m.notes_bulk_next()}
+						>
+							<Icon name="chevron" size={15} class="-rotate-90" />
+						</button>
+					</div>
+					<label
+						class="ml-2 inline-flex cursor-pointer items-center gap-2 text-[13px] select-none {current.created
+							? 'pointer-events-none opacity-50'
+							: ''}"
+					>
+						<input type="checkbox" bind:checked={current.include} class="accent-accent" />
+						<span class="text-text-2">{m.notes_bulk_include()}</span>
+					</label>
+				{/snippet}
+			</FormDialogLayout>
 		</div>
 	{/if}
 </Modal>

@@ -4,13 +4,11 @@
 	import { showToast } from '$lib/stores/toast.svelte';
 	import type { ActionResult } from '@sveltejs/kit';
 	import Modal from '../Modal.svelte';
+	import FormDialogLayout from '../FormDialogLayout.svelte';
 	import Icon from '../Icon.svelte';
 	import TaskPropertyRail from './TaskPropertyRail.svelte';
 	import { QUIET_ADD } from './panel/styles';
 
-	// Footer buttons share one box (height, padding, border) so they match.
-	const FOOT_BUTTON =
-		'inline-flex h-9 items-center justify-center rounded-lg border px-4 text-[14px] leading-none font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50';
 	import RichTextInput from '../RichTextInput.svelte';
 	import { page } from '$app/state';
 	import type { PriorityId, ProjectId, StatusId, TypeId } from '$lib/types';
@@ -221,23 +219,13 @@
 			disabled={submitting}
 			label={m.tasks_drop_files_to_attach()}
 		>
-			<!-- Head -->
-			<!-- No head bar or divider lines: the title field leads, and close
-			     floats top-right. The dialog keeps its accessible name. -->
-			<h2 class="sr-only">{m.tasks_new_task()}</h2>
-			<button
-				type="button"
-				onclick={onclose}
-				class="absolute top-3 right-3 z-10 grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
-				aria-label={m.common_close()}
+			<FormDialogLayout
+				title={m.tasks_new_task()}
+				{onclose}
+				submitLabel={submitting ? m.common_creating() : m.tasks_create_task()}
+				submitDisabled={!canSubmit}
 			>
-				<Icon name="x" size={15} />
-			</button>
-
-			<!-- Body: writing on the wider left, the properties stacked in a
-			     column on the right (below on narrow screens). -->
-			<div class="grid md:grid-cols-[minmax(0,1fr)_320px]">
-				<div class="min-w-0 px-6 pt-6 pb-4">
+				{#snippet main()}
 					<input
 						type="text"
 						name="title"
@@ -342,12 +330,9 @@
 						{/if}
 						<input bind:this={fileInput} type="file" multiple hidden onchange={onPick} />
 					</div>
-				</div>
-				<!-- Properties: a softly tinted column instead of a divider line,
-				     with room for the labels and values. -->
-				<div class="mx-3 mb-1 rounded-xl bg-surface/40 px-2 py-3 md:mx-0 md:mt-12 md:mr-3 md:mb-0">
+				{/snippet}
+				{#snippet aside()}
 					<TaskPropertyRail
-						layout="list"
 						showPlanned
 						bind:plannedFor
 						bind:project
@@ -363,35 +348,14 @@
 						{memberProjectIds}
 						{allAccess}
 					/>
-				</div>
-			</div>
-
-			<!-- Foot: attach on the left (files can also be dropped anywhere on
-			     the dialog); Cancel and Create built from the same box so they're
-			     exactly the same height. ⌘↵ still submits. The right inset (12px)
-			     matches the property column's, so Create lines up with it. -->
-			<div class="flex items-center gap-2 rounded-b-2xl pt-3 pr-3 pb-3 pl-6">
-				<button type="button" onclick={() => fileInput?.click()} class="{QUIET_ADD} -ml-2">
-					<Icon name="paperclip" size={14} />
-					{m.tasks_attach_files()}
-				</button>
-				<div class="ml-auto flex items-center gap-2">
-					<button
-						type="button"
-						onclick={onclose}
-						class="{FOOT_BUTTON} border-border bg-surface text-text hover:bg-surface-2"
-					>
-						{m.common_cancel()}
+				{/snippet}
+				{#snippet footStart()}
+					<button type="button" onclick={() => fileInput?.click()} class="{QUIET_ADD} -ml-2">
+						<Icon name="paperclip" size={14} />
+						{m.tasks_attach_files()}
 					</button>
-					<button
-						type="submit"
-						disabled={!canSubmit}
-						class="{FOOT_BUTTON} border-transparent bg-accent text-white hover:bg-accent-strong"
-					>
-						{submitting ? m.common_creating() : m.tasks_create_task()}
-					</button>
-				</div>
-			</div>
+				{/snippet}
+			</FormDialogLayout>
 		</AttachmentDropzone>
 	</form>
 </Modal>

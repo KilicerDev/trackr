@@ -1,8 +1,8 @@
 <script lang="ts">
 	// Shared task property rail: project, type, status, priority, assignees, due,
-	// estimate, tags. The single source of the popover-backed field chips, used
-	// by CreateTaskModal and the bulk "create tasks from to-dos" stepper so the
-	// picker wiring isn't duplicated.
+	// estimate, tags as label / value rows for a dialog's side column. The one
+	// source of these pickers and their look, used by CreateTaskModal and the
+	// bulk "create tasks from to-dos" stepper — change it here, both follow.
 	import Icon from '../Icon.svelte';
 	import Avatar from '../Avatar.svelte';
 	import AvatarStack from '../AvatarStack.svelte';
@@ -58,11 +58,6 @@
 		// Hide the project chip when the host renders its own project picker
 		// elsewhere.
 		showProject?: boolean;
-		/**
-		 * `chips` (default): a wrapping row of chips (bulk create). `list`: one
-		 * label / value row per property, for a side column (create dialog).
-		 */
-		layout?: 'chips' | 'list';
 		/** Show the "My week" (planned for) property; bind `plannedFor`. */
 		showPlanned?: boolean;
 		plannedFor?: string | null;
@@ -82,11 +77,9 @@
 		memberProjectIds = [],
 		allAccess = false,
 		showProject = true,
-		layout = 'chips',
 		showPlanned = false,
 		plannedFor = $bindable(null)
 	}: Props = $props();
-	const list = $derived(layout === 'list');
 
 	// Which popover (if any) is open. Local to this rail instance.
 	let pop = $state<string | null>(null);
@@ -102,22 +95,15 @@
 	const projectMeta = $derived(project ? projects.find((p) => p.key === project) : undefined);
 	const assigneeUsers = $derived(assignees.map((id) => users.find((u) => u.id === id)));
 
-	// One style per layout. Chips: a solid hairline chip, same height for all;
-	// an empty value is the same chip with muted text (no dashed outlines).
-	// List: a full-width label / value row that tints on hover. The open
-	// picker's control gets the accent ring / tint.
+	// One style: a full-width label / value row that tints on hover (the
+	// open picker's row stays tinted); an empty value reads muted.
 	function chip(filled: boolean, key: string): string {
-		if (list) {
-			return `grid w-full grid-cols-[100px_minmax(0,1fr)] items-center gap-3 rounded-lg px-2.5 py-2 text-left text-[13px] leading-5 transition-colors hover:bg-surface ${
-				filled ? 'text-text' : 'text-text-3'
-			} ${pop === key ? 'bg-surface' : ''}`;
-		}
-		return `inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-[13px] leading-none transition-colors hover:border-border-strong ${
-			filled ? 'text-text' : 'text-text-3 hover:text-text-2'
-		} ${pop === key ? 'ring-2 ring-accent/40' : ''}`;
+		return `grid w-full grid-cols-[100px_minmax(0,1fr)] items-center gap-3 rounded-lg px-2.5 py-2 text-left text-[13px] leading-5 transition-colors hover:bg-surface ${
+			filled ? 'text-text' : 'text-text-3'
+		} ${pop === key ? 'bg-surface' : ''}`;
 	}
-	// In the list layout the value sits in the row's second column.
-	const valueCls = $derived(list ? 'flex min-w-0 items-center gap-1.5 truncate' : 'contents');
+	// The value sits in the row's second column.
+	const valueCls = 'flex min-w-0 items-center gap-1.5 truncate';
 	const LABELS: Record<string, () => string> = {
 		project: m.tasks_group_project,
 		type: m.tasks_panel_type,
@@ -131,7 +117,7 @@
 	};
 </script>
 
-<div class={list ? 'flex flex-col gap-px' : 'flex flex-wrap gap-2'}>
+<div class="flex flex-col gap-px">
 	{#if showProject}
 		<div class="relative">
 			<button
@@ -139,7 +125,7 @@
 				onclick={() => (pop = pop === 'project' ? null : 'project')}
 				class={chip(!!projectMeta, 'project')}
 			>
-				{#if list}<span class="text-text-3">{LABELS.project()}</span>{/if}
+				<span class="text-text-3">{LABELS.project()}</span>
 				<span class={valueCls}>
 					{#if projectMeta}
 						<span class="h-2 w-2 rounded-full" style:background={projectMeta.color}></span>
@@ -169,7 +155,7 @@
 			onclick={() => (pop = pop === 'type' ? null : 'type')}
 			class={chip(true, 'type')}
 		>
-			{#if list}<span class="text-text-3">{LABELS.type()}</span>{/if}
+			<span class="text-text-3">{LABELS.type()}</span>
 			<span class={valueCls}>
 				<TypeBadge {type} showLabel={false} />
 				<span>{typeLabel(type)}</span>
@@ -186,7 +172,7 @@
 			onclick={() => (pop = pop === 'status' ? null : 'status')}
 			class={chip(true, 'status')}
 		>
-			{#if list}<span class="text-text-3">{LABELS.status()}</span>{/if}
+			<span class="text-text-3">{LABELS.status()}</span>
 			<span class={valueCls}>
 				<StatusDot {status} />
 				<span>{statusLabel(status)}</span>
@@ -203,7 +189,7 @@
 			onclick={() => (pop = pop === 'priority' ? null : 'priority')}
 			class={chip(true, 'priority')}
 		>
-			{#if list}<span class="text-text-3">{LABELS.priority()}</span>{/if}
+			<span class="text-text-3">{LABELS.priority()}</span>
 			<span class={valueCls}>
 				{#if prioMeta.bars > 0}<PriorityBars {priority} />{/if}
 				<span>{priorityLabel(priority)}</span>
@@ -224,7 +210,7 @@
 			onclick={() => (pop = pop === 'assignees' ? null : 'assignees')}
 			class={chip(assignees.length > 0, 'assignees')}
 		>
-			{#if list}<span class="text-text-3">{LABELS.assignees()}</span>{/if}
+			<span class="text-text-3">{LABELS.assignees()}</span>
 			<span class={valueCls}>
 				{#if assignees.length === 1 && assigneeUsers[0]}
 					<Avatar user={assigneeUsers[0]} size={22} />
@@ -254,11 +240,11 @@
 			onclick={() => (pop = pop === 'due' ? null : 'due')}
 			class={chip(!!due, 'due')}
 		>
-			{#if list}<span class="text-text-3">{LABELS.due()}</span>{/if}
+			<span class="text-text-3">{LABELS.due()}</span>
 			<span class={valueCls}>
 				<Icon name="calendar" size={13} />
 				{#if due}<span class="font-mono">{formatDateLong(due)}</span>{:else}<span
-						>{list ? m.tasks_panel_set_due() : m.tasks_due_date()}</span
+						>{m.tasks_panel_set_due()}</span
 					>{/if}
 			</span>
 		</button>
@@ -274,7 +260,7 @@
 				onclick={() => (pop = pop === 'plan' ? null : 'plan')}
 				class={chip(!!plannedFor, 'plan')}
 			>
-				{#if list}<span class="text-text-3">{LABELS.plan()}</span>{/if}
+				<span class="text-text-3">{LABELS.plan()}</span>
 				<span class={valueCls}>
 					<Icon name="bookmark" size={13} />
 					{#if plannedFor}<span class="font-mono">{formatDateLong(plannedFor)}</span>{:else}<span
@@ -298,11 +284,11 @@
 			onclick={() => (pop = pop === 'estimate' ? null : 'estimate')}
 			class={chip(!!estimate, 'estimate')}
 		>
-			{#if list}<span class="text-text-3">{LABELS.estimate()}</span>{/if}
+			<span class="text-text-3">{LABELS.estimate()}</span>
 			<span class={valueCls}>
 				{#if estimate}<span class="text-text-3">{m.tasks_est()}</span><span class="font-mono"
 						>{formatEstimate(estimate)}</span
-					>{:else}<span>{list ? m.tasks_panel_set_estimate() : m.tasks_estimate()}</span>{/if}
+					>{:else}<span>{m.tasks_panel_set_estimate()}</span>{/if}
 			</span>
 		</button>
 		{#if pop === 'estimate'}
@@ -320,7 +306,7 @@
 			onclick={() => (pop = pop === 'tags' ? null : 'tags')}
 			class={chip(tags.length > 0, 'tags')}
 		>
-			{#if list}<span class="text-text-3">{LABELS.tags()}</span>{/if}
+			<span class="text-text-3">{LABELS.tags()}</span>
 			<span class={valueCls}>
 				{#if tags.length > 0}
 					{#each tags.slice(0, 2) as t (t)}
@@ -331,8 +317,7 @@
 						</span>
 					{/each}
 					{#if tags.length > 2}<span class="text-text-3">+{tags.length - 2}</span>{/if}
-				{:else if list}{m.tasks_add_tags()}{:else}<Icon name="bookmark" size={13} />
-					{m.tasks_tags()}{/if}
+				{:else}{m.tasks_add_tags()}{/if}
 			</span>
 		</button>
 		{#if pop === 'tags'}

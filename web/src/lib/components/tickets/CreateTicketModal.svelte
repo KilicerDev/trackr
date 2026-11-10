@@ -4,6 +4,7 @@
 	import { showToast } from '$lib/stores/toast.svelte';
 	import type { ActionResult } from '@sveltejs/kit';
 	import Modal from '../Modal.svelte';
+	import FormDialogLayout from '../FormDialogLayout.svelte';
 	import Icon from '../Icon.svelte';
 	import RichTextInput from '../RichTextInput.svelte';
 	import { QUIET_ADD } from '../tasks/panel/styles';
@@ -65,8 +66,6 @@
 	// buttons, which share one box so Cancel and Create are the same height.
 	const ROW =
 		'grid w-full grid-cols-[100px_minmax(0,1fr)] items-center gap-3 rounded-lg px-2.5 py-2 text-left text-[13px] leading-5 transition-colors hover:bg-surface';
-	const FOOT_BUTTON =
-		'inline-flex h-9 items-center justify-center rounded-lg border px-4 text-[14px] leading-none font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50';
 
 	type Priority = (typeof TICKET_PRIORITIES)[number]['id'];
 	type Category = (typeof TICKET_CATEGORIES)[number]['id'];
@@ -183,23 +182,17 @@
 			disabled={submitting}
 			label={m.tickets_dropzone_create()}
 		>
-			<!-- Same anatomy as the create-task dialog: no head bar or divider
-			     lines, close floats top-right, writing on the wider left and the
-			     properties in a tinted column on the right. -->
-			<h2 class="sr-only">{m.tickets_new_title()}</h2>
-			<button
-				type="button"
-				onclick={onclose}
-				aria-label={m.common_close()}
-				class="absolute top-3 right-3 z-10 grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
+			<!-- Shared create-dialog layout (FormDialogLayout); a minimum height so
+			     it doesn't read as a thin strip with only four properties. -->
+			<FormDialogLayout
+				title={m.tickets_new_title()}
+				{onclose}
+				asideWidth={300}
+				minBodyHeight={380}
+				submitLabel={submitting ? m.common_creating() : m.tickets_create()}
+				submitDisabled={submitting || !subject.trim() || !orgId}
 			>
-				<Icon name="x" size={15} />
-			</button>
-
-			<!-- A minimum height so the dialog doesn't read as a thin strip with
-			     only four properties on the right. -->
-			<div class="grid md:min-h-[380px] md:grid-cols-[minmax(0,1fr)_300px]">
-				<div class="min-w-0 px-6 pt-6 pb-4">
+				{#snippet main()}
 					<input
 						type="text"
 						name="subject"
@@ -237,12 +230,8 @@
 						</div>
 					{/if}
 					<input bind:this={fileInput} type="file" multiple hidden onchange={onPick} />
-				</div>
-
-				<!-- Properties: label / value rows that open their picker. -->
-				<div
-					class="mx-3 mb-1 flex flex-col gap-px rounded-xl bg-surface/40 px-2 py-3 md:mx-0 md:mt-12 md:mr-3 md:mb-0"
-				>
+				{/snippet}
+				{#snippet aside()}
 					<div class="relative">
 						<button
 							type="button"
@@ -413,34 +402,14 @@
 							{/if}
 						</div>
 					{/if}
-				</div>
-			</div>
-
-			<!-- Foot: attach on the left (files can also be dropped on the dialog);
-			     Cancel and Create built from the same box so they match. ⌘↵ still
-			     submits. The 12px right inset lines Create up with the column. -->
-			<div class="flex items-center gap-2 rounded-b-2xl pt-3 pr-3 pb-3 pl-6">
-				<button type="button" onclick={() => fileInput?.click()} class="{QUIET_ADD} -ml-2">
-					<Icon name="paperclip" size={14} />
-					{m.tickets_attach_files()}
-				</button>
-				<div class="ml-auto flex items-center gap-2">
-					<button
-						type="button"
-						onclick={onclose}
-						class="{FOOT_BUTTON} border-border bg-surface text-text hover:bg-surface-2"
-					>
-						{m.common_cancel()}
+				{/snippet}
+				{#snippet footStart()}
+					<button type="button" onclick={() => fileInput?.click()} class="{QUIET_ADD} -ml-2">
+						<Icon name="paperclip" size={14} />
+						{m.tickets_attach_files()}
 					</button>
-					<button
-						type="submit"
-						disabled={submitting || !subject.trim() || !orgId}
-						class="{FOOT_BUTTON} border-transparent bg-accent text-white hover:bg-accent-strong"
-					>
-						{submitting ? m.common_creating() : m.tickets_create()}
-					</button>
-				</div>
-			</div>
+				{/snippet}
+			</FormDialogLayout>
 		</AttachmentDropzone>
 	</form>
 </Modal>
