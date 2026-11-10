@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDateTime } from '$lib/utils/format';
 	import { pageTitle } from '$lib/brand';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
@@ -23,7 +24,8 @@
 	const instructionsOver = $derived(instructions.trim().length > data.instructionsMax);
 
 	const connCols = '1.6fr 1.6fr 1.1fr 1.4fr 48px';
-	const fmt = new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium', timeStyle: 'short' });
+	// App-wide date display (dd.mm.yyyy, HH:mm); see $lib/utils/format.
+	const fmt = { format: (d: Date | string | number) => formatDateTime(new Date(d)) };
 
 	type Conn = PageData['connections'][number];
 	type Guide = PageData['guides'][number];

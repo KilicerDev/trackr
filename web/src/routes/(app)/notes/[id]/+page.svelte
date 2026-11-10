@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatWeekdayDate } from '$lib/utils/format';
 	import { pageTitle } from '$lib/brand';
 	import { browser } from '$app/environment';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -46,16 +47,7 @@
 		return list.find((t) => t.id === note.taskId) ?? null;
 	});
 	const taskRef = $derived(task ? `${project?.key ?? ''}-${task.number}` : null);
-	const meetingDateLabel = $derived(
-		note.meetingDate
-			? new Date(note.meetingDate).toLocaleDateString(undefined, {
-					weekday: 'short',
-					month: 'short',
-					day: 'numeric',
-					year: 'numeric'
-				})
-			: null
-	);
+	const meetingDateLabel = $derived(note.meetingDate ? formatWeekdayDate(note.meetingDate) : null);
 
 	let menuOpen = $state(false);
 	let shareOpen = $state(false);

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDate } from '$lib/utils/format';
 	import { pageTitle } from '$lib/brand';
 	import { browser } from '$app/environment';
 	import { invalidateAll } from '$app/navigation';
@@ -101,11 +102,11 @@
 		if (diff < 3600) return m.wiki_relative_min_ago({ n: Math.floor(diff / 60) });
 		if (diff < 86400) return m.wiki_relative_hours_ago({ n: Math.floor(diff / 3600) });
 		if (diff < 86400 * 7) return m.wiki_relative_days_ago({ n: Math.floor(diff / 86400) });
-		return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+		return formatDate(dt);
 	}
 	function fmtDate(d: Date | string): string {
 		const dt = typeof d === 'string' ? new Date(d) : d;
-		return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+		return formatDate(dt);
 	}
 
 	// ─── Outline + scroll-spy (driven by the live editor) ───────────────────

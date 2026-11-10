@@ -26,6 +26,7 @@ import {
 	type StatusMeta
 } from '../shared/taxonomy';
 import { avatar, avatarStack, icon, taskStatusDot } from '../shared/ui';
+import { dateFull } from '../shared/dates';
 import { renderMarkdown } from './markdown';
 
 type Person = { id: string; name: string };
@@ -381,9 +382,7 @@ type TimelineGroup =
 const openedRuns = new Set<string>();
 
 function fullDate(iso: string | null | undefined): string {
-	if (!iso) return '—';
-	const t = new Date(iso);
-	return Number.isFinite(t.getTime()) ? t.toLocaleDateString() : iso;
+	return dateFull(iso);
 }
 
 function label(title: string, count?: number | string): HTMLElement {

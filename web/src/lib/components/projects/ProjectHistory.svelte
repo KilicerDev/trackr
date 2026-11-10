@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDate, formatTime } from '$lib/utils/format';
 	import Drawer from '$lib/components/Drawer.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
@@ -164,10 +165,10 @@
 		yesterday.setDate(today.getDate() - 1);
 		if (isSameDay(d, today)) return m.projects_history_day_today();
 		if (isSameDay(d, yesterday)) return m.projects_history_day_yesterday();
-		return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+		return formatDate(d);
 	}
 	function timeLabel(iso: string): string {
-		return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+		return formatTime(iso);
 	}
 
 	// Icon + accent colour per event type, used for the small badge that sits

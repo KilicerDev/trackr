@@ -216,15 +216,7 @@ export function ticketStatusDot(status: string): HTMLElement {
 
 // ─── Dates ──────────────────────────────────────────────────────────────────
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/** `7 Sep`, like the app's list columns. */
-export function dateShort(iso: string | null | undefined): string {
-	if (!iso) return '';
-	const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
-	if (!m) return iso;
-	return `${parseInt(m[3])} ${MONTHS[parseInt(m[2]) - 1]}`;
-}
+export { dateShort } from './dates';
 
 export type DueTone = 'overdue' | 'urgent' | 'soon' | 'normal';
 

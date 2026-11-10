@@ -311,15 +311,7 @@
 
 	function weekRangeLabel(): string {
 		if (data.weekDates.length === 0) return '';
-		const first = new Date(data.weekDates[0] + 'T00:00:00Z');
-		const last = new Date(data.weekDates[6] + 'T00:00:00Z');
-		const f = first.toLocaleDateString('en-US', {
-			month: 'short',
-			day: 'numeric',
-			timeZone: 'UTC'
-		});
-		const l = last.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-		return `${f} — ${l}`;
+		return `${formatDateShort(data.weekDates[0])} – ${formatDateShort(data.weekDates[6])}`;
 	}
 
 	function startOfWeekIso(iso: string): string {

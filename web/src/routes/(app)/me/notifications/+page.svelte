@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDate } from '$lib/utils/format';
 	import { pageTitle } from '$lib/brand';
 	import { enhance } from '$app/forms';
 	import { goto, invalidate } from '$app/navigation';
@@ -48,7 +49,7 @@
 		if (h < 24) return `${h}h`;
 		const d = Math.floor(h / 24);
 		if (d < 7) return `${d}d`;
-		return new Date(iso).toLocaleDateString();
+		return formatDate(iso);
 	}
 
 	const filterHref = (f: 'all' | 'unread') => `?filter=${f}`;

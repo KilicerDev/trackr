@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatWeekdayDate } from '$lib/utils/format';
 	// Notion-style notes sidebar: one scrolling column of collapsible sections
 	// (Favorites, Recent, My notes as a nested tree, Shared with me, Meetings by
 	// day) instead of two tabs. Section collapse + sub-note expansion persist per
@@ -162,12 +163,7 @@
 		if (diffDays === 0) return m.notes_day_today();
 		if (diffDays === 1) return m.notes_day_yesterday();
 		if (diffDays === -1) return m.notes_day_tomorrow();
-		return d.toLocaleDateString(undefined, {
-			weekday: 'short',
-			month: 'short',
-			day: 'numeric',
-			...(d.getFullYear() !== new Date().getFullYear() ? { year: 'numeric' } : {})
-		});
+		return formatWeekdayDate(d);
 	}
 	const meetingGroups = $derived.by(() => {
 		const rows = meetings

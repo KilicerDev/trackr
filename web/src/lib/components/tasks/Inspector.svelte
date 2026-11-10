@@ -39,7 +39,7 @@
 	import DependencyPopover from '../popovers/DependencyPopover.svelte';
 	import NewMeetingDialog from '../notes/NewMeetingDialog.svelte';
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES } from '$lib/config/taxonomy';
-	import { dueCountdown, formatDateLong, formatEstimate } from '$lib/utils/format';
+	import { dueCountdown, formatDate, formatDateLong, formatEstimate } from '$lib/utils/format';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
 	import { taskChannelLabel, statusLabel, priorityLabel, typeLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
@@ -1176,7 +1176,7 @@
 											{:else if e.kind === 'created'}{m.tasks_event_created()}
 											{/if}
 										</span>
-										<span class="shrink-0 text-[12px] text-text-4">{e.date}</span>
+										<span class="shrink-0 text-[12px] text-text-4">{formatDate(e.date)}</span>
 									</div>
 									{#if e.kind === 'comment'}
 										<div
@@ -1216,8 +1216,8 @@
 						>{m.tasks_created_by()}
 						<span class="text-text-3">{resolveUser(draft.createdBy)?.name ?? '—'}</span></span
 					>{/if}
-				{#if draft.createdAt}<span>{m.tasks_created()} {draft.createdAt}</span>{/if}
-				<span>{m.tasks_updated()} {draft.updated}</span>
+				{#if draft.createdAt}<span>{m.tasks_created()} {formatDate(draft.createdAt)}</span>{/if}
+				<span>{m.tasks_updated()} {formatDate(draft.updated)}</span>
 				{#if draft.channel}<span>{m.tasks_meta_channel()} {taskChannelLabel(draft.channel)}</span
 					>{/if}
 			</div>

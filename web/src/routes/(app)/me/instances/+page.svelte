@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDate } from '$lib/utils/format';
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import Button from '$lib/components/Button.svelte';
@@ -99,11 +100,7 @@
 
 	function addedOn(iso: string | undefined): string {
 		if (!iso) return '';
-		return new Date(iso).toLocaleDateString(undefined, {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric'
-		});
+		return formatDate(iso);
 	}
 </script>
 

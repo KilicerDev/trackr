@@ -3,6 +3,7 @@
 // fields already on TicketRow — no extra fetch, no schema change.
 import { m } from '$lib/paraglide/messages';
 import type { TicketRow } from '$lib/server/tickets';
+import { formatDate } from '$lib/utils/format';
 
 // Relative "5m ago" / "3h ago" formatting, matching the ticket detail/list views.
 export function relTime(iso: string | null): string {
@@ -17,7 +18,7 @@ export function relTime(iso: string | null): string {
 	if (h < 24) return m.tickets_hour_ago({ h });
 	const d = Math.floor(h / 24);
 	if (d < 7) return m.tickets_day_ago({ d });
-	return new Date(iso).toLocaleDateString();
+	return formatDate(iso);
 }
 
 export type SlaTone = 'wait' | 'ok' | 'muted';

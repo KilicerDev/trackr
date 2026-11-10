@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDateTime } from '$lib/utils/format';
 	import { pageTitle } from '$lib/brand';
 	import { enhance } from '$app/forms';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -12,7 +13,6 @@
 	import { confirm } from '$lib/components/confirm.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import { getLocale } from '$lib/paraglide/runtime';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -24,7 +24,8 @@
 	let busy = $state(false);
 	let deleteForm = $state<HTMLFormElement>();
 
-	const fmt = new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium', timeStyle: 'short' });
+	// App-wide date display (dd.mm.yyyy, HH:mm); see $lib/utils/format.
+	const fmt = { format: (d: Date | string | number) => formatDateTime(new Date(d)) };
 	const cols = '1.6fr 1.4fr 1fr 0.6fr 0.6fr 0.7fr 0.9fr';
 
 	const status = $derived(

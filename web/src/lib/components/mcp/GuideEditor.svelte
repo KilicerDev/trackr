@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDateTime } from '$lib/utils/format';
 	import { untrack } from 'svelte';
 	import { enhance } from '$app/forms';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -34,7 +35,8 @@
 	let { guide, bodyMax, backHref, backLabel }: Props = $props();
 
 	const isNew = $derived(guide === null);
-	const fmt = new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium', timeStyle: 'short' });
+	// App-wide date display (dd.mm.yyyy, HH:mm); see $lib/utils/format.
+	const fmt = { format: (d: Date | string | number) => formatDateTime(new Date(d)) };
 
 	// Local draft — persisted only on Save. Re-seeded when the route's guide changes.
 	let title = $state('');

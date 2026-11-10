@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDate } from '$lib/utils/format';
 	import { brandName } from '$lib/brand';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Button from '$lib/components/Button.svelte';
@@ -422,9 +423,7 @@
 									{projectStatusLabel(p.status)}
 								</span>
 								<span class="hidden font-mono text-text-3 md:block">{p.key}</span>
-								<span class="hidden text-text-3 md:block"
-									>{p.updatedAt.toISOString().slice(0, 10)}</span
-								>
+								<span class="hidden text-text-3 md:block">{formatDate(p.updatedAt)}</span>
 								<button
 									type="button"
 									aria-label={m.projects_aria_history()}

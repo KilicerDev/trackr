@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDateTime, formatDate } from '$lib/utils/format';
 	import { pageTitle } from '$lib/brand';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
@@ -10,7 +11,6 @@
 	import { confirm } from '$lib/components/confirm.svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import { getLocale } from '$lib/paraglide/runtime';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -18,8 +18,9 @@
 	let busyId = $state<string | null>(null);
 
 	const cols = '2fr 1.6fr 0.9fr 1.1fr 1.1fr 88px';
-	const fmt = new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium', timeStyle: 'short' });
-	const fmtDate = new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium' });
+	// App-wide date display (dd.mm.yyyy, HH:mm); see $lib/utils/format.
+	const fmt = { format: (d: Date | string | number) => formatDateTime(new Date(d)) };
+	const fmtDate = { format: (d: Date | string | number) => formatDate(new Date(d)) };
 
 	type Key = PageData['keys'][number];
 	const statusOf = (k: Key): { label: string; dot: string } =>

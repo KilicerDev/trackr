@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDate } from '$lib/utils/format';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -90,13 +91,7 @@
 				<div class="font-mono text-[14px] text-text-2">{data.profile?.email ?? '—'}</div>
 				<div class="text-text-3">{m.profile_member_since()}</div>
 				<div class="text-text-2">
-					{data.profile?.createdAt
-						? new Date(data.profile.createdAt).toLocaleDateString(undefined, {
-								year: 'numeric',
-								month: 'long',
-								day: 'numeric'
-							})
-						: '—'}
+					{data.profile?.createdAt ? formatDate(data.profile.createdAt) : '—'}
 				</div>
 			</div>
 		</div>

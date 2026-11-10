@@ -36,7 +36,7 @@
 	import PropertyRow from '../tasks/panel/PropertyRow.svelte';
 	import SectionHeader from '../tasks/panel/SectionHeader.svelte';
 	import { ICON_ACTION, OPEN, PROP_VALUE, QUIET_ADD, ROW, TAG } from '../tasks/panel/styles';
-	import { formatDateShort } from '$lib/utils/format';
+	import { formatDate, formatDateShort } from '$lib/utils/format';
 	import { m } from '$lib/paraglide/messages';
 
 	type AgentUser = { id: string; name: string; initials: string; color: string; status?: string };
@@ -240,11 +240,7 @@
 
 	function fmtDate(iso: string | null): string {
 		if (!iso) return '—';
-		return new Date(iso).toLocaleDateString(undefined, {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
+		return formatDate(iso);
 	}
 </script>
 

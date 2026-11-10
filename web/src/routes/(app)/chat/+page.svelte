@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDate } from '$lib/utils/format';
 	import { pageTitle, brandName } from '$lib/brand';
 	import { goto, invalidateAll } from '$app/navigation';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
@@ -53,7 +54,7 @@
 		if (mins < 60) return `${mins}m`;
 		const hrs = Math.floor(mins / 60);
 		if (hrs < 24) return `${hrs}h`;
-		return new Date(iso).toLocaleDateString();
+		return formatDate(iso);
 	}
 
 	// ── Navigation (org / tag filter) ──────────────────────────────────────────

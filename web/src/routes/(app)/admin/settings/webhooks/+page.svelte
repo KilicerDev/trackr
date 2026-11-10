@@ -1,18 +1,19 @@
 <script lang="ts">
+	import { formatDateTime } from '$lib/utils/format';
 	import { pageTitle } from '$lib/brand';
 	import Button from '$lib/components/Button.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import CreateWebhookModal from '$lib/components/admin/CreateWebhookModal.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import { getLocale } from '$lib/paraglide/runtime';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 	let createOpen = $state(false);
 
 	const cols = '2.2fr 0.9fr 1fr 1.4fr 0.7fr';
-	const fmt = new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium', timeStyle: 'short' });
+	// App-wide date display (dd.mm.yyyy, HH:mm); see $lib/utils/format.
+	const fmt = { format: (d: Date | string | number) => formatDateTime(new Date(d)) };
 
 	type Sub = PageData['subscriptions'][number];
 	function statusOf(s: Sub): { label: string; dot: string } {

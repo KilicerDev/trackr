@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDate } from '$lib/utils/format';
 	import { brandName, pageTitle } from '$lib/brand';
 	import { goto, invalidate, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
@@ -338,16 +339,12 @@
 		if (h < 24) return m.tickets_hour_ago({ h });
 		const d = Math.floor(h / 24);
 		if (d < 7) return m.tickets_day_ago({ d });
-		return new Date(iso).toLocaleDateString();
+		return formatDate(iso);
 	}
 
 	function fmtDate(iso: string | null): string {
 		if (!iso) return '—';
-		return new Date(iso).toLocaleDateString(undefined, {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
+		return formatDate(iso);
 	}
 
 	const isAgent = $derived(data.isAgent);

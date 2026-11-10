@@ -4,6 +4,7 @@
 
 import { App } from '@modelcontextprotocol/ext-apps/app-with-deps';
 import { PRIORITY, type StatusMeta } from './taxonomy';
+import { dateFull, dateTime } from './dates';
 
 export type ToolResultLike = {
 	structuredContent?: unknown;
@@ -140,12 +141,12 @@ export function relative(iso: string | null | undefined): string {
 	if (h < 24) return `${h}h`;
 	const d = Math.round(h / 24);
 	if (d < 30) return `${d}d`;
-	return new Date(iso).toLocaleDateString();
+	return dateFull(iso);
 }
 
 export function dateOnly(iso: string | null | undefined): string {
 	if (!iso) return '—';
-	return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : new Date(iso).toLocaleString();
+	return dateTime(iso);
 }
 
 export function minutesToHuman(min: number): string {

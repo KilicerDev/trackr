@@ -13,6 +13,7 @@ import { m } from '$lib/paraglide/messages';
 import type { Locale } from '$lib/paraglide/runtime';
 import { escapeHtml, renderEmail, type EmailBrand } from './mail-layout';
 import { markdownToEmailHtml } from '$lib/utils/markdown';
+import { formatDateTime } from '$lib/utils/format';
 import { absoluteLogoUrl, getBranding, publicBranding } from '$lib/server/branding';
 
 /**
@@ -86,10 +87,7 @@ export async function invitationEmail(opts: {
 }): Promise<MailPayload> {
 	const brand = await emailBrand(opts.acceptUrl);
 	const inviter = opts.inviterName?.trim() || 'An administrator';
-	const expires = opts.expiresAt.toLocaleString('en-GB', {
-		dateStyle: 'medium',
-		timeStyle: 'short'
-	});
+	const expires = formatDateTime(opts.expiresAt);
 
 	const text = [
 		`Hi ${opts.name},`,

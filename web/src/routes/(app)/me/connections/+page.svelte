@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { formatDateTime, formatDate } from '$lib/utils/format';
 	import { enhance } from '$app/forms';
 	import { invalidateAll } from '$app/navigation';
 	import type { ActionResult } from '@sveltejs/kit';
@@ -35,8 +36,9 @@
 	const guideCols = '2fr 1.4fr 1fr 0.9fr 120px';
 	type Guide = PageData['guides'][number];
 
-	const fmt = new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium', timeStyle: 'short' });
-	const fmtDate = new Intl.DateTimeFormat(getLocale(), { dateStyle: 'medium' });
+	// App-wide date display (dd.mm.yyyy, HH:mm); see $lib/utils/format.
+	const fmt = { format: (d: Date | string | number) => formatDateTime(new Date(d)) };
+	const fmtDate = { format: (d: Date | string | number) => formatDate(new Date(d)) };
 
 	const connCols = '1.6fr 1.1fr 1.5fr 40px';
 	const keyCols = '2fr 0.9fr 1.1fr 1.1fr 80px';

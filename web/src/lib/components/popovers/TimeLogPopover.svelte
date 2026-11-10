@@ -8,6 +8,9 @@
 	import { fly } from 'svelte/transition';
 	import { POPOVER_IN } from '$lib/config/motion';
 	import { m } from '$lib/paraglide/messages';
+	import Icon from '../Icon.svelte';
+	import DatePopover from './DatePopover.svelte';
+	import { formatDate } from '$lib/utils/format';
 
 	interface Props {
 		onlog: (entry: { h: number; m: number; date: string; note: string }) => void;
@@ -30,6 +33,7 @@
 	// svelte-ignore state_referenced_locally
 	let date = $state(defaultDate ?? todayIso());
 	let note = $state('');
+	let datePickerOpen = $state(false);
 
 	const PRESETS = [15, 30, 60, 120] as const;
 	const presetLabel = (p: number) => (p < 60 ? `${p}m` : `${p / 60}h`);
@@ -91,7 +95,28 @@
 		</div>
 	</div>
 
-	<input type="date" bind:value={date} class={INPUT} />
+	<!-- The app's own date picker, not <input type="date">: the browser field
+	     shows dates in the OS locale (mm/dd/yyyy on a US system). -->
+	<div class="relative">
+		<button
+			type="button"
+			onclick={() => (datePickerOpen = !datePickerOpen)}
+			aria-expanded={datePickerOpen}
+			class="{INPUT} flex items-center justify-between text-left hover:border-border-strong"
+		>
+			<span>{formatDate(date)}</span>
+			<Icon name="calendar" size={14} class="text-text-3" />
+		</button>
+		{#if datePickerOpen}
+			<DatePopover
+				value={date}
+				onchange={(v) => {
+					if (v) date = v;
+				}}
+				onclose={() => (datePickerOpen = false)}
+			/>
+		{/if}
+	</div>
 
 	<textarea
 		bind:value={note}
