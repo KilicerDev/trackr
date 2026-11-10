@@ -10,7 +10,8 @@ import {
 	taskPlanning,
 	taskTimeLog,
 	organization,
-	organizationMember
+	organizationMember,
+	note
 } from '$lib/server/db/app.schema';
 import { user } from '$lib/server/db/auth.schema';
 import {
@@ -93,6 +94,9 @@ export const actions: Actions = {
 			.map((v) => String(v))
 			.filter(Boolean);
 		const plannedFor = String(form.get('plannedFor') ?? '').trim();
+		// Created from a note (meeting action items): link it so the task's
+		// Meetings section lists that meeting. Unknown ids are dropped.
+		const sourceNoteIdRaw = String(form.get('sourceNoteId') ?? '').trim();
 
 		if (!title) return fail(400, { message: m.tasks_err_title_required() });
 		if (!projectKey) return fail(400, { message: m.tasks_err_project_required() });
@@ -116,6 +120,11 @@ export const actions: Actions = {
 
 		const dueDate = due ? new Date(due) : null;
 		const estimate = estimateRaw ? Number(estimateRaw) : null;
+		const sourceNoteId = sourceNoteIdRaw
+			? ((
+					await db.select({ id: note.id }).from(note).where(eq(note.id, sourceNoteIdRaw)).limit(1)
+				)[0]?.id ?? null)
+			: null;
 
 		let created: Awaited<ReturnType<typeof createTask>>;
 		try {
@@ -133,7 +142,8 @@ export const actions: Actions = {
 				assigneeIds,
 				createdBy: me.id,
 				plannedForUserId: me.id,
-				plannedFor: plannedFor || null
+				plannedFor: plannedFor || null,
+				sourceNoteId
 			});
 		} catch (err) {
 			console.error('task create failed', err);

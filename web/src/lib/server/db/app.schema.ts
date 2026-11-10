@@ -361,6 +361,12 @@ export const task = pgTable(
 		sourceTicketId: text('source_ticket_id').references((): AnyPgColumn => ticket.id, {
 			onDelete: 'set null'
 		}),
+		// Set when this task was created from a note (a meeting's action items).
+		// One note may seed many tasks; the task panel lists the meeting through
+		// this link alongside meetings that link the task via note.task_id.
+		sourceNoteId: text('source_note_id').references((): AnyPgColumn => note.id, {
+			onDelete: 'set null'
+		}),
 		dueDate: timestamp('due_date'),
 		startDate: timestamp('start_date'),
 		endDate: timestamp('end_date'),
@@ -386,7 +392,8 @@ export const task = pgTable(
 		uniqueIndex('task_project_number_idx').on(t.projectId, t.number),
 		index('task_project_status_idx').on(t.projectId, t.status),
 		index('task_parent_idx').on(t.parentId),
-		index('task_source_ticket_idx').on(t.sourceTicketId)
+		index('task_source_ticket_idx').on(t.sourceTicketId),
+		index('task_source_note_idx').on(t.sourceNoteId)
 	]
 );
 

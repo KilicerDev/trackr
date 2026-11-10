@@ -524,6 +524,8 @@ export type CreateTaskInput = {
 	plannedFor?: string | null;
 	/** Set when the task is spun up from a support ticket. */
 	sourceTicketId?: string | null;
+	/** Set when the task is created from a note (e.g. a meeting's action item). */
+	sourceNoteId?: string | null;
 	/** Creating surface (default `web`). */
 	channel?: TaskChannel;
 	/**
@@ -573,6 +575,7 @@ export async function createTask(
 			checklist: input.checklist ?? [],
 			createdBy: input.createdBy,
 			sourceTicketId: input.sourceTicketId ?? null,
+			sourceNoteId: input.sourceNoteId ?? null,
 			channel: input.channel ?? 'web'
 		});
 

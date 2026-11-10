@@ -723,6 +723,7 @@
 		prefill={convertPrefill}
 		onclose={() => (convertOpen = false)}
 		oncreated={onTaskCreated}
+		sourceNoteId={note.id}
 		users={layout.users}
 		projects={layout.projects}
 		currentUserId={layout.currentUserId}
@@ -735,6 +736,7 @@
 		defaultProjectKey={project?.key}
 		onclose={() => (bulkOpen = false)}
 		oncreated={onBulkCreated}
+		sourceNoteId={note.id}
 		users={layout.users ?? []}
 		projects={layout.projects ?? []}
 		currentUserId={layout.currentUserId}

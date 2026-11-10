@@ -67,6 +67,9 @@
 		// When set, the new task is linked back to this ticket (carried as a
 		// hidden field) and the action above handles the link + ticket sync.
 		sourceTicketId?: string;
+		// When set, the new task is linked to the note it was created from (a
+		// meeting's action item), so the task lists that meeting.
+		sourceNoteId?: string;
 	}
 
 	let {
@@ -81,7 +84,8 @@
 		oncreated,
 		onerror,
 		action = '/tasks?/create',
-		sourceTicketId
+		sourceTicketId,
+		sourceNoteId
 	}: Props = $props();
 
 	// Prefer explicitly provided lists; otherwise read the app-wide layout data
@@ -292,6 +296,9 @@
 				<!-- Hidden inputs carry state into the form submit -->
 				{#if sourceTicketId}
 					<input type="hidden" name="sourceTicketId" value={sourceTicketId} />
+				{/if}
+				{#if sourceNoteId}
+					<input type="hidden" name="sourceNoteId" value={sourceNoteId} />
 				{/if}
 				<input type="hidden" name="description" value={description} />
 				<input type="hidden" name="project" value={project} />

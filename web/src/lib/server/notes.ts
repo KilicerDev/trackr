@@ -10,9 +10,9 @@
 
 import { recordAudit } from '$lib/server/audit';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import { db } from './db';
-import { document, note, noteAccess, noteShareLink, noteTemplate } from './db/app.schema';
+import { document, note, noteAccess, noteShareLink, noteTemplate, task } from './db/app.schema';
 import { deleteAttachmentsFor } from './attachments';
 import { loadBodyHtml } from './collab/derive';
 import { replaceDocumentHtml } from './collab/replace';
@@ -126,15 +126,26 @@ export async function listMeetingNotes(): Promise<NoteListItem[]> {
 		.orderBy(desc(note.meetingDate), desc(note.createdAt));
 }
 
-// Meeting notes connected to a project — linked directly OR via one of its
-// tasks. Newest meeting first, undated meetings last.
+// Meeting notes connected to a project — linked directly, via one of its
+// tasks (note.task_id), or as the note one of its tasks was created from
+// (task.source_note_id). Newest meeting first, undated meetings last.
 export async function listProjectMeetings(
 	projectId: string,
 	taskIds: string[]
 ): Promise<NoteListItem[]> {
 	const link =
 		taskIds.length > 0
-			? or(eq(note.projectId, projectId), inArray(note.taskId, taskIds))
+			? or(
+					eq(note.projectId, projectId),
+					inArray(note.taskId, taskIds),
+					inArray(
+						note.id,
+						db
+							.select({ id: task.sourceNoteId })
+							.from(task)
+							.where(and(inArray(task.id, taskIds), isNotNull(task.sourceNoteId)))
+					)
+				)
 			: eq(note.projectId, projectId);
 	return db
 		.select(listColumns)

@@ -52,6 +52,8 @@
 		allAccess?: boolean;
 		onclose: () => void;
 		oncreated?: (created: CreatedTodo[]) => void;
+		/** The note the todos come from; each created task links back to it. */
+		sourceNoteId?: string;
 	}
 
 	let {
@@ -64,7 +66,8 @@
 		memberProjectIds = [],
 		allAccess = false,
 		onclose,
-		oncreated
+		oncreated,
+		sourceNoteId
 	}: Props = $props();
 
 	type Draft = {
@@ -147,6 +150,7 @@
 			fd.set('estimate', d.estimate != null ? String(d.estimate) : '');
 			for (const a of d.assignees) fd.append('assignees', a);
 			for (const t of d.tags) fd.append('tags', t);
+			if (sourceNoteId) fd.set('sourceNoteId', sourceNoteId);
 
 			try {
 				const res = await fetch('/tasks?/create', {
