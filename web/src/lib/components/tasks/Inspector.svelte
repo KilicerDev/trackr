@@ -635,7 +635,7 @@
 								mentions={false}
 								rows={1}
 								maxRows={16}
-								class="w-full border-0 bg-transparent text-[14px] leading-relaxed text-text-2"
+								class="w-full border-0 bg-transparent text-[14px] leading-relaxed text-text"
 							/>
 						</div>
 					{/key}
@@ -643,7 +643,7 @@
 					<MentionText
 						text={draft.description}
 						flavor="document"
-						class="mb-5 text-[14px] leading-relaxed text-text-2"
+						class="mb-5 text-[14px] leading-relaxed text-text"
 					/>
 				{/if}
 			{/if}

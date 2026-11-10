@@ -528,7 +528,7 @@
 					<section>
 						<SectionHeader label={m.tickets_description()} />
 						<p
-							class="text-[14px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-text-2"
+							class="text-[14px] leading-relaxed [overflow-wrap:anywhere] whitespace-pre-wrap text-text"
 						>
 							{ticket.description}
 						</p>

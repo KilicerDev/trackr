@@ -70,7 +70,7 @@
 	<div class="mb-6">
 		{#if panel}
 			<div class="mb-1.5 flex min-h-7 items-center gap-2">
-				<h3 class="text-[13px] font-medium text-text-2">
+				<h3 class="text-[12px] font-medium text-text-3">
 					{label}{#if total > 0}<span
 							class="ml-1.5 font-mono text-[12px] font-normal {allDone
 								? 'text-[#7fc8a9]'
