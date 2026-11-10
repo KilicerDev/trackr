@@ -44,7 +44,7 @@
 		{/if}
 		<span class="shrink-0 font-mono text-[11px] text-text-4">{ticket.displayId}</span>
 		{#if showOrg}
-			<span class="inline-flex min-w-0 items-center gap-1" title={ticket.orgName}>
+			<span class="inline-flex min-w-0 items-center gap-1 leading-none" title={ticket.orgName}>
 				<span class="h-1.5 w-1.5 shrink-0 rounded-full" style:background={ticket.orgColor}></span>
 				<span class="max-w-[110px] truncate">{ticket.orgName}</span>
 			</span>
@@ -52,7 +52,9 @@
 		<PriorityBars priority={ticket.priority} />
 		{#if sla}
 			<span
-				class="inline-flex min-w-0 items-center gap-1 {sla.tone === 'wait' ? 'text-accent' : ''}"
+				class="inline-flex min-w-0 items-center gap-1 leading-none {sla.tone === 'wait'
+					? 'text-accent'
+					: ''}"
 				title={sla.label}
 			>
 				<span class="h-1.5 w-1.5 shrink-0 rounded-full" style:background={sla.dot}></span>

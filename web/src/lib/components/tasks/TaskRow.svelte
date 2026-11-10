@@ -85,7 +85,9 @@
 <button
 	type="button"
 	{onclick}
-	class="grid w-full grid-cols-[30px_minmax(0,1fr)_auto_60px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors md:grid-cols-[30px_92px_minmax(0,1fr)_24px_92px_64px_60px]
+	class="grid w-full grid-cols-[30px_minmax(0,1fr)_auto_60px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors {showProject
+		? 'md:grid-cols-[30px_92px_minmax(0,1fr)_150px_24px_92px_64px_60px]'
+		: 'md:grid-cols-[30px_92px_minmax(0,1fr)_24px_92px_64px_60px]'}
 	{selected ? 'bg-[var(--row-active)]' : 'hover:bg-[var(--row-hover)]'}"
 	style:height="var(--row-h)"
 >
@@ -113,16 +115,6 @@
 			<Icon name={type.icon} size={13} stroke={2} />
 		</span>
 		<span class="truncate text-[14px] text-text">{task.title}</span>
-		{#if showProject}
-			<span
-				class="hidden shrink-0 items-center gap-1 text-[12px] text-text-3 md:inline-flex"
-				title={project?.name ?? task.project}
-			>
-				<span class="h-1.5 w-1.5 rounded-full" style:background={project?.color ?? 'var(--text-4)'}
-				></span>
-				<span class="max-w-[140px] truncate">{project?.name ?? task.project}</span>
-			</span>
-		{/if}
 		{#if showPlanned && (task.plannedFor || task.inMyPlan)}
 			<span
 				class="inline-flex shrink-0 items-center gap-1 text-[12px] text-accent"
@@ -150,7 +142,9 @@
 			</span>
 		{/if}
 		{#if shownTags.length}
-			<span class="hidden shrink-0 items-center gap-2.5 text-[12px] text-text-3 md:inline-flex">
+			<span
+				class="hidden shrink-0 items-center gap-2.5 text-[12px] leading-none text-text-3 md:inline-flex"
+			>
 				{#each shownTags as t (t.label)}
 					<span class="inline-flex items-center gap-1">
 						<span class="h-1.5 w-1.5 rounded-full" style:background={t.color}></span>
@@ -177,6 +171,20 @@
 			</span>
 		{/if}
 	</span>
+	{#if showProject}
+		<!-- Own column, so project names line up row under row. leading-none
+		     keeps the dot centred on the small text. -->
+		<span
+			class="hidden min-w-0 items-center gap-1.5 text-[12px] leading-none text-text-3 md:flex"
+			title={project?.name ?? task.project}
+		>
+			<span
+				class="h-1.5 w-1.5 shrink-0 rounded-full"
+				style:background={project?.color ?? 'var(--text-4)'}
+			></span>
+			<span class="truncate">{project?.name ?? task.project}</span>
+		</span>
+	{/if}
 	<!-- Priority as bars only (label in the tooltip); empty for none. -->
 	<span class="hidden items-center md:flex" title={priorityLabel(prio.id)}>
 		{#if task.priority !== 'none'}<PriorityBars priority={task.priority} />{/if}

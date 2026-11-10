@@ -26,7 +26,7 @@ export const ROW =
 
 /** Small tag pill inside the Tags property. */
 export const TAG =
-	'inline-flex h-6 items-center gap-1.5 rounded-md bg-surface px-2 text-[12px] text-text-2';
+	'inline-flex h-6 items-center gap-1.5 rounded-md bg-surface px-2 text-[12px] leading-none text-text-2';
 
 /** The state of a control whose popover is open. */
 export const OPEN = 'bg-surface';

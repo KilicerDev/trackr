@@ -184,7 +184,7 @@
 								<span class="truncate text-[14px] text-text">{t.subject}</span>
 								{#if group !== 'org'}
 									<span
-										class="hidden shrink-0 items-center gap-1 text-[12px] text-text-3 md:inline-flex"
+										class="hidden shrink-0 items-center gap-1 text-[12px] leading-none text-text-3 md:inline-flex"
 										title={t.orgName}
 									>
 										<span class="h-1.5 w-1.5 rounded-full" style:background={t.orgColor}></span>
