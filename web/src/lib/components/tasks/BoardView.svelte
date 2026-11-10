@@ -10,7 +10,7 @@
 	import PriorityBars from '../PriorityBars.svelte';
 	import Avatar from '../Avatar.svelte';
 	import Icon from '../Icon.svelte';
-	import IconButton from '../IconButton.svelte';
+	import { ICON_ACTION, QUIET_ADD } from './panel/styles';
 	import { readCollapsed, saveCollapsed } from '$lib/stores/view';
 	import { whenVisible } from '$lib/actions/whenVisible';
 	import { slide } from 'svelte/transition';
@@ -251,10 +251,12 @@
 	<div class="flex h-full">
 		{#each columns as col (col.key)}
 			{@const groups = subGroupsForColumn(col)}
+			<!-- Column: a quiet header (no rule under it), the add button shows on
+			     hover, and softer dividers between columns. -->
 			<div
-				class="flex w-[85vw] max-w-[363px] shrink-0 flex-col border-r border-border last:border-r-0"
+				class="group/col flex w-[85vw] max-w-[363px] shrink-0 flex-col border-r border-border/50 last:border-r-0"
 			>
-				<div class="flex items-center gap-2 border-b border-border px-4 py-3">
+				<div class="flex h-12 shrink-0 items-center gap-2 px-4">
 					{#if col.statusId}
 						<StatusDot status={col.statusId} size={12} />
 					{:else if col.userId}
@@ -268,40 +270,39 @@
 					{#if projectHref(col.project)}
 						<a
 							href={projectHref(col.project)}
-							class="truncate text-[14px] font-semibold text-text hover:underline"
+							class="truncate text-[14px] font-medium text-text hover:underline"
 							title={m.tasks_open_project({ name: col.label })}
 						>
 							{col.label}
 						</a>
 					{:else}
-						<span class="truncate text-[14px] font-semibold text-text">{col.label}</span>
+						<span class="truncate text-[14px] font-medium text-text">{col.label}</span>
 					{/if}
-					<span class="font-mono text-[12px] text-text-3">{col.tasks.length}</span>
-					<span class="ml-auto">
-						<IconButton
-							size={26}
-							ariaLabel={m.tasks_add_task()}
-							onclick={() => onAddInProject?.(col.project ?? ('TRACKR' as ProjectId), col.statusId)}
-						>
-							<Icon name="plus" size={14} />
-						</IconButton>
-					</span>
+					<span class="font-mono text-[12px] text-text-4">{col.tasks.length}</span>
+					<button
+						type="button"
+						aria-label={m.tasks_add_task()}
+						title={m.tasks_add_task()}
+						onclick={() => onAddInProject?.(col.project ?? ('TRACKR' as ProjectId), col.statusId)}
+						class="{ICON_ACTION} ml-auto opacity-0 group-hover/col:opacity-100 focus-visible:opacity-100"
+					>
+						<Icon name="plus" size={14} />
+					</button>
 				</div>
-				<div class="flex-1 space-y-3 overflow-y-auto px-3.5 py-3">
+				<div class="flex-1 space-y-5 overflow-y-auto px-3.5 pt-1 pb-3">
 					{#each groups as g (g.key)}
 						{@const groupCollapsed = isCollapsed(g)}
 						<div>
 							{#if g.label}
+								<!-- Group header: sentence-case label with its count beside
+								     it; the chevron sits at the end, shown on hover or
+								     while the group is collapsed. -->
 								<button
 									type="button"
 									onclick={() => toggle(g)}
-									class="flex w-full items-center gap-2 px-1 py-1 text-left text-[12px] font-medium tracking-[0.08em] text-text-3 uppercase hover:text-text"
+									aria-expanded={!groupCollapsed}
+									class="group/g flex w-full items-center gap-2 rounded-md px-1 py-1 text-left text-[12px] leading-5 font-medium text-text-3 transition-colors hover:text-text-2"
 								>
-									<span
-										class="text-text-4 transition-transform {groupCollapsed ? '-rotate-90' : ''}"
-									>
-										<Icon name="chevron" size={11} />
-									</span>
 									{#if g.statusId}
 										<StatusDot status={g.statusId} size={12} />
 									{:else if g.priorityId && g.priorityId !== 'none'}
@@ -313,14 +314,18 @@
 										<span class="h-2 w-2 rounded-full" style:background={g.color}></span>
 									{/if}
 									<span>{g.label}</span>
-									<span class="ml-auto font-mono text-text-4">{g.tasks.length}</span>
+									<span class="font-mono font-normal text-text-4">{g.tasks.length}</span>
+									<span
+										class="ml-auto text-text-4 transition-[transform,opacity] {groupCollapsed
+											? '-rotate-90 opacity-100'
+											: 'opacity-0 group-hover/g:opacity-100'}"
+									>
+										<Icon name="chevron" size={12} />
+									</span>
 								</button>
 							{/if}
 							{#if !groupCollapsed}
-								<div
-									class="mt-1.5 space-y-2"
-									transition:slide={{ duration: 180, easing: cubicOut }}
-								>
+								<div class="mt-1 space-y-2" transition:slide={{ duration: 180, easing: cubicOut }}>
 									{#each g.tasks.slice(0, limitFor(g.key)) as t (t.id)}
 										<BoardCard
 											task={t}
@@ -358,7 +363,7 @@
 					<button
 						type="button"
 						onclick={() => onAddInProject?.(col.project ?? ('TRACKR' as ProjectId), col.statusId)}
-						class="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
+						class="{QUIET_ADD} w-full"
 					>
 						<Icon name="plus" size={13} />
 						{m.tasks_new_task()}
