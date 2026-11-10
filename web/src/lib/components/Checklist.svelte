@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Icon from './Icon.svelte';
+	import { SECTION_ACTION } from './tasks/panel/styles';
 	import { m } from '$lib/paraglide/messages';
 
 	type Item = { id: string; text: string; done: boolean };
@@ -12,10 +13,26 @@
 		onChange: (items: Item[]) => void;
 		label: string;
 		addPlaceholder: string;
+		/**
+		 * `panel` (task side panel): section-header title with an "+ Item"
+		 * action and a full-width progress bar under it. Default keeps the
+		 * compact header the ticket and template views use.
+		 */
+		variant?: 'default' | 'panel';
+		addLabel?: string;
 	}
-	let { items, canEdit = false, onChange, label, addPlaceholder }: Props = $props();
+	let {
+		items,
+		canEdit = false,
+		onChange,
+		label,
+		addPlaceholder,
+		variant = 'default',
+		addLabel = ''
+	}: Props = $props();
 
 	let newItem = $state('');
+	let addInput = $state<HTMLInputElement>();
 
 	const total = $derived(items.length);
 	const done = $derived(items.filter((it) => it.done).length);
@@ -43,22 +60,56 @@
 
 {#if canEdit || total > 0}
 	<div class="mb-6">
-		<div class="mb-2.5 flex items-center gap-2.5">
-			<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">{label}</div>
-			{#if total > 0}
-				<span class="font-mono text-[12px] {allDone ? 'text-[#7fc8a9]' : 'text-text-3'}">
-					{done}/{total}
-				</span>
-				<div class="ml-auto h-1.5 w-24 overflow-hidden rounded-full bg-surface-2">
-					<div
-						class="h-full rounded-full transition-all duration-300 {allDone
-							? 'bg-[#7fc8a9]'
-							: 'bg-accent'}"
-						style:width="{(done / total) * 100}%"
-					></div>
+		{#if variant === 'panel'}
+			<div class="mb-2.5">
+				<div class="flex min-h-7 items-center gap-2">
+					<h3 class="text-[12px] font-medium tracking-[0.08em] text-text-4 uppercase">
+						{label}{#if total > 0}<span
+								class="ml-1.5 font-mono tracking-normal {allDone
+									? 'text-[#7fc8a9]'
+									: 'text-text-3'}">{done}/{total}</span
+							>{/if}
+					</h3>
+					{#if canEdit}
+						<button
+							type="button"
+							onclick={() => addInput?.focus()}
+							class="{SECTION_ACTION} ml-auto"
+						>
+							<Icon name="plus" size={13} />
+							{addLabel}
+						</button>
+					{/if}
 				</div>
-			{/if}
-		</div>
+				{#if total > 0}
+					<div class="mt-2 h-1 overflow-hidden rounded-full bg-surface-2">
+						<div
+							class="h-full rounded-full transition-all duration-300 {allDone
+								? 'bg-[#7fc8a9]'
+								: 'bg-accent'}"
+							style:width="{(done / total) * 100}%"
+						></div>
+					</div>
+				{/if}
+			</div>
+		{:else}
+			<div class="mb-2.5 flex items-center gap-2.5">
+				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">{label}</div>
+				{#if total > 0}
+					<span class="font-mono text-[12px] {allDone ? 'text-[#7fc8a9]' : 'text-text-3'}">
+						{done}/{total}
+					</span>
+					<div class="ml-auto h-1.5 w-24 overflow-hidden rounded-full bg-surface-2">
+						<div
+							class="h-full rounded-full transition-all duration-300 {allDone
+								? 'bg-[#7fc8a9]'
+								: 'bg-accent'}"
+							style:width="{(done / total) * 100}%"
+						></div>
+					</div>
+				{/if}
+			</div>
+		{/if}
 		<div
 			class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface/40"
 		>
@@ -113,6 +164,7 @@
 						<Icon name="plus" size={14} />
 					</span>
 					<input
+						bind:this={addInput}
 						bind:value={newItem}
 						placeholder={addPlaceholder}
 						onkeydown={(e) => {

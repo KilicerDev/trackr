@@ -36,6 +36,12 @@
 		refOrgId?: string | null;
 		// Allow sending with an empty body (e.g. when files are staged).
 		hasAttachments?: boolean;
+		/**
+		 * `inline` (task panel): one growing input with the extra actions inside
+		 * it and a separate square send button beside it. Default: the boxed
+		 * composer with actions in a footer row.
+		 */
+		variant?: 'default' | 'inline';
 	}
 
 	let {
@@ -52,7 +58,8 @@
 		onTagAdd,
 		refTypes,
 		refOrgId = null,
-		hasAttachments = false
+		hasAttachments = false,
+		variant = 'default'
 	}: Props = $props();
 
 	const canSend = $derived(!sending && (value.trim().length > 0 || hasAttachments));
@@ -65,42 +72,77 @@
 	}
 </script>
 
-<div
-	class="rounded-xl border bg-surface transition-colors {accent === 'warning'
-		? 'border-[#e9c46a]/40 focus-within:border-[#e9c46a]/70'
-		: 'border-border focus-within:border-border-strong'}"
->
-	<RichTextInput
-		bind:value
-		onkeydown={onKey}
-		{projectId}
-		users={mentionUsers}
-		{tags}
-		{onTagAdd}
-		{refTypes}
-		{refOrgId}
-		{placeholder}
-		rows={2}
-		disabled={disabled || sending}
-		class="w-full border-0 bg-transparent px-3.5 pt-3 pb-1 text-[14px] leading-relaxed disabled:opacity-60"
-	/>
-	<div class="flex items-center gap-1 px-2 pb-2">
-		<div class="ml-auto flex items-center gap-1">
-			{#if rightActions}{@render rightActions()}{/if}
-			<button
-				type="button"
-				aria-label={m.composer_send()}
-				onclick={onsend}
-				disabled={!canSend}
-				class="grid h-8 w-8 place-items-center rounded-lg bg-accent text-white shadow-btn transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
-			>
-				{#if sending}
-					<span class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"
-					></span>
-				{:else}
-					<Icon name="send" size={14} />
-				{/if}
-			</button>
+{#snippet sendButton(size: string)}
+	<button
+		type="button"
+		aria-label={m.composer_send()}
+		onclick={onsend}
+		disabled={!canSend}
+		class="grid {size} shrink-0 place-items-center rounded-lg bg-accent text-white shadow-btn transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-50"
+	>
+		{#if sending}
+			<span class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"
+			></span>
+		{:else}
+			<Icon name="send" size={14} />
+		{/if}
+	</button>
+{/snippet}
+
+{#if variant === 'inline'}
+	<div class="flex items-end gap-2">
+		<div
+			class="flex min-w-0 flex-1 items-end rounded-xl border bg-surface transition-colors {accent ===
+			'warning'
+				? 'border-[#e9c46a]/40 focus-within:border-[#e9c46a]/70'
+				: 'border-border focus-within:border-border-strong'}"
+		>
+			<RichTextInput
+				bind:value
+				onkeydown={onKey}
+				{projectId}
+				users={mentionUsers}
+				{tags}
+				{onTagAdd}
+				{refTypes}
+				{refOrgId}
+				{placeholder}
+				rows={1}
+				maxRows={8}
+				disabled={disabled || sending}
+				class="min-w-0 flex-1 border-0 bg-transparent px-3.5 py-2.5 text-[14px] leading-relaxed disabled:opacity-60"
+			/>
+			{#if rightActions}
+				<div class="flex shrink-0 items-center gap-1 py-1 pr-1">{@render rightActions()}</div>
+			{/if}
+		</div>
+		{@render sendButton('h-[42px] w-[42px]')}
+	</div>
+{:else}
+	<div
+		class="rounded-xl border bg-surface transition-colors {accent === 'warning'
+			? 'border-[#e9c46a]/40 focus-within:border-[#e9c46a]/70'
+			: 'border-border focus-within:border-border-strong'}"
+	>
+		<RichTextInput
+			bind:value
+			onkeydown={onKey}
+			{projectId}
+			users={mentionUsers}
+			{tags}
+			{onTagAdd}
+			{refTypes}
+			{refOrgId}
+			{placeholder}
+			rows={2}
+			disabled={disabled || sending}
+			class="w-full border-0 bg-transparent px-3.5 pt-3 pb-1 text-[14px] leading-relaxed disabled:opacity-60"
+		/>
+		<div class="flex items-center gap-1 px-2 pb-2">
+			<div class="ml-auto flex items-center gap-1">
+				{#if rightActions}{@render rightActions()}{/if}
+				{@render sendButton('h-8 w-8')}
+			</div>
 		</div>
 	</div>
-</div>
+{/if}

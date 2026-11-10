@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SECTION_ACTION } from '../tasks/panel/styles';
 	import { invalidateAll } from '$app/navigation';
 	import Icon from '../Icon.svelte';
 	import AttachmentDropzone from './AttachmentDropzone.svelte';
@@ -24,6 +25,8 @@
 		 * server re-validates regardless.
 		 */
 		accept?: string;
+		/** `section`: the task panel's "+ …" section action style. */
+		variant?: 'default' | 'section';
 	}
 
 	let {
@@ -32,7 +35,8 @@
 		onuploaded,
 		label = m.attach_attach_files(),
 		dropzone = true,
-		accept
+		accept,
+		variant = 'default'
 	}: Props = $props();
 
 	let uploading = $state(false);
@@ -93,11 +97,13 @@
 		type="button"
 		disabled={uploading}
 		onclick={() => input?.click()}
-		class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border bg-surface px-2.5 py-1.5 text-[14px] text-text-2 transition-colors hover:border-border-strong hover:text-text disabled:opacity-60"
+		class={variant === 'section'
+			? SECTION_ACTION
+			: 'inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border bg-surface px-2.5 py-1.5 text-[14px] text-text-2 transition-colors hover:border-border-strong hover:text-text disabled:opacity-60'}
 	>
 		<Icon
-			name={uploading ? 'refresh' : 'paperclip'}
-			size={14}
+			name={uploading ? 'refresh' : variant === 'section' ? 'plus' : 'paperclip'}
+			size={variant === 'section' ? 13 : 14}
 			class={uploading ? 'animate-spin' : ''}
 		/>
 		<span>{uploading ? m.attach_uploading() : label}</span>

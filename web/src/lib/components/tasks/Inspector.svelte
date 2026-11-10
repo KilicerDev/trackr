@@ -12,7 +12,6 @@
 	import Drawer from '../Drawer.svelte';
 	import StatusDot from '../StatusDot.svelte';
 	import PriorityBars from '../PriorityBars.svelte';
-	import LabelChip from '../LabelChip.svelte';
 	import Avatar from '../Avatar.svelte';
 	import AvatarStack from '../AvatarStack.svelte';
 	import Icon from '../Icon.svelte';
@@ -22,7 +21,12 @@
 	import RichTextInput from '../RichTextInput.svelte';
 	import Checklist from '../Checklist.svelte';
 	import TypeBadge from '../TypeBadge.svelte';
-	import TimeLogger from './TimeLogger.svelte';
+	import TaskTimeCard from './panel/TaskTimeCard.svelte';
+	import SectionHeader from './panel/SectionHeader.svelte';
+	import PropertyRow from './panel/PropertyRow.svelte';
+	import { CHIP, CHIP_INTERACTIVE, OPEN_RING, ROW_CARD, SECTION_ACTION } from './panel/styles';
+	import { linkedItems, type LinkedKind } from '$lib/utils/task-panel';
+	import { labelMeta } from '$lib/utils/label-meta';
 	import AttachmentList from '../attachments/AttachmentList.svelte';
 	import AttachmentUploader from '../attachments/AttachmentUploader.svelte';
 	import AttachmentDropzone from '../attachments/AttachmentDropzone.svelte';
@@ -39,7 +43,7 @@
 	import TaskMenuPopover from '../popovers/TaskMenuPopover.svelte';
 	import NewMeetingDialog from '../notes/NewMeetingDialog.svelte';
 	import { TRACKR_PRIORITIES, TRACKR_STATUSES, TRACKR_TYPES } from '$lib/config/taxonomy';
-	import { formatDateLong, formatEstimate } from '$lib/utils/format';
+	import { dueCountdown, formatDateLong, formatEstimate } from '$lib/utils/format';
 	import { resolveProject } from '$lib/stores/lookup.svelte';
 	import { taskChannelLabel, statusLabel, priorityLabel, typeLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
@@ -457,6 +461,50 @@
 		return d ? resolveProject(d.project) : null;
 	});
 
+	// Due countdown chip: only while the task is open and the date is near or past.
+	const dueChip = $derived.by(() => {
+		const d = draft;
+		if (!d?.due || isClosedStatus(d.status)) return null;
+		const c = dueCountdown(d.due);
+		if (!c || !c.label) return null;
+		if (c.tone !== 'overdue') return c;
+		const n = -c.days;
+		return {
+			...c,
+			label: n === 1 ? m.tasks_panel_overdue_one() : m.tasks_panel_overdue_days({ n })
+		};
+	});
+	const DUE_CHIP: Record<string, string> = {
+		overdue: 'bg-[#ef4f5e]/15 text-[#ef4f5e]',
+		urgent: 'bg-accent-soft text-accent',
+		soon: 'bg-[#d8a24a]/15 text-[#d8a24a]'
+	};
+	const DUE_TEXT: Record<string, string> = {
+		overdue: 'text-[#ef4f5e]',
+		urgent: 'text-accent',
+		soon: 'text-[#d8a24a]',
+		normal: ''
+	};
+	// Property values: quiet until hovered, so the list reads like a summary.
+	const PROP_VALUE =
+		'inline-flex max-w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-[14px] text-text transition-colors hover:bg-surface disabled:cursor-default disabled:hover:bg-transparent';
+
+	// Prerequisites, dependents, source ticket and parent in one "Linked" list.
+	const linked = $derived(
+		linkedItems({
+			dependsOn,
+			dependents,
+			sourceTicket: draft?.sourceTicket ?? null,
+			parent: draft?.parent ?? null
+		})
+	);
+	const LINK_KIND_LABEL: Record<LinkedKind, () => string> = {
+		prerequisite: m.tasks_panel_kind_prerequisite,
+		dependent: m.tasks_panel_kind_dependent,
+		ticket: m.tasks_panel_kind_ticket,
+		parent: m.tasks_panel_kind_parent
+	};
+
 	let events = $derived.by(() => {
 		if (!draft) return [];
 		const list: {
@@ -590,18 +638,76 @@
 				></textarea>
 			</div>
 
-			<!-- properties rail -->
-			<div class="mb-5 flex flex-wrap gap-2">
-				<!-- TYPE -->
+			<!-- Chip row: status, due countdown, priority, type and tags — the
+			     task's state at a glance, each opening its picker. -->
+			<div class="mb-4 flex flex-wrap items-center gap-1.5">
+				<div class="relative">
+					<button
+						type="button"
+						onclick={() => toggle('status')}
+						disabled={!canEdit}
+						class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-transparent px-2.5 text-[13px] font-medium transition-[filter] disabled:cursor-default {canEdit
+							? 'hover:brightness-125'
+							: ''} {openPop === 'status' ? OPEN_RING : ''}"
+						style:background="{status.dot}1f"
+						style:color={status.dot}
+					>
+						<StatusDot status={draft.status} size={12} />
+						<span>{statusLabel(draft.status)}</span>
+					</button>
+					{#if openPop === 'status'}
+						<StatusPopover
+							value={draft.status}
+							onchange={(v: StatusId) => {
+								if (draft) draft.status = v;
+								void patch('status', { status: v });
+							}}
+							onclose={() => (openPop = null)}
+						/>
+					{/if}
+				</div>
+
+				{#if dueChip}
+					<span
+						class="inline-flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-[13px] font-medium {DUE_CHIP[
+							dueChip.tone
+						] ?? ''}"
+						title={draft.due ? formatDateLong(draft.due) : undefined}
+					>
+						<Icon name="calendar" size={12} />
+						{dueChip.label}
+					</span>
+				{/if}
+
+				<div class="relative">
+					<button
+						type="button"
+						onclick={() => toggle('priority')}
+						disabled={!canEdit}
+						class="{CHIP} {CHIP_INTERACTIVE} {openPop === 'priority' ? OPEN_RING : ''}"
+					>
+						{#if prio.bars > 0}<PriorityBars priority={draft.priority} />{/if}
+						<span>{priorityLabel(draft.priority)}</span>
+					</button>
+					{#if openPop === 'priority'}
+						<PriorityPopover
+							value={draft.priority}
+							onchange={(v: PriorityId) => {
+								if (draft) draft.priority = v;
+								void patch('priority', { priority: v });
+							}}
+							onclose={() => (openPop = null)}
+						/>
+					{/if}
+				</div>
+
 				{#if taskType}
 					<div class="relative">
 						<button
 							type="button"
 							onclick={() => toggle('type')}
 							disabled={!canEdit}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
-								? 'hover:border-border-strong'
-								: ''} {openPop === 'type' ? 'ring-2 ring-accent/40' : ''}"
+							class="{CHIP} {CHIP_INTERACTIVE} {openPop === 'type' ? OPEN_RING : ''}"
 						>
 							<TypeBadge type={draft.type ?? 'task'} showLabel={false} />
 							<span>{typeLabel(draft.type ?? 'task')}</span>
@@ -619,234 +725,48 @@
 					</div>
 				{/if}
 
-				<!-- STATUS -->
-				<div class="relative">
+				{#each draft.labels as l (l)}
+					{@const meta = labelMeta(l)}
 					<button
 						type="button"
-						onclick={() => toggle('status')}
+						onclick={() => toggle('tags')}
 						disabled={!canEdit}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
-							? 'hover:border-border-strong'
-							: ''} {openPop === 'status' ? 'ring-2 ring-accent/40' : ''}"
+						class="{CHIP} {CHIP_INTERACTIVE}"
 					>
-						<StatusDot status={draft.status} />
-						<span>{statusLabel(draft.status)}</span>
+						<span class="h-2 w-2 shrink-0 rounded-full" style:background={meta.color}></span>
+						<span class="max-w-[160px] truncate">{meta.label}</span>
 					</button>
-					{#if openPop === 'status'}
-						<StatusPopover
-							value={draft.status}
-							onchange={(v: StatusId) => {
-								if (draft) draft.status = v;
-								void patch('status', { status: v });
-							}}
-							onclose={() => (openPop = null)}
-						/>
-					{/if}
-				</div>
-
-				<!-- PRIORITY -->
-				<div class="relative">
-					<button
-						type="button"
-						onclick={() => toggle('priority')}
-						disabled={!canEdit}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
-							? 'hover:border-border-strong'
-							: ''} {openPop === 'priority' ? 'ring-2 ring-accent/40' : ''}"
-					>
-						{#if prio.bars > 0}
-							<PriorityBars priority={draft.priority} />
+				{/each}
+				{#if canEdit}
+					<div class="relative">
+						<button
+							type="button"
+							onclick={() => toggle('tags')}
+							aria-label={m.tasks_add_tag()}
+							title={m.tasks_add_tag()}
+							class="{CHIP} {CHIP_INTERACTIVE} text-text-3 {openPop === 'tags' ? OPEN_RING : ''}"
+						>
+							<Icon name="plus" size={13} />
+							{#if draft.labels.length === 0}<span>{m.tasks_add_tags()}</span>{/if}
+						</button>
+						{#if openPop === 'tags'}
+							<TagsPopover
+								value={draft.labels}
+								suggestions={tagSuggestions}
+								kind="task"
+								onchange={(v) => {
+									if (draft) draft.labels = v;
+									void patch('tags', { tags: v });
+								}}
+								onclose={() => (openPop = null)}
+							/>
 						{/if}
-						<span>{priorityLabel(draft.priority)}</span>
-					</button>
-					{#if openPop === 'priority'}
-						<PriorityPopover
-							value={draft.priority}
-							onchange={(v: PriorityId) => {
-								if (draft) draft.priority = v;
-								void patch('priority', { priority: v });
-							}}
-							onclose={() => (openPop = null)}
-						/>
-					{/if}
-				</div>
-
-				<!-- ASSIGNEES -->
-				<div class="relative">
-					<button
-						type="button"
-						onclick={() => toggle('assignees')}
-						disabled={!canEdit}
-						class="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {canEdit
-							? 'hover:border-border-strong'
-							: ''} {openPop === 'assignees' ? 'ring-2 ring-accent/40' : ''}"
-					>
-						{#if assignees.length === 1}
-							<Avatar user={assignees[0]} size={20} />
-							<span>{assignees[0]?.name}</span>
-						{:else if assignees.length === 0}
-							<span class="text-text-3">{m.common_unassigned()}</span>
-						{:else}
-							<AvatarStack users={assignees} size={20} max={3} overlap={5} />
-							<span>{m.tasks_n_assignees({ n: assignees.length })}</span>
-						{/if}
-					</button>
-					{#if openPop === 'assignees'}
-						<AssigneePopover
-							internalOnly
-							value={assigneeIds}
-							onchange={(v) => {
-								if (draft) {
-									draft.assignees = v;
-									if (v.length > 0) draft.assignee = v[0];
-									else draft.assignee = '';
-								}
-								void patch('assignees', { assignees: v });
-							}}
-							onclose={() => (openPop = null)}
-							users={providedUsers}
-						/>
-					{/if}
-				</div>
-
-				<!-- DUE -->
-				<div class="relative">
-					<button
-						type="button"
-						onclick={() => toggle('due')}
-						disabled={!canEdit}
-						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {draft.due
-							? 'border border-border bg-surface'
-							: 'border border-dashed border-border text-text-3'} {canEdit
-							? draft.due
-								? 'hover:border-border-strong'
-								: 'hover:border-border-strong hover:text-text'
-							: ''} {openPop === 'due' ? 'ring-2 ring-accent/40' : ''}"
-					>
-						<Icon name="calendar" size={14} />
-						{#if draft.due}
-							<span class="font-mono">{formatDateLong(draft.due)}</span>
-						{:else}
-							<span>{m.tasks_due_date()}</span>
-						{/if}
-					</button>
-					{#if openPop === 'due'}
-						<DatePopover
-							value={draft.due}
-							onchange={(v) => {
-								if (draft) draft.due = v;
-								void patch('due', { due: v ?? '' });
-							}}
-							onclose={() => (openPop = null)}
-						/>
-					{/if}
-				</div>
-
-				<!-- PLAN FOR (My Week) -->
-				<div class="relative">
-					<button
-						type="button"
-						onclick={() => toggle('plan')}
-						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors {draft.inMyPlan
-							? 'border border-transparent bg-accent-soft text-accent'
-							: 'border border-dashed border-border text-text-3 hover:border-border-strong hover:text-text'} {openPop ===
-						'plan'
-							? 'ring-2 ring-accent/40'
-							: ''}"
-						style:background={draft.inMyPlan ? 'rgba(239,122,109,0.14)' : ''}
-					>
-						<Icon name="bookmark" size={14} />
-						{#if draft.plannedFor}
-							<span class="font-mono">{formatDateLong(draft.plannedFor)}</span>
-						{:else if draft.inMyPlan}
-							<span>{m.tasks_in_my_week()}</span>
-						{:else}
-							<span>{m.tasks_plan_for()}</span>
-						{/if}
-					</button>
-					{#if openPop === 'plan'}
-						<DatePopover
-							value={draft.plannedFor ?? null}
-							onchange={(v) => setPlan(v)}
-							onclose={() => (openPop = null)}
-							undatedLabel={m.tasks_add_to_week_no_date()}
-							onundated={setPlanUndated}
-							undatedActive={!!draft.inMyPlan && !draft.plannedFor}
-						/>
-					{/if}
-				</div>
-
-				<!-- ESTIMATE -->
-				<div class="relative">
-					<button
-						type="button"
-						onclick={() => toggle('estimate')}
-						disabled={!canEdit}
-						class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[14px] transition-colors disabled:cursor-not-allowed disabled:opacity-60 {draft.estimate
-							? 'border border-border bg-surface'
-							: 'border border-dashed border-border text-text-3'} {canEdit
-							? draft.estimate
-								? 'hover:border-border-strong'
-								: 'hover:border-border-strong hover:text-text'
-							: ''} {openPop === 'estimate' ? 'ring-2 ring-accent/40' : ''}"
-					>
-						{#if draft.estimate}
-							<span class="text-text-3">{m.tasks_est()}</span>
-							<span class="font-mono">{formatEstimate(draft.estimate)}</span>
-						{:else}
-							<span>{m.tasks_estimate()}</span>
-						{/if}
-					</button>
-					{#if openPop === 'estimate'}
-						<EstimatePopover
-							value={draft.estimate}
-							onchange={(v) => {
-								if (draft) draft.estimate = v;
-								void patch('estimate', { estimate: v != null ? String(v) : '' });
-							}}
-							onclose={() => (openPop = null)}
-						/>
-					{/if}
-				</div>
+					</div>
+				{/if}
 			</div>
 
-			{#if isBlocked}
-				<div
-					class="mb-4 rounded-lg border border-l-[3px] border-border border-l-[var(--color-status-paused)] bg-surface px-3 py-2.5"
-					role="status"
-				>
-					<div class="flex items-start gap-2 text-[13px] leading-snug text-text-2">
-						<span class="mt-px shrink-0 text-[var(--color-status-paused)]">
-							<Icon name="alert-triangle" size={14} />
-						</span>
-						<span>
-							{dependsOn.length === 1
-								? m.tasks_blocked_banner_one()
-								: m.tasks_blocked_banner({
-										open: openPrerequisites.length,
-										total: dependsOn.length
-									})}
-						</span>
-					</div>
-					<div class="mt-2 flex flex-wrap gap-1.5 pl-[22px]">
-						{#each openPrerequisites as d (d.uuid)}
-							<a
-								href="/tasks?task={d.id}"
-								onclick={(e) => openTask(e, d.id)}
-								class="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-bg-elev px-2 py-1 text-[12px] text-text-2 transition-colors hover:border-border-strong hover:text-text"
-							>
-								<StatusDot status={d.status} size={11} />
-								<span class="shrink-0 font-mono text-text-3">{d.id}</span>
-								<span class="truncate">{d.title}</span>
-							</a>
-						{/each}
-					</div>
-				</div>
-			{/if}
-
-			<!-- Everything below needs the fetched detail (description, checklist
-			     items, files, comments, time logs, dependents); the header and
-			     rail above render from the list row right away. -->
+			<!-- Description needs the fetched detail; the rest above and the
+			     properties below render from the list row right away. -->
 			{#if task}
 				{#if canEdit}
 					{#key draft.id}
@@ -865,7 +785,7 @@
 								placeholder={m.tasks_description_placeholder()}
 								flavor="document"
 								mentions={false}
-								rows={3}
+								rows={2}
 								maxRows={16}
 								class="w-full border-0 bg-transparent text-[14px] leading-relaxed text-text-2"
 							/>
@@ -878,202 +798,191 @@
 						class="mb-5 text-[14px] leading-relaxed text-text-2"
 					/>
 				{/if}
+			{/if}
 
+			<TaskTimeCard task={draft} onlog={logTime} defaultDate={logDate} />
+
+			<!-- Properties: one label / value row each; values open their picker. -->
+			<div class="mb-5">
+				<PropertyRow label={m.tasks_panel_assignees()}>
+					<button
+						type="button"
+						onclick={() => toggle('assignees')}
+						disabled={!canEdit}
+						class="{PROP_VALUE} {openPop === 'assignees' ? OPEN_RING : ''}"
+					>
+						{#if assignees.length === 1}
+							<Avatar user={assignees[0]} size={20} />
+							<span class="truncate">{assignees[0]?.name}</span>
+						{:else if assignees.length === 0}
+							<span class="text-text-3">{m.common_unassigned()}</span>
+						{:else}
+							<AvatarStack users={assignees} size={20} max={3} overlap={5} />
+							<span class="truncate">{m.tasks_n_assignees({ n: assignees.length })}</span>
+						{/if}
+					</button>
+					{#if openPop === 'assignees'}
+						<AssigneePopover
+							internalOnly
+							value={assigneeIds}
+							onchange={(v) => {
+								if (draft) {
+									draft.assignees = v;
+									draft.assignee = v[0] ?? '';
+								}
+								void patch('assignees', { assignees: v });
+							}}
+							onclose={() => (openPop = null)}
+							users={providedUsers}
+						/>
+					{/if}
+				</PropertyRow>
+
+				<PropertyRow label={m.tasks_panel_project()}>
+					<span class="inline-flex max-w-full items-center gap-2 px-2 py-1 text-[14px] text-text">
+						<span class="h-2 w-2 shrink-0 rounded-full" style:background={project.color}></span>
+						<span class="truncate">{project.name}</span>
+					</span>
+				</PropertyRow>
+
+				{#if draft.startDate}
+					<PropertyRow label={m.tasks_panel_start()}>
+						<span class="inline-flex px-2 py-1 font-mono text-[14px] text-text"
+							>{formatDateLong(draft.startDate)}</span
+						>
+					</PropertyRow>
+				{/if}
+
+				<PropertyRow label={m.tasks_panel_due()}>
+					<button
+						type="button"
+						onclick={() => toggle('due')}
+						disabled={!canEdit}
+						class="{PROP_VALUE} {openPop === 'due' ? OPEN_RING : ''}"
+					>
+						{#if draft.due}
+							<span class="font-mono {dueChip ? DUE_TEXT[dueChip.tone] : ''}"
+								>{formatDateLong(draft.due)}</span
+							>
+						{:else}
+							<span class="text-text-3">{m.tasks_panel_set_due()}</span>
+						{/if}
+					</button>
+					{#if openPop === 'due'}
+						<DatePopover
+							value={draft.due}
+							onchange={(v) => {
+								if (draft) draft.due = v;
+								void patch('due', { due: v ?? '' });
+							}}
+							onclose={() => (openPop = null)}
+						/>
+					{/if}
+				</PropertyRow>
+
+				<PropertyRow label={m.tasks_panel_plan()}>
+					<button
+						type="button"
+						onclick={() => toggle('plan')}
+						class="{PROP_VALUE} {openPop === 'plan' ? OPEN_RING : ''}"
+					>
+						{#if draft.plannedFor}
+							<Icon name="bookmark" size={13} class="text-accent" />
+							<span class="font-mono">{formatDateLong(draft.plannedFor)}</span>
+						{:else if draft.inMyPlan}
+							<Icon name="bookmark" size={13} class="text-accent" />
+							<span>{m.tasks_in_my_week()}</span>
+						{:else}
+							<span class="text-text-3">{m.tasks_panel_set_plan()}</span>
+						{/if}
+					</button>
+					{#if openPop === 'plan'}
+						<DatePopover
+							value={draft.plannedFor ?? null}
+							onchange={(v) => setPlan(v)}
+							onclose={() => (openPop = null)}
+							undatedLabel={m.tasks_add_to_week_no_date()}
+							onundated={setPlanUndated}
+							undatedActive={!!draft.inMyPlan && !draft.plannedFor}
+						/>
+					{/if}
+				</PropertyRow>
+
+				<PropertyRow label={m.tasks_panel_estimate_label()}>
+					<button
+						type="button"
+						onclick={() => toggle('estimate')}
+						disabled={!canEdit}
+						class="{PROP_VALUE} {openPop === 'estimate' ? OPEN_RING : ''}"
+					>
+						{#if draft.estimate}
+							<span class="font-mono">{formatEstimate(draft.estimate)}</span>
+						{:else}
+							<span class="text-text-3">{m.tasks_panel_set_estimate()}</span>
+						{/if}
+					</button>
+					{#if openPop === 'estimate'}
+						<EstimatePopover
+							value={draft.estimate}
+							onchange={(v) => {
+								if (draft) draft.estimate = v;
+								void patch('estimate', { estimate: v != null ? String(v) : '' });
+							}}
+							onclose={() => (openPop = null)}
+						/>
+					{/if}
+				</PropertyRow>
+			</div>
+
+			{#if isBlocked}
+				<div
+					class="mb-5 rounded-lg border border-l-[3px] border-border border-l-[var(--color-status-paused)] bg-surface px-3 py-2.5"
+					role="status"
+				>
+					<div class="flex items-start gap-2 text-[13px] leading-snug text-text-2">
+						<span class="mt-px shrink-0 text-[var(--color-status-paused)]">
+							<Icon name="alert-triangle" size={14} />
+						</span>
+						<span>
+							{dependsOn.length === 1
+								? m.tasks_blocked_banner_one()
+								: m.tasks_blocked_banner({
+										open: openPrerequisites.length,
+										total: dependsOn.length
+									})}
+						</span>
+					</div>
+				</div>
+			{/if}
+
+			<!-- Everything below needs the fetched detail (checklist items, files,
+			     dependents, comments, time logs). -->
+			{#if task}
 				<Checklist
 					items={checklistItems}
 					{canEdit}
 					label={m.tasks_checklist()}
 					addPlaceholder={m.tasks_checklist_add()}
 					onChange={onChecklistChange}
+					variant="panel"
+					addLabel={m.tasks_panel_add_item()}
 				/>
 
-				{#if draft.uuid && (dependsOn.length || dependents.length || canEdit)}
-					{@const hasAny = dependsOn.length > 0 || dependents.length > 0}
-					<div class="mb-6">
-						{#if hasAny}
-							<div class="mb-2 flex items-center justify-between">
-								<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
-									{m.tasks_dependencies()}{#if dependsOn.length}<span class="ml-1.5 text-text-3"
-											>{dependsOn.length}</span
-										>{/if}
-								</div>
-								{#if canEdit}
-									<div class="relative">
-										<button
-											type="button"
-											onclick={() => toggle('deps')}
-											class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text {openPop ===
-											'deps'
-												? 'ring-2 ring-accent/40'
-												: ''}"
-										>
-											<Icon name="plus" size={13} />
-											<span>{m.common_add()}</span>
-										</button>
-										{#if openPop === 'deps'}
-											<DependencyPopover
-												projectKey={draft.project}
-												value={dependsOn.map((d) => d.uuid)}
-												exclude={[draft.uuid, ...dependents.map((d) => d.uuid)]}
-												seed={dependencySeed}
-												ontoggle={toggleDependency}
-												onclose={() => (openPop = null)}
-											/>
-										{/if}
-									</div>
-								{/if}
-							</div>
-							{#if dependsOn.length}
-								<div class="mb-1 text-[12px] text-text-3">{m.tasks_depends_on()}</div>
-								<div class="-mx-2">
-									{#each dependsOn as d (d.uuid)}
-										<div
-											class="group/dep flex h-8 items-center gap-2.5 rounded-md px-2 transition-colors focus-within:bg-surface hover:bg-surface {d.status ===
-											'done'
-												? 'opacity-60'
-												: ''}"
-										>
-											<a
-												href="/tasks?task={d.id}"
-												onclick={(e) => openTask(e, d.id)}
-												class="flex min-w-0 flex-1 items-center gap-2.5 text-text-2 hover:text-text"
-											>
-												<StatusDot status={d.status} size={12} />
-												<span class="shrink-0 font-mono text-[12px] text-text-3">{d.id}</span>
-												<span class="min-w-0 flex-1 truncate text-[14px]">{d.title}</span>
-												<span class="shrink-0 text-[12px] text-text-3">{statusLabel(d.status)}</span
-												>
-											</a>
-											{#if canEdit}
-												<button
-													type="button"
-													aria-label={m.tasks_remove_prerequisite()}
-													title={m.tasks_remove_prerequisite()}
-													onclick={() => toggleDependency(d)}
-													class="grid h-6 w-6 shrink-0 place-items-center rounded-md text-text-3 opacity-0 transition-opacity group-hover/dep:opacity-100 hover:bg-surface-2 hover:text-text focus-visible:opacity-100"
-												>
-													<Icon name="x" size={13} />
-												</button>
-											{/if}
-										</div>
-									{/each}
-								</div>
-							{/if}
-							{#if dependents.length}
-								<div class="mt-2 mb-1 text-[12px] text-text-3">{m.tasks_needed_by()}</div>
-								<div class="-mx-2">
-									{#each dependents as d (d.uuid)}
-										<a
-											href="/tasks?task={d.id}"
-											onclick={(e) => openTask(e, d.id)}
-											class="flex h-8 items-center gap-2.5 rounded-md px-2 text-text-2 transition-colors hover:bg-surface hover:text-text {d.status ===
-											'done'
-												? 'opacity-60'
-												: ''}"
-										>
-											<StatusDot status={d.status} size={12} />
-											<span class="shrink-0 font-mono text-[12px] text-text-3">{d.id}</span>
-											<span class="min-w-0 flex-1 truncate text-[14px]">{d.title}</span>
-											<span class="shrink-0 text-[12px] text-text-3">{statusLabel(d.status)}</span>
-										</a>
-									{/each}
-								</div>
-							{/if}
-						{:else}
-							<div class="relative inline-block">
-								<button
-									type="button"
-									onclick={() => toggle('deps')}
-									class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text {openPop ===
-									'deps'
-										? 'ring-2 ring-accent/40'
-										: ''}"
-								>
-									<Icon name="link" size={13} />
-									<span>{m.tasks_add_prerequisite()}</span>
-								</button>
-								{#if openPop === 'deps'}
-									<DependencyPopover
-										projectKey={draft.project}
-										value={[]}
-										exclude={[draft.uuid]}
-										seed={dependencySeed}
-										ontoggle={toggleDependency}
-										onclose={() => (openPop = null)}
-									/>
-								{/if}
-							</div>
-						{/if}
-					</div>
-				{/if}
-
-				{#if draft.parent || draft.sourceTicket || (draft.labels && draft.labels.length > 0) || canEdit}
-					<div class="mb-6 flex flex-wrap items-center gap-2">
-						{#if draft.parent}
-							<span
-								class="inline-flex items-center gap-1.5 rounded border border-border bg-surface px-2 py-1 font-mono text-[12px] text-text-3"
-							>
-								<Icon name="chevron-r" size={12} />
-								{draft.parent}
-							</span>
-						{/if}
-						{#if draft.sourceTicket}
-							<a
-								href="/tickets/{draft.sourceTicket.id}"
-								title={m.tasks_source_ticket()}
-								class="inline-flex items-center gap-1.5 rounded border border-border bg-surface px-2 py-1 text-[12px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
-							>
-								<Icon name="link" size={12} />
-								<span class="font-mono">{draft.sourceTicket.displayId}</span>
-							</a>
-						{/if}
-						{#each draft.labels as l (l)}<LabelChip id={l} />{/each}
-						{#if canEdit}
-							<div class="relative">
-								<button
-									type="button"
-									onclick={() => toggle('tags')}
-									class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text {openPop ===
-									'tags'
-										? 'ring-2 ring-accent/40'
-										: ''}"
-								>
-									<Icon name="bookmark" size={13} />
-									<span>{draft.labels.length > 0 ? m.tasks_add_tag() : m.tasks_add_tags()}</span>
-								</button>
-								{#if openPop === 'tags'}
-									<TagsPopover
-										value={draft.labels}
-										suggestions={tagSuggestions}
-										kind="task"
-										onchange={(v) => {
-											if (draft) draft.labels = v;
-											void patch('tags', { tags: v });
-										}}
-										onclose={() => (openPop = null)}
-									/>
-								{/if}
-							</div>
-						{/if}
-					</div>
-				{/if}
-
 				{#if draft.uuid}
-					<div class="mb-6">
-						<div class="mb-2 flex items-center justify-between">
-							<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
-								{m.tasks_attachments()}{#if draft.files?.length}<span class="ml-1.5 text-text-3"
-										>{draft.files.length}</span
-									>{/if}
-							</div>
-							<AttachmentUploader
-								bind:this={taskAttachmentUploader}
-								entityType="task"
-								entityId={draft.uuid}
-								dropzone={false}
-								onuploaded={() => void refresh()}
-							/>
-						</div>
+					<section class="mb-6">
+						<SectionHeader label={m.tasks_attachments()} count={draft.files?.length ?? 0}>
+							{#snippet action()}
+								<AttachmentUploader
+									bind:this={taskAttachmentUploader}
+									entityType="task"
+									entityId={draft!.uuid!}
+									dropzone={false}
+									variant="section"
+									label={m.tasks_panel_add_file()}
+									onuploaded={() => void refresh()}
+								/>
+							{/snippet}
+						</SectionHeader>
 						{#if draft.files?.length}
 							<AttachmentList
 								attachments={draft.files}
@@ -1082,95 +991,181 @@
 								ondeleted={() => void refresh()}
 							/>
 						{:else}
-							<p class="text-[14px] text-text-3">{m.tasks_no_files_attached()}</p>
+							<p class="text-[13px] text-text-3">{m.tasks_no_files_attached()}</p>
 						{/if}
-					</div>
+					</section>
 				{/if}
 
 				{#if isTeam && draft.uuid}
-					<div class="mb-6">
-						<div class="mb-2 flex items-center justify-between">
-							<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
-								{m.notes_section_meetings()}{#if meetingNotes.length}<span
-										class="ml-1.5 text-text-3">{meetingNotes.length}</span
-									>{/if}
-							</div>
-							{#if taskProjectId}
-								<button
-									type="button"
-									onclick={() => (newMeetingOpen = true)}
-									class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
-								>
-									<Icon name="plus" size={13} />
-									{m.notes_new_meeting()}
-								</button>
-							{/if}
-						</div>
+					<section class="mb-6">
+						<SectionHeader label={m.notes_section_meetings()} count={meetingNotes.length}>
+							{#snippet action()}
+								{#if taskProjectId}
+									<button
+										type="button"
+										onclick={() => (newMeetingOpen = true)}
+										class={SECTION_ACTION}
+									>
+										<Icon name="plus" size={13} />
+										{m.tasks_panel_add_note()}
+									</button>
+								{/if}
+							{/snippet}
+						</SectionHeader>
 						{#if meetingNotes.length}
 							<div class="grid gap-1.5">
 								{#each meetingNotes as n (n.id)}
-									<a
-										href="/notes/{n.id}"
-										class="group flex items-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-2 transition-colors hover:border-border-strong"
-									>
+									<a href="/notes/{n.id}" class="group {ROW_CARD}">
 										<Icon name="users" size={15} class="shrink-0 text-text-3" />
-										<span class="flex-1 truncate text-[14px] text-text-2 group-hover:text-text"
-											>{n.title || m.notes_untitled()}</span
-										>
-										{#if n.meetingDate}
-											<span class="shrink-0 text-[12px] text-text-4"
-												>{meetingDateLabel(n.meetingDate)}</span
+										<span class="min-w-0 flex-1">
+											<span class="block truncate text-[14px] text-text-2 group-hover:text-text"
+												>{n.title || m.notes_untitled()}</span
 											>
-										{/if}
+											{#if n.meetingDate}
+												<span class="block text-[12px] text-text-4"
+													>{meetingDateLabel(n.meetingDate)}</span
+												>
+											{/if}
+										</span>
+										<Icon name="chevron-r" size={13} class="shrink-0 text-text-4" />
 									</a>
 								{/each}
 							</div>
 						{:else}
-							<p class="text-[14px] text-text-3">{m.notes_task_no_meetings()}</p>
+							<p class="text-[13px] text-text-3">{m.notes_task_no_meetings()}</p>
 						{/if}
-					</div>
+					</section>
 				{/if}
 
-				<div class="mt-4">
-					<div class="mb-3 text-[12px] tracking-[0.08em] text-text-4 uppercase">
-						{m.tasks_activity()}
-					</div>
-					<div class="mb-4">
-						<TimeLogger task={draft} onlog={logTime} defaultDate={logDate} />
-					</div>
-					<div class="relative space-y-4 pl-7">
-						<span class="absolute top-2 bottom-2 left-[10px] w-px bg-border"></span>
+				{#if draft.uuid && (linked.length > 0 || canEdit)}
+					<section class="mb-6">
+						<SectionHeader label={m.tasks_panel_linked()} count={linked.length}>
+							{#snippet action()}
+								{#if canEdit}
+									<button
+										type="button"
+										onclick={() => toggle('deps')}
+										class="{SECTION_ACTION} {openPop === 'deps' ? OPEN_RING : ''}"
+									>
+										<Icon name="plus" size={13} />
+										{m.tasks_panel_add_link()}
+									</button>
+									{#if openPop === 'deps'}
+										<DependencyPopover
+											projectKey={draft!.project}
+											value={dependsOn.map((d) => d.uuid)}
+											exclude={[draft!.uuid!, ...dependents.map((d) => d.uuid)]}
+											seed={dependencySeed}
+											ontoggle={toggleDependency}
+											onclose={() => (openPop = null)}
+										/>
+									{/if}
+								{/if}
+							{/snippet}
+						</SectionHeader>
+						{#if linked.length}
+							<div class="grid gap-1.5">
+								{#each linked as item (item.key)}
+									<div
+										class="group/link {ROW_CARD} {item.status && isClosedStatus(item.status)
+											? 'opacity-70'
+											: ''}"
+									>
+										<a
+											href={item.href}
+											onclick={(e) => {
+												if (item.kind !== 'ticket') openTask(e, item.ref);
+											}}
+											class="flex min-w-0 flex-1 items-center gap-2.5"
+										>
+											{#if item.status}
+												<StatusDot status={item.status} size={13} />
+											{:else}
+												<Icon
+													name={item.kind === 'ticket' ? 'ticket' : 'chevron-r'}
+													size={14}
+													class="shrink-0 text-text-3"
+												/>
+											{/if}
+											<span class="min-w-0 flex-1">
+												<span
+													class="block truncate text-[14px] text-text-2 group-hover/link:text-text"
+													>{item.title}</span
+												>
+												<span class="block truncate text-[12px] text-text-4">
+													{LINK_KIND_LABEL[
+														item.kind
+													]()}{#if item.kind === 'prerequisite' || item.kind === 'dependent'}
+														· <span class="font-mono">{item.ref}</span>{/if}{#if item.status}
+														· {statusLabel(item.status)}{/if}
+												</span>
+											</span>
+										</a>
+										{#if item.blocking}
+											<span
+												class="shrink-0 rounded-md bg-[color-mix(in_srgb,var(--color-status-paused)_16%,transparent)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--color-status-paused)]"
+												>{m.tasks_panel_blocked()}</span
+											>
+										{/if}
+										{#if item.removable && canEdit}
+											{@const dep = dependsOn.find((d) => d.uuid === item.uuid)}
+											{#if dep}
+												<button
+													type="button"
+													aria-label={m.tasks_remove_prerequisite()}
+													title={m.tasks_remove_prerequisite()}
+													onclick={() => toggleDependency(dep)}
+													class="grid h-6 w-6 shrink-0 place-items-center rounded-md text-text-3 opacity-0 transition-opacity group-hover/link:opacity-100 hover:bg-surface-2 hover:text-text focus-visible:opacity-100"
+												>
+													<Icon name="x" size={13} />
+												</button>
+											{/if}
+										{/if}
+									</div>
+								{/each}
+							</div>
+						{:else}
+							<p class="text-[13px] text-text-3">{m.tasks_panel_no_links()}</p>
+						{/if}
+					</section>
+				{/if}
+
+				<section>
+					<SectionHeader label={m.tasks_activity()} />
+					<div class="space-y-3">
 						{#each events as e (e.id)}
 							{@const u = resolveUser(e.user)}
-							<div class="relative">
-								<span
-									class="absolute top-0.5 -left-7 grid h-5 w-5 place-items-center rounded-full border border-border bg-bg-elev"
-								>
-									{#if e.kind === 'comment'}
-										<Avatar user={u} size={20} />
-									{:else if e.kind === 'time'}
-										<Icon name="calendar" size={12} />
-									{:else if e.kind === 'created'}
-										<Icon name="plus" size={12} />
+							<div>
+								<div class="flex items-center gap-2.5 text-[13px] text-text-2">
+									{#if e.kind === 'created'}
+										<span
+											class="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border border-border text-text-3"
+										>
+											<Icon name="plus" size={12} />
+										</span>
+									{:else}
+										<Avatar user={u} size={22} />
 									{/if}
-								</span>
-								<div class="text-[14px] text-text-2">
-									<span class="font-medium text-text">{u?.name ?? e.user}</span>
-									{#if e.kind === 'comment'}{m.tasks_event_commented()}
-									{:else if e.kind === 'time'}{m.tasks_event_logged()}
-										<span class="font-medium text-text">{formatEstimate(e.data.minutes)}</span>
-									{:else if e.kind === 'created'}{m.tasks_event_created()}
-									{/if}
-									<span class="font-mono text-text-4">· {e.date}</span>
+									<span class="min-w-0 flex-1 truncate">
+										<span class="font-medium text-text">{u?.name ?? e.user}</span>
+										{#if e.kind === 'comment'}{m.tasks_event_commented()}
+										{:else if e.kind === 'time'}{m.tasks_event_logged()}
+											<span class="font-mono font-medium text-text"
+												>{formatEstimate(e.data.minutes)}</span
+											>
+										{:else if e.kind === 'created'}{m.tasks_event_created()}
+										{/if}
+									</span>
+									<span class="shrink-0 font-mono text-[12px] text-text-4">{e.date}</span>
 								</div>
 								{#if e.kind === 'comment'}
 									<div
-										class="mt-2 rounded-lg border border-border bg-surface p-3 text-[14px] leading-relaxed whitespace-pre-wrap text-text"
+										class="mt-2 ml-[32px] rounded-xl border border-border bg-surface px-3 py-2.5 text-[14px] leading-relaxed whitespace-pre-wrap text-text"
 									>
 										<MentionText text={e.data} />
 									</div>
 									{#if e.files?.length}
-										<div class="mt-2">
+										<div class="mt-2 ml-[32px]">
 											<AttachmentList
 												attachments={e.files}
 												canDelete={canEdit}
@@ -1181,12 +1176,12 @@
 										</div>
 									{/if}
 								{:else if e.kind === 'time' && e.data.note}
-									<div class="mt-1.5 text-[14px] text-text-3 italic">{e.data.note}</div>
+									<div class="mt-1 ml-[32px] text-[13px] text-text-3 italic">{e.data.note}</div>
 								{/if}
 							</div>
 						{/each}
 					</div>
-				</div>
+				</section>
 			{:else if loading}
 				<div class="space-y-3 py-1" aria-busy="true" aria-live="polite">
 					<div class="h-3.5 w-11/12 animate-pulse rounded bg-surface"></div>
@@ -1216,7 +1211,7 @@
 			</div>
 		</div>
 
-		<div class="p-3">
+		<div class="border-t border-border p-3">
 			<AttachmentDropzone
 				onfiles={addCommentFiles}
 				disabled={commentSending}
@@ -1233,6 +1228,7 @@
 				{/if}
 				<Composer
 					bind:value={commentBody}
+					variant="inline"
 					placeholder={m.tasks_write_a_comment()}
 					sending={commentSending}
 					onsend={sendComment}
@@ -1245,7 +1241,7 @@
 							aria-label={m.tasks_attach_files()}
 							title={m.tasks_attach_files()}
 							onclick={() => commentFileInput?.click()}
-							class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-text-3 transition-colors hover:bg-surface-2 hover:text-text"
+							class="grid h-8 w-8 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface-2 hover:text-text"
 						>
 							<Icon name="paperclip" size={15} />
 						</button>

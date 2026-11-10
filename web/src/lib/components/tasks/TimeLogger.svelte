@@ -19,10 +19,15 @@
 		onlog?: (entry: { h: number; m: number; date: string; note: string }) => void;
 		/** Date the form starts on (My Week passes the day the task was opened from). */
 		defaultDate?: string;
+		/**
+		 * `row` (default): the full-width "Log time" row that expands into a
+		 * floating form. `none`: no trigger; the caller opens it via `open` and
+		 * the form renders in place (the task panel's time card).
+		 */
+		trigger?: 'row' | 'none';
+		open?: boolean;
 	}
-	let { task, onlog, defaultDate }: Props = $props();
-
-	let open = $state(false);
+	let { task, onlog, defaultDate, trigger = 'row', open = $bindable(false) }: Props = $props();
 	let h = $state(0);
 	let min = $state(0);
 	let date = $state(todayIso());
@@ -57,93 +62,103 @@
 	}
 </script>
 
-<div class="relative">
-	<!-- Trigger row: always in flow, fixed height -->
-	<button
-		type="button"
-		onclick={() => (open = !open)}
-		class="flex w-full items-center gap-2 rounded-xl border border-border bg-surface/40 px-3 py-2.5 text-left transition-colors hover:bg-surface {open
-			? 'invisible'
-			: ''}"
-	>
-		<span
-			class="grid h-7 w-7 place-items-center rounded-md border border-border bg-bg-elev text-text-3"
-		>
-			<Icon name="calendar" size={14} />
-		</span>
-		<span class="text-[14px] font-medium text-text">{m.tasks_log_time()}</span>
-		<span class="ml-auto font-mono text-[12px] text-text-3">{summary}</span>
-		<span class="text-text-3">
-			<Icon name="chevron" size={12} />
-		</span>
-	</button>
-
-	{#if open}
-		<!-- Expanded panel: floats over the elements below -->
-		<div
-			use:clickOutside={cancel}
-			class="absolute inset-x-0 top-0 z-30 overflow-hidden rounded-xl border border-border bg-bg-elev shadow-lg"
-		>
-			<button
-				type="button"
-				onclick={() => (open = false)}
-				class="flex w-full items-center gap-2 px-3 py-2.5 text-left"
-			>
+{#snippet form()}
+	<div class="space-y-2.5 p-3">
+		<div class="grid grid-cols-[1fr_1fr_1.4fr] gap-2">
+			<div class="relative">
+				<input
+					type="number"
+					min="0"
+					bind:value={h}
+					class="w-full rounded-lg border border-border bg-surface px-3 py-2 pr-7 font-mono text-[14px] outline-none focus:border-border-strong"
+				/>
 				<span
-					class="grid h-7 w-7 place-items-center rounded-md border border-border bg-surface text-text-3"
+					class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[12px] text-text-3"
+					>h</span
 				>
-					<Icon name="calendar" size={14} />
-				</span>
-				<span class="text-[14px] font-medium text-text">{m.tasks_log_time()}</span>
-				<span class="ml-auto font-mono text-[12px] text-text-3">{summary}</span>
-				<span class="rotate-180 text-text-3">
-					<Icon name="chevron" size={12} />
-				</span>
-			</button>
-			<div class="space-y-2.5 border-t border-border p-3">
-				<div class="grid grid-cols-[1fr_1fr_1.4fr] gap-2">
-					<div class="relative">
-						<input
-							type="number"
-							min="0"
-							bind:value={h}
-							class="w-full rounded-lg border border-border bg-surface px-3 py-2 pr-7 font-mono text-[14px] outline-none focus:border-border-strong"
-						/>
-						<span
-							class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[12px] text-text-3"
-							>h</span
-						>
-					</div>
-					<div class="relative">
-						<input
-							type="number"
-							min="0"
-							max="59"
-							bind:value={min}
-							class="w-full rounded-lg border border-border bg-surface px-3 py-2 pr-7 font-mono text-[14px] outline-none focus:border-border-strong"
-						/>
-						<span
-							class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[12px] text-text-3"
-							>m</span
-						>
-					</div>
-					<input
-						type="date"
-						bind:value={date}
-						class="rounded-lg border border-border bg-surface px-3 py-2 font-mono text-[14px] outline-none focus:border-border-strong"
-					/>
-				</div>
-				<textarea
-					bind:value={note}
-					placeholder={m.tasks_what_did_you_work_on()}
-					rows="2"
-					class="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-[14px] outline-none placeholder:text-text-3 focus:border-border-strong"
-				></textarea>
-				<div class="flex items-center justify-end gap-2">
-					<Button size="sm" variant="default" onclick={cancel}>{m.common_cancel()}</Button>
-					<Button size="sm" variant="primary" onclick={submit}>{m.tasks_log_time()}</Button>
-				</div>
 			</div>
+			<div class="relative">
+				<input
+					type="number"
+					min="0"
+					max="59"
+					bind:value={min}
+					class="w-full rounded-lg border border-border bg-surface px-3 py-2 pr-7 font-mono text-[14px] outline-none focus:border-border-strong"
+				/>
+				<span
+					class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 font-mono text-[12px] text-text-3"
+					>m</span
+				>
+			</div>
+			<input
+				type="date"
+				bind:value={date}
+				class="rounded-lg border border-border bg-surface px-3 py-2 font-mono text-[14px] outline-none focus:border-border-strong"
+			/>
 		</div>
+		<textarea
+			bind:value={note}
+			placeholder={m.tasks_what_did_you_work_on()}
+			rows="2"
+			class="w-full resize-none rounded-lg border border-border bg-surface px-3 py-2 text-[14px] outline-none placeholder:text-text-3 focus:border-border-strong"
+		></textarea>
+		<div class="flex items-center justify-end gap-2">
+			<Button size="sm" variant="default" onclick={cancel}>{m.common_cancel()}</Button>
+			<Button size="sm" variant="primary" onclick={submit}>{m.tasks_log_time()}</Button>
+		</div>
+	</div>
+{/snippet}
+
+{#if trigger === 'none'}
+	{#if open}
+		<div class="rounded-xl border border-border bg-bg-elev">{@render form()}</div>
 	{/if}
-</div>
+{:else}
+	<div class="relative">
+		<!-- Trigger row: always in flow, fixed height -->
+		<button
+			type="button"
+			onclick={() => (open = !open)}
+			class="flex w-full items-center gap-2 rounded-xl border border-border bg-surface/40 px-3 py-2.5 text-left transition-colors hover:bg-surface {open
+				? 'invisible'
+				: ''}"
+		>
+			<span
+				class="grid h-7 w-7 place-items-center rounded-md border border-border bg-bg-elev text-text-3"
+			>
+				<Icon name="calendar" size={14} />
+			</span>
+			<span class="text-[14px] font-medium text-text">{m.tasks_log_time()}</span>
+			<span class="ml-auto font-mono text-[12px] text-text-3">{summary}</span>
+			<span class="text-text-3">
+				<Icon name="chevron" size={12} />
+			</span>
+		</button>
+
+		{#if open}
+			<!-- Expanded panel: floats over the elements below -->
+			<div
+				use:clickOutside={cancel}
+				class="absolute inset-x-0 top-0 z-30 overflow-hidden rounded-xl border border-border bg-bg-elev shadow-lg"
+			>
+				<button
+					type="button"
+					onclick={() => (open = false)}
+					class="flex w-full items-center gap-2 px-3 py-2.5 text-left"
+				>
+					<span
+						class="grid h-7 w-7 place-items-center rounded-md border border-border bg-surface text-text-3"
+					>
+						<Icon name="calendar" size={14} />
+					</span>
+					<span class="text-[14px] font-medium text-text">{m.tasks_log_time()}</span>
+					<span class="ml-auto font-mono text-[12px] text-text-3">{summary}</span>
+					<span class="rotate-180 text-text-3">
+						<Icon name="chevron" size={12} />
+					</span>
+				</button>
+				<div class="border-t border-border">{@render form()}</div>
+			</div>
+		{/if}
+	</div>
+{/if}
