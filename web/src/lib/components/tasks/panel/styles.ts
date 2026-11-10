@@ -8,9 +8,13 @@
 export const ICON_ACTION =
 	'grid h-6 w-6 shrink-0 place-items-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text disabled:cursor-not-allowed disabled:opacity-60';
 
-/** "+ Checklist", "+ File", … in the row that stands in for empty sections. */
+/**
+ * "+ Checklist", "+ File", … in the row that stands in for empty sections.
+ * leading-none so the label's box is just the text and centres on the icon
+ * (with the inherited line-height the words sat off the "+").
+ */
 export const QUIET_ADD =
-	'inline-flex h-7 items-center gap-1.5 rounded-lg px-2 text-[13px] text-text-3 transition-colors hover:bg-surface hover:text-text disabled:cursor-not-allowed disabled:opacity-60';
+	'inline-flex h-7 items-center gap-1.5 rounded-lg px-2 text-[13px] leading-none text-text-3 transition-colors hover:bg-surface hover:text-text disabled:cursor-not-allowed disabled:opacity-60';
 
 /** A property value: plain until hovered; text lines up with the column. */
 export const PROP_VALUE =
