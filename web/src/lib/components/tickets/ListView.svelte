@@ -138,17 +138,20 @@
 		{@const isCollapsed = collapsed.has(g.id)}
 		<div>
 			{#if g.label}
+				<!-- Group band, same as the tasks list: sticky, medium weight, muted
+				     count, one rule underneath. -->
 				<button
 					type="button"
 					onclick={() => toggle(g.id)}
-					class="group sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-y border-border bg-surface px-5 text-left"
+					aria-expanded={!isCollapsed}
+					class="group sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-b border-border bg-bg-elev px-5 text-left"
 				>
 					<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
 						<Icon name="chevron" size={13} />
 					</span>
 					<span class="h-2 w-2 rounded-full" style:background={g.dot}></span>
-					<span class="text-[14px] font-semibold text-text">{g.label}</span>
-					<span class="font-mono text-[12px] text-text-3">{g.tickets.length}</span>
+					<span class="text-[14px] font-medium text-text">{g.label}</span>
+					<span class="font-mono text-[12px] text-text-4">{g.tickets.length}</span>
 				</button>
 			{/if}
 			{#if !isCollapsed}
@@ -156,69 +159,79 @@
 					{#each g.tickets as t (t.id)}
 						{@const assignees = t.assignees.map((id) => resolveUser(id))}
 						{@const sla = slaSignal(t)}
+						{@const cdone = t.checklist.filter((i) => i.done).length}
+						<!-- Row on the tasks-list grid: status, id, subject (with the
+						     org and counts as quiet text), priority bars, activity,
+						     avatars. -->
 						<button
 							type="button"
 							onclick={() => onSelect?.(t)}
-							class="flex h-10 w-full items-center gap-3 border-b border-border pr-4 pl-5 text-left text-[14px] transition-colors hover:bg-surface {selectedId ===
+							class="grid w-full grid-cols-[30px_minmax(0,1fr)_auto_60px] items-center gap-3 border-b border-border/60 px-5 text-left transition-colors md:grid-cols-[30px_92px_minmax(0,1fr)_24px_minmax(92px,auto)_60px] {selectedId ===
 							t.id
-								? 'bg-surface'
-								: ''}"
+								? 'bg-[var(--row-active)]'
+								: 'hover:bg-[var(--row-hover)]'}"
+							style:height="var(--row-h)"
 						>
-							<PriorityBars priority={t.priority} />
-							<span class="w-[123px] shrink-0 truncate font-mono text-[12px] text-text-3"
+							<span
+								class="h-2.5 w-2.5 rounded-full"
+								style:background={statusDot(t.status)}
+								title={ticketStatusLabel(t.status)}
+							></span>
+							<span class="hidden truncate font-mono text-[12px] text-text-4 md:block"
 								>{t.displayId}</span
 							>
-							<span
-								class="h-2.5 w-2.5 shrink-0 rounded-full"
-								style:background={statusDot(t.status)}
-								title={t.status}
-							></span>
-							<span class="flex-1 truncate text-text">{t.subject}</span>
-							{#if sla}
-								<span
-									class="hidden shrink-0 items-center gap-1.5 text-[12px] text-text-3 lg:inline-flex"
-									title={sla.label}
-								>
-									<span class="h-1.5 w-1.5 rounded-full" style:background={sla.dot}></span>
-									<span class="max-w-[198px] truncate">{sla.label}</span>
-								</span>
-							{/if}
-							<span
-								class="hidden shrink-0 items-center gap-1 rounded-md border border-border bg-surface px-1.5 py-0.5 text-[12px] text-text-3 md:inline-flex"
-								title={t.orgName}
-							>
-								<span class="h-1.5 w-1.5 rounded-full" style:background={t.orgColor}></span>
-								<span class="max-w-[132px] truncate">{t.orgName}</span>
+							<span class="flex min-w-0 items-center gap-2.5">
+								<span class="truncate text-[14px] text-text">{t.subject}</span>
+								{#if group !== 'org'}
+									<span
+										class="hidden shrink-0 items-center gap-1 text-[12px] text-text-3 md:inline-flex"
+										title={t.orgName}
+									>
+										<span class="h-1.5 w-1.5 rounded-full" style:background={t.orgColor}></span>
+										<span class="max-w-[132px] truncate">{t.orgName}</span>
+									</span>
+								{/if}
+								{#if t.messageCount > 0}
+									<span
+										class="hidden shrink-0 items-center gap-1 text-[12px] text-text-4 md:inline-flex"
+									>
+										<Icon name="msg" size={12} />
+										{t.messageCount}
+									</span>
+								{/if}
+								{#if t.checklist.length && cdone < t.checklist.length}
+									<span
+										class="hidden shrink-0 items-center gap-1 text-[12px] text-text-4 md:inline-flex"
+										title="{cdone}/{t.checklist.length}"
+									>
+										<Icon name="check-square" size={12} />
+										<span class="font-mono">{cdone}/{t.checklist.length}</span>
+									</span>
+								{/if}
 							</span>
-							{#if t.messageCount > 0}
-								<span
-									class="hidden shrink-0 items-center gap-1 text-[12px] text-text-3 md:inline-flex"
-								>
-									<Icon name="msg" size={12} />
-									{t.messageCount}
-								</span>
-							{/if}
-							{#if t.checklist.length}
-								{@const cdone = t.checklist.filter((i) => i.done).length}
-								<span
-									class="hidden shrink-0 items-center gap-1 text-[12px] md:inline-flex {cdone ===
-									t.checklist.length
-										? 'text-[#7fc8a9]'
-										: 'text-text-3'}"
-									title="{cdone}/{t.checklist.length}"
-								>
-									<Icon name="check" size={12} />
-									{cdone}/{t.checklist.length}
-								</span>
-							{/if}
-							<span class="hidden w-[79px] shrink-0 text-right text-[12px] text-text-3 lg:inline">
-								{relTime(t.lastMessageAt ?? t.updatedAt)}
+							<span class="hidden items-center md:flex" title={priorityLabel(t.priority)}>
+								<PriorityBars priority={t.priority} />
 							</span>
-							{#if assignees.length}
-								<AvatarStack users={assignees} size={22} max={3} overlap={6} />
-							{:else}
-								<span class="h-5 w-5 rounded-full border border-dashed border-border-strong"></span>
-							{/if}
+							<!-- Activity: an unanswered ticket says so in accent; otherwise
+							     when it last moved. -->
+							<span class="truncate text-right text-[12px]">
+								{#if sla && sla.tone === 'wait'}
+									<span class="text-accent" title={sla.label}>{sla.label}</span>
+								{:else}
+									<span class="text-text-4" title={sla?.label}
+										>{relTime(t.lastMessageAt ?? t.updatedAt)}</span
+									>
+								{/if}
+							</span>
+							<span class="flex justify-end">
+								{#if assignees.length}
+									<AvatarStack users={assignees} size={22} max={3} overlap={6} />
+								{:else}
+									<span
+										class="h-[22px] w-[22px] rounded-full border border-dashed border-border-strong"
+									></span>
+								{/if}
+							</span>
 						</button>
 					{/each}
 				</div>
