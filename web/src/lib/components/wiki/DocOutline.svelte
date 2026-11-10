@@ -11,6 +11,7 @@
 	// editor's `.ProseMirror`), keyed by each heading's position. Ids are not
 	// injected: ProseMirror re-renders heading nodes on every edit and strips
 	// attributes it doesn't own. Bump `rev` whenever the document changes.
+	import { untrack } from 'svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	interface Props {
@@ -56,10 +57,13 @@
 
 	// Rebuild on every document change; once more after collaborative content
 	// has settled (it streams in after mount).
+	// build() writes `items` and then reads it (computeActive), so it runs
+	// untracked — tracked, the effect would depend on its own output and
+	// re-run forever, which takes the whole page down.
 	$effect(() => {
 		void rev;
 		void root;
-		build();
+		untrack(build);
 		const t = setTimeout(build, 400);
 		return () => clearTimeout(t);
 	});
