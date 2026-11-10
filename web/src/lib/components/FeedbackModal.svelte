@@ -161,7 +161,7 @@
 					disabled={submitting || !message.trim()}
 					class="inline-flex items-center gap-1.5 rounded-lg border border-transparent bg-accent px-[12px] py-[8px] text-[14px] font-medium text-white shadow-btn transition-[background,border-color,transform] duration-150 hover:bg-accent-strong active:translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-50"
 				>
-					<Icon name="send" size={14} />
+					<Icon name="arrow-right" size={14} />
 					{submitting ? m.shell_feedback_sending() : m.shell_send_feedback()}
 				</button>
 			</div>

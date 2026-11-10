@@ -76,7 +76,7 @@
 	}
 </script>
 
-{#snippet sendButton(size: string, icon: string = 'send')}
+{#snippet sendButton(size: string)}
 	<!-- `size` carries the height, width and corner radius. -->
 	<button
 		type="button"
@@ -89,7 +89,7 @@
 			<span class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"
 			></span>
 		{:else}
-			<Icon name={icon} size={16} />
+			<Icon name="arrow-right" size={16} />
 		{/if}
 	</button>
 {/snippet}
@@ -127,7 +127,7 @@
 				<div class="flex shrink-0 items-center gap-1 py-1 pr-1">{@render rightActions()}</div>
 			{/if}
 		</div>
-		{@render sendButton('h-10 w-10 rounded-xl', 'arrow-right')}
+		{@render sendButton('h-10 w-10 rounded-xl')}
 	</div>
 {:else}
 	<div

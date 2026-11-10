@@ -36,7 +36,6 @@
 		Link,
 		MessageCircle,
 		Paperclip,
-		Send,
 		ArrowUp,
 		ArrowLeft,
 		ArrowRight,
@@ -100,7 +99,8 @@
 		link: Link,
 		msg: MessageCircle,
 		paperclip: Paperclip,
-		send: Send,
+		// No paper plane anywhere: sending is the arrow (as in the task comments).
+		send: ArrowRight,
 		'arrow-up': ArrowUp,
 		'arrow-left': ArrowLeft,
 		'arrow-right': ArrowRight,

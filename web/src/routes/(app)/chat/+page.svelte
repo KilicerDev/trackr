@@ -770,7 +770,7 @@
 									class="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent"
 								></span>
 							{:else}
-								<Icon name="send" size={14} />
+								<Icon name="arrow-right" size={14} />
 							{/if}
 						</button>
 					</div>

@@ -154,7 +154,7 @@ const ok = crypto.timingSafeEqual(
 		<div class="flex items-center gap-2">
 			<form method="post" action="?/test" use:enhance={simple(m.webhooks_test_sent())}>
 				<Button type="submit" disabled={busy || !sub.enabled}>
-					<Icon name="send" size={13} />
+					<Icon name="arrow-right" size={13} />
 					{m.webhooks_send_test()}
 				</Button>
 			</form>

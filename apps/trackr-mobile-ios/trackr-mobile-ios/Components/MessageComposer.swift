@@ -241,7 +241,7 @@ struct MessageComposer: View {
             }
 
             Button(action: send) {
-                Image(systemName: "paperplane")
+                Image(systemName: "arrow.right")
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(.white)
                     .frame(width: 36, height: 36)
