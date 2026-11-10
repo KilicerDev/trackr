@@ -114,6 +114,7 @@
 	<a
 		href={item.href}
 		aria-label={rail.rail ? item.label : undefined}
+		title={rail.rail ? item.label : undefined}
 		class="{rail.row} {active ? 'bg-[var(--row-active)] !text-text' : ''}"
 	>
 		<span class={rail.icon(active)}>
@@ -126,14 +127,7 @@
 	</a>
 {/snippet}
 
-<aside
-	onmouseenter={() => rail.setHover(true)}
-	onmouseleave={() => rail.setHover(false)}
-	onfocusin={rail.focusin}
-	onfocusout={rail.focusout}
-	class={rail.aside}
-	style:width={rail.width}
->
+<aside class={rail.aside} style:width={rail.width}>
 	<InstanceSwitcher fade={rail.fade} bind:open={rail.menuOpen} />
 
 	<!-- Notifications first, right under the workspace tile. -->
@@ -149,7 +143,7 @@
 
 		{#if isAdmin}
 			<div class="py-1.5">
-				<RailHeading {rail} label={m.shell_section_admin()} divider />
+				<RailHeading {rail} label={m.shell_section_admin()} />
 				{#each adminItems as item (item.key)}
 					{@render nav(item)}
 				{/each}

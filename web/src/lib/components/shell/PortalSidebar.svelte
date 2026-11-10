@@ -100,14 +100,7 @@
 	const rail = new Rail(286);
 </script>
 
-<aside
-	onmouseenter={() => rail.setHover(true)}
-	onmouseleave={() => rail.setHover(false)}
-	onfocusin={rail.focusin}
-	onfocusout={rail.focusout}
-	class={rail.aside}
-	style:width={rail.width}
->
+<aside class={rail.aside} style:width={rail.width}>
 	<!-- Brand tile: instance switcher + organization switcher (TRACK-140). -->
 	<InstanceSwitcher
 		fade={rail.fade}
@@ -187,7 +180,7 @@
 		<!-- Pinned -->
 		{#if pinned.length}
 			<div class="py-1.5">
-				<RailHeading {rail} label={m.shell_portal_pinned()} divider />
+				<RailHeading {rail} label={m.shell_portal_pinned()} />
 				{#each pinned as t (t.id)}
 					{@render ticketRow(t)}
 				{/each}
@@ -196,7 +189,7 @@
 
 		<!-- Recents -->
 		<div class="py-1.5">
-			<RailHeading {rail} label={m.shell_portal_recents()} divider />
+			<RailHeading {rail} label={m.shell_portal_recents()} />
 			{#each recents as t (t.id)}
 				{@render ticketRow(t)}
 			{/each}
@@ -215,6 +208,7 @@
 	<a
 		{href}
 		aria-label={rail.rail ? label : undefined}
+		title={rail.rail ? label : undefined}
 		class="{rail.row} {active ? 'bg-[var(--row-active)] !text-text' : ''}"
 	>
 		<span class={rail.icon(active)}>

@@ -1,13 +1,13 @@
-// Collapse + hover-peek behaviour for a shell rail, shared by the app and
-// portal sidebars so both fold and peek identically.
+// Collapse behaviour for a shell rail, shared by the app and portal sidebars
+// so both fold identically.
 //
 // Two states matter. `collapsed` is the *layout* state: the shell's grid
-// column is 64px. `rail` is the *visual* state: icons only. They differ while
-// peeking — the rail widens to its expanded width over the page (the column
-// stays 64px, nothing underneath shifts) when hovered, when keyboard focus is
-// inside it, or while the instance menu is open so it can't fold around an
-// open menu. Short enter/leave delays keep a cursor passing through from
-// flashing it open.
+// column is 64px. `rail` is the *visual* state: icons only. They differ only
+// while a menu opened from the rail is showing (the workspace menu at the top,
+// the account menu at the foot): the rail then widens over the page (the
+// column stays 64px, nothing underneath shifts) so the menu has room. It does
+// NOT open on hover or keyboard focus — a folded rail stays folded; the
+// expand button and the tooltips cover the rest.
 //
 // Seamless folding: the icon must never move. Its left offset is
 // container-padding + row-margin + row-padding, held at a constant 23px in
@@ -22,32 +22,22 @@ const ROW =
 	'group/nav relative my-px flex h-9 items-center gap-2.5 rounded-lg text-[14px] text-text-2 transition-[margin,padding,background-color,color] duration-150 outline-none focus-visible:ring-2 focus-visible:ring-accent/60';
 
 export class Rail {
-	hovered = $state(false);
-	focused = $state(false);
 	menuOpen = $state(false);
 	/** The account menu at the rail's foot is open (keeps the rail peeking). */
 	accountOpen = $state(false);
-	#timer: ReturnType<typeof setTimeout> | undefined;
 	#sidebar = getSidebar();
 	readonly expandedWidth: number;
 
 	/** Call during component init (it registers effects and reads context). */
 	constructor(expandedWidth: number) {
 		this.expandedWidth = expandedWidth;
-		$effect(() => {
-			if (!this.collapsed) {
-				clearTimeout(this.#timer);
-				this.hovered = false;
-			}
-		});
-		$effect(() => () => clearTimeout(this.#timer));
 	}
 
 	get collapsed(): boolean {
 		return !!this.#sidebar?.collapsed;
 	}
 	get peek(): boolean {
-		return this.collapsed && (this.hovered || this.focused || this.menuOpen || this.accountOpen);
+		return this.collapsed && (this.menuOpen || this.accountOpen);
 	}
 	get rail(): boolean {
 		return this.collapsed && !this.peek;
@@ -89,19 +79,4 @@ export class Rail {
 	get width(): string | undefined {
 		return this.peek ? `${this.expandedWidth}px` : undefined;
 	}
-
-	setHover(next: boolean) {
-		clearTimeout(this.#timer);
-		this.#timer = setTimeout(() => (this.hovered = next), next ? 120 : 200);
-	}
-	// Keyboard focus only: a mouse click on a link also focuses it, and that
-	// must not pin the rail open after the cursor has left.
-	focusin = (e: FocusEvent) => {
-		if ((e.target as Element).matches(':focus-visible')) this.focused = true;
-	};
-	focusout = (e: FocusEvent) => {
-		if (!(e.currentTarget as HTMLElement).contains(e.relatedTarget as Node | null)) {
-			this.focused = false;
-		}
-	};
 }
