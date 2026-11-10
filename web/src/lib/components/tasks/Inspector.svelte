@@ -580,7 +580,7 @@
 				>
 			</div>
 		</div>
-		<div class="min-h-0 flex-1 overflow-y-auto px-5 pt-4 pb-24">
+		<div class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-5 pt-4 pb-24">
 			<!-- Title. A hidden replica of the text (::after, see .title-grow) sits in
 			     the same grid cell as the textarea and sizes it from CSS, so the
 			     height is right even when the font swaps in late or the drawer
@@ -1028,7 +1028,7 @@
 											<Icon name="plus" size={14} />
 										</button>
 										{#if openPop === 'deps'}
-											{@render depsPopover()}
+											{@render depsPopover('right')}
 										{/if}
 									{/if}
 								{/snippet}
@@ -1240,9 +1240,10 @@
 			</div>
 		{/snippet}
 
-		{#snippet depsPopover()}
+		{#snippet depsPopover(align: 'left' | 'right' = 'left')}
 			{#if draft?.uuid}
 				<DependencyPopover
+					{align}
 					projectKey={draft.project}
 					value={dependsOn.map((d) => d.uuid)}
 					exclude={[draft.uuid, ...dependents.map((d) => d.uuid)]}

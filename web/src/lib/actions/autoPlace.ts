@@ -9,7 +9,15 @@
 // and on resize.
 const EDGE = 8;
 
-export function autoPlace(node: HTMLElement) {
+export interface AutoPlaceOptions {
+	/** Which trigger edge the popover hangs from. `right`: its right edge
+	 *  lines up with the trigger's (for triggers at the right of a panel),
+	 *  shifted right only if the left edge would overflow. */
+	align?: 'left' | 'right';
+}
+
+export function autoPlace(node: HTMLElement, opts: AutoPlaceOptions = {}) {
+	const align = opts.align ?? 'left';
 	// Horizontal bounds the popover must stay within: the viewport, tightened
 	// by every ancestor that clips overflow.
 	function horizontalBounds() {
@@ -30,8 +38,8 @@ export function autoPlace(node: HTMLElement) {
 		// Reset to defaults so we always measure from the unshifted position.
 		// Clearing top/bottom/margins falls back to the element's own classes
 		// (e.g. `top-full mt-1.5`).
-		node.style.left = '0';
-		node.style.right = 'auto';
+		node.style.left = align === 'left' ? '0' : 'auto';
+		node.style.right = align === 'left' ? 'auto' : '0';
 		node.style.top = '';
 		node.style.bottom = '';
 		node.style.marginTop = '';
@@ -40,7 +48,13 @@ export function autoPlace(node: HTMLElement) {
 		const rect = node.getBoundingClientRect();
 		const bounds = horizontalBounds();
 
-		if (rect.right > bounds.right) {
+		if (align === 'right') {
+			if (rect.left < bounds.left) {
+				// Shift right by the overflow, never past the right bound.
+				const shift = Math.min(bounds.left - rect.left, bounds.right - rect.right);
+				if (shift > 0) node.style.right = `${-shift}px`;
+			}
+		} else if (rect.right > bounds.right) {
 			// Shift left by the overflow, but never push the left edge out of
 			// view — when the popover is wider than the available space, keeping
 			// the left edge visible wins.

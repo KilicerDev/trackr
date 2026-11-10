@@ -7,6 +7,7 @@
 	import { isClosedStatus } from '$lib/utils/task';
 	import { autoPlace } from '$lib/actions/autoPlace';
 	import { fly } from 'svelte/transition';
+	import { untrack } from 'svelte';
 	import { POPOVER_IN } from '$lib/config/motion';
 	import type { TaskLink } from '$lib/types';
 	import StatusDot from '../StatusDot.svelte';
@@ -23,8 +24,18 @@
 		seed?: TaskLink[];
 		ontoggle: (link: TaskLink) => void;
 		onclose: () => void;
+		/** Hang from the trigger's left (default) or right edge. */
+		align?: 'left' | 'right';
 	}
-	let { projectKey, value, exclude = [], seed = [], ontoggle, onclose }: Props = $props();
+	let {
+		projectKey,
+		value,
+		exclude = [],
+		seed = [],
+		ontoggle,
+		onclose,
+		align = 'left'
+	}: Props = $props();
 
 	let q = $state('');
 	let remote = $state<TaskLink[] | null>(null);
@@ -51,9 +62,14 @@
 		}
 	}
 
+	// Once, on open. Untracked: the props are getters on the panel's draft,
+	// which is rebuilt after every pick, and re-running this would refetch and
+	// re-focus the input (scrolling the panel) on each selection.
 	$effect(() => {
-		void load('');
-		inputEl?.focus();
+		untrack(() => {
+			void load('');
+			inputEl?.focus({ preventScroll: true });
+		});
 		return () => clearTimeout(timer);
 	});
 
@@ -111,7 +127,7 @@
 
 <div
 	use:clickOutside={onclose}
-	use:autoPlace
+	use:autoPlace={{ align }}
 	in:fly={POPOVER_IN}
 	class="absolute top-full z-50 mt-1.5 w-[320px] max-w-[calc(100vw-40px)] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 >
