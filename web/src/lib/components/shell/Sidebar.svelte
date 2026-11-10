@@ -4,6 +4,7 @@
 	import InstanceSwitcher from './InstanceSwitcher.svelte';
 	import RailHeading from './RailHeading.svelte';
 	import SidebarFooter from './SidebarFooter.svelte';
+	import NotificationsNav from './NotificationsNav.svelte';
 	import { Rail } from './rail.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import type { CapabilityManifest } from '$lib/permissions';
@@ -120,7 +121,7 @@
 		</span>
 		<span class={rail.fade}>{item.label}</span>
 		{#if item.count !== undefined}
-			<span class="ml-auto font-mono text-[12px] text-text-3 {rail.fade}">{item.count}</span>
+			<span class="ml-auto text-[12px] text-text-4 tabular-nums {rail.fade}">{item.count}</span>
 		{/if}
 	</a>
 {/snippet}
@@ -134,6 +135,9 @@
 	style:width={rail.width}
 >
 	<InstanceSwitcher fade={rail.fade} bind:open={rail.menuOpen} />
+
+	<!-- Notifications first, right under the workspace tile. -->
+	<NotificationsNav {rail} />
 
 	<nav class="mt-1.5 flex-1 overflow-x-hidden overflow-y-auto px-2 pb-2">
 		<div class="py-1.5">

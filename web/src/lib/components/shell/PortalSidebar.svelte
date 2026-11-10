@@ -4,6 +4,7 @@
 	import InstanceSwitcher from './InstanceSwitcher.svelte';
 	import RailHeading from './RailHeading.svelte';
 	import SidebarFooter from './SidebarFooter.svelte';
+	import NotificationsNav from './NotificationsNav.svelte';
 	import { Rail } from './rail.svelte';
 	import { setActiveOrg, type PortalOrg } from '$lib/api/portal';
 	import type { TicketRow, TicketStatus } from '$lib/server/tickets';
@@ -115,6 +116,9 @@
 		onChooseOrg={choose}
 		bind:open={rail.menuOpen}
 	/>
+
+	<!-- Notifications first, right under the workspace tile. -->
+	<NotificationsNav {rail} />
 
 	<!--
 		Primary actions. "New ticket" keeps its outlined-button look via an inset

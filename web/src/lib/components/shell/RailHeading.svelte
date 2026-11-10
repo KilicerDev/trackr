@@ -7,7 +7,7 @@
 </script>
 
 <div
-	class="relative flex h-[34px] items-end px-3 pb-1.5 text-[12px] leading-[18px] font-medium tracking-[0.08em] text-text-4 uppercase"
+	class="relative flex h-[34px] items-end px-3 pb-1.5 text-[12px] leading-[18px] font-medium text-text-4"
 >
 	<span class={rail.fade}>{label}</span>
 	{#if divider}

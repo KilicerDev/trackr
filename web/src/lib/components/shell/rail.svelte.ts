@@ -14,12 +14,12 @@
 // both states so an 18px glyph sits at x=32 — dead-centre of the 64px rail,
 // on the same axis as the brand mark above it. The container pads 8px, so
 // only the row's own margin/padding interpolate (deltas cancel: −4 +4 = 0).
-// Folded, each row is a 48×40 tile sharing its center axis and height with
-// the 40×40 instance tile, so the rail reads as one stack.
+// Folded, each row is a 48×36 tile on the same centre axis as the 40×40
+// instance tile, so the rail reads as one stack.
 import { getSidebar } from '$lib/stores/sidebar.svelte';
 
 const ROW =
-	'group/nav relative my-0.5 flex h-10 items-center gap-2.5 rounded-lg text-[15px] text-text-2 transition-[margin,padding,background-color,color] duration-150 outline-none focus-visible:ring-2 focus-visible:ring-accent/60';
+	'group/nav relative my-px flex h-9 items-center gap-2.5 rounded-lg text-[14px] text-text-2 transition-[margin,padding,background-color,color] duration-150 outline-none focus-visible:ring-2 focus-visible:ring-accent/60';
 
 export class Rail {
 	hovered = $state(false);
