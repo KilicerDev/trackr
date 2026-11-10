@@ -21,7 +21,7 @@
 	import RichTextInput from '../RichTextInput.svelte';
 	import Checklist from '../Checklist.svelte';
 	import TypeBadge from '../TypeBadge.svelte';
-	import TimeLogger from './TimeLogger.svelte';
+	import TimeLogPopover from '../popovers/TimeLogPopover.svelte';
 	import SectionHeader from './panel/SectionHeader.svelte';
 	import PropertyRow from './panel/PropertyRow.svelte';
 	import { ICON_ACTION, OPEN, PROP_VALUE, QUIET_ADD, ROW, TAG } from './panel/styles';
@@ -344,6 +344,7 @@
 		| 'plan'
 		| 'tags'
 		| 'deps'
+		| 'log'
 		| null;
 	let openPop = $state<PopId>(null);
 
@@ -464,13 +465,11 @@
 		return timeSummary(logged, d.estimate);
 	});
 	const formatLogged = (mins: number) => (mins > 0 ? formatEstimate(mins) : '0m');
-	let logOpen = $state(false);
 	// The checklist section appears once it has items, or when asked for.
 	let checklistOpen = $state(false);
 	$effect(() => {
 		void draft?.id;
 		checklistOpen = false;
-		logOpen = false;
 	});
 
 	// Prerequisites, dependents, source ticket and parent in one "Linked" list.
@@ -825,15 +824,24 @@
 								>
 							{/if}
 						{/if}
-						<button
-							type="button"
-							onclick={() => (logOpen = !logOpen)}
-							aria-expanded={logOpen}
-							class="{QUIET_ADD} ml-auto {logOpen ? OPEN : ''}"
-						>
-							<Icon name="plus" size={13} />
-							{m.tasks_panel_log()}
-						</button>
+						<div class="relative ml-auto">
+							<button
+								type="button"
+								onclick={() => toggle('log')}
+								aria-expanded={openPop === 'log'}
+								class="{QUIET_ADD} {openPop === 'log' ? OPEN : ''}"
+							>
+								<Icon name="plus" size={13} />
+								{m.tasks_panel_log()}
+							</button>
+							{#if openPop === 'log'}
+								<TimeLogPopover
+									onlog={logTime}
+									defaultDate={logDate}
+									onclose={() => (openPop = null)}
+								/>
+							{/if}
+						</div>
 					</div>
 					{#if openPop === 'estimate'}
 						<EstimatePopover
@@ -902,16 +910,6 @@
 						{/if}
 					</PropertyRow>
 				{/if}
-			</div>
-
-			<div class={logOpen ? 'mt-2 mb-4' : ''}>
-				<TimeLogger
-					task={draft}
-					onlog={logTime}
-					defaultDate={logDate}
-					trigger="none"
-					bind:open={logOpen}
-				/>
 			</div>
 
 			{#if isBlocked}
