@@ -1070,7 +1070,7 @@
 	"notes_meetings_sidebar_empty": "No meeting notes yet.",
 	"notes_task_no_meetings": "No meeting notes linked to this task yet.",
 	"notes_landing_title": "Your notes live here",
-	"notes_landing_hint": "Pick a note from the sidebar, or start a fresh one. Drag notes onto each other to nest them.",
+	"notes_landing_hint": "Pick a note from the sidebar, or start a note or a meeting note. Drag notes onto each other to nest them.",
 	"notes_page_title": "Notebook",
 	"notes_meetings_title": "Meeting notes",
 	"notes_templates_title": "Templates",

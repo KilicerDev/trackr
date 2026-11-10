@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { setContext } from 'svelte';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import NotesSidebar from '$lib/components/notes/NotesSidebar.svelte';
 	import NewMeetingDialog from '$lib/components/notes/NewMeetingDialog.svelte';
@@ -9,6 +10,8 @@
 	let { data, children }: { data: LayoutData; children: import('svelte').Snippet } = $props();
 
 	let meetingOpen = $state(false);
+	// The landing page offers "New meeting note" too; the dialog lives here.
+	setContext('notes:newMeeting', () => (meetingOpen = true));
 	const isIndex = $derived(page.route.id === '/(app)/notes');
 
 	type Project = { id: string; key: string; name: string; color: string; status: string };

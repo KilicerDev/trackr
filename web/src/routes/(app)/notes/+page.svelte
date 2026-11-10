@@ -3,9 +3,12 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import Icon from '$lib/components/Icon.svelte';
+	import Button from '$lib/components/Button.svelte';
+	import { getContext } from 'svelte';
 	import { m } from '$lib/paraglide/messages';
 
 	let creating = $state(false);
+	const newMeeting = getContext<(() => void) | undefined>('notes:newMeeting');
 </script>
 
 <svelte:head><title>{pageTitle(m.notes_page_title())}</title></svelte:head>
@@ -17,7 +20,9 @@
 		</span>
 		<h1 class="mb-1.5 text-[20px] font-semibold text-text">{m.notes_landing_title()}</h1>
 		<p class="mb-5 text-[14px] leading-relaxed text-text-3">{m.notes_landing_hint()}</p>
+		<!-- Notes and meeting notes share this space: both get a way in. -->
 		<form
+			class="flex items-center justify-center gap-2"
 			method="POST"
 			action="?/create"
 			use:enhance={() => {
@@ -29,14 +34,16 @@
 				};
 			}}
 		>
-			<button
-				type="submit"
-				disabled={creating}
-				class="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-[14px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-			>
-				<Icon name="plus" size={15} />
+			<Button type="submit" variant="primary" disabled={creating}>
+				<Icon name="file" size={15} />
 				{m.notes_new_note()}
-			</button>
+			</Button>
+			{#if newMeeting}
+				<Button onclick={newMeeting}>
+					<Icon name="users" size={15} />
+					{m.notes_new_meeting()}
+				</Button>
+			{/if}
 		</form>
 	</div>
 </div>
