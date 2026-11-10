@@ -8,9 +8,11 @@
 		files: File[];
 		onremove: (index: number) => void;
 		disabled?: boolean;
+		/** `chips`: compact pills that wrap, for inside a composer box. */
+		variant?: 'list' | 'chips';
 	}
 
-	let { files, onremove, disabled = false }: Props = $props();
+	let { files, onremove, disabled = false, variant = 'list' }: Props = $props();
 
 	// Object URLs for image previews, created lazily and revoked when their file
 	// leaves the staged set or the component unmounts — otherwise they leak.
@@ -37,7 +39,41 @@
 	});
 </script>
 
-{#if files.length}
+{#if files.length && variant === 'chips'}
+	<ul class="flex flex-wrap gap-1.5">
+		{#each files as file, i (file.name + file.size + i)}
+			<li
+				class="flex h-8 max-w-[260px] min-w-0 items-center gap-2 rounded-lg border border-border bg-surface-2/60 pr-0.5 pl-1"
+				title={file.name}
+			>
+				{#if previews.get(file)}
+					<img
+						src={previews.get(file)}
+						alt=""
+						class="h-6 w-6 shrink-0 rounded-md border border-border object-cover"
+					/>
+				{:else}
+					<span
+						class="grid h-6 w-6 shrink-0 place-items-center rounded-md bg-surface-2 text-text-3"
+					>
+						<Icon name="file" size={13} />
+					</span>
+				{/if}
+				<span class="min-w-0 truncate text-[13px] leading-none text-text">{file.name}</span>
+				<span class="shrink-0 text-[12px] leading-none text-text-4">{formatBytes(file.size)}</span>
+				<button
+					type="button"
+					{disabled}
+					onclick={() => onremove(i)}
+					aria-label={m.attach_remove_file({ filename: file.name })}
+					class="grid h-6 w-6 shrink-0 place-items-center rounded-md text-text-3 transition-colors hover:bg-surface-2 hover:text-text disabled:opacity-50"
+				>
+					<Icon name="x" size={12} />
+				</button>
+			</li>
+		{/each}
+	</ul>
+{:else if files.length}
 	<ul class="flex flex-col gap-1.5">
 		{#each files as file, i (file.name + file.size + i)}
 			<li class="flex items-center gap-2.5 rounded-lg border border-border bg-surface px-2 py-1.5">

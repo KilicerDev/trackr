@@ -19,6 +19,9 @@
 		// button and the internal-note toggle used by tickets). Omit for plain
 		// composers.
 		rightActions?: Snippet;
+		// Staged files, shown inside the box between the text and the footer
+		// (default variant only).
+		attachments?: Snippet;
 		// Scope @-mention suggestions to people who can access this project
 		// (see MentionTextarea). Omit for org-level surfaces like tickets.
 		projectId?: string | null;
@@ -52,6 +55,7 @@
 		accent = 'default',
 		onsend,
 		rightActions,
+		attachments,
 		projectId = null,
 		mentionUsers,
 		tags,
@@ -145,6 +149,9 @@
 			disabled={disabled || sending}
 			class="w-full border-0 bg-transparent px-3.5 pt-3 pb-1 text-[14px] leading-relaxed disabled:opacity-60"
 		/>
+		{#if attachments && hasAttachments}
+			<div class="px-3 pt-1 pb-0.5">{@render attachments()}</div>
+		{/if}
 		<div class="flex items-center gap-1 px-2 pb-2">
 			<div class="ml-auto flex items-center gap-1">
 				{#if rightActions}{@render rightActions()}{/if}

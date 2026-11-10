@@ -756,15 +756,6 @@
 						</button>
 					</div>
 				{/if}
-				{#if commentFiles.length}
-					<div class="mb-2">
-						<StagedFileList
-							files={commentFiles}
-							disabled={sending}
-							onremove={(i) => (commentFiles = commentFiles.filter((_, idx) => idx !== i))}
-						/>
-					</div>
-				{/if}
 				<Composer
 					bind:value={body}
 					placeholder={internal
@@ -777,7 +768,18 @@
 					{sending}
 					onsend={() => void send()}
 					hasAttachments={commentFiles.length > 0}
-				/>
+				>
+					{#snippet attachments()}
+						{#if commentFiles.length}
+							<StagedFileList
+								variant="chips"
+								files={commentFiles}
+								disabled={sending}
+								onremove={(i) => (commentFiles = commentFiles.filter((_, idx) => idx !== i))}
+							/>
+						{/if}
+					{/snippet}
+				</Composer>
 			</div>
 		</div>
 	</div>
