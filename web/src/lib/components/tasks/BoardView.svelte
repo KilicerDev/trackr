@@ -122,17 +122,32 @@
 			? readCollapsed(persistKey, 'boardCollapsed', group, initialCollapsed)
 			: new Set<string>();
 	let collapsed = $state(loadCollapsed());
+	// Groups that start collapsed (finished work: Done, Cancelled) remember
+	// being opened in their own set, so the default can't be lost.
+	const loadExpanded = () =>
+		persistKey ? readCollapsed(persistKey, 'boardExpanded', group) : new Set<string>();
+	let expanded = $state(loadExpanded());
 	// Re-hydrate when the grouping changes — each grouping mode has its own
 	// key namespace and its own remembered set. (The mount run just re-reads
 	// the same initial value.)
 	$effect(() => {
 		collapsed = loadCollapsed();
+		expanded = loadExpanded();
 	});
-	function toggle(key: string) {
-		const n = new Set(collapsed);
-		n.has(key) ? n.delete(key) : n.add(key);
-		collapsed = n;
-		if (persistKey) saveCollapsed(persistKey, 'boardCollapsed', group, n);
+	const collapsedByDefault = (g: SubGroupDef) =>
+		g.statusId === 'done' || g.statusId === 'cancelled';
+	function isCollapsed(g: SubGroupDef): boolean {
+		return collapsedByDefault(g) ? !expanded.has(g.key) : collapsed.has(g.key);
+	}
+	function toggle(g: SubGroupDef) {
+		const field = collapsedByDefault(g) ? 'boardExpanded' : 'boardCollapsed';
+		const current = field === 'boardExpanded' ? expanded : collapsed;
+		const n = new Set(
+			current.has(g.key) ? [...current].filter((k) => k !== g.key) : [...current, g.key]
+		);
+		if (field === 'boardExpanded') expanded = n;
+		else collapsed = n;
+		if (persistKey) saveCollapsed(persistKey, field, group, n);
 	}
 
 	// Map a project key to its detail page. resolveProject doesn't expose the DB
@@ -155,13 +170,14 @@
 		tasks: TaskSummary[];
 	}
 
-	// Render-on-scroll per sub-group: a page of cards plus a sentinel that asks
-	// for the next page as it nears the column's viewport (or on click). Keeps
-	// the server-rendered HTML bounded; sub-group headers show the full count.
+	// Each sub-group opens with its first FIRST cards so a column stays
+	// scannable; "Show N more" opens it, and from then on further pages load
+	// as the sentinel nears the viewport. Headers always show the full count.
+	const FIRST = 5;
 	const PAGE = 40;
 	let shown = $state<Record<string, number>>({});
 	function limitFor(key: string): number {
-		return shown[key] ?? PAGE;
+		return shown[key] ?? FIRST;
 	}
 	function showMore(key: string) {
 		shown[key] = limitFor(key) + PAGE;
@@ -273,15 +289,17 @@
 				</div>
 				<div class="flex-1 space-y-3 overflow-y-auto px-3.5 py-3">
 					{#each groups as g (g.key)}
-						{@const isCollapsed = collapsed.has(g.key)}
+						{@const groupCollapsed = isCollapsed(g)}
 						<div>
 							{#if g.label}
 								<button
 									type="button"
-									onclick={() => toggle(g.key)}
+									onclick={() => toggle(g)}
 									class="flex w-full items-center gap-2 px-1 py-1 text-left text-[12px] font-medium tracking-[0.08em] text-text-3 uppercase hover:text-text"
 								>
-									<span class="text-text-4 transition-transform {isCollapsed ? '-rotate-90' : ''}">
+									<span
+										class="text-text-4 transition-transform {groupCollapsed ? '-rotate-90' : ''}"
+									>
 										<Icon name="chevron" size={11} />
 									</span>
 									{#if g.statusId}
@@ -298,24 +316,40 @@
 									<span class="ml-auto font-mono text-text-4">{g.tasks.length}</span>
 								</button>
 							{/if}
-							{#if !isCollapsed}
+							{#if !groupCollapsed}
 								<div
 									class="mt-1.5 space-y-2"
 									transition:slide={{ duration: 180, easing: cubicOut }}
 								>
 									{#each g.tasks.slice(0, limitFor(g.key)) as t (t.id)}
-										<BoardCard task={t} onclick={() => onSelect?.(t)} />
+										<BoardCard
+											task={t}
+											showStatus={group !== 'status' && sub !== 'status'}
+											onclick={() => onSelect?.(t)}
+										/>
 									{/each}
 									{#if g.tasks.length > limitFor(g.key)}
-										<button
-											type="button"
-											use:whenVisible={() => showMore(g.key)}
-											onclick={() => showMore(g.key)}
-											class="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
-										>
-											<Icon name="chevron" size={13} />
-											{m.tasks_show_more({ n: g.tasks.length - limitFor(g.key) })}
-										</button>
+										{#if limitFor(g.key) <= FIRST}
+											<!-- First expansion is a deliberate click. -->
+											<button
+												type="button"
+												onclick={() => showMore(g.key)}
+												class="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[13px] text-text-3 transition-colors hover:bg-surface hover:text-text"
+											>
+												<Icon name="chevron" size={13} />
+												{m.tasks_show_more({ n: g.tasks.length - limitFor(g.key) })}
+											</button>
+										{:else}
+											<button
+												type="button"
+												use:whenVisible={() => showMore(g.key)}
+												onclick={() => showMore(g.key)}
+												class="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[13px] text-text-3 transition-colors hover:bg-surface hover:text-text"
+											>
+												<Icon name="chevron" size={13} />
+												{m.tasks_show_more({ n: g.tasks.length - limitFor(g.key) })}
+											</button>
+										{/if}
 									{/if}
 								</div>
 							{/if}
