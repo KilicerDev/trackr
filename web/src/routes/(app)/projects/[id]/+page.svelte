@@ -439,23 +439,12 @@
 >
 
 <Topbar
-	crumbs={[
-		{ label: m.shell_workspace_crumb({ brand: brandName() }), href: '/tasks' },
-		{ label: m.projects_breadcrumb_projects(), href: '/projects' },
-		{ label: p.name }
-	]}
+	back={{ href: '/projects', label: m.common_back() }}
+	crumbs={[{ label: m.projects_breadcrumb_projects(), href: '/projects' }, { label: p.name }]}
 />
 
 <div class="min-h-0 flex-1 overflow-y-auto">
 	<div class="px-6 py-6">
-		<a
-			href="/projects"
-			class="mb-5 inline-flex items-center gap-1.5 text-[14px] text-text-3 hover:text-text"
-		>
-			<Icon name="chevron-r" size={12} class="rotate-180" />
-			{m.projects_back_to_projects()}
-		</a>
-
 		<!-- hero -->
 		<div class="mb-5 flex flex-wrap items-start gap-4">
 			<div

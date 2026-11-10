@@ -4,6 +4,7 @@
 	import Avatar from '../Avatar.svelte';
 	import type { FilterField } from '../view-panel/FilterSection.svelte';
 	import ViewsMenu from '../ViewsMenu.svelte';
+	import MobileMenuButton from '../shell/MobileMenuButton.svelte';
 	import type { SavedViewEntry } from '../ViewsMenu.svelte';
 	import ViewPanel from '../view-panel/ViewPanel.svelte';
 	import PanelSection from '../view-panel/PanelSection.svelte';
@@ -213,6 +214,7 @@
 {/snippet}
 
 <div class="flex shrink-0 items-center gap-2 border-b border-border bg-bg px-5 py-2.5">
+	<MobileMenuButton />
 	<!-- Controls strip: scrolls horizontally as a last resort on very narrow
 	     widths instead of wrapping or squeezing. New project stays pinned outside. -->
 	<div class="tb-scroll flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">

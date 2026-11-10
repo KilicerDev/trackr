@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { matchesTaskFilters } from '$lib/utils/task-filters';
-	import { brandName, pageTitle } from '$lib/brand';
-	import Topbar from '$lib/components/shell/Topbar.svelte';
+	import { pageTitle } from '$lib/brand';
 	import Toolbar from '$lib/components/tasks/Toolbar.svelte';
 	import ListView from '$lib/components/tasks/ListView.svelte';
 	import BoardView from '$lib/components/tasks/BoardView.svelte';
@@ -225,12 +224,6 @@
 
 <svelte:head><title>{pageTitle(m.tasks_title())}</title></svelte:head>
 
-<Topbar
-	crumbs={[
-		{ label: m.admin_crumb_workspace({ brand: brandName() }), href: '/tasks' },
-		{ label: m.tasks_title() }
-	]}
-/>
 <Toolbar
 	{view}
 	{setView}

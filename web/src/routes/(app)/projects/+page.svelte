@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { formatDate } from '$lib/utils/format';
 	import { brandName } from '$lib/brand';
-	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import ProjectCard from '$lib/components/projects/ProjectCard.svelte';
@@ -248,13 +247,6 @@
 </script>
 
 <svelte:head><title>{m.projects_page_title({ brand: brandName() })}</title></svelte:head>
-
-<Topbar
-	crumbs={[
-		{ label: m.shell_workspace_crumb({ brand: brandName() }), href: '/tasks' },
-		{ label: m.projects_breadcrumb_projects() }
-	]}
-/>
 
 <ProjectsToolbar
 	{view}

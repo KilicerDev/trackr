@@ -1,8 +1,8 @@
 <script lang="ts">
+	import MobileMenuButton from '$lib/components/shell/MobileMenuButton.svelte';
 	import { formatDate } from '$lib/utils/format';
-	import { pageTitle, brandName } from '$lib/brand';
+	import { pageTitle } from '$lib/brand';
 	import { goto, invalidateAll } from '$app/navigation';
-	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Popover from '$lib/components/Popover.svelte';
@@ -290,18 +290,10 @@
 
 <svelte:head><title>{pageTitle(m.chat_title())}</title></svelte:head>
 
-<Topbar
-	crumbs={data.isPortal
-		? [{ label: activeOrg?.name ?? m.shell_portal_support() }, { label: m.chat_title() }]
-		: [
-				{ label: m.shell_workspace_crumb({ brand: brandName() }), href: '/tasks' },
-				{ label: m.chat_title() }
-			]}
-/>
-
 <div class="flex min-h-0 flex-1 flex-col bg-bg">
 	<!-- ── Header ─────────────────────────────────────────────────────────────── -->
 	<header class="flex items-center gap-3 border-b border-border px-6 py-2.5">
+		<MobileMenuButton />
 		{#if !data.isPortal && data.orgs.length > 1}
 			<div class="relative">
 				<button

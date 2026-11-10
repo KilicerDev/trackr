@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { brandName, pageTitle } from '$lib/brand';
-	import Topbar from '$lib/components/shell/Topbar.svelte';
+	import MobileMenuButton from '$lib/components/shell/MobileMenuButton.svelte';
+	import { pageTitle } from '$lib/brand';
 	import Icon from '$lib/components/Icon.svelte';
 	import Button from '$lib/components/Button.svelte';
 	import Inspector from '$lib/components/tasks/Inspector.svelte';
@@ -387,17 +387,11 @@
 
 <svelte:head><title>{pageTitle(m.week_title())}</title></svelte:head>
 
-<Topbar
-	crumbs={[
-		{ label: m.admin_crumb_workspace({ brand: brandName() }), href: '/tasks' },
-		{ label: m.week_title() }
-	]}
-/>
-
 <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
 	<div
-		class="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-4 py-3 sm:px-6"
+		class="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-border px-5 py-2.5"
 	>
+		<MobileMenuButton />
 		<div
 			class="inline-flex h-7 shrink-0 items-center rounded-lg border border-border bg-surface p-0.5 text-[14px]"
 		>

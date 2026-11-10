@@ -2,7 +2,7 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import type { ActionResult } from '@sveltejs/kit';
-	import Topbar from '$lib/components/shell/Topbar.svelte';
+	import MobileMenuButton from '$lib/components/shell/MobileMenuButton.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import RichTextInput from '$lib/components/RichTextInput.svelte';
 	import Button from '$lib/components/Button.svelte';
@@ -60,11 +60,10 @@
 
 <svelte:window onkeydown={onKey} />
 
-<Topbar crumbs={[{ label: data.org.name }, { label: m.tickets_new_title() }]} />
-
 <div class="min-h-0 flex-1 overflow-auto">
 	<div class="mx-auto max-w-[792px] px-6 py-8">
 		<div class="mb-3 flex items-center gap-2 text-[12px] text-text-3">
+			<MobileMenuButton />
 			<span class="inline-flex items-center gap-1.5">
 				<span class="h-1.5 w-1.5 rounded-full" style:background={data.org.color}></span>
 				<span>{data.org.name}</span>

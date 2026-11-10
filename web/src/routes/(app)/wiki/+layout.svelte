@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { brandName } from '$lib/brand';
 	import { page } from '$app/state';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import WikiTree from '$lib/components/wiki/WikiTree.svelte';
@@ -21,12 +20,7 @@
 	}
 </script>
 
-<Topbar
-	crumbs={[
-		{ label: m.shell_workspace_crumb({ brand: brandName() }), href: '/tasks' },
-		{ label: m.wiki_breadcrumb_root() }
-	]}
-/>
+<Topbar crumbs={[{ label: m.wiki_breadcrumb_root(), href: isIndex ? undefined : '/wiki' }]} />
 
 <!--
 	Below md there is no room for both panes: the index route shows only the

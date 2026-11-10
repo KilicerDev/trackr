@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { brandName } from '$lib/brand';
 	import { page } from '$app/state';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
 	import NotesSidebar from '$lib/components/notes/NotesSidebar.svelte';
@@ -18,10 +17,7 @@
 	// Breadcrumb follows the open note up its sub-note chain (Notion-style
 	// "Notes / Parent / Child"); notes outside the tree just show "Notes".
 	const crumbs = $derived.by(() => {
-		const base = [
-			{ label: m.shell_workspace_crumb({ brand: brandName() }), href: '/tasks' },
-			{ label: m.shell_nav_notes(), href: page.params.id ? '/notes' : undefined }
-		];
+		const base = [{ label: m.shell_nav_notes(), href: page.params.id ? '/notes' : undefined }];
 		const id = page.params.id;
 		if (!id) return base;
 		const byId = new Map(data.mine.map((n) => [n.id, n]));

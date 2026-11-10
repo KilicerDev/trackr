@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { brandName, pageTitle } from '$lib/brand';
-	import Topbar from '$lib/components/shell/Topbar.svelte';
+	import { pageTitle } from '$lib/brand';
 	import Toolbar from '$lib/components/tickets/Toolbar.svelte';
 	import ListView from '$lib/components/tickets/ListView.svelte';
 	import BoardView from '$lib/components/tickets/BoardView.svelte';
@@ -43,7 +42,6 @@
 		isTrackrTeam?: boolean;
 		isPortalUser?: boolean;
 		portalRole?: string | null;
-		activeOrgId?: string | null;
 		effectivePermissions?: string[];
 		savedView?: Record<string, unknown>;
 	};
@@ -291,8 +289,6 @@
 		createOpen = true;
 	}
 
-	const activeOrg = $derived((data.orgs ?? []).find((o) => o.id === data.activeOrgId));
-
 	const filtered = $derived.by(() => {
 		const q = search.trim().toLowerCase();
 		return data.tickets.filter((t) => {
@@ -322,15 +318,6 @@
 </script>
 
 <svelte:head><title>{pageTitle(m.tickets_breadcrumb_support())}</title></svelte:head>
-
-<Topbar
-	crumbs={isPortal
-		? [{ label: activeOrg?.name ?? m.shell_portal_support() }, { label: m.shell_portal_overview() }]
-		: [
-				{ label: m.shell_workspace_crumb({ brand: brandName() }), href: '/tasks' },
-				{ label: m.tickets_breadcrumb_support() }
-			]}
-/>
 
 <Toolbar
 	{view}

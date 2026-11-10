@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { pageTitle } from '$lib/brand';
-	import Topbar from '$lib/components/shell/Topbar.svelte';
+	import MobileMenuButton from '$lib/components/shell/MobileMenuButton.svelte';
 	import Icon from '$lib/components/Icon.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import type { TicketRow } from '$lib/server/tickets';
@@ -8,12 +8,8 @@
 
 	type PageData = {
 		tickets: TicketRow[];
-		orgs?: { id: string; name: string }[];
-		activeOrgId?: string | null;
 	};
 	let { data }: { data: PageData } = $props();
-
-	const activeOrg = $derived((data.orgs ?? []).find((o) => o.id === data.activeOrgId));
 
 	// All counts derive client-side from the (org-scoped) ticket set the server
 	// already loaded — no second source of truth, and the numbers match the board
@@ -61,16 +57,10 @@
 	></svelte:head
 >
 
-<Topbar
-	crumbs={[
-		{ label: activeOrg?.name ?? m.shell_portal_support() },
-		{ label: m.tickets_dash_title() }
-	]}
-/>
-
 <div class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
 	<div class="mx-auto max-w-5xl">
 		<header class="mb-5">
+			<MobileMenuButton class="mb-2" />
 			<h1 class="text-[22px] font-semibold text-text">{m.tickets_dash_title()}</h1>
 			<p class="mt-0.5 text-[14px] text-text-3">{m.tickets_dash_subtitle()}</p>
 		</header>

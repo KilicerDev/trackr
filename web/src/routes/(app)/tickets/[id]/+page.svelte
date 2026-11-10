@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { formatDate } from '$lib/utils/format';
-	import { brandName, pageTitle } from '$lib/brand';
+	import { pageTitle } from '$lib/brand';
 	import { goto, invalidate, invalidateAll } from '$app/navigation';
 	import { deserialize } from '$app/forms';
 	import type { ActionResult } from '@sveltejs/kit';
@@ -462,11 +462,7 @@
 	}}
 	crumbs={data.isPortalUser
 		? [{ label: t.orgName }, { label: t.displayId }]
-		: [
-				{ label: m.shell_workspace_crumb({ brand: brandName() }), href: '/tasks' },
-				{ label: m.tickets_breadcrumb_support(), href: '/tickets' },
-				{ label: t.displayId }
-			]}
+		: [{ label: m.tickets_breadcrumb_support(), href: '/tickets' }, { label: t.displayId }]}
 />
 
 <!-- Still unanswered: a full-width banner over the whole ticket. -->

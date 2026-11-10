@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { pageTitle, brandName } from '$lib/brand';
+	import { pageTitle } from '$lib/brand';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import Topbar from '$lib/components/shell/Topbar.svelte';
@@ -73,12 +73,7 @@
 
 <svelte:head><title>{pageTitle(meta.title)}</title></svelte:head>
 
-<Topbar
-	crumbs={[
-		{ label: m.shell_workspace_crumb({ brand: brandName() }), href: '/tasks' },
-		{ label: meta.title }
-	]}
-/>
+<Topbar crumbs={[{ label: meta.title }]} />
 
 <div class="grid min-h-0 flex-1 place-items-center px-6 py-12">
 	<div class="flex max-w-md flex-col items-center text-center">
