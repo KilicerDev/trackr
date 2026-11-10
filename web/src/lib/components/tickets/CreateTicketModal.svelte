@@ -149,7 +149,7 @@
 
 <svelte:window onkeydown={onKey} />
 
-<Modal {open} {onclose} maxWidth={820}>
+<Modal {open} {onclose} maxWidth={740}>
 	<form
 		bind:this={formEl}
 		class="relative"
@@ -196,7 +196,9 @@
 				<Icon name="x" size={15} />
 			</button>
 
-			<div class="grid md:grid-cols-[minmax(0,1fr)_320px]">
+			<!-- A minimum height so the dialog doesn't read as a thin strip with
+			     only four properties on the right. -->
+			<div class="grid md:min-h-[380px] md:grid-cols-[minmax(0,1fr)_300px]">
 				<div class="min-w-0 px-6 pt-6 pb-4">
 					<input
 						type="text"
@@ -211,8 +213,8 @@
 						placeholder={m.tickets_description_placeholder()}
 						flavor="document"
 						mentions={false}
-						rows={5}
-						maxRows={14}
+						rows={9}
+						maxRows={16}
 						class="w-full border-0 bg-transparent text-[14px] leading-relaxed text-text-2"
 					/>
 					<input type="hidden" name="description" value={description} />
