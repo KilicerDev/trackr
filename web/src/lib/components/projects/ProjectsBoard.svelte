@@ -2,8 +2,6 @@
 	import AvatarStack from '../AvatarStack.svelte';
 	import Icon from '../Icon.svelte';
 	import type { ProjectListItem } from '../../../routes/(app)/projects/+page.server';
-	import { PROJECT_STATUS } from '$lib/config/taxonomy';
-	import { projectStatusLabel } from '$lib/utils/labels';
 	import { m } from '$lib/paraglide/messages';
 
 	export interface BoardColumn {
@@ -36,56 +34,29 @@
 <div class="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
 	<div class="flex h-full">
 		{#each columns as col (col.key)}
-			<div class="flex w-[352px] shrink-0 flex-col border-r border-border last:border-r-0">
-				<div class="flex items-center gap-2 border-b border-border px-4 py-3">
+			<!-- Column: quiet header with a hairline (it stays put while the cards
+			     scroll), soft dividers — the same as the tasks board. -->
+			<div
+				class="flex w-[85vw] max-w-[352px] shrink-0 flex-col border-r border-border/50 last:border-r-0"
+			>
+				<div class="flex h-12 shrink-0 items-center gap-2 border-b border-border/70 px-4">
 					<span class="h-2.5 w-2.5 rounded-full" style:background={col.color}></span>
-					<span class="text-[14px] font-semibold text-text">{col.label}</span>
-					<span class="font-mono text-[12px] text-text-3">{col.projects.length}</span>
+					<span class="truncate text-[14px] font-medium text-text">{col.label}</span>
+					<span class="font-mono text-[12px] text-text-4">{col.projects.length}</span>
 				</div>
-				<div class="flex-1 space-y-2.5 overflow-y-auto px-3.5 py-3">
+				<div class="flex-1 space-y-2 overflow-y-auto px-3.5 py-3">
 					{#each col.projects as p (p.id)}
-						{@const st =
-							PROJECT_STATUS[p.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.active}
 						<a
 							href="/projects/{p.id}"
-							class="block rounded-xl border border-border bg-bg-elev p-3.5 transition-colors hover:border-border-strong hover:bg-surface/40"
+							class="group block rounded-lg bg-bg-elev px-3 py-2.5 transition-colors hover:bg-surface"
 						>
-							<div class="mb-2.5 flex items-start gap-2.5">
+							<div class="flex items-center gap-2.5">
 								<span
-									class="inline-grid size-[33px] shrink-0 place-items-center font-semibold text-white"
-									style:border-radius="9px"
-									style:font-size="15px"
+									class="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md text-[11px] leading-none font-semibold text-white"
 									style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%,
 									#000) 85%)">{p.icon}</span
 								>
-								<div class="min-w-0 flex-1">
-									<div class="truncate text-[14px] font-semibold text-text">{p.name}</div>
-									<div class="flex items-center gap-1.5 font-mono text-[12px] text-text-3">
-										<span>{p.key}</span>
-										{#if p.org}
-											<span class="text-text-4">·</span>
-											<span class="truncate">{p.org.name}</span>
-										{/if}
-									</div>
-								</div>
-							</div>
-							{#if p.description}
-								<p class="mb-2.5 line-clamp-2 text-[12px] leading-snug text-text-3">
-									{p.description}
-								</p>
-							{/if}
-							<div class="flex items-center gap-2">
-								<AvatarStack users={p.members} size={20} max={4} />
-								<span
-									class="ml-auto inline-flex items-center gap-1 text-[12px]"
-									style:color={st.color}
-								>
-									<span class="h-1.5 w-1.5 rounded-full" style:background={st.color}></span>
-									{projectStatusLabel(p.status)}
-								</span>
-							</div>
-							<div class="mt-1.5 flex items-center text-[11px] text-text-4">
-								<span>{m.projects_updated_relative({ time: relative(p.updatedAt) })}</span>
+								<span class="min-w-0 flex-1 truncate text-[14px] text-text">{p.name}</span>
 								{#if onhistory}
 									<button
 										type="button"
@@ -96,10 +67,26 @@
 											e.stopPropagation();
 											onhistory(p);
 										}}
-										class="ml-auto grid h-6 w-6 place-items-center rounded-md text-text-3 transition-colors hover:bg-surface hover:text-text"
+										class="-my-1 grid h-6 w-6 shrink-0 place-items-center rounded-md text-text-3 opacity-0 transition-[opacity,colors] group-hover:opacity-100 hover:bg-surface-2 hover:text-text focus-visible:opacity-100"
 									>
 										<Icon name="logs" size={13} />
 									</button>
+								{/if}
+							</div>
+							{#if p.description}
+								<p class="mt-1.5 line-clamp-2 text-[13px] leading-snug text-text-3">
+									{p.description}
+								</p>
+							{/if}
+							<div class="mt-2.5 flex items-center gap-2 text-[12px] leading-none text-text-4">
+								<span class="font-mono">{p.key}</span>
+								{#if p.org}
+									<span>·</span>
+									<span class="min-w-0 truncate">{p.org.name}</span>
+								{/if}
+								<span class="ml-auto shrink-0">{relative(p.updatedAt)}</span>
+								{#if p.members.length}
+									<AvatarStack users={p.members} size={20} max={3} overlap={6} />
 								{/if}
 							</div>
 						</a>

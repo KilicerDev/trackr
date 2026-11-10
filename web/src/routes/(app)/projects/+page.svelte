@@ -3,6 +3,7 @@
 	import { brandName } from '$lib/brand';
 	import Button from '$lib/components/Button.svelte';
 	import Icon from '$lib/components/Icon.svelte';
+	import Avatar from '$lib/components/Avatar.svelte';
 	import ProjectCard from '$lib/components/projects/ProjectCard.svelte';
 	import ProjectsToolbar from '$lib/components/projects/ProjectsToolbar.svelte';
 	import ProjectsBoard from '$lib/components/projects/ProjectsBoard.svelte';
@@ -232,6 +233,8 @@
 		];
 	});
 
+	const orgColor = (id: string) => data.orgs.find((o) => o.id === id)?.color ?? '#9aa4b2';
+
 	// Board shows every column (incl. empty) for stable layout; list hides empties.
 	const listColumns = $derived(columns.filter((c) => c.projects.length > 0));
 
@@ -318,7 +321,7 @@
 					<button
 						type="button"
 						onclick={() => (createOpen = true)}
-						class="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border py-12 text-text-3 transition-colors hover:border-border-strong hover:text-text"
+						class="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border py-12 text-text-3 transition-colors hover:border-border-strong hover:text-text"
 					>
 						<div
 							class="grid h-10 w-10 place-items-center rounded-xl border border-border bg-surface"
@@ -340,12 +343,12 @@
 							onclick={() => toggleCollapsed(col.key)}
 							class="group/hdr mb-3 flex w-full items-center gap-2 text-left"
 						>
-							<span class="text-text-4 transition-transform {isCollapsed ? '-rotate-90' : ''}">
+							<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
 								<Icon name="chevron" size={13} />
 							</span>
 							<span class="h-2 w-2 rounded-full" style:background={col.color}></span>
-							<h2 class="text-[14px] font-semibold text-text">{col.label}</h2>
-							<span class="font-mono text-[12px] text-text-3">{col.projects.length}</span>
+							<h2 class="text-[14px] font-medium text-text">{col.label}</h2>
+							<span class="font-mono text-[12px] text-text-4">{col.projects.length}</span>
 						</button>
 						{#if !isCollapsed}
 							<div
@@ -363,33 +366,32 @@
 		{/if}
 	</div>
 {:else}
-	<!-- list -->
-	<div class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-		<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
-			<div
-				class="grid grid-cols-[1.5fr_1fr_28px] items-center gap-3 border-b border-border px-5 py-2.5 text-[12px] tracking-[0.08em] text-text-4 uppercase md:grid-cols-[1.5fr_1fr_1fr_0.6fr_1fr_28px]"
-			>
-				<span>{m.projects_col_project()}</span>
-				<span class="hidden md:block">{m.projects_col_lead()}</span>
-				<span>{m.projects_col_status()}</span>
-				<span class="hidden md:block">{m.projects_col_key()}</span>
-				<span class="hidden md:block">{m.projects_col_updated()}</span>
-				<span></span>
-			</div>
+	<!-- list: full-bleed rows like the tasks and tickets lists — sticky group
+	     bands, fixed columns; on a narrow window it scrolls sideways instead of
+	     squeezing the name. -->
+	{@const cols =
+		group === 'status'
+			? 'md:grid-cols-[minmax(280px,1fr)_170px_170px_80px_92px_28px]'
+			: group === 'org'
+				? 'md:grid-cols-[minmax(280px,1fr)_170px_130px_80px_92px_28px]'
+				: 'md:grid-cols-[minmax(280px,1fr)_170px_170px_130px_80px_92px_28px]'}
+	<div class="min-h-0 flex-1 overflow-auto">
+		<div class={group === 'none' ? 'md:min-w-[960px]' : 'md:min-w-[830px]'}>
 			{#each group === 'none' ? [{ key: 'all', label: '', color: '', projects: visibleProjects }] : listColumns as col (col.key)}
 				{@const isCollapsed = collapsed.has(col.key)}
 				{#if col.label}
 					<button
 						type="button"
 						onclick={() => toggleCollapsed(col.key)}
-						class="flex w-full items-center gap-2 border-b border-border bg-surface/30 px-5 py-2 text-left transition-colors hover:bg-surface/50"
+						aria-expanded={!isCollapsed}
+						class="sticky top-0 z-[5] flex h-10 w-full items-center gap-2.5 border-b border-border bg-bg-elev px-5 text-left"
 					>
-						<span class="text-text-4 transition-transform {isCollapsed ? '-rotate-90' : ''}">
-							<Icon name="chevron" size={12} />
+						<span class="text-text-3 transition-transform {isCollapsed ? '-rotate-90' : ''}">
+							<Icon name="chevron" size={13} />
 						</span>
 						<span class="h-2 w-2 rounded-full" style:background={col.color}></span>
-						<span class="text-[13px] font-semibold text-text">{col.label}</span>
-						<span class="font-mono text-[12px] text-text-3">{col.projects.length}</span>
+						<span class="text-[14px] font-medium text-text">{col.label}</span>
+						<span class="font-mono text-[12px] text-text-4">{col.projects.length}</span>
 					</button>
 				{/if}
 				{#if !isCollapsed}
@@ -399,23 +401,54 @@
 								PROJECT_STATUS[p.status as keyof typeof PROJECT_STATUS] ?? PROJECT_STATUS.active}
 							<a
 								href="/projects/{p.id}"
-								class="grid grid-cols-[1.5fr_1fr_28px] items-center gap-3 px-5 py-3 text-[14px] transition-colors hover:bg-[var(--row-hover)] md:grid-cols-[1.5fr_1fr_1fr_0.6fr_1fr_28px]"
+								class="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border/60 px-5 transition-colors hover:bg-[var(--row-hover)] {cols}"
+								style:height="var(--row-h)"
 							>
 								<span class="flex min-w-0 items-center gap-2.5">
 									<span
-										class="grid h-7 w-7 shrink-0 place-items-center rounded-md text-[13px] font-semibold text-white"
+										class="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md text-[11px] leading-none font-semibold text-white"
 										style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color}
 										70%, #000) 85%)">{p.icon}</span
 									>
-									<span class="truncate font-medium">{p.name}</span>
+									<span class="truncate text-[14px] text-text">{p.name}</span>
 								</span>
-								<span class="hidden truncate text-text-2 md:block">{p.lead?.name ?? '—'}</span>
-								<span class="inline-flex items-center gap-1.5 text-text-2">
-									<span class="h-1.5 w-1.5 rounded-full" style:background={st.color}></span>
-									{projectStatusLabel(p.status)}
+								{#if group !== 'org'}
+									<span
+										class="hidden min-w-0 items-center gap-1.5 text-[13px] leading-none text-text-3 md:flex"
+									>
+										{#if p.org}
+											<span
+												class="h-1.5 w-1.5 shrink-0 rounded-full"
+												style:background={orgColor(p.org.id)}
+											></span>
+											<span class="truncate">{p.org.name}</span>
+										{:else}
+											<span class="text-text-4">{m.projects_internal()}</span>
+										{/if}
+									</span>
+								{/if}
+								<span class="hidden min-w-0 items-center gap-2 md:flex">
+									{#if p.lead}
+										<Avatar user={p.lead} size={20} />
+										<span class="truncate text-[13px] leading-none text-text-2">{p.lead.name}</span>
+									{:else}
+										<span class="text-[13px] text-text-4">—</span>
+									{/if}
 								</span>
-								<span class="hidden font-mono text-text-3 md:block">{p.key}</span>
-								<span class="hidden text-text-3 md:block">{formatDate(p.updatedAt)}</span>
+								{#if group !== 'status'}
+									<span
+										class="hidden items-center gap-1.5 text-[13px] leading-none text-text-2 md:flex"
+									>
+										<span class="h-2 w-2 shrink-0 rounded-full" style:background={st.color}></span>
+										{projectStatusLabel(p.status)}
+									</span>
+								{/if}
+								<span class="hidden font-mono text-[12px] leading-none text-text-4 md:block"
+									>{p.key}</span
+								>
+								<span class="text-right text-[12px] leading-none text-text-4"
+									>{formatDate(p.updatedAt)}</span
+								>
 								<button
 									type="button"
 									aria-label={m.projects_aria_history()}
@@ -425,7 +458,7 @@
 										e.stopPropagation();
 										void openHistory(p);
 									}}
-									class="grid h-7 w-7 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
+									class="hidden h-7 w-7 place-items-center rounded-md text-text-3 opacity-0 transition-[opacity,colors] group-hover:opacity-100 hover:bg-surface-2 hover:text-text focus-visible:opacity-100 md:grid"
 								>
 									<Icon name="logs" size={14} />
 								</button>

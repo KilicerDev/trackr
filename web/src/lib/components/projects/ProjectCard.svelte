@@ -4,7 +4,8 @@
 	import { m } from '$lib/paraglide/messages';
 	import AvatarStack from '../AvatarStack.svelte';
 	import Icon from '../Icon.svelte';
-	import LabelChip from '../LabelChip.svelte';
+	import { TAG } from '../tasks/panel/styles';
+	import { labelMeta } from '$lib/utils/label-meta';
 	import type { ProjectListItem } from '../../../routes/(app)/projects/+page.server';
 
 	interface Props {
@@ -36,81 +37,83 @@
 	}
 </script>
 
+<!-- Calm card: no border, a soft surface that brightens on hover (like the
+     board cards); one meta line; tags as small pills; footer with the team. -->
 <a
 	href="/projects/{project.id}"
-	class="block rounded-2xl border border-border bg-bg-elev p-5 shadow-[0_1px_0_rgba(255,255,255,0.025)_inset] transition-colors hover:border-border-strong hover:bg-surface/40"
+	class="group flex flex-col rounded-xl bg-bg-elev p-4 transition-colors hover:bg-surface"
 >
-	<div class="mb-3 flex items-start gap-3">
+	<div class="flex items-start gap-3">
 		<span
-			class="relative inline-grid size-10 shrink-0 place-items-center font-semibold text-white shadow-edge"
-			style:border-radius="11px"
-			style:font-size="20px"
+			class="grid size-8 shrink-0 place-items-center rounded-[9px] text-[15px] leading-none font-semibold text-white shadow-edge"
 			style:background="linear-gradient(140deg, {project.color}, color-mix(in oklch, {project.color} 70%,
 			#000) 85%)"
 		>
 			{project.icon}
 		</span>
 		<div class="min-w-0 flex-1">
-			<div class="flex items-center gap-2">
-				<div class="truncate text-[15px] font-semibold text-text">{project.name}</div>
-			</div>
-			<div class="flex items-center gap-1.5 font-mono text-[12px] text-text-3">
-				<span>{project.key}</span>
+			<div class="truncate text-[15px] leading-5 font-medium text-text">{project.name}</div>
+			<div class="mt-0.5 flex items-center gap-1.5 text-[12px] leading-4 text-text-4">
+				<span class="font-mono">{project.key}</span>
 				{#if project.org}
-					<span class="text-text-4">·</span>
+					<span>·</span>
 					<span class="truncate">{project.org.name}</span>
 				{/if}
 			</div>
 		</div>
-		<div class="flex shrink-0 items-center gap-1.5 text-[13px] text-text-2">
+		<span class="flex shrink-0 items-center gap-1.5 text-[12px] leading-5 text-text-3">
 			<span class="h-2 w-2 rounded-full" style:background={st.color}></span>
 			{projectStatusLabel(project.status)}
-			{#if onhistory}
-				<button
-					type="button"
-					aria-label={m.projects_aria_history()}
-					title={m.projects_aria_history()}
-					onclick={(e) => {
-						e.preventDefault();
-						e.stopPropagation();
-						onhistory();
-					}}
-					class="grid h-7 w-7 place-items-center rounded-lg text-text-3 transition-colors hover:bg-surface hover:text-text"
-				>
-					<Icon name="logs" size={14} />
-				</button>
-			{/if}
-		</div>
+		</span>
 	</div>
 
 	<p
-		class="line-clamp-2 min-h-[2.4em] text-[14px] leading-snug text-text-3 {project.tags?.length
-			? 'mb-3'
-			: 'mb-5'}"
+		class="mt-3 line-clamp-2 min-h-[2.6em] text-[13px] leading-snug {project.description
+			? 'text-text-3'
+			: 'text-text-4'}"
 	>
 		{project.description ?? m.projects_no_description()}
 	</p>
 
 	{#if project.tags?.length}
-		<div class="mb-4 flex flex-wrap items-center gap-1.5">
-			{#each project.tags.slice(0, 4) as t (t)}<LabelChip id={t} />{/each}
-			{#if project.tags.length > 4}
-				<span class="text-[12px] text-text-3">+{project.tags.length - 4}</span>
+		<div class="mt-3 flex flex-wrap items-center gap-1">
+			{#each project.tags.slice(0, 3) as t (t)}
+				{@const l = labelMeta(t)}
+				<span class={TAG}>
+					<span class="h-1.5 w-1.5 shrink-0 rounded-full" style:background={l.color}></span>
+					<span class="max-w-[120px] truncate">{l.label}</span>
+				</span>
+			{/each}
+			{#if project.tags.length > 3}
+				<span class="text-[12px] text-text-4">+{project.tags.length - 3}</span>
 			{/if}
 		</div>
 	{/if}
 
-	<div class="mb-4 h-1 rounded-full" style:background={project.color}></div>
-
-	<div class="flex items-center gap-3">
-		<AvatarStack users={project.members} size={24} max={4} />
-		<div class="ml-auto text-right text-[12px] text-text-3">
+	<div class="mt-auto flex items-center gap-2 pt-4 text-[12px] leading-none text-text-4">
+		<AvatarStack users={project.members} size={22} max={4} overlap={6} />
+		<span class="ml-auto truncate">
 			{#if project.lead}
 				{m.projects_lead_label()}
-				<span class="font-medium text-text-2">{project.lead.name.split(' ')[0]}</span>
-				<span class="mx-1 text-text-4">·</span>
+				<span class="text-text-3">{project.lead.name.split(' ')[0]}</span>
+				<span class="mx-1">·</span>
 			{/if}
-			{m.projects_updated_relative({ time: relative(project.updatedAt) })}
-		</div>
+			{relative(project.updatedAt)}
+		</span>
+		{#if onhistory}
+			<button
+				type="button"
+				aria-label={m.projects_aria_history()}
+				title={m.projects_aria_history()}
+				onclick={(e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					onhistory();
+				}}
+				class="-my-1 grid h-6 w-6 shrink-0 place-items-center rounded-md text-text-3 opacity-0 transition-[opacity,colors] group-hover:opacity-100 hover:bg-surface-2 hover:text-text focus-visible:opacity-100"
+			>
+				<Icon name="logs" size={13} />
+			</button>
+		{/if}
 	</div>
 </a>

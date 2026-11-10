@@ -18,7 +18,9 @@
 	import ProjectHistory from '$lib/components/projects/ProjectHistory.svelte';
 	import NewMeetingDialog from '$lib/components/notes/NewMeetingDialog.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
-	import LabelChip from '$lib/components/LabelChip.svelte';
+	import SectionHeader from '$lib/components/tasks/panel/SectionHeader.svelte';
+	import { ICON_ACTION, OPEN, QUIET_ADD, ROW, TAG } from '$lib/components/tasks/panel/styles';
+	import { labelMeta } from '$lib/utils/label-meta';
 	import TagsPopover from '$lib/components/popovers/TagsPopover.svelte';
 	import { PROJECT_STATUS } from '$lib/config/taxonomy';
 	import { projectStatusLabel } from '$lib/utils/labels';
@@ -407,6 +409,19 @@
 		await postMember('leadSet', '');
 	}
 
+	const MENU_ITEM =
+		'flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50';
+
+	async function copyProjectLink() {
+		settingsOpen = false;
+		try {
+			await navigator.clipboard.writeText(`${window.location.origin}/projects/${p.id}`);
+			showToast('ok', m.tickets_link_copied());
+		} catch {
+			showToast('err', m.tickets_link_copy_failed());
+		}
+	}
+
 	const PROJECT_ROLES = $derived([
 		{ id: 'project.manager', label: m.projects_role_manager(), color: '#ef7a6d' },
 		{ id: 'project.member', label: m.projects_role_member(), color: '#7a9cf0' },
@@ -444,39 +459,35 @@
 />
 
 <div class="min-h-0 flex-1 overflow-y-auto">
-	<div class="px-6 py-6">
-		<!-- hero -->
-		<div class="mb-5 flex flex-wrap items-start gap-4">
+	<div class="px-6 pt-6 pb-10">
+		<!-- Head: icon, name, one quiet meta line, tags; New task and the ⋯ menu. -->
+		<div class="mb-6 flex flex-wrap items-start gap-4">
 			<div
-				class="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-[22px] font-semibold text-white shadow-edge"
+				class="grid h-10 w-10 shrink-0 place-items-center rounded-[11px] text-[18px] font-semibold text-white shadow-edge"
 				style:background="linear-gradient(140deg, {p.color}, color-mix(in oklch, {p.color} 70%, #000)
 				85%)"
 			>
 				{p.icon}
 			</div>
 			<div class="min-w-0 flex-1">
-				<div class="flex items-center gap-2">
-					<h1 class="text-[26px] font-semibold tracking-[-0.014em] text-balance text-text">
-						{p.name}
-					</h1>
-				</div>
-				<div class="mt-1.5 flex items-center gap-2 text-[14px] text-text-3">
-					<div class="relative">
+				<h1 class="text-[24px] leading-10 font-semibold tracking-[-0.012em] text-balance text-text">
+					{p.name}
+				</h1>
+				<div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-text-3">
+					<div class="relative -ml-1.5">
 						<button
 							type="button"
 							aria-haspopup="menu"
 							aria-expanded={statusOpen}
 							title={m.projects_change_status()}
 							onclick={() => (statusOpen = !statusOpen)}
-							class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[12px] transition-[filter] hover:brightness-125 {statusOpen
-								? 'ring-2 ring-accent/40'
+							class="inline-flex h-6 items-center gap-1.5 rounded-md px-1.5 leading-none text-text-2 transition-colors hover:bg-surface hover:text-text {statusOpen
+								? 'bg-surface'
 								: ''}"
-							style:background={st.color + '24'}
-							style:color={st.color}
 						>
-							<span class="h-1.5 w-1.5 rounded-full" style:background={st.color}></span>
+							<span class="h-2 w-2 rounded-full" style:background={st.color}></span>
 							{projectStatusLabel(heroStatus)}
-							<Icon name="chevron" size={11} />
+							<Icon name="chevron" size={11} class="text-text-4" />
 						</button>
 						{#if statusOpen}
 							<div
@@ -493,18 +504,20 @@
 										role="menuitemradio"
 										aria-checked={heroStatus === s}
 										onclick={() => saveStatus(s)}
-										class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
+										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
 									>
 										<span class="h-2 w-2 rounded-full" style:background={meta.color}></span>
 										<span class="flex-1">{projectStatusLabel(s)}</span>
-										{#if heroStatus === s}<Icon name="check" size={13} />{/if}
+										<span class="text-accent {heroStatus === s ? 'opacity-100' : 'opacity-0'}"
+											><Icon name="check" size={14} /></span
+										>
 									</button>
 								{/each}
 							</div>
 						{/if}
 					</div>
 					<span class="text-text-4">·</span>
-					<span class="font-mono">{p.key}</span>
+					<span class="font-mono text-[12px]">{p.key}</span>
 					{#if data.org}
 						<span class="text-text-4">·</span>
 						<span>{data.org.name}</span>
@@ -512,18 +525,23 @@
 					<span class="text-text-4">·</span>
 					<span>{m.projects_updated_relative({ time: relativeTime(p.updatedAt) })}</span>
 				</div>
-				<div class="mt-2 flex flex-wrap items-center gap-1.5">
-					{#each heroTags as t (t)}<LabelChip id={t} />{/each}
+				<!-- Tags: pills, then a quiet add. -->
+				<div class="relative mt-2 -ml-0.5 flex flex-wrap items-center gap-1">
+					{#each heroTags as t (t)}
+						{@const l = labelMeta(t)}
+						<span class={TAG}>
+							<span class="h-1.5 w-1.5 shrink-0 rounded-full" style:background={l.color}></span>
+							<span class="max-w-[160px] truncate">{l.label}</span>
+						</span>
+					{/each}
 					<div class="relative">
 						<button
 							type="button"
 							onclick={() => (tagsOpen = !tagsOpen)}
-							class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text {tagsOpen
-								? 'ring-2 ring-accent/40'
-								: ''}"
+							class="{QUIET_ADD} -ml-1 {tagsOpen ? OPEN : ''}"
 						>
-							<Icon name="bookmark" size={13} />
-							<span>{heroTags.length > 0 ? m.tasks_add_tag() : m.tasks_add_tags()}</span>
+							<Icon name="plus" size={13} />
+							{heroTags.length > 0 ? m.tasks_add_tag() : m.tasks_add_tags()}
 						</button>
 						{#if tagsOpen}
 							<TagsPopover
@@ -536,66 +554,48 @@
 					</div>
 				</div>
 			</div>
-			<div class="flex items-center gap-2 max-md:basis-full max-md:justify-end">
-				<IconButton ariaLabel={m.projects_aria_history()} onclick={() => (historyOpen = true)}>
-					<Icon name="logs" size={15} />
-				</IconButton>
-				<IconButton ariaLabel={m.projects_aria_share()}><Icon name="link" size={15} /></IconButton>
+			<div class="flex items-center gap-1.5 max-md:basis-full max-md:justify-end">
+				<Button variant="primary" size="sm" onclick={() => (creating = true)}>
+					<Icon name="plus" size={14} />
+					{m.projects_new_task()}
+				</Button>
 				<div class="relative">
 					<IconButton
 						ariaLabel={m.projects_aria_settings()}
 						onclick={() => (settingsOpen = !settingsOpen)}
 					>
-						<Icon name="settings" size={15} />
+						<Icon name="more" size={16} />
 					</IconButton>
 					{#if settingsOpen}
 						<div
+							role="menu"
 							use:clickOutside={() => (settingsOpen = false)}
-							use:autoPlace
+							use:autoPlace={{ align: 'right' }}
 							in:fly={POPOVER_IN}
-							class="absolute top-full z-50 mt-1.5 min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+							class="absolute top-full z-50 mt-1.5 min-w-[230px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 						>
 							<button
 								type="button"
 								onclick={() => {
 									settingsOpen = false;
-									editing = true;
+									historyOpen = true;
 								}}
-								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
+								class={MENU_ITEM}
 							>
-								<Icon name="settings" size={13} />
-								{m.projects_edit_details()}
+								<Icon name="logs" size={14} class="text-text-3" />
+								{m.projects_aria_history()}
 							</button>
-							<button
-								type="button"
-								onclick={() => {
-									settingsOpen = false;
-									importingTasks = true;
-								}}
-								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
-							>
-								<Icon name="download" size={13} />
-								{m.projects_import_tasks()}
+							<button type="button" onclick={copyProjectLink} class={MENU_ITEM}>
+								<Icon name="link" size={14} class="text-text-3" />
+								{m.tasks_copy_link()}
 							</button>
-							<a
-								href="/projects/{p.id}/tasks/export"
-								download
-								onclick={() => (settingsOpen = false)}
-								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text"
-							>
-								<Icon name="upload" size={13} />
-								{m.projects_export_tasks()}
-							</a>
-							<div class="my-1 border-t border-border/60"></div>
 							<button
 								type="button"
 								onclick={toggleFavorite}
 								disabled={projectBusy !== null}
-								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+								class={MENU_ITEM}
 							>
-								<span class={isFavorite ? 'text-accent' : ''}>
-									<Icon name="star" size={13} />
-								</span>
+								<Icon name="star" size={14} class={isFavorite ? 'text-accent' : 'text-text-3'} />
 								{#if projectBusy === 'favoriteAdd' || projectBusy === 'favoriteRemove'}
 									{m.common_saving()}
 								{:else if isFavorite}
@@ -604,15 +604,47 @@
 									{m.projects_add_to_favorites()}
 								{/if}
 							</button>
-							<div class="my-1 border-t border-border/60"></div>
+							<div class="-mx-0.5 my-1 h-px bg-border"></div>
+							<button
+								type="button"
+								onclick={() => {
+									settingsOpen = false;
+									editing = true;
+								}}
+								class={MENU_ITEM}
+							>
+								<Icon name="settings" size={14} class="text-text-3" />
+								{m.projects_edit_details()}
+							</button>
+							<button
+								type="button"
+								onclick={() => {
+									settingsOpen = false;
+									importingTasks = true;
+								}}
+								class={MENU_ITEM}
+							>
+								<Icon name="download" size={14} class="text-text-3" />
+								{m.projects_import_tasks()}
+							</button>
+							<a
+								href="/projects/{p.id}/tasks/export"
+								download
+								onclick={() => (settingsOpen = false)}
+								class={MENU_ITEM}
+							>
+								<Icon name="upload" size={14} class="text-text-3" />
+								{m.projects_export_tasks()}
+							</a>
+							<div class="-mx-0.5 my-1 h-px bg-border"></div>
 							{#if p.status === 'archived'}
 								<button
 									type="button"
 									onclick={unarchiveProject}
 									disabled={projectBusy !== null}
-									class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+									class={MENU_ITEM}
 								>
-									<Icon name="refresh" size={13} />
+									<Icon name="refresh" size={14} class="text-text-3" />
 									{projectBusy === 'unarchive'
 										? m.projects_unarchiving()
 										: m.projects_unarchive_project()}
@@ -622,146 +654,151 @@
 									type="button"
 									onclick={archiveProject}
 									disabled={projectBusy !== null}
-									class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
+									class={MENU_ITEM}
 								>
-									<Icon name="bookmark" size={13} />
+									<Icon name="bookmark" size={14} class="text-text-3" />
 									{projectBusy === 'archive'
 										? m.projects_archiving()
 										: m.projects_archive_project()}
 								</button>
 							{/if}
-							<div class="my-1 border-t border-border/60"></div>
 							<button
 								type="button"
 								onclick={deleteProject}
 								disabled={projectBusy !== null}
-								class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-accent hover:bg-surface-2 disabled:opacity-50"
+								class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-[#ef4f5e] hover:bg-[#ef4f5e]/10 disabled:opacity-50"
 							>
-								<Icon name="x" size={13} />
+								<Icon name="trash" size={14} />
 								{projectBusy === 'delete' ? m.common_deleting() : m.projects_delete_project()}
 							</button>
 						</div>
 					{/if}
 				</div>
-				<Button variant="primary" size="sm" onclick={() => (creating = true)}>
-					<Icon name="plus" size={14} />
-					{m.projects_new_task()}
-				</Button>
 			</div>
 		</div>
 
-		{#snippet aboutCard()}
-			<div class="rounded-2xl border border-border bg-bg-elev p-4">
-				<div class="mb-1.5 text-[12px] tracking-[0.08em] text-text-4 uppercase">
-					{m.projects_about()}
-				</div>
-				<p class="text-[14px] leading-relaxed text-text-2">
-					{p.description ?? m.projects_no_description()}
-				</p>
+		<!-- Numbers: one strip with hairline dividers instead of five boxes. -->
+		<div
+			class="mb-8 grid grid-cols-2 gap-y-4 rounded-xl border border-border py-3.5 sm:grid-cols-3 md:grid-cols-5"
+		>
+			<div class="px-4 md:border-l md:border-border md:first:border-l-0">
+				<div class="text-[12px] text-text-3">{m.projects_total_tasks()}</div>
+				<div class="mt-1 text-[22px] leading-7 font-semibold text-text">{total}</div>
 			</div>
-		{/snippet}
-
-		{#snippet membersCard()}
-			<div class="relative rounded-2xl border border-border bg-bg-elev p-4">
-				<div class="mb-2.5 text-[12px] tracking-[0.08em] text-text-4 uppercase">
-					{m.projects_members_label()} · {data.members.length}
+			<div class="px-4 md:border-l md:border-border md:first:border-l-0">
+				<div class="text-[12px] text-text-3">{m.projects_in_progress()}</div>
+				<div class="mt-1 text-[22px] leading-7 font-semibold text-text">{active}</div>
+			</div>
+			<div class="px-4 md:border-l md:border-border md:first:border-l-0">
+				<div class="text-[12px] text-text-3">{m.projects_overdue()}</div>
+				<div
+					class="mt-1 text-[22px] leading-7 font-semibold {overdue > 0
+						? 'text-[#ef4f5e]'
+						: 'text-text'}"
+				>
+					{overdue}
 				</div>
-				<div class="flex flex-wrap gap-1.5">
-					{#each data.members as mem (mem.id)}
-						<div class="relative">
+			</div>
+			<div class="px-4 md:border-l md:border-border md:first:border-l-0">
+				<div class="flex items-center gap-2 text-[12px] text-text-3">
+					{m.projects_time_spent()}
+					{#if time.perMember.length > 0}
+						<div class="relative ml-auto">
 							<button
 								type="button"
-								onclick={() => (openMemberMenu = openMemberMenu === mem.id ? null : mem.id)}
-								class="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface py-1 pr-2.5 pl-1 text-[13px] transition-colors hover:border-border-strong"
+								onclick={() => (timeSplitOpen = !timeSplitOpen)}
+								aria-label={m.projects_time_by_member()}
+								title={m.projects_time_by_member()}
+								class="flex items-center -space-x-1.5"
 							>
-								<Avatar user={mem} size={20} />
-								<span class="text-text">{mem.name.split(' ')[0]}</span>
-								{#if mem.id === p.leadId}
-									<span
-										class="rounded bg-accent-soft px-1.5 py-0.5 text-[11px] tracking-[0.06em] text-accent uppercase"
-									>
-										{m.projects_lead_badge()}
-									</span>
+								{#each time.perMember.slice(0, 3) as pm (pm.userId)}
+									<Avatar user={layoutUsers.find((u) => u.id === pm.userId)} size={18} />
+								{/each}
+								{#if time.perMember.length > 3}
+									<span class="pl-2 text-[11px] text-text-3">+{time.perMember.length - 3}</span>
 								{/if}
 							</button>
-							{#if openMemberMenu === mem.id}
+							{#if timeSplitOpen}
 								<div
-									use:clickOutside={() => (openMemberMenu = null)}
-									use:autoPlace
+									use:clickOutside={() => (timeSplitOpen = false)}
+									use:autoPlace={{ align: 'right' }}
 									in:fly={POPOVER_IN}
-									class="absolute top-full z-40 mt-1.5 min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+									class="absolute top-full z-40 mt-1.5 min-w-[230px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 								>
-									<div class="px-2 pt-1 pb-1 text-[12px] tracking-[0.08em] text-text-4 uppercase">
-										{m.projects_role_label()}
+									<div class="px-2 pt-1 pb-1.5 text-[12px] text-text-4">
+										{m.projects_time_by_member()}
 									</div>
-									{#each PROJECT_ROLES as r (r.id)}
-										{@const active = mem.role === r.id}
-										<button
-											type="button"
-											onclick={() => setRole(mem.id, r.id)}
-											disabled={busy === `memberSetRole:${mem.id}` || active}
-											class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text disabled:cursor-default disabled:opacity-100"
-										>
-											<span class="h-1.5 w-1.5 rounded-full" style:background={r.color}></span>
-											<span class={active ? 'font-medium text-text' : ''}>{r.label}</span>
-											{#if active}
-												<span class="ml-auto text-text-3"><Icon name="check" size={13} /></span>
-											{/if}
-										</button>
+									{#each time.perMember as pm (pm.userId)}
+										{@const u = layoutUsers.find((x) => x.id === pm.userId)}
+										<div class="flex items-center gap-2.5 rounded-md px-2 py-1.5">
+											<Avatar user={u} size={22} />
+											<span class="min-w-0 flex-1 truncate text-[14px] text-text-2"
+												>{u?.name ?? pm.userId}</span
+											>
+											<span class="font-mono text-[13px] text-text-3"
+												>{formatEstimate(pm.minutes)}</span
+											>
+										</div>
 									{/each}
-									<div class="my-1 border-t border-border/60"></div>
-									{#if mem.id === p.leadId}
-										<button
-											type="button"
-											onclick={clearLead}
-											disabled={busy === 'leadSet:'}
-											class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
-										>
-											<Icon name="star" size={13} />
-											{m.projects_remove_as_lead()}
-										</button>
-									{:else}
-										<button
-											type="button"
-											onclick={() => setLead(mem.id)}
-											disabled={busy === `leadSet:${mem.id}`}
-											class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
-										>
-											<Icon name="star" size={13} />
-											{m.projects_set_as_lead()}
-										</button>
-									{/if}
-									<div class="my-1 border-t border-border/60"></div>
-									<button
-										type="button"
-										onclick={() => removeMember(mem.id, mem.name)}
-										disabled={busy === `memberRemove:${mem.id}`}
-										class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[14px] text-text-2 hover:bg-surface-2 hover:text-text disabled:opacity-50"
-									>
-										<Icon name="x" size={13} />
-										{m.common_remove()}
-									</button>
 								</div>
 							{/if}
 						</div>
-					{/each}
+					{/if}
+				</div>
+				<div class="mt-1 text-[22px] leading-7 font-semibold text-text">
+					{total === 0 ? '—' : formatEstimate(time.totalMinutes)}
+				</div>
+				{#if timeParts.length}
+					<div class="mt-0.5 truncate text-[12px] text-text-4" title={timeParts.join(' · ')}>
+						{timeParts.join(' · ')}
+					</div>
+				{/if}
+			</div>
+			<div class="px-4 md:border-l md:border-border md:first:border-l-0">
+				<div class="text-[12px] text-text-3">{m.projects_progress()}</div>
+				<div class="mt-1 text-[22px] leading-7 font-semibold text-text">
+					{pct}<span class="text-[14px] font-normal text-text-3">%</span>
+				</div>
+				<div class="mt-2 h-1 overflow-hidden rounded-full bg-surface-2">
+					<div class="h-full rounded-full" style:width="{pct}%" style:background={p.color}></div>
+				</div>
+			</div>
+		</div>
 
-					<div class="relative">
+		<!-- About / members / meetings: plain sections, no boxes. -->
+		<div
+			class="mb-10 grid gap-x-10 gap-y-8 {data.isTrackrTeam ? 'lg:grid-cols-3' : 'md:grid-cols-2'}"
+		>
+			<section>
+				<SectionHeader label={m.projects_about()} />
+				<p
+					class="text-[14px] leading-relaxed whitespace-pre-line {p.description
+						? 'text-text-2'
+						: 'text-text-4'}"
+				>
+					{p.description ?? m.projects_no_description()}
+				</p>
+			</section>
+
+			<section>
+				<SectionHeader label={m.projects_members_label()} count={data.members.length}>
+					{#snippet action()}
 						<button
 							type="button"
 							onclick={() => {
 								addingMember = !addingMember;
 								memberSearch = '';
 							}}
-							class="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2.5 py-1 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
+							aria-label={m.common_add()}
+							title={m.common_add()}
+							class="{ICON_ACTION} {addingMember ? OPEN : ''}"
 						>
-							<Icon name="plus" size={12} />
-							{m.common_add()}
+							<Icon name="plus" size={14} />
 						</button>
 						{#if addingMember}
 							<div
 								use:clickOutside={() => (addingMember = false)}
-								use:autoPlace
+								use:autoPlace={{ align: 'right' }}
 								in:fly={POPOVER_IN}
 								class="absolute top-full z-50 mt-1.5 w-[308px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
 							>
@@ -799,208 +836,189 @@
 								</div>
 							</div>
 						{/if}
-					</div>
-				</div>
-			</div>
-		{/snippet}
-
-		{#snippet meetingsCard()}
-			<div class="rounded-2xl border border-border bg-bg-elev p-4">
-				<div class="mb-2.5 flex items-center justify-between">
-					<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
-						{m.notes_section_meetings()}{#if data.meetings.length}<span class="ml-1.5 text-text-3"
-								>{data.meetings.length}</span
-							>{/if}
-					</div>
-					<button
-						type="button"
-						onclick={() => (newMeetingOpen = true)}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-[13px] text-text-3 transition-colors hover:border-border-strong hover:text-text"
-					>
-						<Icon name="plus" size={13} />
-						{m.notes_new_meeting()}
-					</button>
-				</div>
-				{#if data.meetings.length}
-					<!-- Cap the card at ~6 rows; older meetings scroll within it so the
-					     column doesn't outgrow the About/Members side of the page. -->
-					<div class="grid max-h-72 gap-1.5 overflow-y-auto overscroll-contain pr-0.5">
-						{#each data.meetings as n (n.id)}
-							<a
-								href="/notes/{n.id}"
-								class="group flex items-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-2 transition-colors hover:border-border-strong"
+					{/snippet}
+				</SectionHeader>
+				<div class="space-y-px">
+					{#each data.members as mem (mem.id)}
+						{@const role = PROJECT_ROLES.find((r) => r.id === mem.role)}
+						<div class="relative">
+							<button
+								type="button"
+								onclick={() => (openMemberMenu = openMemberMenu === mem.id ? null : mem.id)}
+								class="{ROW} w-[calc(100%+1rem)] text-left {openMemberMenu === mem.id ? OPEN : ''}"
 							>
-								<Icon name="users" size={15} class="shrink-0 text-text-3" />
-								<span class="flex-1 truncate text-[14px] text-text-2 group-hover:text-text"
-									>{n.title || m.notes_untitled()}</span
+								<Avatar user={mem} size={22} />
+								<span class="min-w-0 flex-1 truncate text-[14px] leading-5 text-text"
+									>{mem.name}</span
 								>
-								{#if n.meetingDate}
-									<span class="shrink-0 text-[12px] text-text-4"
-										>{formatDateLong(n.meetingDate.toISOString())}</span
+								{#if mem.id === p.leadId}
+									<span
+										class="shrink-0 rounded-md bg-accent-soft px-1.5 py-1 text-[11px] leading-none text-accent"
+										>{m.projects_lead_badge()}</span
 									>
 								{/if}
-							</a>
-						{/each}
+								{#if role}
+									<span class="shrink-0 text-[12px] leading-5 text-text-4">{role.label}</span>
+								{/if}
+							</button>
+							{#if openMemberMenu === mem.id}
+								<div
+									use:clickOutside={() => (openMemberMenu = null)}
+									use:autoPlace={{ align: 'right' }}
+									in:fly={POPOVER_IN}
+									class="absolute top-full z-40 mt-1 min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
+								>
+									<div class="px-2 pt-1 pb-1.5 text-[12px] text-text-4">
+										{m.projects_role_label()}
+									</div>
+									{#each PROJECT_ROLES as r (r.id)}
+										{@const isRole = mem.role === r.id}
+										<button
+											type="button"
+											onclick={() => setRole(mem.id, r.id)}
+											disabled={busy === `memberSetRole:${mem.id}` || isRole}
+											class="{MENU_ITEM} disabled:cursor-default disabled:opacity-100"
+										>
+											<span class="h-2 w-2 rounded-full" style:background={r.color}></span>
+											<span class="flex-1 {isRole ? 'text-text' : ''}">{r.label}</span>
+											<span class="text-accent {isRole ? 'opacity-100' : 'opacity-0'}"
+												><Icon name="check" size={14} /></span
+											>
+										</button>
+									{/each}
+									<div class="-mx-0.5 my-1 h-px bg-border"></div>
+									{#if mem.id === p.leadId}
+										<button
+											type="button"
+											onclick={clearLead}
+											disabled={busy === 'leadSet:'}
+											class={MENU_ITEM}
+										>
+											<Icon name="star" size={14} class="text-text-3" />
+											{m.projects_remove_as_lead()}
+										</button>
+									{:else}
+										<button
+											type="button"
+											onclick={() => setLead(mem.id)}
+											disabled={busy === `leadSet:${mem.id}`}
+											class={MENU_ITEM}
+										>
+											<Icon name="star" size={14} class="text-text-3" />
+											{m.projects_set_as_lead()}
+										</button>
+									{/if}
+									<button
+										type="button"
+										onclick={() => removeMember(mem.id, mem.name)}
+										disabled={busy === `memberRemove:${mem.id}`}
+										class="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[14px] text-[#ef4f5e] hover:bg-[#ef4f5e]/10 disabled:opacity-50"
+									>
+										<Icon name="x" size={14} />
+										{m.common_remove()}
+									</button>
+								</div>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			</section>
+
+			{#if data.isTrackrTeam}
+				<section>
+					<SectionHeader label={m.notes_section_meetings()} count={data.meetings.length}>
+						{#snippet action()}
+							<button
+								type="button"
+								onclick={() => (newMeetingOpen = true)}
+								aria-label={m.notes_new_meeting()}
+								title={m.notes_new_meeting()}
+								class={ICON_ACTION}
+							>
+								<Icon name="plus" size={14} />
+							</button>
+						{/snippet}
+					</SectionHeader>
+					{#if data.meetings.length}
+						<!-- About six rows; older meetings scroll within. -->
+						<div class="-mx-2 max-h-[232px] space-y-px overflow-y-auto overscroll-contain px-2">
+							{#each data.meetings as n (n.id)}
+								<a href="/notes/{n.id}" class="group {ROW}">
+									<span class="grid h-5 w-5 shrink-0 place-items-center text-text-3">
+										<Icon name="users" size={15} />
+									</span>
+									<span
+										class="min-w-0 flex-1 truncate text-[14px] leading-5 text-text-2 group-hover:text-text"
+										>{n.title || m.notes_untitled()}</span
+									>
+									{#if n.meetingDate}
+										<span class="shrink-0 text-[12px] leading-5 text-text-4"
+											>{formatDateLong(n.meetingDate.toISOString())}</span
+										>
+									{/if}
+								</a>
+							{/each}
+						</div>
+					{:else}
+						<button type="button" onclick={() => (newMeetingOpen = true)} class="{QUIET_ADD} -ml-2">
+							<Icon name="plus" size={13} />
+							{m.notes_new_meeting()}
+						</button>
+					{/if}
+				</section>
+			{/if}
+		</div>
+
+		<!-- Tasks: the project's list with its own toolbar. -->
+		<section>
+			<SectionHeader
+				label={m.projects_tasks()}
+				count={filteredTasks.length !== tasks.length
+					? `${filteredTasks.length}/${tasks.length}`
+					: tasks.length}
+			/>
+			<div class="overflow-hidden rounded-xl border border-border">
+				<div class="border-b border-border px-3 py-2">
+					<ProjectTasksToolbar
+						{tasks}
+						filters={taskFilters}
+						setFilters={setTaskFilters}
+						search={taskSearch}
+						setSearch={(s) => (taskSearch = s)}
+						group={taskGroup}
+						setGroup={setTaskGroup}
+						sort={taskSort}
+						setSort={setTaskSort}
+						viewsMenu={{
+							views: taskSavedViews,
+							current: taskViewConfig,
+							onApply: applyTaskView,
+							onChange: changeTaskViews
+						}}
+					/>
+				</div>
+				{#if tasks.length === 0}
+					<EmptyState
+						icon="check-square"
+						title={m.projects_no_tasks_title()}
+						hint={m.projects_no_tasks_hint()}
+					/>
+				{:else if filteredTasks.length === 0}
+					<div class="px-4 py-8 text-center text-[14px] text-text-3">
+						{m.projects_no_matching_tasks()}
 					</div>
 				{:else}
-					<p class="text-[14px] text-text-3">{m.projects_no_meetings()}</p>
+					<ListView
+						tasks={filteredTasks}
+						showProject={false}
+						group={taskGroup}
+						sort={taskSort}
+						onSelect={(t) => (selectedId = t.id)}
+						selectedId={selectedId ?? undefined}
+					/>
 				{/if}
 			</div>
-		{/snippet}
-
-		<!-- stats -->
-		<div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
-			<div class="rounded-2xl border border-border bg-bg-elev p-4">
-				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
-					{m.projects_total_tasks()}
-				</div>
-				<div class="mt-1.5 font-mono text-[26px] font-semibold">{total}</div>
-			</div>
-			<div class="rounded-2xl border border-border bg-bg-elev p-4">
-				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
-					{m.projects_in_progress()}
-				</div>
-				<div class="mt-1.5 font-mono text-[26px] font-semibold text-[#f0a85c]">{active}</div>
-			</div>
-			<div class="rounded-2xl border border-border bg-bg-elev p-4">
-				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
-					{m.projects_overdue()}
-				</div>
-				<div
-					class="mt-1.5 font-mono text-[26px] font-semibold {overdue > 0 ? 'text-[#ef4f5e]' : ''}"
-				>
-					{overdue}
-				</div>
-			</div>
-			<div class="rounded-2xl border border-border bg-bg-elev p-4">
-				<div class="text-[12px] tracking-[0.08em] text-text-4 uppercase">
-					{m.projects_time_spent()}
-				</div>
-				<div class="mt-1.5 font-mono text-[26px] font-semibold">
-					{total === 0 ? '—' : formatEstimate(time.totalMinutes)}
-				</div>
-				{#if timeParts.length}
-					<div class="mt-1 text-[12px] text-text-4">{timeParts.join(' · ')}</div>
-				{/if}
-				{#if time.perMember.length > 0}
-					<div class="relative mt-2">
-						<button
-							type="button"
-							onclick={() => (timeSplitOpen = !timeSplitOpen)}
-							aria-label={m.projects_time_by_member()}
-							class="flex items-center -space-x-1.5"
-						>
-							{#each time.perMember.slice(0, 5) as pm (pm.userId)}
-								<Avatar user={layoutUsers.find((u) => u.id === pm.userId)} size={20} />
-							{/each}
-							{#if time.perMember.length > 5}
-								<span class="pl-2 text-[12px] text-text-3">+{time.perMember.length - 5}</span>
-							{/if}
-						</button>
-						{#if timeSplitOpen}
-							<div
-								use:clickOutside={() => (timeSplitOpen = false)}
-								use:autoPlace
-								in:fly={POPOVER_IN}
-								class="absolute top-full z-40 mt-1.5 min-w-[220px] rounded-[10px] border border-border bg-bg-elev p-1.5 shadow-lg"
-							>
-								<div class="px-2 pt-1 pb-1 text-[12px] tracking-[0.08em] text-text-4 uppercase">
-									{m.projects_time_by_member()}
-								</div>
-								{#each time.perMember as pm (pm.userId)}
-									{@const u = layoutUsers.find((x) => x.id === pm.userId)}
-									<div class="flex items-center gap-2.5 rounded-md px-2 py-1.5">
-										<Avatar user={u} size={22} />
-										<span class="min-w-0 flex-1 truncate text-[14px] text-text-2"
-											>{u?.name ?? pm.userId}</span
-										>
-										<span class="font-mono text-[13px] text-text-3"
-											>{formatEstimate(pm.minutes)}</span
-										>
-									</div>
-								{/each}
-							</div>
-						{/if}
-					</div>
-				{/if}
-			</div>
-			<div class="rounded-2xl border border-border bg-bg-elev p-4">
-				<div class="mb-1.5 text-[12px] tracking-[0.08em] text-text-4 uppercase">
-					{m.projects_progress()}
-				</div>
-				<div class="mb-2 font-mono text-[26px] font-semibold">
-					{pct}<span class="text-[15px] text-text-3">%</span>
-				</div>
-				<div class="h-1.5 overflow-hidden rounded-full bg-surface">
-					<div class="h-full" style:width="{pct}%" style:background={p.color}></div>
-				</div>
-			</div>
-		</div>
-
-		<!-- summary / members / meetings -->
-		<div class="mb-6 grid gap-5 md:grid-cols-2">
-			{#if data.isTrackrTeam}
-				<div class="grid content-start gap-5">
-					{@render aboutCard()}
-					{@render membersCard()}
-				</div>
-				{@render meetingsCard()}
-			{:else}
-				{@render aboutCard()}
-				{@render membersCard()}
-			{/if}
-		</div>
-
-		<!-- tasks -->
-		<div class="overflow-hidden rounded-2xl border border-border bg-bg-elev">
-			<div class="flex items-center gap-2.5 border-b border-border px-4 py-3">
-				<span class="text-[15px] font-semibold">{m.projects_tasks()}</span>
-				<span class="font-mono text-[12px] text-text-3">
-					{filteredTasks.length}{#if filteredTasks.length !== tasks.length}<span class="text-text-4"
-							>/{tasks.length}</span
-						>{/if}
-				</span>
-			</div>
-			<div class="border-b border-border px-4 py-2">
-				<ProjectTasksToolbar
-					{tasks}
-					filters={taskFilters}
-					setFilters={setTaskFilters}
-					search={taskSearch}
-					setSearch={(s) => (taskSearch = s)}
-					group={taskGroup}
-					setGroup={setTaskGroup}
-					sort={taskSort}
-					setSort={setTaskSort}
-					viewsMenu={{
-						views: taskSavedViews,
-						current: taskViewConfig,
-						onApply: applyTaskView,
-						onChange: changeTaskViews
-					}}
-				/>
-			</div>
-			{#if tasks.length === 0}
-				<EmptyState
-					icon="check-square"
-					title={m.projects_no_tasks_title()}
-					hint={m.projects_no_tasks_hint()}
-				/>
-			{:else if filteredTasks.length === 0}
-				<div class="px-4 py-8 text-center text-[14px] text-text-3">
-					{m.projects_no_matching_tasks()}
-				</div>
-			{:else}
-				<ListView
-					tasks={filteredTasks}
-					showProject={false}
-					group={taskGroup}
-					sort={taskSort}
-					onSelect={(t) => (selectedId = t.id)}
-					selectedId={selectedId ?? undefined}
-				/>
-			{/if}
-		</div>
+		</section>
 	</div>
 </div>
 
