@@ -27,6 +27,7 @@ import { recordAudit } from './audit';
 import { normalizeTag } from '$lib/utils/label-meta';
 import { m } from '$lib/paraglide/messages';
 import { CLOSED_TASK_STATUSES, isClosedStatus } from '$lib/utils/task';
+import { RECURRENCE_ADVANCE_STATUSES } from '$lib/recurrence';
 
 // Drizzle's transaction callback parameter — structurally a subset of `db`.
 export type Tx = Parameters<Parameters<(typeof db)['transaction']>[0]>[0];
@@ -501,7 +502,7 @@ export async function resolveTaskRef(
 	return row ? { id: row.id, projectId: row.projectId, createdBy: row.createdBy } : null;
 }
 
-export const TASK_CHANNELS = ['web', 'mcp', 'api', 'import', 'template'] as const;
+export const TASK_CHANNELS = ['web', 'mcp', 'api', 'import', 'template', 'recurring'] as const;
 export type TaskChannel = (typeof TASK_CHANNELS)[number];
 
 export type CreateTaskInput = {
@@ -528,6 +529,8 @@ export type CreateTaskInput = {
 	sourceNoteId?: string | null;
 	/** Creating surface (default `web`). */
 	channel?: TaskChannel;
+	/** The recurring series this task is an occurrence of. */
+	recurrenceId?: string | null;
 	/**
 	 * Prerequisite task ids. Callers validate (see `validateTaskDependencies`);
 	 * the insert still drops ids outside the project defensively.
@@ -543,7 +546,12 @@ export type CreateTaskInput = {
  * user table; an empty/invalid set falls back to the creator.
  */
 export async function createTask(
-	input: CreateTaskInput
+	input: CreateTaskInput,
+	/**
+	 * Run inside this transaction (as a savepoint) instead of a fresh one — the
+	 * recurring-task runner advances its series in the same commit.
+	 */
+	exec: Pick<typeof db, 'transaction'> = db
 ): Promise<{ id: string; number: number; displayId: string; assignedIds: string[] }> {
 	const id = crypto.randomUUID();
 	const requested = input.assigneeIds?.length ? input.assigneeIds : [input.createdBy];
@@ -551,7 +559,7 @@ export async function createTask(
 	let displayId = '';
 	let assignedIds: string[] = [];
 
-	await db.transaction(async (tx) => {
+	await exec.transaction(async (tx) => {
 		const [bumped] = await tx
 			.update(project)
 			.set({ nextTaskNumber: sql`${project.nextTaskNumber} + 1` })
@@ -576,6 +584,7 @@ export async function createTask(
 			createdBy: input.createdBy,
 			sourceTicketId: input.sourceTicketId ?? null,
 			sourceNoteId: input.sourceNoteId ?? null,
+			recurrenceId: input.recurrenceId ?? null,
 			channel: input.channel ?? 'web'
 		});
 
@@ -1348,6 +1357,12 @@ export async function applyTaskUpdate(
 	if (statusChanged && patch.status === 'done') {
 		// Before the response so the caller's refetch already sees the entry.
 		await autoLogEstimateOnDone(target.id, actor, opts);
+	}
+	if (statusChanged && RECURRENCE_ADVANCE_STATUSES.has(String(patch.status))) {
+		// A recurring series creates its next task as soon as the newest one is
+		// handed off. Dynamic import: recurring-tasks imports createTask from here.
+		const { createNextForSeries } = await import('./recurring-tasks');
+		await createNextForSeries(target.id);
 	}
 	if (statusChanged) {
 		void notifyTaskStatusChanged({

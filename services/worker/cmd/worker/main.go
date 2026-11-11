@@ -102,7 +102,7 @@ func main() {
 	}
 
 	// Inject deps into handlers (explicit DI — no package globals).
-	handlers := jobs.Register(jobs.Deps{DB: pool, Mailer: mailer, Push: apns, Webhooks: hooks})
+	handlers := jobs.Register(jobs.Deps{DB: pool, Mailer: mailer, Push: apns, Webhooks: hooks, WebURL: cfg.WebURL})
 
 	engine, err := jobworker.New(pool, jobworker.Config{
 		Concurrency:       cfg.Concurrency,

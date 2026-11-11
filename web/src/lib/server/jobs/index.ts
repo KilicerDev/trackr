@@ -13,12 +13,14 @@ export * from './services/cleanup';
 export * from './services/digest';
 export * from './services/push';
 export * from './services/webhook';
+export * from './services/recurring';
 
 import type { MailPayload } from './services/mail';
 import type { PrunePayload } from './services/prune';
 import type { NotifyDigestPayload } from './services/digest';
 import type { PushPayload } from './services/push';
 import type { WebhookDeliverPayload } from './services/webhook';
+import type { TasksRecurPayload } from './services/recurring';
 
 /**
  * The job type → payload contract — the single source of truth the Go worker
@@ -37,6 +39,7 @@ export type JobPayloads = {
 	'push.send': PushPayload;
 	'webhook.deliver': WebhookDeliverPayload;
 	'prune.webhook_deliveries': PrunePayload;
+	'tasks.recur': TasksRecurPayload;
 };
 
 export type JobType = keyof JobPayloads;

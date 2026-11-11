@@ -87,7 +87,7 @@ export interface TaskSummary {
 
 export interface Task extends TaskSummary {
 	parent?: string | null;
-	/** Surface that created the task: web | mcp | api | import | template. */
+	/** Surface that created the task: web | mcp | api | import | template | recurring. */
 	channel?: string;
 	description?: string;
 	checklist?: ChecklistItem[];

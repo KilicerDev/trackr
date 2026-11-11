@@ -41,6 +41,8 @@ import {
 import { accessibleProjectIds, assertCan, can } from '$lib/server/permissions';
 import { attachFormFiles, deleteAttachmentsFor } from '$lib/server/attachments';
 import { getPreferences } from '$lib/server/preferences';
+import { createNextForSeries, stopSeriesFrom } from '$lib/server/recurring-tasks';
+import { RECURRENCE_ADVANCE_STATUSES } from '$lib/recurrence';
 import { m } from '$lib/paraglide/messages';
 
 export const load: ServerLoad = async ({ locals, depends }) => {
@@ -499,6 +501,15 @@ export const actions: Actions = {
 		if (patch.status === 'done' && priorStatus !== 'done') {
 			await autoLogEstimateOnDone(target.id, { id: me.id, name: me.name }, { origin: url.origin });
 		}
+		// Recurring: the newest task of a series moving to in review / done /
+		// cancelled creates the next one now.
+		if (
+			typeof patch.status === 'string' &&
+			patch.status !== priorStatus &&
+			RECURRENCE_ADVANCE_STATUSES.has(patch.status)
+		) {
+			await createNextForSeries(target.id);
+		}
 
 		// Notify watchers on status change. "Watchers" = current assignees +
 		// the creator. Use the post-update assignee set if it changed.
@@ -819,45 +830,64 @@ export const actions: Actions = {
 
 		await assertCan(locals, 'project.tasks.delete.any', { projectId: target.projectId });
 
-		try {
-			await db.update(task).set({ deletedAt: new Date() }).where(eq(task.id, target.id));
-			// The task's read paths are now closed, so its attachments are already
-			// unreachable; remove their files (task-level + per-comment) to reclaim disk.
-			await deleteAttachmentsFor('task', target.id);
-			const comments = await db
-				.select({ id: message.id })
-				.from(message)
-				.innerJoin(thread, eq(thread.id, message.threadId))
-				.where(and(eq(thread.subjectType, 'task'), eq(thread.subjectId, target.id)));
-			for (const c of comments) await deleteAttachmentsFor('message', c.id);
-		} catch (err) {
-			console.error('task delete failed', err);
-			return fail(500, { message: m.tasks_err_failed_delete() });
+		// A repeating task can take its series with it ("this and all
+		// upcoming"): later open copies are deleted too and the repeat stops.
+		const scope = String(form.get('scope') ?? 'one');
+		const victims: { id: string; displayId: string; title: string; status: string }[] = [
+			{ id: target.id, displayId, title: target.title, status: target.status }
+		];
+		if (scope === 'following') {
+			for (const f of await stopSeriesFrom(target.id, locals.user.id)) {
+				victims.push({
+					id: f.id,
+					displayId: `${target.projectKey}-${f.number}`,
+					title: f.title,
+					status: f.status
+				});
+			}
 		}
 
-		logActivityFF({
-			projectId: target.projectId,
-			taskId: target.id,
-			actorId: locals.user.id,
-			type: 'task.deleted',
-			meta: { taskRef: displayId, taskTitle: target.title }
-		});
-		void recordAudit({
-			type: 'task.delete',
-			actorId: locals.user.id,
-			targetType: 'task',
-			targetId: target.id,
-			targetLabel: `${displayId} · ${target.title}`,
-			orgId: target.projectOrgId,
-			meta: { projectId: target.projectId, taskRef: displayId }
-		});
-		emitWebhookEvent({
-			type: 'task.deleted',
-			orgId: target.projectOrgId,
-			projectId: target.projectId,
-			actor: { id: locals.user.id, name: locals.user.name },
-			data: { task: taskSnapshot({ ...target, displayId }, null) }
-		});
+		for (const v of victims) {
+			try {
+				await db.update(task).set({ deletedAt: new Date() }).where(eq(task.id, v.id));
+				// The task's read paths are now closed, so its attachments are already
+				// unreachable; remove their files (task-level + per-comment) to reclaim disk.
+				await deleteAttachmentsFor('task', v.id);
+				const comments = await db
+					.select({ id: message.id })
+					.from(message)
+					.innerJoin(thread, eq(thread.id, message.threadId))
+					.where(and(eq(thread.subjectType, 'task'), eq(thread.subjectId, v.id)));
+				for (const c of comments) await deleteAttachmentsFor('message', c.id);
+			} catch (err) {
+				console.error('task delete failed', err);
+				return fail(500, { message: m.tasks_err_failed_delete() });
+			}
+
+			logActivityFF({
+				projectId: target.projectId,
+				taskId: v.id,
+				actorId: locals.user.id,
+				type: 'task.deleted',
+				meta: { taskRef: v.displayId, taskTitle: v.title }
+			});
+			void recordAudit({
+				type: 'task.delete',
+				actorId: locals.user.id,
+				targetType: 'task',
+				targetId: v.id,
+				targetLabel: `${v.displayId} · ${v.title}`,
+				orgId: target.projectOrgId,
+				meta: { projectId: target.projectId, taskRef: v.displayId }
+			});
+			emitWebhookEvent({
+				type: 'task.deleted',
+				orgId: target.projectOrgId,
+				projectId: target.projectId,
+				actor: { id: locals.user.id, name: locals.user.name },
+				data: { task: taskSnapshot({ ...target, ...v }, null) }
+			});
+		}
 
 		return { success: true };
 	}

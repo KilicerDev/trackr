@@ -127,7 +127,8 @@ export function taskChannelLabel(id: string): string {
 			mcp: m.task_channel_mcp,
 			api: m.task_channel_api,
 			import: m.task_channel_import,
-			template: m.task_channel_template
+			template: m.task_channel_template,
+			recurring: m.task_channel_recurring
 		},
 		id
 	);
@@ -217,6 +218,7 @@ export function logEventLabel(type: string): string {
 			'task.import': m.log_event_task_import,
 			'task.export': m.log_event_task_export,
 			'task.update': m.log_event_task_update,
+			'task.recurrence': m.log_event_task_recurrence,
 			'ticket.priority': m.log_event_ticket_priority,
 			'ticket.category': m.log_event_ticket_category,
 			'ticket.assign': m.log_event_ticket_assign,

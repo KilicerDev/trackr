@@ -8,7 +8,7 @@ updated: 2026-09-10
 > [!WARNING]
 > **Under compose, only forwarded variables count**
 >
-> The compose file passes an explicit list of variables to each container. Variables marked *not forwarded* below need to be added to the service's `environment` block (or an `env_file` entry) before they take effect. See [Docker Compose](/docs/self-hosting/docker).
+> The compose file passes an explicit list of variables to each container. Variables marked _not forwarded_ below need to be added to the service's `environment` block (or an `env_file` entry) before they take effect. See [Docker Compose](/docs/self-hosting/docker).
 
 ## Database
 
@@ -50,16 +50,17 @@ See [Docker Compose → Storage](/docs/self-hosting/docker#storage) for the `STO
 
 ## Worker
 
-| Variable                                   | Default     | Notes                                                                                                                                                  |
-| ------------------------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `WORKER_CONCURRENCY`                       | `4`         | Parallel jobs per worker.                                                                                                                              |
-| `WORKER_JOB_TIMEOUT`                       | `4m`        | Per-job deadline. Must be shorter than `WORKER_REAP_AFTER`.                                                                                            |
-| `WORKER_POLL_INTERVAL`                     | `1s`        | Fallback poll; `LISTEN/NOTIFY` wakes it instantly.                                                                                                     |
-| `WORKER_NOTIFY`                            | `true`      | Set to `false` to disable `LISTEN/NOTIFY`, for example behind a transaction-mode pooler.                                                               |
-| `WORKER_HEARTBEAT` `WORKER_REAP_AFTER`     | `30s` `5m`  | Stale jobs are re-queued after the reap window while they have attempts left, otherwise marked failed. Heartbeat must be shorter than the reap window. |
-| `WORKER_BACKOFF_BASE` `WORKER_BACKOFF_CAP` | `10s` `10m` | Exponential retry backoff.                                                                                                                             |
-| `WORKER_JOB_TYPES`                         | all         | Comma-separated list to pin a worker to some job types.                                                                                                |
-| `WORKER_ID`                                | hostname    | Appears in the worker's log lines. Not forwarded.                                                                                                      |
+| Variable                                   | Default                                       | Notes                                                                                                                                                  |
+| ------------------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `WORKER_CONCURRENCY`                       | `4`                                           | Parallel jobs per worker.                                                                                                                              |
+| `WORKER_JOB_TIMEOUT`                       | `4m`                                          | Per-job deadline. Must be shorter than `WORKER_REAP_AFTER`.                                                                                            |
+| `WORKER_POLL_INTERVAL`                     | `1s`                                          | Fallback poll; `LISTEN/NOTIFY` wakes it instantly.                                                                                                     |
+| `WORKER_NOTIFY`                            | `true`                                        | Set to `false` to disable `LISTEN/NOTIFY`, for example behind a transaction-mode pooler.                                                               |
+| `WORKER_HEARTBEAT` `WORKER_REAP_AFTER`     | `30s` `5m`                                    | Stale jobs are re-queued after the reap window while they have attempts left, otherwise marked failed. Heartbeat must be shorter than the reap window. |
+| `WORKER_BACKOFF_BASE` `WORKER_BACKOFF_CAP` | `10s` `10m`                                   | Exponential retry backoff.                                                                                                                             |
+| `WORKER_JOB_TYPES`                         | all                                           | Comma-separated list to pin a worker to some job types.                                                                                                |
+| `WORKER_ID`                                | hostname                                      | Appears in the worker's log lines. Not forwarded.                                                                                                      |
+| `WEB_URL`                                  | `http://web:3000` in the shipped compose file | Base URL the worker uses to reach the web app for recurring tasks (`tasks.recur`). The public origin works too. Empty = recurring tasks are skipped.   |
 
 ## Scheduler
 

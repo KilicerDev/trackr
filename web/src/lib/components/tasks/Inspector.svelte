@@ -5,7 +5,7 @@
 	import { page } from '$app/state';
 	import { untrack } from 'svelte';
 	import { showToast } from '$lib/stores/toast.svelte';
-	import { confirm } from '$lib/components/confirm.svelte';
+	import { choose, confirm } from '$lib/components/confirm.svelte';
 	import { fetchTaskDetail } from '$lib/api/tasks';
 	import type { ActionResult } from '@sveltejs/kit';
 	import type { PriorityId, StatusId, TypeId, Task, TaskLink, TaskSummary } from '$lib/types';
@@ -24,6 +24,7 @@
 	import TimeLogPopover from '../popovers/TimeLogPopover.svelte';
 	import SectionHeader from './panel/SectionHeader.svelte';
 	import PropertyRow from './panel/PropertyRow.svelte';
+	import RecurrenceRow from './panel/RecurrenceRow.svelte';
 	import { ICON_ACTION, OPEN, PROP_VALUE, QUIET_ADD, ROW, TAG } from './panel/styles';
 	import { linkedItems, timeSummary, type LinkedKind } from '$lib/utils/task-panel';
 	import { labelMeta } from '$lib/utils/label-meta';
@@ -340,6 +341,7 @@
 		| 'priority'
 		| 'assignees'
 		| 'due'
+		| 'repeat'
 		| 'estimate'
 		| 'plan'
 		| 'tags'
@@ -403,6 +405,42 @@
 
 	async function deleteTask() {
 		if (!draft) return;
+		// A repeating task asks Apple-calendar style: just this one, or this and
+		// every upcoming one (which also stops the repeat). Checked live so a
+		// repeat set up or stopped since the panel opened is honoured.
+		let repeats = false;
+		try {
+			const res = await fetch(`/api/tasks/${draft.uuid}/recurrence`);
+			if (res.ok) repeats = !!((await res.json()) as { series: unknown }).series;
+		} catch {
+			/* fall back to the plain confirm */
+		}
+		if (repeats) {
+			const scope = await choose({
+				title: m.tasks_delete_recurring_title({ id: draft.id }),
+				message: m.tasks_delete_recurring_message(),
+				choices: [
+					{
+						value: 'one',
+						label: m.tasks_delete_recurring_one(),
+						description: m.tasks_delete_recurring_one_hint()
+					},
+					{
+						value: 'following',
+						label: m.tasks_delete_recurring_following(),
+						description: m.tasks_delete_recurring_following_hint(),
+						tone: 'danger'
+					}
+				],
+				cancelLabel: m.common_cancel(),
+				tone: 'danger',
+				icon: 'trash'
+			});
+			if (!scope) return;
+			const ok = await postAction('delete', 'delete', { scope });
+			if (ok) onclose();
+			return;
+		}
 		const confirmed = await confirm({
 			title: m.tasks_delete_confirm_title({ id: draft.id }),
 			message: m.tasks_delete_confirm_message(),
@@ -761,6 +799,17 @@
 						/>
 					{/if}
 				</PropertyRow>
+
+				{#if draft.uuid}
+					<RecurrenceRow
+						taskUuid={draft.uuid}
+						taskDue={draft.due}
+						{canEdit}
+						open={openPop === 'repeat'}
+						ontoggle={() => toggle('repeat')}
+						onclose={() => (openPop = null)}
+					/>
+				{/if}
 
 				{#if draft.startDate}
 					<PropertyRow label={m.tasks_panel_start()}>

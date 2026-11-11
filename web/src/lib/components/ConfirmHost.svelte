@@ -22,6 +22,7 @@
 
 	function onConfirm() {
 		if (!top) return;
+		if (top.kind === 'choice') return; // a choice is always an explicit click
 		if (top.kind === 'prompt') {
 			const v = promptValue.trim();
 			if (!v) return; // don't accept an empty name
@@ -32,7 +33,7 @@
 	}
 	function onCancel() {
 		if (!top) return;
-		_dismiss(top.id, top.kind === 'prompt' ? null : false);
+		_dismiss(top.id, top.kind === 'prompt' || top.kind === 'choice' ? null : false);
 	}
 
 	function onKey(e: KeyboardEvent) {
@@ -175,13 +176,48 @@
 							class="mt-3 w-full rounded-lg border border-border bg-surface px-3 py-2 text-[14px] text-text outline-none focus:border-accent"
 						/>
 					{/if}
+					{#if top.kind === 'choice' && top.choices}
+						<div class="mt-4 flex flex-col gap-2">
+							{#each top.choices as c (c.value)}
+								<button
+									type="button"
+									onclick={() => _dismiss(top.id, c.value)}
+									class="group flex w-full items-center gap-3 rounded-xl border border-border bg-surface/60 px-3.5 py-2.5 text-left transition-colors hover:border-border-strong hover:bg-surface {c.tone ===
+									'danger'
+										? 'hover:border-prio-urgent/40'
+										: ''}"
+								>
+									<span class="min-w-0 flex-1">
+										<span
+											class="block text-[14px] font-medium {c.tone === 'danger'
+												? 'text-prio-urgent'
+												: 'text-text'}"
+										>
+											{c.label}
+										</span>
+										{#if c.description}
+											<span class="mt-0.5 block text-[12px] leading-snug text-text-3">
+												{c.description}
+											</span>
+										{/if}
+									</span>
+									<span
+										class="shrink-0 text-text-4 transition-transform group-hover:translate-x-0.5 group-hover:text-text-3"
+										aria-hidden="true">›</span
+									>
+								</button>
+							{/each}
+						</div>
+					{/if}
 				</div>
 			</div>
 			<div class="flex items-center justify-end gap-2 border-t border-border/80 bg-bg/40 px-5 py-3">
 				{#if top.kind !== 'alert'}
 					<Button variant="default" onclick={onCancel}>{top.cancelLabel ?? 'Cancel'}</Button>
 				{/if}
-				{#if top.tone === 'danger'}
+				{#if top.kind === 'choice'}
+					<!-- The choices above are the actions; only Cancel down here. -->
+				{:else if top.tone === 'danger'}
 					<button
 						type="button"
 						onclick={onConfirm}

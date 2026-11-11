@@ -281,6 +281,12 @@ export const LOG_EVENT_TYPES: Record<
 	'task.import': { label: 'Tasks imported', icon: 'download', color: '#7fc8a9', kind: 'task' },
 	'task.export': { label: 'Tasks exported', icon: 'upload', color: '#9aa4b2', kind: 'task' },
 	'task.update': { label: 'Task updated', icon: 'pencil', color: '#9aa4b2', kind: 'task' },
+	'task.recurrence': {
+		label: 'Task recurrence changed',
+		icon: 'repeat',
+		color: '#7a9cf0',
+		kind: 'task'
+	},
 	'task.status': {
 		label: 'Task status changed',
 		icon: 'check-square',

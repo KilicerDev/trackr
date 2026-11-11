@@ -2,7 +2,7 @@
 title: Background jobs
 description: Emails, webhooks, push and cleanup run outside the request path, through a Postgres-backed queue drained by the Go worker.
 order: 3
-updated: 2026-09-10
+updated: 2026-11-11
 ---
 
 ## How the queue works
@@ -13,13 +13,14 @@ Lifecycle: `queued → running → succeeded | failed (retry with backoff) | can
 
 ## Job types
 
-| Type                                                                              | Purpose                                                                              |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `mail.send`                                                                       | Transactional email.                                                                 |
-| `webhook.deliver`                                                                 | One webhook delivery attempt. Retries are scheduled as new jobs.                     |
-| `push.send`                                                                       | APNs push to registered devices.                                                     |
-| `notify.digest`                                                                   | Runs every 15 minutes and flushes each user's hourly or daily digest window.         |
-| `prune.jobs` `prune.invitations` `prune.notifications` `prune.webhook_deliveries` | Retention: 30 days, 7 days, 90 days (read notifications) and 30 days, checked daily. |
+| Type                                                                              | Purpose                                                                                                      |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `mail.send`                                                                       | Transactional email.                                                                                         |
+| `webhook.deliver`                                                                 | One webhook delivery attempt. Retries are scheduled as new jobs.                                             |
+| `push.send`                                                                       | APNs push to registered devices.                                                                             |
+| `notify.digest`                                                                   | Runs every 15 minutes and flushes each user's hourly or daily digest window.                                 |
+| `tasks.recur`                                                                     | Runs every 5 minutes. When a recurring task series is due, asks the web app (`WEB_URL`) to create its tasks. |
+| `prune.jobs` `prune.invitations` `prune.notifications` `prune.webhook_deliveries` | Retention: 30 days, 7 days, 90 days (read notifications) and 30 days, checked daily.                         |
 
 ## Schedules
 

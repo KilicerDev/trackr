@@ -2,7 +2,7 @@
 title: Aufgaben & Ansichten
 description: Aufgaben sind das Herz von Trackr. Gruppiere sie, wie du denkst, wechsle zwischen Liste und Board und speichere jeden Filter als Ansicht.
 order: 1
-updated: 2026-09-10
+updated: 2026-11-11
 ---
 
 ## Eigenschaften einer Aufgabe
@@ -36,6 +36,19 @@ Filter, Gruppierung, Untergruppierung, Sortierung und Zeitraum liegen im Ansicht
 - Jede Aufgabe hat einen **Kommentar-Thread** mit @-Erwähnungen. Erwähnte Personen werden gemäß ihren Einstellungen benachrichtigt.
 - **Zeiteinträge** buchen Minuten mit Datum und optionaler Notiz auf eine Aufgabe. Die erfasste Zeit steht neben der Schätzung.
 - Der Aktivitätsbereich der Aufgabe listet Anlage, Kommentare und Zeiteinträge. Feldänderungen wie Status- und Zuweisungswechsel landen im **Verlauf des Projekts**.
+
+## Wiederkehrende Aufgaben
+
+Mit **Wiederholen** im Seitenpanel einer Aufgabe entsteht nach Plan eine frische Kopie: täglich, an gewählten Wochentagen, monatlich an einem bestimmten Tag (der 31. wird in kürzeren Monaten zum letzten Tag) oder jährlich, jeweils alle _n_ Tage, Wochen, Monate oder Jahre. Jede Kopie wird morgens erstellt (09:00 in deiner Zeitzone). **Jede neue Kopie ist fällig** legt ihr Fälligkeitsdatum fest: keins, am Tag der Erstellung oder einige Tage danach (ein Wochenbericht, der montags wiederkehrt und freitags fällig ist, nutzt 4 Tage). Die Serie kann an einem Datum enden.
+
+- **Was kopiert wird.** Beim Einrichten werden Titel, Beschreibung, Checkliste (unabgehakt), Zuständige, Priorität, Tags und Schätzung der Aufgabe als Vorlage der Serie gespeichert. Notizen oder Fortschritt einer Kopie wandern nicht in die nächste. Um die Vorlage zu ändern, bearbeite eine Aufgabe der Serie und setze beim Speichern **Diese Aufgabe als Vorlage verwenden**.
+- **Die Aufgabe, an der du es einrichtest, zählt für heute.** Die erste neue Kopie kommt am nächsten geplanten Tag nach heute.
+- **Abschließen holt die nächste nach vorn.** Wechselt die neueste Aufgabe einer Serie auf **In Prüfung**, **Erledigt** oder **Abgebrochen**, entsteht die nächste Kopie sofort, datiert auf ihren eigenen Tag, statt erst an dem Morgen. Ältere Kopien lösen das nicht aus. Bleibt die vorige unerledigt, kommen Kopien trotzdem nach Plan.
+- **Beim Löschen einer wiederkehrenden Aufgabe** fragt Trackr, ob **nur diese Aufgabe** gelöscht wird (die Wiederholung läuft weiter) oder **diese und alle kommenden Aufgaben** (spätere offene Kopien werden gelöscht und die Wiederholung endet; erledigte Aufgaben bleiben).
+- **In der Woche eingeplant.** Jede Kopie landet in der Woche ihrer Zuständigen, an dem Tag, für den sie steht.
+- **Pausieren, fortsetzen, beenden.** Pausierte Serien überspringen, was sie erstellt hätten. **Wiederholung beenden** beendet die Serie; bereits erstellte Aufgaben bleiben erhalten.
+- **Verpasste Termine.** Waren die Hintergrunddienste über mehrere Termine hinweg nicht erreichbar, wird nur der jüngste nachgeholt, kein Rückstau.
+- **In wessen Namen.** Kopien werden im Namen der Person erstellt, die die Serie eingerichtet hat, mit den üblichen Benachrichtigungen und Webhooks. Verliert diese Person den Zugriff oder wird das Projekt archiviert, pausiert die Serie von selbst; wer sie fortsetzt, übernimmt sie.
 
 ## Import und Export
 

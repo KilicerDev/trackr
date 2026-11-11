@@ -351,7 +351,7 @@ export const task = pgTable(
 		status: text('status').notNull().default('todo'),
 		priority: text('priority').notNull().default('none'),
 		type: text('type').notNull().default('task'),
-		// Which surface created the task: web | mcp | api | import | template.
+		// Which surface created the task: web | mcp | api | import | template | recurring.
 		channel: text('channel').notNull().default('web'),
 		parentId: text('parent_id').references((): AnyPgColumn => task.id, { onDelete: 'set null' }),
 		// Set when this task was spun up from a support ticket (admin/team
@@ -365,6 +365,12 @@ export const task = pgTable(
 		// One note may seed many tasks; the task panel lists the meeting through
 		// this link alongside meetings that link the task via note.task_id.
 		sourceNoteId: text('source_note_id').references((): AnyPgColumn => note.id, {
+			onDelete: 'set null'
+		}),
+		// The recurring series this task belongs to: the task the series was set
+		// up on, and every occurrence the runner created from it. `set null` so
+		// deleting the series leaves its tasks behind as plain tasks.
+		recurrenceId: text('recurrence_id').references((): AnyPgColumn => taskRecurrence.id, {
 			onDelete: 'set null'
 		}),
 		dueDate: timestamp('due_date'),
@@ -393,11 +399,85 @@ export const task = pgTable(
 		index('task_project_status_idx').on(t.projectId, t.status),
 		index('task_parent_idx').on(t.parentId),
 		index('task_source_ticket_idx').on(t.sourceTicketId),
-		index('task_source_note_idx').on(t.sourceNoteId)
+		index('task_source_note_idx').on(t.sourceNoteId),
+		index('task_recurrence_idx').on(t.recurrenceId)
 	]
 );
 
 export type Task = typeof task.$inferSelect;
+
+/**
+ * A recurring task series: a saved template plus a calendar rule. The
+ * `tasks.recur` job (scheduler → Go worker → POST /api/internal/recurring-tasks/run)
+ * creates one task from the template each time `next_run_at` passes. The
+ * template is a snapshot taken when the series was set up (or explicitly
+ * refreshed), so notes added to one occurrence never leak into the next.
+ *
+ * Rule semantics live in $lib/recurrence (shared with the UI). `next_run_at`
+ * and `last_run_at` are timestamptz because the runner compares them against
+ * now(); null `next_run_at` means the series has ended (past `ends_on`).
+ */
+export const taskRecurrence = pgTable(
+	'task_recurrence',
+	{
+		id: text('id').primaryKey(),
+		projectId: text('project_id')
+			.notNull()
+			.references(() => project.id, { onDelete: 'cascade' }),
+		// The owner: occurrences are created as this user (permissions, activity,
+		// notifications). Null once the user is deleted, which pauses the series.
+		createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+		// Base URL for links in notifications/webhooks, captured from the request
+		// that set the series up (host-based deploys have no env.ORIGIN).
+		origin: text('origin'),
+
+		// Template — copied into every occurrence.
+		title: text('title').notNull(),
+		description: text('description'),
+		priority: text('priority').notNull().default('none'),
+		type: text('type').notNull().default('task'),
+		estimateMinutes: integer('estimate_minutes'),
+		tags: text('tags').array().notNull().default([]),
+		checklist: jsonb('checklist')
+			.$type<{ id: string; text: string; done: boolean }[]>()
+			.notNull()
+			.default([]),
+		assigneeIds: text('assignee_ids').array().notNull().default([]),
+		// Due date of each occurrence = its date + this many days; null = no due.
+		dueOffsetDays: integer('due_offset_days'),
+
+		// Schedule.
+		rule: jsonb('rule').$type<import('$lib/recurrence').RecurrenceRule>().notNull(),
+		// Local wall-clock time (HH:MM) the occurrence is created at, in `timezone`.
+		time: text('time').notNull().default('09:00'),
+		timezone: text('timezone').notNull().default('Europe/Berlin'),
+		// First day the rule may fire (YYYY-MM-DD); also the interval anchor.
+		startsOn: date('starts_on', { mode: 'string' }).notNull(),
+		endsOn: date('ends_on', { mode: 'string' }),
+		nextRunAt: timestamp('next_run_at', { withTimezone: true }),
+		lastRunAt: timestamp('last_run_at', { withTimezone: true }),
+		lastTaskId: text('last_task_id').references((): AnyPgColumn => task.id, {
+			onDelete: 'set null'
+		}),
+		pausedAt: timestamp('paused_at', { withTimezone: true }),
+		// Why the runner paused it (owner gone, lost permission); null when the
+		// user paused it by hand.
+		pausedReason: text('paused_reason'),
+		createdAt: timestamp('created_at').defaultNow().notNull(),
+		updatedAt: timestamp('updated_at')
+			.defaultNow()
+			.$onUpdate(() => /* @__PURE__ */ new Date())
+			.notNull()
+	},
+	(t) => [
+		index('task_recurrence_due_idx')
+			.on(t.nextRunAt)
+			.where(sql`paused_at is null`),
+		index('task_recurrence_project_idx').on(t.projectId)
+	]
+);
+
+export type TaskRecurrence = typeof taskRecurrence.$inferSelect;
 
 export const taskAssignee = pgTable(
 	'task_assignee',

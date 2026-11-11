@@ -2,7 +2,7 @@
 title: Tasks & views
 description: Tasks are the heart of Trackr. Group them how you think, switch between list and board, and save any filter as a view.
 order: 1
-updated: 2026-09-10
+updated: 2026-11-11
 ---
 
 ## Task properties
@@ -36,6 +36,19 @@ Filters, grouping, sub-grouping, sort and the time horizon live in the view opti
 - Every task has a **comment thread** with @-mentions. Mentioned people are notified according to their preferences.
 - **Time logs** record minutes against a task with a date and an optional note. Logged time shows next to the estimate so you can calibrate.
 - The task's activity panel lists its creation, comments and time logs. Field changes such as status and assignee updates are recorded in the **project's history**.
+
+## Recurring tasks
+
+Set **Repeat** in a task's side panel to create a fresh copy of it on a schedule: daily, on chosen weekdays, monthly on a given day (the 31st falls back to the month's last day) or yearly, every _n_ days, weeks, months or years. Each copy is created in the morning (09:00 in your timezone). **Each new copy is due** sets its due date: none, the day it's created, or a number of days after (a weekly report repeating on Monday and due Friday uses 4 days). The series can end on a date.
+
+- **What gets copied.** Setting up the repeat saves the task's title, description, checklist (unticked), assignees, priority, tags and estimate as the series' template. Notes or progress on one copy don't carry into the next. To change the template, edit a task in the series and tick **Use this task as the template** when saving.
+- **The task you set it on counts as today's.** The first new copy comes on the next scheduled day after today.
+- **Finishing brings the next one forward.** Moving the newest task of a series to **In review**, **Done** or **Cancelled** creates the next copy right away, dated for its own day, instead of waiting for that morning. Older copies don't. Copies still come on schedule when nobody finishes the previous one.
+- **Deleting a repeating task** asks whether to delete **only this task** (the repeat keeps going) or **this and all upcoming tasks** (later open copies are deleted and the repeat stops; finished tasks stay).
+- **Planned into the week.** Each copy is added to its assignees' week on the day it stands for.
+- **Pause, resume, stop.** Paused series skip what they would have created. **Stop repeating** ends the series; tasks it already created stay as they are.
+- **Missed runs.** If the background services were down across several occurrences, only the most recent one is created, not a backlog.
+- **Who it runs as.** Copies are created in the name of the person who set up the series, with the usual notifications and webhooks. If that person loses access or the project is archived, the series pauses itself; whoever resumes it takes it over.
 
 ## Import and export
 

@@ -81,6 +81,12 @@ type Config struct {
 	WebhookTimeout      time.Duration // WEBHOOK_TIMEOUT, default 10s (per attempt)
 	WebhookMaxBody      int           // WEBHOOK_MAX_BODY, default 2048 bytes kept from responses
 	WebhookAllowPrivate bool          // WEBHOOK_ALLOW_PRIVATE_URLS, default false — dev only
+
+	// Base URL of the web app, used by tasks.recur to call
+	// /api/internal/recurring-tasks/run. Docker compose points it at the web
+	// container; elsewhere it is the public origin. Empty → tasks.recur acks
+	// as skipped (recurring tasks don't run). WEB_URL.
+	WebURL string
 }
 
 func Load() (Config, error) {
@@ -121,6 +127,7 @@ func Load() (Config, error) {
 		WebhookTimeout:      durationEnv("WEBHOOK_TIMEOUT", 10*time.Second),
 		WebhookMaxBody:      intEnv("WEBHOOK_MAX_BODY", 2048),
 		WebhookAllowPrivate: boolEnv("WEBHOOK_ALLOW_PRIVATE_URLS", false),
+		WebURL:              strings.TrimRight(os.Getenv("WEB_URL"), "/"),
 	}
 
 	if cfg.WorkerID == "" {

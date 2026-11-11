@@ -153,6 +153,9 @@ services:
       # development = APNs sandbox (Xcode debug builds); production for
       # TestFlight/App Store builds.
       APNS_ENV: ${APNS_ENV:-production}
+      # Recurring tasks (tasks.recur): the worker asks the web app to create
+      # due occurrences over the Docker network.
+      WEB_URL: ${WEB_URL:-http://web:3000}
 
   # Go scheduler — turns due rows in `schedules` into jobs (services/README.md).
   # SKIP LOCKED makes multiple replicas safe, but one is enough for most setups.

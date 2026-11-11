@@ -27,9 +27,28 @@ export interface PromptOptions {
 	icon?: string;
 }
 
+export interface ChoiceOption {
+	value: string;
+	label: string;
+	/** One line under the label saying what this choice does. */
+	description?: string;
+	/** `danger` for the destructive choice (red label). */
+	tone?: 'default' | 'danger';
+}
+
+export interface ChooseOptions {
+	title: string;
+	message?: string;
+	choices: ChoiceOption[];
+	cancelLabel?: string;
+	tone?: Tone;
+	icon?: string;
+}
+
 interface DialogEntry {
 	id: number;
-	kind: 'confirm' | 'alert' | 'prompt';
+	kind: 'confirm' | 'alert' | 'prompt' | 'choice';
+	choices?: ChoiceOption[];
 	title: string;
 	message?: string;
 	placeholder?: string;
@@ -99,6 +118,27 @@ export function prompt(opts: PromptOptions): Promise<string | null> {
 			confirmLabel: opts.confirmLabel ?? 'Save',
 			cancelLabel: opts.cancelLabel ?? 'Cancel',
 			tone: 'default',
+			icon: opts.icon,
+			resolve: (v) => resolve(typeof v === 'string' ? v : null)
+		});
+	});
+}
+
+/**
+ * Ask the user to pick one of several actions (Apple-calendar style: "delete
+ * only this one / this and all following"). Resolves the chosen `value`, or
+ * null if cancelled.
+ */
+export function choose(opts: ChooseOptions): Promise<string | null> {
+	return new Promise((resolve) => {
+		push({
+			kind: 'choice',
+			title: opts.title,
+			message: opts.message,
+			choices: opts.choices,
+			confirmLabel: '',
+			cancelLabel: opts.cancelLabel ?? 'Cancel',
+			tone: opts.tone ?? 'default',
 			icon: opts.icon,
 			resolve: (v) => resolve(typeof v === 'string' ? v : null)
 		});

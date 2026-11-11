@@ -47,6 +47,8 @@ services:
       SMTP_SECURE: ${SMTP_SECURE:-}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
+      # Recurring tasks (tasks.recur): the web app runs on the host (vite dev).
+      WEB_URL: ${WEB_URL:-http://host.docker.internal:5173}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
 

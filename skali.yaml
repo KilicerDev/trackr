@@ -168,6 +168,10 @@ applications:
       APNS_TEAM_ID: "${APNS_TEAM_ID:-}"
       APNS_BUNDLE_ID: "${APNS_BUNDLE_ID:-}"
       APNS_ENV: "${APNS_ENV:-production}"
+      # Recurring tasks (tasks.recur) call the web app back through its public
+      # origin; skali has no app-to-app address, and the call is authenticated
+      # by a database-held secret, not by network position.
+      WEB_URL: "${APP_SCHEME:-https}://${APP_DOMAIN}"
       # Queue tuning. WORKER_JOB_TIMEOUT and WORKER_HEARTBEAT (30s default)
       # must stay below WORKER_REAP_AFTER or a running job gets re-queued.
       WORKER_CONCURRENCY: "4"

@@ -2,7 +2,7 @@
 title: Hintergrund-Jobs
 description: E-Mails, Webhooks, Push und Aufräumen laufen außerhalb des Request-Pfads über eine Postgres-Queue, die der Go-Worker abarbeitet.
 order: 3
-updated: 2026-09-10
+updated: 2026-11-11
 ---
 
 ## So funktioniert die Queue
@@ -13,13 +13,14 @@ Lebenszyklus: `queued → running → succeeded | failed (Wiederholung mit Backo
 
 ## Job-Typen
 
-| Typ                                                                               | Zweck                                                                                              |
-| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `mail.send`                                                                       | Transaktionale E-Mail.                                                                             |
-| `webhook.deliver`                                                                 | Ein Webhook-Zustellversuch. Wiederholungen werden als neue Jobs eingeplant.                        |
-| `push.send`                                                                       | APNs-Push an registrierte Geräte.                                                                  |
-| `notify.digest`                                                                   | Läuft alle 15 Minuten und leert das stündliche oder tägliche Digest-Fenster jedes Nutzers.         |
-| `prune.jobs` `prune.invitations` `prune.notifications` `prune.webhook_deliveries` | Aufbewahrung: 30 Tage, 7 Tage, 90 Tage (gelesene Benachrichtigungen) und 30 Tage, täglich geprüft. |
+| Typ                                                                               | Zweck                                                                                                                        |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `mail.send`                                                                       | Transaktionale E-Mail.                                                                                                       |
+| `webhook.deliver`                                                                 | Ein Webhook-Zustellversuch. Wiederholungen werden als neue Jobs eingeplant.                                                  |
+| `push.send`                                                                       | APNs-Push an registrierte Geräte.                                                                                            |
+| `notify.digest`                                                                   | Läuft alle 15 Minuten und leert das stündliche oder tägliche Digest-Fenster jedes Nutzers.                                   |
+| `tasks.recur`                                                                     | Läuft alle 5 Minuten. Ist eine wiederkehrende Aufgabenserie fällig, lässt es die Web-App (`WEB_URL`) die Aufgaben erstellen. |
+| `prune.jobs` `prune.invitations` `prune.notifications` `prune.webhook_deliveries` | Aufbewahrung: 30 Tage, 7 Tage, 90 Tage (gelesene Benachrichtigungen) und 30 Tage, täglich geprüft.                           |
 
 ## Zeitpläne
 

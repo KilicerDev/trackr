@@ -24,6 +24,9 @@ type Deps struct {
 	Push *push.Client
 	// Outbound HTTP client for webhook.deliver (URL policy + signing).
 	Webhooks *webhook.Client
+	// Base URL of the web app for calls into /api/internal (tasks.recur).
+	// Empty → those handlers ack as skipped.
+	WebURL string
 }
 
 // Register builds the type → handler map for the engine.
@@ -37,5 +40,6 @@ func Register(d Deps) map[string]jobworker.Handler {
 		"push.send":                sendPush(d.DB, d.Push),
 		"webhook.deliver":          deliverWebhook(d.DB, d.Webhooks),
 		"prune.webhook_deliveries": pruneWebhookDeliveries(d.DB),
+		"tasks.recur":              recurTasks(d.DB, d.WebURL),
 	}
 }

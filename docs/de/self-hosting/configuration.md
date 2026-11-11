@@ -8,7 +8,7 @@ updated: 2026-09-10
 > [!WARNING]
 > **Unter Compose zählen nur weitergereichte Variablen**
 >
-> Die Compose-Datei übergibt jedem Container eine feste Liste von Variablen. Variablen, die unten als *nicht weitergereicht* markiert sind, müssen erst in den `environment`-Block des Dienstes (oder einen `env_file`-Eintrag), bevor sie wirken. Siehe [Docker Compose](/docs/self-hosting/docker).
+> Die Compose-Datei übergibt jedem Container eine feste Liste von Variablen. Variablen, die unten als _nicht weitergereicht_ markiert sind, müssen erst in den `environment`-Block des Dienstes (oder einen `env_file`-Eintrag), bevor sie wirken. Siehe [Docker Compose](/docs/self-hosting/docker).
 
 ## Datenbank
 
@@ -50,16 +50,17 @@ Die `STORAGE_*`- und `S3_*`-Variablen stehen unter [Docker Compose → Speicher]
 
 ## Worker
 
-| Variable                                   | Standard    | Hinweis                                                                                                                                                                         |
-| ------------------------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `WORKER_CONCURRENCY`                       | `4`         | Parallele Jobs pro Worker.                                                                                                                                                      |
-| `WORKER_JOB_TIMEOUT`                       | `4m`        | Frist pro Job. Muss kürzer sein als `WORKER_REAP_AFTER`.                                                                                                                        |
-| `WORKER_POLL_INTERVAL`                     | `1s`        | Fallback-Polling; `LISTEN/NOTIFY` weckt sofort.                                                                                                                                 |
-| `WORKER_NOTIFY`                            | `true`      | `false` deaktiviert `LISTEN/NOTIFY`, etwa hinter einem Pooler im Transaction-Modus.                                                                                             |
-| `WORKER_HEARTBEAT` `WORKER_REAP_AFTER`     | `30s` `5m`  | Hängende Jobs werden nach dem Reap-Fenster neu eingereiht, solange Versuche übrig sind, sonst als fehlgeschlagen markiert. Der Heartbeat muss kürzer sein als das Reap-Fenster. |
-| `WORKER_BACKOFF_BASE` `WORKER_BACKOFF_CAP` | `10s` `10m` | Exponentielles Backoff.                                                                                                                                                         |
-| `WORKER_JOB_TYPES`                         | alle        | Kommagetrennte Liste, um einen Worker auf Job-Typen festzulegen.                                                                                                                |
-| `WORKER_ID`                                | Hostname    | Erscheint in den Log-Zeilen des Workers. Nicht weitergereicht.                                                                                                                  |
+| Variable                                   | Standard                                              | Hinweis                                                                                                                                                                                          |
+| ------------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `WORKER_CONCURRENCY`                       | `4`                                                   | Parallele Jobs pro Worker.                                                                                                                                                                       |
+| `WORKER_JOB_TIMEOUT`                       | `4m`                                                  | Frist pro Job. Muss kürzer sein als `WORKER_REAP_AFTER`.                                                                                                                                         |
+| `WORKER_POLL_INTERVAL`                     | `1s`                                                  | Fallback-Polling; `LISTEN/NOTIFY` weckt sofort.                                                                                                                                                  |
+| `WORKER_NOTIFY`                            | `true`                                                | `false` deaktiviert `LISTEN/NOTIFY`, etwa hinter einem Pooler im Transaction-Modus.                                                                                                              |
+| `WORKER_HEARTBEAT` `WORKER_REAP_AFTER`     | `30s` `5m`                                            | Hängende Jobs werden nach dem Reap-Fenster neu eingereiht, solange Versuche übrig sind, sonst als fehlgeschlagen markiert. Der Heartbeat muss kürzer sein als das Reap-Fenster.                  |
+| `WORKER_BACKOFF_BASE` `WORKER_BACKOFF_CAP` | `10s` `10m`                                           | Exponentielles Backoff.                                                                                                                                                                          |
+| `WORKER_JOB_TYPES`                         | alle                                                  | Kommagetrennte Liste, um einen Worker auf Job-Typen festzulegen.                                                                                                                                 |
+| `WORKER_ID`                                | Hostname                                              | Erscheint in den Log-Zeilen des Workers. Nicht weitergereicht.                                                                                                                                   |
+| `WEB_URL`                                  | `http://web:3000` in der mitgelieferten Compose-Datei | Basis-URL, über die der Worker die Web-App für wiederkehrende Aufgaben (`tasks.recur`) erreicht. Der öffentliche Origin funktioniert ebenso. Leer = wiederkehrende Aufgaben werden übersprungen. |
 
 ## Scheduler
 
