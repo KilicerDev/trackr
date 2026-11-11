@@ -290,7 +290,7 @@
 						</button>
 					{/if}
 				</div>
-				<div class="flex-1 space-y-4 overflow-y-auto px-3.5 pt-1 pb-3">
+				<div class="flex-1 space-y-4 overflow-y-auto px-3.5 pb-3">
 					{#each groups as g (g.key)}
 						{@const groupCollapsed = isCollapsed(g)}
 						<div class={g.label ? '' : 'pt-2'}>
@@ -301,7 +301,7 @@
 									type="button"
 									onclick={() => toggle(g)}
 									aria-expanded={!groupCollapsed}
-									class="group/g sticky top-0 z-[2] -mx-3.5 flex w-[calc(100%+1.75rem)] items-center gap-2 bg-bg px-[18px] pt-2.5 pb-1.5 text-left text-[13px] leading-5 font-medium text-text-2 transition-colors hover:text-text"
+									class="group/g sticky top-0 z-[2] -mx-3.5 flex w-[calc(100%+1.75rem)] items-center gap-2 bg-bg px-[18px] pt-3.5 pb-1.5 text-left text-[13px] leading-5 font-medium text-text-2 transition-colors hover:text-text"
 								>
 									{#if g.priorityId}
 										<PriorityBars priority={g.priorityId} />
@@ -326,7 +326,10 @@
 								</button>
 							{/if}
 							{#if !groupCollapsed}
-								<div class="mt-1 space-y-2" transition:slide={{ duration: 180, easing: cubicOut }}>
+								<div
+									class="{g.label ? 'mt-1' : 'mt-2'} space-y-2"
+									transition:slide={{ duration: 180, easing: cubicOut }}
+								>
 									{#each g.tickets.slice(0, limitFor(g.key)) as t (t.id)}
 										<BoardCard
 											ticket={t}

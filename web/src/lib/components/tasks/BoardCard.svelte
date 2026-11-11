@@ -1,6 +1,8 @@
 <script lang="ts">
 	// Task card for boards (tasks board, project board, My Week). Kept quiet so
-	// a full column stays scannable: the title leads, then one muted meta line.
+	// a full column stays scannable: a small line on top (type, id, due
+	// countdown / planned day), the title, then status, priority, time and
+	// assignees below. Neither meta line wraps.
 	// - Status shows only when the board isn't already grouped by status
 	//   (`showStatus`), or as the link icon when prerequisites are open.
 	// - The type is a small icon next to the id, coloured only for bugs.
@@ -53,6 +55,7 @@
 	let openDeps = $derived(
 		task.blocked ? (task.dependsOn ?? []).filter((d) => !isClosedStatus(d.status)).length : 0
 	);
+	let hasPlanned = $derived(showPlanned && !!(task.plannedFor || task.inMyPlan));
 	let working = $derived(task.status === 'in_progress' || task.status === 'in_review');
 	const DUE_TONE: Record<string, string> = {
 		overdue: 'text-[#ef4f5e]',
@@ -66,6 +69,42 @@
 	{onclick}
 	class="group block w-full rounded-lg bg-bg-elev px-3 py-2.5 text-left transition-colors hover:bg-surface"
 >
+	<!-- Above the title: what it is (type + id) and when (due countdown or
+	     planned day, pushed right). -->
+	<div class="mb-1 flex min-w-0 items-center gap-2 text-[12px] leading-5 text-text-3">
+		<span
+			class="inline-flex min-w-0 items-center gap-1 font-mono text-[11px] text-text-4"
+			title={typeLabel(task.type ?? 'task')}
+		>
+			<span class="shrink-0" style:color={type.id === 'bug' ? type.color : undefined}>
+				<Icon name={type.icon} size={12} stroke={2} />
+			</span>
+			<span class="truncate">{task.id}</span>
+		</span>
+		{#if due && due.label}
+			<span
+				class="ml-auto inline-flex min-w-0 items-center gap-1 {DUE_TONE[due.tone] ?? ''}"
+				title={formatDateLong(dueDate)}
+			>
+				<Icon name="calendar" size={12} />
+				<span class="truncate">{due.label}</span>
+			</span>
+		{/if}
+		{#if hasPlanned}
+			<span
+				class="{due && due.label
+					? ''
+					: 'ml-auto'} inline-flex shrink-0 items-center gap-1 text-accent"
+				title={task.plannedFor
+					? m.tasks_planned_for({ date: formatDateShort(task.plannedFor) })
+					: m.tasks_in_your_week_no_date()}
+			>
+				<Icon name="bookmark" size={12} />
+				{#if task.plannedFor}<span class="font-mono">{formatDateShort(task.plannedFor)}</span>{/if}
+			</span>
+		{/if}
+	</div>
+
 	<div class="line-clamp-2 text-[14px] leading-snug text-text">{task.title}</div>
 
 	{#if dayNote}
@@ -82,10 +121,11 @@
 		</div>
 	{/if}
 
+	<!-- Below the title: status, priority, time, checklist, assignees. One row. -->
 	<div class="mt-2 flex min-w-0 items-center gap-2 text-[12px] leading-5 text-text-3">
 		{#if openDeps > 0}
 			<span
-				class="inline-flex items-center gap-0.5 text-[var(--color-status-paused)]"
+				class="inline-flex shrink-0 items-center gap-0.5 text-[var(--color-status-paused)]"
 				title="{openDeps === 1
 					? m.tasks_blocked_badge_title_one()
 					: m.tasks_blocked_badge_title({ n: openDeps })} · {statusLabel(task.status)}"
@@ -94,39 +134,12 @@
 				<span class="font-mono">{openDeps}</span>
 			</span>
 		{:else if showStatus}
-			<span title={statusLabel(task.status)}><StatusDot status={task.status} size={12} /></span>
+			<span class="shrink-0" title={statusLabel(task.status)}
+				><StatusDot status={task.status} size={12} /></span
+			>
 		{/if}
-		<span
-			class="inline-flex shrink-0 items-center gap-1 font-mono text-[11px] text-text-4"
-			title={typeLabel(task.type ?? 'task')}
-		>
-			<span style:color={type.id === 'bug' ? type.color : undefined}>
-				<Icon name={type.icon} size={12} stroke={2} />
-			</span>
-			{task.id}
-		</span>
 		{#if task.priority !== 'none'}
-			<PriorityBars priority={task.priority} />
-		{/if}
-		{#if due && due.label}
-			<span
-				class="inline-flex shrink-0 items-center gap-1 {DUE_TONE[due.tone] ?? ''}"
-				title={formatDateLong(dueDate)}
-			>
-				<Icon name="calendar" size={12} />
-				{due.label}
-			</span>
-		{/if}
-		{#if showPlanned && (task.plannedFor || task.inMyPlan)}
-			<span
-				class="inline-flex shrink-0 items-center gap-1 text-accent"
-				title={task.plannedFor
-					? m.tasks_planned_for({ date: formatDateShort(task.plannedFor) })
-					: m.tasks_in_your_week_no_date()}
-			>
-				<Icon name="bookmark" size={12} />
-				{#if task.plannedFor}<span class="font-mono">{formatDateShort(task.plannedFor)}</span>{/if}
-			</span>
+			<span class="shrink-0"><PriorityBars priority={task.priority} /></span>
 		{/if}
 		{#if timeLabel}
 			<span class="shrink-0 font-mono">{timeLabel}</span>
